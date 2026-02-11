@@ -1,8 +1,9 @@
 import React, { useRef } from 'react';
 import { Group, Image, Rect, Text } from 'react-konva';
 import Konva from 'konva';
+import type { KonvaEventObject } from 'konva/lib/Node';
 import useImage from 'use-image';
-import { PageItem, useStudioStore } from './studio-store';
+import { PageItem, StudioState, useStudioStore } from './studio-store';
 
 interface PageObjectProps {
     page: PageItem;
@@ -18,43 +19,39 @@ interface SelectionItem {
     pageId: string;
 }
 
-// Define the StudioStore interface based on usage
-interface StudioStore {
-    updatePage: (docId: string, pageId: string, updates: Partial<PageItem>) => void;
-    selection: SelectionItem[];
-    setSelection: (selection: SelectionItem[]) => void;
-    movePage: (sourceDocId: string, pageId: string, targetDocId: string, index?: number) => void;
-}
-
 export const PageObject: React.FC<PageObjectProps> = ({ page, docId, x, y, currentIndex }) => {
     const groupRef = useRef<Konva.Group>(null);
     const [image] = useImage(page.thumbnailUrl);
-    const updatePage = useStudioStore((s: StudioStore) => s.updatePage);
-    const selection = useStudioStore((s: StudioStore) => s.selection);
-    const setSelection = useStudioStore((s: StudioStore) => s.setSelection);
+    const documents = useStudioStore((s: StudioState) => s.documents);
+    const detachPage = useStudioStore((s: StudioState) => s.detachPage);
+    const selection = useStudioStore((s: StudioState) => s.selection);
+    const setSelection = useStudioStore((s: StudioState) => s.setSelection);
     const isSelected = selection.some((s: SelectionItem) => s.pageId === page.id);
 
-    const GRID_SIZE = 220;
-    const snapToGrid = (val: number) => Math.round(val / GRID_SIZE) * GRID_SIZE;
+    const movePage = useStudioStore((s: StudioState) => s.movePage);
 
-    const movePage = useStudioStore((s: StudioStore) => s.movePage);
-
-    const handleDragStart = (e: any) => {
+    const handleDragStart = (e: KonvaEventObject<DragEvent>) => {
         e.cancelBubble = true; // Don't drag the document
         const node = e.target;
         node.moveToTop(); // Bring to front
     };
 
-    const handleDragEnd = (e: any) => {
+    const handleDragEnd = (e: KonvaEventObject<DragEvent>) => {
         e.cancelBubble = true; // Prevent document from dragging when page is dragged
         const node = e.target;
         const stage = node.getStage();
+        if (!stage) return;
         const pos = stage.getPointerPosition();
 
         if (!pos) return;
+        const inverseTransform = stage.getAbsoluteTransform().copy().invert();
+        const worldPos = inverseTransform.point(pos);
 
-        // Find what is under the pointer
+        // Ignore the dragged page itself to resolve drop target underneath.
+        node.hide();
         const hit = stage.getIntersection(pos);
+        node.show();
+        stage.batchDraw();
         let targetDocId = null;
         let targetDocNode: Konva.Group | null = null;
 
@@ -68,9 +65,23 @@ export const PageObject: React.FC<PageObjectProps> = ({ page, docId, x, y, curre
                 targetDocId = parent.attrs.id;
                 targetDocNode = parent as Konva.Group;
             }
+
         }
 
-        if (targetDocId && targetDocNode) {
+        const sourceDoc = documents.find((doc) => doc.id === docId);
+        const sourceDocWidth = Math.max(220, (sourceDoc?.pages.length ?? 1) * 220 + 20);
+        const sourceMinX = (sourceDoc?.x ?? 0) - 12;
+        const sourceMaxX = (sourceDoc?.x ?? 0) + sourceDocWidth + 12;
+        const sourceMinY = (sourceDoc?.y ?? 0) - 32;
+        const sourceMaxY = (sourceDoc?.y ?? 0) + 342;
+        const droppedOutsideSourceDoc =
+            !sourceDoc
+            || worldPos.x < sourceMinX
+            || worldPos.x > sourceMaxX
+            || worldPos.y < sourceMinY
+            || worldPos.y > sourceMaxY;
+
+        if (targetDocId && targetDocNode && !(targetDocId === docId && droppedOutsideSourceDoc)) {
             const STEP = 200 + 20; // CARD_WIDTH + GAP
 
             // Get local position relative to the target document
@@ -82,14 +93,13 @@ export const PageObject: React.FC<PageObjectProps> = ({ page, docId, x, y, curre
 
             movePage(docId, page.id, targetDocId, targetIndex);
         } else {
-            // Return to original position if not dropped on a document
-            node.to({
-                x, y, duration: 0.2, easing: Konva.Easings.EaseOut
-            });
+            const detachedX = Number.isFinite(worldPos.x) ? Math.max(80, worldPos.x - 90) : x;
+            const detachedY = Number.isFinite(worldPos.y) ? Math.max(80, worldPos.y - 125) : y;
+            detachPage(docId, page.id, detachedX, detachedY);
         }
     };
 
-    const handleClick = (e: any) => {
+    const handleClick = (e: KonvaEventObject<MouseEvent>) => {
         e.cancelBubble = true;
         if (e.evt.shiftKey) {
             setSelection(isSelected
@@ -106,6 +116,8 @@ export const PageObject: React.FC<PageObjectProps> = ({ page, docId, x, y, curre
     return (
         <Group
             ref={groupRef}
+            id={page.id}
+            name="page-object"
             x={x}
             y={y}
             draggable

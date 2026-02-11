@@ -1,9 +1,28 @@
 import { PDFDocument, degrees } from 'pdf-lib';
+import type { IPipelineRecipe } from './types';
 
-// Note: In a real environment, we would use VFS to read/write.
-// For this prototype, we'll assume the message sends the buffers.
+interface PipelineInputFile {
+    id: string;
+    buffer: Uint8Array;
+}
 
-self.onmessage = async (e: MessageEvent) => {
+interface PipelineWorkerRequest {
+    recipe: IPipelineRecipe;
+    files: PipelineInputFile[];
+}
+
+type PipelineWorkerResponse =
+    | { type: 'SUCCESS'; buffer: Uint8Array; fileName: string }
+    | { type: 'ERROR'; error: string };
+
+type WorkerScope = {
+    onmessage: ((event: MessageEvent<PipelineWorkerRequest>) => void | Promise<void>) | null;
+    postMessage: (message: PipelineWorkerResponse, transfer?: Transferable[]) => void;
+};
+
+const workerScope = self as unknown as WorkerScope;
+
+workerScope.onmessage = async (e: MessageEvent<PipelineWorkerRequest>) => {
     const { recipe, files } = e.data;
 
     try {
@@ -18,7 +37,7 @@ self.onmessage = async (e: MessageEvent) => {
 
         // 2. Simple Reorder/Merge execution (The base of Studio operations)
         // For now, let's implement the 'reorder' operation as it covers merge/split.
-        const reorderOp = recipe.operations.find((op: any) => op.type === 'reorder');
+        const reorderOp = recipe.operations.find((op) => op.type === 'reorder');
 
         if (reorderOp) {
             for (const item of reorderOp.sequence) {
@@ -39,13 +58,16 @@ self.onmessage = async (e: MessageEvent) => {
 
         const pdfBytes = await outputDoc.save();
 
-        self.postMessage({
+        const successMessage: PipelineWorkerResponse = {
             type: 'SUCCESS',
             buffer: pdfBytes,
             fileName: recipe.outputName
-        }, [pdfBytes.buffer] as any);
+        };
+        workerScope.postMessage(successMessage, [pdfBytes.buffer as ArrayBuffer]);
 
-    } catch (error: any) {
-        self.postMessage({ type: 'ERROR', error: error.message });
+    } catch (error: unknown) {
+        const errorMessage = error instanceof Error ? error.message : 'Pipeline execution failed';
+        const failureMessage: PipelineWorkerResponse = { type: 'ERROR', error: errorMessage };
+        workerScope.postMessage(failureMessage);
     }
 };

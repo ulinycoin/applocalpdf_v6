@@ -58,6 +58,7 @@ export interface UseWizardFlowResult {
   state: WizardState;
   configComponent: ComponentType<IToolConfigProps> | null;
   handleFilesAdded: (files: File[]) => Promise<void>;
+  hydrateFromFileIds: (fileIds: string[]) => Promise<void>;
   startProcessing: (options?: Record<string, unknown>) => Promise<void>;
   cancelProcessing: () => void;
   resetFlow: (deleteInputs?: boolean) => Promise<void>;

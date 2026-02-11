@@ -22,6 +22,7 @@ export function ToolRoutes() {
   return (
     <Suspense fallback={<LoadingScreen />}>
       <Routes>
+        <Route path="/" element={<Navigate to="/studio" replace />} />
         {routes.map((toolRoute) => {
           return (
             <Route
@@ -32,7 +33,7 @@ export function ToolRoutes() {
           );
         })}
         <Route path="/studio" element={<StudioShell />} />
-        <Route path="*" element={<Navigate to={routes[0].path} replace />} />
+        <Route path="*" element={<Navigate to="/studio" replace />} />
       </Routes>
     </Suspense>
   );

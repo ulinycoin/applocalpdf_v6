@@ -174,6 +174,78 @@ export class WizardFlowCore {
     }
   }
 
+  async hydrateFromFileIds(fileIds: string[]): Promise<WizardState> {
+    const sanitizedIds = Array.from(new Set(fileIds.filter((id): id is string => typeof id === 'string' && id.length > 0)));
+    if (sanitizedIds.length === 0) {
+      return this.state;
+    }
+
+    if (
+      this.state.fileIds.length === sanitizedIds.length
+      && this.state.fileIds.every((id, index) => id === sanitizedIds[index])
+      && this.state.step !== 'upload'
+    ) {
+      return this.state;
+    }
+
+    this.state = {
+      ...this.state,
+      isValidating: true,
+      error: null,
+      toast: null,
+      upsellReason: null,
+    };
+
+    try {
+      await Promise.all(sanitizedIds.map(async (fileId) => this.deps.runtime.vfs.read(fileId)));
+
+      const toolDef = this.deps.runtime.registry.get(this.deps.toolId);
+      const access = await this.deps.limitService.check({
+        runtime: this.deps.runtime,
+        toolId: this.deps.toolId,
+        toolLimits: toolDef.limits,
+        fileIds: sanitizedIds,
+        context: this.deps.context,
+      });
+
+      if (!access.allowed) {
+        this.state = {
+          ...this.state,
+          step: 'upload',
+          fileIds: [],
+          outputIds: [],
+          progress: 0,
+          isValidating: false,
+          upsellReason: access.reason ?? 'Plan limit reached',
+        };
+        return this.state;
+      }
+
+      this.state = {
+        ...this.state,
+        step: 'config',
+        fileIds: sanitizedIds,
+        outputIds: [],
+        progress: 0,
+        isValidating: false,
+        isProcessing: false,
+        error: null,
+      };
+      return this.state;
+    } catch (error) {
+      this.state = {
+        ...this.state,
+        step: 'upload',
+        fileIds: [],
+        outputIds: [],
+        progress: 0,
+        isValidating: false,
+        error: toErrorMessage(error, 'Failed to open selected files'),
+      };
+      return this.state;
+    }
+  }
+
   async startProcessing(optionsPayload?: Record<string, unknown>): Promise<WizardState> {
     if (this.state.fileIds.length === 0) {
       this.state = { ...this.state, step: 'upload', error: 'No files selected' };

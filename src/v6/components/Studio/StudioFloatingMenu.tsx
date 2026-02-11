@@ -1,18 +1,23 @@
-import { useStudioStore } from './studio-store';
+import { PageItem, StudioDocument, StudioState, useStudioStore } from './studio-store';
 import { LinearIcon } from '../icons/linear-icon';
 
+interface SelectionItem {
+    docId: string;
+    pageId: string;
+}
+
 export function StudioFloatingMenu() {
-    const selection = useStudioStore((s: any) => s.selection);
-    const updatePage = useStudioStore((s: any) => s.updatePage);
-    const movePage = useStudioStore((s: any) => s.movePage);
-    const addDocument = useStudioStore((s: any) => s.addDocument);
-    const documents = useStudioStore((s: any) => s.documents);
+    const selection = useStudioStore((s: StudioState) => s.selection);
+    const updatePage = useStudioStore((s: StudioState) => s.updatePage);
+    const movePage = useStudioStore((s: StudioState) => s.movePage);
+    const addDocument = useStudioStore((s: StudioState) => s.addDocument);
+    const documents = useStudioStore((s: StudioState) => s.documents);
     const clearSelection = () => useStudioStore.getState().setSelection([]);
 
     const rotateSelection = (angle: number) => {
-        selection.forEach((s: any) => {
-            const doc = documents.find((d: any) => d.id === s.docId);
-            const page = doc?.pages.find((p: any) => p.id === s.pageId);
+        selection.forEach((s: SelectionItem) => {
+            const doc = documents.find((d: StudioDocument) => d.id === s.docId);
+            const page = doc?.pages.find((p: PageItem) => p.id === s.pageId);
             if (page) {
                 updatePage(s.docId, s.pageId, { rotation: (page.rotation + angle) % 360 });
             }
@@ -20,7 +25,7 @@ export function StudioFloatingMenu() {
     };
 
     const deleteSelection = () => {
-        selection.forEach((s: any) => {
+        selection.forEach((_s: SelectionItem) => {
             // ... logical delete
         });
         clearSelection();
@@ -32,7 +37,7 @@ export function StudioFloatingMenu() {
         const newDocId = Math.random().toString(36).substr(2, 9);
         // Create new doc slightly offset from first selected item's doc
         const firstS = selection[0];
-        const sourceDoc = documents.find((d: any) => d.id === firstS.docId);
+        const sourceDoc = documents.find((d: StudioDocument) => d.id === firstS.docId);
 
         addDocument({
             id: newDocId,
@@ -42,7 +47,7 @@ export function StudioFloatingMenu() {
             pages: [] // movePage will fill this
         });
 
-        selection.forEach((s: any) => {
+        selection.forEach((s: SelectionItem) => {
             movePage(s.docId, s.pageId, newDocId);
         });
 

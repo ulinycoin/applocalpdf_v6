@@ -72,6 +72,14 @@ export function useWizardFlow(toolId: string, options: WizardFlowOptions): UseWi
     [core],
   );
 
+  const hydrateFromFileIds = useCallback(
+    async (fileIds: string[]): Promise<void> => {
+      const next = await core.hydrateFromFileIds(fileIds);
+      setState({ ...next });
+    },
+    [core],
+  );
+
   const resetFlow = useCallback(
     async (deleteInputs = true): Promise<void> => {
       const next = await core.resetFlow(deleteInputs);
@@ -102,6 +110,7 @@ export function useWizardFlow(toolId: string, options: WizardFlowOptions): UseWi
     state,
     configComponent,
     handleFilesAdded,
+    hydrateFromFileIds,
     startProcessing,
     cancelProcessing,
     resetFlow,

@@ -1,7 +1,8 @@
 import React from 'react';
 import { Group, Rect, Text } from 'react-konva';
+import type { KonvaEventObject } from 'konva/lib/Node';
 import { PageObject } from './PageObject';
-import { StudioDocument as IStudioDocument, useStudioStore } from './studio-store';
+import { StudioDocument as IStudioDocument, StudioState, useStudioStore } from './studio-store';
 
 interface StudioDocumentProps {
     doc: IStudioDocument;
@@ -9,40 +10,38 @@ interface StudioDocumentProps {
 
 export const StudioDocument: React.FC<StudioDocumentProps> = ({ doc }) => {
     const [isDropTarget, setIsDropTarget] = React.useState(false);
-    const updateDocument = useStudioStore((s: any) => s.updateDocument);
+    const updateDocument = useStudioStore((s: StudioState) => s.updateDocument);
+    const activeDocumentId = useStudioStore((s: StudioState) => s.activeDocumentId);
+    const setActiveDocument = useStudioStore((s: StudioState) => s.setActiveDocument);
 
-    const handleDragEnd = (e: any) => {
+    const handleDragEnd = (e: KonvaEventObject<DragEvent>) => {
         // ONLY handle if the document itself was dragged
         if (e.target.name() !== 'document') return;
-
-        // Magnetic grid for the whole document
-        const GRID_SIZE = 220;
-        const newX = Math.round(e.target.x() / GRID_SIZE) * GRID_SIZE;
-        const newY = Math.round(e.target.y() / GRID_SIZE) * GRID_SIZE;
-
-        e.target.to({
-            x: newX,
-            y: newY,
-            duration: 0.2
-        });
-
-        updateDocument(doc.id, { x: newX, y: newY });
+        updateDocument(doc.id, { x: e.target.x(), y: e.target.y() });
     };
 
     const CARD_WIDTH = 200;
     const CARD_HEIGHT = 280;
     const GAP = 20;
+    const MODIFIED_BADGE_WIDTH = 65;
 
     // Calculate doc bounds based on pages (Horizontal Layout)
-    const width = doc.pages.length * (CARD_WIDTH + GAP);
+    const width = Math.max(CARD_WIDTH + GAP, doc.pages.length * (CARD_WIDTH + GAP));
     const height = CARD_HEIGHT + GAP;
+    const labelMaxWidth = Math.max(120, width - (doc.isModified ? MODIFIED_BADGE_WIDTH + 12 : 0));
+
+    const isActiveDocument = activeDocumentId === doc.id;
 
     return (
         <Group
             x={doc.x}
             y={doc.y}
             draggable
+            onDragStart={(e) => {
+                e.cancelBubble = true;
+            }}
             onDragEnd={handleDragEnd}
+            onMouseDown={() => setActiveDocument(doc.id)}
             name="document"
             id={doc.id}
             onDragEnter={() => setIsDropTarget(true)}
@@ -55,11 +54,11 @@ export const StudioDocument: React.FC<StudioDocumentProps> = ({ doc }) => {
                 height={height + 40}
                 x={-10}
                 y={-30}
-                fill={isDropTarget ? "rgba(59, 130, 246, 0.15)" : "rgba(59, 130, 246, 0.05)"}
-                stroke={isDropTarget ? "rgba(59, 130, 246, 0.6)" : "rgba(59, 130, 246, 0.2)"}
-                strokeWidth={isDropTarget ? 2 : 1}
+                fill={isDropTarget ? "rgba(59, 130, 246, 0.15)" : (isActiveDocument ? "rgba(59, 130, 246, 0.12)" : "rgba(59, 130, 246, 0.05)")}
+                stroke={isDropTarget ? "rgba(59, 130, 246, 0.6)" : (isActiveDocument ? "rgba(96, 165, 250, 0.9)" : "rgba(59, 130, 246, 0.2)")}
+                strokeWidth={isDropTarget || isActiveDocument ? 2 : 1}
                 cornerRadius={12}
-                shadowBlur={isDropTarget ? 15 : 0}
+                shadowBlur={isDropTarget || isActiveDocument ? 15 : 0}
                 shadowColor="#3b82f6"
                 shadowOpacity={0.3}
             />
@@ -70,10 +69,13 @@ export const StudioDocument: React.FC<StudioDocumentProps> = ({ doc }) => {
                     fill="rgba(255,255,255,0.6)"
                     fontSize={14}
                     fontStyle="bold"
+                    width={labelMaxWidth}
+                    wrap="none"
+                    ellipsis
                 />
                 {/* Modified Indicator */}
                 {doc.isModified && (
-                    <Group x={doc.name.length * 8 + 15}>
+                    <Group x={labelMaxWidth + 8}>
                         <Rect width={65} height={18} fill="#3b82f6" cornerRadius={4} />
                         <Text text="MODIFIED" fill="white" fontSize={10} x={7} y={4} fontStyle="bold" />
                     </Group>
@@ -81,6 +83,28 @@ export const StudioDocument: React.FC<StudioDocumentProps> = ({ doc }) => {
             </Group>
 
             {/* Horizontal Pages Row inside Document */}
+            {doc.pages.length === 0 && (
+                <Group x={10} y={10}>
+                    <Rect
+                        width={CARD_WIDTH}
+                        height={CARD_HEIGHT}
+                        stroke="rgba(148, 197, 253, 0.7)"
+                        strokeWidth={1.5}
+                        dash={[8, 6]}
+                        cornerRadius={8}
+                    />
+                    <Text
+                        text="Drop pages here"
+                        fill="rgba(219, 234, 254, 0.92)"
+                        fontSize={14}
+                        fontStyle="bold"
+                        align="center"
+                        verticalAlign="middle"
+                        width={CARD_WIDTH}
+                        height={CARD_HEIGHT}
+                    />
+                </Group>
+            )}
             {doc.pages.map((page, index) => {
                 return (
                     <PageObject

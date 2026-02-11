@@ -10,12 +10,15 @@ import {
   type DragEvent,
   type ReactNode,
 } from 'react';
+import { useLocation } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { usePlatform } from '../../../app/react/platform-context';
 import { LinearIcon } from '../icons/linear-icon';
 import { DEFAULT_TOOL_CONTEXT, useWizardFlow } from '../../hooks/useWizardFlow';
 import { useFilePreviews } from '../../hooks/use-file-previews';
 import { PreviewPanel } from './PreviewPanel';
 import type { IOAdapter, SmartUploadZoneProps, WizardShellProps, WizardStep } from './types';
+import type { StudioToolRouteState } from '../../studio/navigation/studio-tool-context';
 
 function classNames(...parts: Array<string | false | null | undefined>): string {
   return parts.filter(Boolean).join(' ');
@@ -192,12 +195,15 @@ function getStepStatus(stepIndex: number, currentStepIndex: number): 'pending' |
 
 export function WizardShell({ toolId, context = DEFAULT_TOOL_CONTEXT, ioAdapter, limitService }: WizardShellProps): JSX.Element {
   const { runtime } = usePlatform();
+  const navigate = useNavigate();
+  const location = useLocation();
   const [configBoundaryKey, setConfigBoundaryKey] = useState(0);
 
   const {
     state,
     configComponent,
     handleFilesAdded,
+    hydrateFromFileIds,
     startProcessing,
     cancelProcessing,
     resetFlow,
@@ -227,6 +233,29 @@ export function WizardShell({ toolId, context = DEFAULT_TOOL_CONTEXT, ioAdapter,
     return 'application/pdf';
   }, [toolId]);
   const allowMultiple = useMemo(() => !['ocr-pdf', 'pdf-to-jpg', 'split-pdf'].includes(toolId), [toolId]);
+  const routeState = (location.state as StudioToolRouteState | null) ?? null;
+  const isStudioFlow = routeState?.source === 'studio';
+  const routeStudioContext = routeState?.studioContext;
+
+  useEffect(() => {
+    const preloadedFileIds = Array.isArray(routeState?.preloadedFileIds)
+      ? routeState.preloadedFileIds.filter((value): value is string => typeof value === 'string' && value.length > 0)
+      : [];
+    if (preloadedFileIds.length === 0) {
+      return;
+    }
+    void hydrateFromFileIds(preloadedFileIds);
+  }, [hydrateFromFileIds, location.key, routeState?.preloadedFileIds]);
+
+  const startProcessingWithContext = (payload?: Record<string, unknown>): Promise<void> => {
+    if (!routeStudioContext) {
+      return startProcessing(payload);
+    }
+    return startProcessing({
+      ...(payload ?? {}),
+      studioContext: routeStudioContext,
+    });
+  };
 
   useEffect(() => {
     if (!state.toast) {
@@ -324,7 +353,7 @@ export function WizardShell({ toolId, context = DEFAULT_TOOL_CONTEXT, ioAdapter,
                     key={configBoundaryKey}
                   >
                     <Suspense fallback={<p className="wizard-subtitle">Loading configuration...</p>}>
-                      <ConfigComponent inputFiles={state.fileIds} onStart={startProcessing} onBack={() => void resetFlow(true)} />
+                      <ConfigComponent inputFiles={state.fileIds} onStart={startProcessingWithContext} onBack={() => void resetFlow(true)} />
                     </Suspense>
                   </ConfigErrorBoundary>
                 </div>
@@ -338,7 +367,7 @@ export function WizardShell({ toolId, context = DEFAULT_TOOL_CONTEXT, ioAdapter,
                 key={configBoundaryKey}
               >
                 <Suspense fallback={<p className="wizard-subtitle">Loading configuration...</p>}>
-                  <ConfigComponent inputFiles={state.fileIds} onStart={startProcessing} onBack={() => void resetFlow(true)} />
+                  <ConfigComponent inputFiles={state.fileIds} onStart={startProcessingWithContext} onBack={() => void resetFlow(true)} />
                 </Suspense>
               </ConfigErrorBoundary>
             )}
@@ -400,6 +429,27 @@ export function WizardShell({ toolId, context = DEFAULT_TOOL_CONTEXT, ioAdapter,
                         Start over
                       </span>
                     </button>
+                    {isStudioFlow && (
+                      <button
+                        className="btn-secondary"
+                        onClick={() =>
+                          navigate('/studio', {
+                            state: {
+                              studioToolResult: {
+                                toolId,
+                                outputIds: state.outputIds,
+                                studioContext: routeStudioContext,
+                              },
+                            } satisfies StudioToolRouteState,
+                          })
+                        }
+                      >
+                        <span className="btn-inline">
+                          <LinearIcon name="tool" className="linear-icon" />
+                          Return to Studio
+                        </span>
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>
@@ -427,6 +477,27 @@ export function WizardShell({ toolId, context = DEFAULT_TOOL_CONTEXT, ioAdapter,
                       Start over
                     </span>
                   </button>
+                  {isStudioFlow && (
+                    <button
+                      className="btn-secondary"
+                      onClick={() =>
+                        navigate('/studio', {
+                          state: {
+                            studioToolResult: {
+                              toolId,
+                              outputIds: state.outputIds,
+                              studioContext: routeStudioContext,
+                            },
+                          } satisfies StudioToolRouteState,
+                        })
+                      }
+                    >
+                      <span className="btn-inline">
+                        <LinearIcon name="tool" className="linear-icon" />
+                        Return to Studio
+                      </span>
+                    </button>
+                  )}
                 </div>
               </>
             )}

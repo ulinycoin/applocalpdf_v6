@@ -1,6 +1,8 @@
-import { NavLink } from 'react-router-dom';
+import { NavLink, useLocation } from 'react-router-dom';
 import { LinearIcon } from '../../v6/components/icons/linear-icon';
 import { usePlatform } from './platform-context';
+import { useStudioStore, type StudioState, type StudioDocument, type PageItem } from '../../v6/components/Studio/studio-store';
+import type { StudioSelectedPageRef, StudioToolLaunchContext } from '../../v6/studio/navigation/studio-tool-context';
 
 function getToolIcon(toolId: string): Parameters<typeof LinearIcon>[0]['name'] {
   switch (toolId) {
@@ -67,6 +69,43 @@ interface ToolSidebarProps {
 
 export function ToolSidebar({ collapsed, onToggleCollapsed }: ToolSidebarProps) {
   const { menu } = usePlatform();
+  const location = useLocation();
+  const documents = useStudioStore((s: StudioState) => s.documents);
+  const selection = useStudioStore((s: StudioState) => s.selection);
+  const activeDocumentId = useStudioStore((s: StudioState) => s.activeDocumentId);
+
+  const activeDocument = documents.find((doc: StudioDocument) => doc.id === activeDocumentId) ?? documents[0] ?? null;
+  const selectedPages: StudioSelectedPageRef[] = selection
+    .map((selected) => {
+      const doc = documents.find((candidate: StudioDocument) => candidate.id === selected.docId);
+      const page = doc?.pages.find((candidatePage: PageItem) => candidatePage.id === selected.pageId);
+      if (!doc || !page) {
+        return null;
+      }
+      return {
+        docId: doc.id,
+        pageId: page.id,
+        fileId: page.fileId,
+        pageIndex: page.pageIndex,
+      } satisfies StudioSelectedPageRef;
+    })
+    .filter((value): value is StudioSelectedPageRef => value !== null);
+
+  const selectedInputIds = selectedPages.length > 0
+    ? Array.from(new Set(selectedPages.map((page) => page.fileId)))
+    : Array.from(new Set((activeDocument?.pages ?? []).map((page: PageItem) => page.fileId)));
+  const studioContext: StudioToolLaunchContext | undefined =
+    location.pathname === '/studio' && selectedInputIds.length > 0
+      ? {
+        mode: selectedPages.length > 0 ? 'page-selection' : 'document',
+        documentId: selectedPages.length > 0 ? (selectedPages[0]?.docId ?? null) : (activeDocument?.id ?? null),
+        selectedPages,
+      }
+      : undefined;
+  const toolNavState =
+    studioContext
+      ? { preloadedFileIds: selectedInputIds, source: 'studio' as const, studioContext }
+      : undefined;
 
   return (
     <>
@@ -87,10 +126,27 @@ export function ToolSidebar({ collapsed, onToggleCollapsed }: ToolSidebarProps) 
         </button>
       </div>
       <nav className="nav-list" aria-label="Tools">
+        <div className="nav-item">
+          <NavLink
+            to="/studio"
+            className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}
+            title="Studio"
+            aria-label="Studio"
+          >
+            <span className="nav-icon" aria-hidden="true">
+              <LinearIcon name="tool" className="linear-icon" />
+            </span>
+            <span className="nav-label">Studio</span>
+            <span className="nav-label-short" aria-hidden="true">
+              HUB
+            </span>
+          </NavLink>
+        </div>
         {menu.map((item) => (
           <div key={item.toolId} className="nav-item">
             <NavLink
               to={item.href}
+              state={toolNavState}
               className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}
               title={item.label}
               aria-label={item.label}

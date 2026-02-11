@@ -1,4 +1,5 @@
 import * as pdfjs from 'pdfjs-dist';
+import type { PDFPageProxy } from 'pdfjs-dist/types/src/display/api';
 
 // Point to the worker source from the package
 pdfjs.GlobalWorkerOptions.workerSrc = new URL(
@@ -18,7 +19,7 @@ export class ThumbnailService {
         return thumb;
     }
 
-    static async generateThumbnailFromPage(page: any): Promise<string> {
+    static async generateThumbnailFromPage(page: PDFPageProxy): Promise<string> {
         const viewport = page.getViewport({ scale: 0.5 });
         const canvas = document.createElement('canvas');
         const context = canvas.getContext('2d');

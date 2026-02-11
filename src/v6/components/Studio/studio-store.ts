@@ -8,6 +8,11 @@ export interface PageItem {
     rotation: number;
 }
 
+export interface DetachedPageItem extends PageItem {
+    x: number;
+    y: number;
+}
+
 export interface StudioDocument {
     id: string;
     name: string;
@@ -15,50 +20,120 @@ export interface StudioDocument {
     x: number;
     y: number;
     isModified?: boolean;
+    allowEmpty?: boolean;
+    includeInExport?: boolean;
 }
 
-interface StudioState {
+export interface StudioState {
     documents: StudioDocument[];
+    detachedPages: DetachedPageItem[];
     selection: { docId: string; pageId: string }[];
     isDraggingFile: boolean;
+    activeDocumentId: string | null;
+    workspaceVersion: number;
+    lastExportedVersion: number;
 
     addDocument: (doc: StudioDocument) => void;
     updateDocument: (id: string, updates: Partial<StudioDocument>) => void;
     removeDocument: (id: string) => void;
     setDocuments: (docs: StudioDocument[]) => void;
+    setActiveDocument: (id: string | null) => void;
 
     movePage: (sourceDocId: string, pageId: string, targetDocId: string, index?: number) => void;
+    detachPage: (docId: string, pageId: string, x: number, y: number) => void;
+    attachDetachedPage: (detachedPageId: string, targetDocId: string, index?: number) => void;
+    moveDetachedPage: (detachedPageId: string, x: number, y: number) => void;
+    removePage: (docId: string, pageId: string) => void;
     updatePage: (docId: string, pageId: string, updates: Partial<PageItem>) => void;
 
     setSelection: (selection: { docId: string; pageId: string }[]) => void;
     setDraggingFile: (isDragging: boolean) => void;
+    recountWorkspacePages: () => void;
+    markWorkspaceExported: () => void;
     clear: () => void;
+}
+
+function normalizeWorkspaceState(state: StudioState): Pick<StudioState, 'documents' | 'activeDocumentId' | 'selection'> {
+    const documents = state.documents.filter((doc) => doc.pages.length > 0 || doc.allowEmpty);
+    const activeDocumentId = documents.some((doc) => doc.id === state.activeDocumentId)
+        ? state.activeDocumentId
+        : (documents[0]?.id ?? null);
+
+    const existingPageIds = new Set(documents.flatMap((doc) => doc.pages.map((page) => page.id)));
+    const selection = state.selection.filter((item) => existingPageIds.has(item.pageId));
+
+    return {
+        documents,
+        activeDocumentId,
+        selection,
+    };
+}
+
+function commitWorkspaceMutation(prevState: StudioState, nextState: StudioState): StudioState {
+    const normalized = normalizeWorkspaceState(nextState);
+    return {
+        ...nextState,
+        ...normalized,
+        workspaceVersion: prevState.workspaceVersion + 1,
+    };
 }
 
 export const useStudioStore = create<StudioState>((set) => ({
     documents: [],
+    detachedPages: [],
     selection: [],
     isDraggingFile: false,
+    activeDocumentId: null,
+    workspaceVersion: 0,
+    lastExportedVersion: 0,
 
-    addDocument: (doc) => set((state) => ({ documents: [...state.documents, doc] })),
+    addDocument: (doc) => set((state) => {
+        const nextState: StudioState = {
+            ...state,
+            documents: [...state.documents, doc],
+            activeDocumentId: state.activeDocumentId ?? doc.id,
+        };
+        return commitWorkspaceMutation(state, nextState);
+    }),
 
-    updateDocument: (id, updates) => set((state) => ({
-        documents: state.documents.map(d => d.id === id ? { ...d, ...updates } : d)
-    })),
+    updateDocument: (id, updates) => set((state) => {
+        const nextState: StudioState = {
+            ...state,
+            documents: state.documents.map(d => d.id === id ? { ...d, ...updates } : d),
+        };
+        return commitWorkspaceMutation(state, nextState);
+    }),
 
-    removeDocument: (id) => set((state) => ({
-        documents: state.documents.filter(d => d.id !== id)
-    })),
+    removeDocument: (id) => set((state) => {
+        const nextState: StudioState = {
+            ...state,
+            documents: state.documents.filter(d => d.id !== id),
+            activeDocumentId: state.activeDocumentId === id ? null : state.activeDocumentId,
+        };
+        return commitWorkspaceMutation(state, nextState);
+    }),
 
-    setDocuments: (docs) => set({ documents: docs }), // Added implementation
+    setDocuments: (docs) => set((state) => {
+        const nextState: StudioState = {
+            ...state,
+            documents: docs,
+            activeDocumentId: docs.some((d) => d.id === state.activeDocumentId) ? state.activeDocumentId : (docs[0]?.id ?? null),
+        };
+        return commitWorkspaceMutation(state, nextState);
+    }),
+    setActiveDocument: (id) => set({ activeDocumentId: id }),
 
-    updatePage: (docId, pageId, updates) => set((state) => ({
-        documents: state.documents.map(d => d.id === docId ? {
-            ...d,
-            isModified: true,
-            pages: d.pages.map(p => p.id === pageId ? { ...p, ...updates } : p)
-        } : d)
-    })),
+    updatePage: (docId, pageId, updates) => set((state) => {
+        const nextState: StudioState = {
+            ...state,
+            documents: state.documents.map(d => d.id === docId ? {
+                ...d,
+                isModified: true,
+                pages: d.pages.map(p => p.id === pageId ? { ...p, ...updates } : p)
+            } : d),
+        };
+        return commitWorkspaceMutation(state, nextState);
+    }),
 
     movePage: (sourceDocId, pageId, targetDocId, index) => set((state) => {
         const sourceDoc = state.documents.find(d => d.id === sourceDocId);
@@ -79,9 +154,11 @@ export const useStudioStore = create<StudioState>((set) => ({
             } else {
                 newTargetPages.push(page);
             }
-            return {
+            const nextState: StudioState = {
+                ...state,
                 documents: state.documents.map(d => d.id === sourceDocId ? { ...d, pages: newTargetPages, isModified: true } : d)
             };
+            return commitWorkspaceMutation(state, nextState);
         } else {
             newTargetPages = [...targetDoc.pages];
             if (typeof index === 'number') {
@@ -89,17 +166,107 @@ export const useStudioStore = create<StudioState>((set) => ({
             } else {
                 newTargetPages.push(page);
             }
-            return {
+            const nextState: StudioState = {
+                ...state,
                 documents: state.documents.slice().map(d => {
                     if (d.id === sourceDocId) return { ...d, pages: newSourcePages, isModified: true };
                     if (d.id === targetDocId) return { ...d, pages: newTargetPages, isModified: true };
                     return d;
-                }).filter(d => d.pages.length > 0)
+                }),
             };
+            return commitWorkspaceMutation(state, nextState);
         }
+    }),
+
+    detachPage: (docId, pageId, x, y) => set((state) => {
+        const sourceDoc = state.documents.find((doc) => doc.id === docId);
+        if (!sourceDoc) {
+            return state;
+        }
+        const page = sourceDoc.pages.find((candidate) => candidate.id === pageId);
+        if (!page) {
+            return state;
+        }
+
+        const nextState: StudioState = {
+            ...state,
+            documents: state.documents.map((doc) => {
+                if (doc.id !== docId) {
+                    return doc;
+                }
+                return {
+                    ...doc,
+                    isModified: true,
+                    pages: doc.pages.filter((candidate) => candidate.id !== pageId),
+                };
+            }),
+            detachedPages: [...state.detachedPages, { ...page, x, y }],
+            selection: state.selection.filter((item) => item.pageId !== pageId),
+        };
+        return commitWorkspaceMutation(state, nextState);
+    }),
+
+    attachDetachedPage: (detachedPageId, targetDocId, index) => set((state) => {
+        const detached = state.detachedPages.find((item) => item.id === detachedPageId);
+        const targetDoc = state.documents.find((doc) => doc.id === targetDocId);
+        if (!detached || !targetDoc) {
+            return state;
+        }
+
+        const page: PageItem = {
+            id: detached.id,
+            fileId: detached.fileId,
+            pageIndex: detached.pageIndex,
+            thumbnailUrl: detached.thumbnailUrl,
+            rotation: detached.rotation,
+        };
+
+        const nextState: StudioState = {
+            ...state,
+            detachedPages: state.detachedPages.filter((item) => item.id !== detachedPageId),
+            documents: state.documents.map((doc) => {
+                if (doc.id !== targetDocId) {
+                    return doc;
+                }
+                const pages = [...doc.pages];
+                if (typeof index === 'number') {
+                    pages.splice(index, 0, page);
+                } else {
+                    pages.push(page);
+                }
+                return { ...doc, isModified: true, pages };
+            }),
+        };
+        return commitWorkspaceMutation(state, nextState);
+    }),
+
+    moveDetachedPage: (detachedPageId, x, y) => set((state) => ({
+        detachedPages: state.detachedPages.map((item) => item.id === detachedPageId ? { ...item, x, y } : item),
+    })),
+
+    removePage: (docId, pageId) => set((state) => {
+        const updatedDocuments = state.documents
+            .map((doc) => {
+                if (doc.id !== docId) {
+                    return doc;
+                }
+                return {
+                    ...doc,
+                    isModified: true,
+                    pages: doc.pages.filter((page) => page.id !== pageId),
+                };
+            });
+        const nextState: StudioState = {
+            ...state,
+            documents: updatedDocuments,
+            selection: state.selection.filter((item) => item.pageId !== pageId),
+        };
+        return commitWorkspaceMutation(state, nextState);
     }),
 
     setSelection: (selection) => set({ selection }),
     setDraggingFile: (isDragging) => set({ isDraggingFile: isDragging }),
-    clear: () => set({ documents: [], selection: [] }),
+    recountWorkspacePages: () => set((state) => commitWorkspaceMutation(state, state)),
+    markWorkspaceExported: () => set((state) => ({ lastExportedVersion: state.workspaceVersion })),
+    clear: () => set({ documents: [], detachedPages: [], selection: [], activeDocumentId: null, workspaceVersion: 0, lastExportedVersion: 0 }),
 }));
