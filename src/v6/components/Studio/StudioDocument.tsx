@@ -13,6 +13,8 @@ export const StudioDocument: React.FC<StudioDocumentProps> = ({ doc }) => {
     const updateDocument = useStudioStore((s: StudioState) => s.updateDocument);
     const activeDocumentId = useStudioStore((s: StudioState) => s.activeDocumentId);
     const setActiveDocument = useStudioStore((s: StudioState) => s.setActiveDocument);
+    const selection = useStudioStore((s: StudioState) => s.selection);
+    const setSelection = useStudioStore((s: StudioState) => s.setSelection);
 
     const handleDragEnd = (e: KonvaEventObject<DragEvent>) => {
         // ONLY handle if the document itself was dragged
@@ -30,7 +32,7 @@ export const StudioDocument: React.FC<StudioDocumentProps> = ({ doc }) => {
     const height = CARD_HEIGHT + GAP;
     const labelMaxWidth = Math.max(120, width - (doc.isModified ? MODIFIED_BADGE_WIDTH + 12 : 0));
 
-    const isActiveDocument = activeDocumentId === doc.id;
+    const isActiveDocument = activeDocumentId === doc.id && selection.length === 0;
 
     return (
         <Group
@@ -41,7 +43,10 @@ export const StudioDocument: React.FC<StudioDocumentProps> = ({ doc }) => {
                 e.cancelBubble = true;
             }}
             onDragEnd={handleDragEnd}
-            onMouseDown={() => setActiveDocument(doc.id)}
+            onMouseDown={() => {
+                setActiveDocument(doc.id);
+                setSelection([]);
+            }}
             name="document"
             id={doc.id}
             onDragEnter={() => setIsDropTarget(true)}

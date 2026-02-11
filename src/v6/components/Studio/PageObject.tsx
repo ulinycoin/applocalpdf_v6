@@ -26,6 +26,7 @@ export const PageObject: React.FC<PageObjectProps> = ({ page, docId, x, y, curre
     const detachPage = useStudioStore((s: StudioState) => s.detachPage);
     const selection = useStudioStore((s: StudioState) => s.selection);
     const setSelection = useStudioStore((s: StudioState) => s.setSelection);
+    const setActiveDocument = useStudioStore((s: StudioState) => s.setActiveDocument);
     const isSelected = selection.some((s: SelectionItem) => s.pageId === page.id);
 
     const movePage = useStudioStore((s: StudioState) => s.movePage);
@@ -101,6 +102,7 @@ export const PageObject: React.FC<PageObjectProps> = ({ page, docId, x, y, curre
 
     const handleClick = (e: KonvaEventObject<MouseEvent>) => {
         e.cancelBubble = true;
+        setActiveDocument(docId);
         if (e.evt.shiftKey) {
             setSelection(isSelected
                 ? selection.filter(s => s.pageId !== page.id)
@@ -129,13 +131,17 @@ export const PageObject: React.FC<PageObjectProps> = ({ page, docId, x, y, curre
             {/* Shadow/Glow for selection */}
             {isSelected && (
                 <Rect
-                    width={PAGE_WIDTH + 8}
-                    height={PAGE_HEIGHT + 8}
-                    x={-4}
-                    y={-4}
-                    fill="rgba(59, 130, 246, 0.4)"
-                    cornerRadius={8}
-                    filters={[]} // Can add Blur if needed
+                    width={PAGE_WIDTH + 20}
+                    height={PAGE_HEIGHT + 20}
+                    x={-10}
+                    y={-10}
+                    fill="rgba(56, 189, 248, 0.42)"
+                    stroke="rgba(125, 211, 252, 0.95)"
+                    strokeWidth={3}
+                    cornerRadius={12}
+                    shadowColor="#38bdf8"
+                    shadowBlur={24}
+                    shadowOpacity={0.9}
                 />
             )}
 
@@ -175,8 +181,8 @@ export const PageObject: React.FC<PageObjectProps> = ({ page, docId, x, y, curre
                 width={PAGE_WIDTH}
                 height={PAGE_HEIGHT}
                 fill="transparent"
-                stroke={isSelected ? "#3b82f6" : "transparent"}
-                strokeWidth={2}
+                stroke={isSelected ? "#7dd3fc" : "transparent"}
+                strokeWidth={isSelected ? 3 : 2}
                 cornerRadius={4}
             />
         </Group>

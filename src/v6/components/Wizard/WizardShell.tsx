@@ -18,7 +18,8 @@ import { DEFAULT_TOOL_CONTEXT, useWizardFlow } from '../../hooks/useWizardFlow';
 import { useFilePreviews } from '../../hooks/use-file-previews';
 import { PreviewPanel } from './PreviewPanel';
 import type { IOAdapter, SmartUploadZoneProps, WizardShellProps, WizardStep } from './types';
-import type { StudioToolRouteState } from '../../studio/navigation/studio-tool-context';
+import { PDFDocument } from 'pdf-lib';
+import type { StudioSelectedPageRef, StudioToolRouteState } from '../../studio/navigation/studio-tool-context';
 
 function classNames(...parts: Array<string | false | null | undefined>): string {
   return parts.filter(Boolean).join(' ');
@@ -193,6 +194,48 @@ function getStepStatus(stepIndex: number, currentStepIndex: number): 'pending' |
   return 'pending';
 }
 
+async function buildSinglePageInputIdsFromSelection(
+  runtime: ReturnType<typeof usePlatform>['runtime'],
+  selectedPages: StudioSelectedPageRef[],
+): Promise<string[]> {
+  const sourceBytesByFileId = new Map<string, Uint8Array>();
+  const outputIds: string[] = [];
+
+  for (const selected of selectedPages) {
+    if (!Number.isInteger(selected.pageIndex) || selected.pageIndex < 0) {
+      continue;
+    }
+
+    let sourceBytes = sourceBytesByFileId.get(selected.fileId);
+    if (!sourceBytes) {
+      const sourceEntry = await runtime.vfs.read(selected.fileId);
+      const sourceBlob = await sourceEntry.getBlob();
+      sourceBytes = new Uint8Array(await sourceBlob.arrayBuffer());
+      sourceBytesByFileId.set(selected.fileId, sourceBytes);
+    }
+
+    const sourcePdf = await PDFDocument.load(sourceBytes);
+    if (selected.pageIndex >= sourcePdf.getPageCount()) {
+      continue;
+    }
+
+    const pageOnlyPdf = await PDFDocument.create();
+    const [copiedPage] = await pageOnlyPdf.copyPages(sourcePdf, [selected.pageIndex]);
+    pageOnlyPdf.addPage(copiedPage);
+
+    const outputBytes = new Uint8Array(await pageOnlyPdf.save());
+    const outputFile = new File(
+      [outputBytes],
+      `studio-page-${selected.pageIndex + 1}.pdf`,
+      { type: 'application/pdf' },
+    );
+    const outputEntry = await runtime.vfs.write(outputFile);
+    outputIds.push(outputEntry.id);
+  }
+
+  return outputIds;
+}
+
 export function WizardShell({ toolId, context = DEFAULT_TOOL_CONTEXT, ioAdapter, limitService }: WizardShellProps): JSX.Element {
   const { runtime } = usePlatform();
   const navigate = useNavigate();
@@ -238,14 +281,37 @@ export function WizardShell({ toolId, context = DEFAULT_TOOL_CONTEXT, ioAdapter,
   const routeStudioContext = routeState?.studioContext;
 
   useEffect(() => {
-    const preloadedFileIds = Array.isArray(routeState?.preloadedFileIds)
-      ? routeState.preloadedFileIds.filter((value): value is string => typeof value === 'string' && value.length > 0)
-      : [];
-    if (preloadedFileIds.length === 0) {
-      return;
-    }
-    void hydrateFromFileIds(preloadedFileIds);
-  }, [hydrateFromFileIds, location.key, routeState?.preloadedFileIds]);
+    let cancelled = false;
+    void (async () => {
+      const preloadedFileIds = Array.isArray(routeState?.preloadedFileIds)
+        ? routeState.preloadedFileIds.filter((value): value is string => typeof value === 'string' && value.length > 0)
+        : [];
+      const selectedPages = routeStudioContext?.mode === 'page-selection'
+        ? routeStudioContext.selectedPages
+        : [];
+
+      let inputIds = preloadedFileIds;
+      if (selectedPages.length > 0) {
+        try {
+          const extractedIds = await buildSinglePageInputIdsFromSelection(runtime, selectedPages);
+          if (extractedIds.length > 0) {
+            inputIds = extractedIds;
+          }
+        } catch (error) {
+          console.error('Failed to prepare selected Studio pages for tool input:', error);
+        }
+      }
+
+      if (cancelled || inputIds.length === 0) {
+        return;
+      }
+      await hydrateFromFileIds(inputIds);
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [hydrateFromFileIds, location.key, routeState?.preloadedFileIds, routeStudioContext, runtime]);
 
   const startProcessingWithContext = (payload?: Record<string, unknown>): Promise<void> => {
     if (!routeStudioContext) {

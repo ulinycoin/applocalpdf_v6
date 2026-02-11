@@ -13,7 +13,10 @@ interface ReorderItem {
 export function StudioActionBar() {
     const { runtime } = usePlatform();
     const addDocument = useStudioStore((s: StudioState) => s.addDocument);
+    const removeDocument = useStudioStore((s: StudioState) => s.removeDocument);
     const setActiveDocument = useStudioStore((s: StudioState) => s.setActiveDocument);
+    const setSelection = useStudioStore((s: StudioState) => s.setSelection);
+    const requestInlineTool = useStudioStore((s: StudioState) => s.requestInlineTool);
     const activeDocumentId = useStudioStore((s: StudioState) => s.activeDocumentId);
     const markWorkspaceExported = useStudioStore((s: StudioState) => s.markWorkspaceExported);
     const documents = useStudioStore((s: StudioState) => s.documents);
@@ -92,12 +95,29 @@ export function StudioActionBar() {
         setActiveDocument(nextDocId);
     };
 
+    const handleDeleteActiveSpace = () => {
+        if (!activeDocument) {
+            return;
+        }
+        const confirmed = window.confirm(`Delete workspace "${activeDocument.name}"?`);
+        if (!confirmed) {
+            return;
+        }
+        removeDocument(activeDocument.id);
+        setSelection([]);
+        requestInlineTool(null);
+    };
+
     return (
         <div className="studio-action-bar animate-slide-up">
             <div className="studio-action-stack">
                 <button className="studio-space-btn" onClick={handleCreateSpace}>
                     <LinearIcon name="tool" className="linear-icon" />
                     <span>New Space</span>
+                </button>
+                <button className="studio-space-btn studio-space-btn-danger" onClick={handleDeleteActiveSpace} disabled={!activeDocument}>
+                    <LinearIcon name="delete-pages" className="linear-icon" />
+                    <span>Delete Space</span>
                 </button>
                 <button className="export-btn" onClick={handleExportActive} disabled={!hasActivePages}>
                     <LinearIcon name="download" className="linear-icon" />

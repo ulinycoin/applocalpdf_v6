@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Stage, Layer, Rect, Text } from 'react-konva';
+import { Stage, Layer, Rect } from 'react-konva';
 import type Konva from 'konva';
 import type { KonvaEventObject } from 'konva/lib/Node';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -493,7 +493,6 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
                             {detachedPages.map((page) => (
                                 <DetachedPageObject key={page.id} page={page} />
                             ))}
-                            <Text text="The Desk Workspace" fill="white" x={20} y={dimensions.height - 40} fontSize={20} />
                         </>
                     )}
                 </Layer>

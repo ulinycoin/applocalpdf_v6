@@ -1346,6 +1346,173 @@ textarea:focus-visible {
   gap: 0.5rem;
 }
 
+.studio-shell-container {
+  position: relative;
+  width: 100%;
+  height: min(80vh, 920px);
+  min-height: 560px;
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+.studio-floating-menu {
+  position: absolute;
+  left: 50%;
+  bottom: 24px;
+  transform: translateX(-50%);
+  z-index: 102;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border-radius: 14px;
+  border: 1px solid rgba(147, 197, 253, 0.35);
+  background: rgba(14, 24, 34, 0.92);
+  box-shadow: 0 16px 36px rgba(3, 12, 18, 0.42);
+  padding: 10px 12px;
+  backdrop-filter: blur(8px);
+}
+
+.studio-menu-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: #dbeafe;
+  white-space: nowrap;
+}
+
+.studio-menu-drag-handle {
+  cursor: grab;
+  user-select: none;
+}
+
+.studio-menu-drag-handle:active {
+  cursor: grabbing;
+}
+
+.studio-menu-count {
+  min-width: 20px;
+  height: 20px;
+  border-radius: 10px;
+  display: inline-grid;
+  place-items: center;
+  background: rgba(59, 130, 246, 0.28);
+  border: 1px solid rgba(147, 197, 253, 0.62);
+  font-weight: 700;
+  color: #eaf4ff;
+}
+
+.studio-menu-divider {
+  width: 1px;
+  height: 24px;
+  background: rgba(147, 197, 253, 0.24);
+}
+
+.studio-menu-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.menu-btn {
+  border: 1px solid rgba(147, 197, 253, 0.35);
+  background: rgba(30, 41, 59, 0.72);
+  color: #dbeafe;
+  border-radius: 9px;
+  height: 34px;
+  min-width: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 0 10px;
+  cursor: pointer;
+  transition: background 160ms ease, border-color 160ms ease, transform 160ms ease;
+}
+
+.menu-btn:hover {
+  background: rgba(37, 99, 235, 0.35);
+  border-color: rgba(147, 197, 253, 0.7);
+}
+
+.menu-btn:active {
+  transform: translateY(1px);
+}
+
+.menu-btn.active {
+  background: rgba(14, 165, 233, 0.32);
+  border-color: rgba(125, 211, 252, 0.8);
+}
+
+.btn-close {
+  min-width: 30px;
+  width: 30px;
+  padding: 0;
+}
+
+.studio-compress-panel {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.studio-compress-levels {
+  display: flex;
+  gap: 6px;
+}
+
+.studio-compress-level {
+  border: 1px solid rgba(147, 197, 253, 0.34);
+  background: rgba(30, 41, 59, 0.75);
+  color: #cfe4fb;
+  border-radius: 8px;
+  height: 30px;
+  padding: 0 9px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+}
+
+.studio-compress-level.active {
+  background: rgba(14, 165, 233, 0.4);
+  border-color: rgba(125, 211, 252, 0.9);
+  color: #ecfeff;
+}
+
+.studio-compress-process-btn {
+  border: 1px solid rgba(34, 197, 94, 0.5);
+  background: rgba(22, 163, 74, 0.25);
+  color: #dcfce7;
+  border-radius: 8px;
+  height: 30px;
+  padding: 0 10px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.studio-compress-process-btn:disabled,
+.studio-compress-level:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.studio-compress-hint,
+.studio-compress-error {
+  margin: 0;
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.studio-compress-hint {
+  color: #fef3c7;
+}
+
+.studio-compress-error {
+  color: #fecaca;
+}
+
 .studio-action-bar {
   position: absolute;
   bottom: 24px;
@@ -1529,6 +1696,25 @@ textarea:focus-visible {
 
 .studio-space-btn:active {
   transform: translateY(0);
+}
+
+.studio-space-btn-danger {
+  background: rgba(88, 28, 40, 0.95);
+  border-color: rgba(253, 164, 175, 0.6);
+  color: #ffe4e6;
+  box-shadow: 0 4px 20px rgba(127, 29, 29, 0.28);
+}
+
+.studio-space-btn-danger:hover {
+  background: rgba(127, 29, 29, 0.96);
+  border-color: rgba(254, 205, 211, 0.9);
+}
+
+.studio-space-btn-danger:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
 }
 
 .export-btn:hover {

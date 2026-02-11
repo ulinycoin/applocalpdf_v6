@@ -70,6 +70,7 @@ interface ToolSidebarProps {
 export function ToolSidebar({ collapsed, onToggleCollapsed }: ToolSidebarProps) {
   const { menu } = usePlatform();
   const location = useLocation();
+  const requestInlineTool = useStudioStore((s: StudioState) => s.requestInlineTool);
   const documents = useStudioStore((s: StudioState) => s.documents);
   const selection = useStudioStore((s: StudioState) => s.selection);
   const activeDocumentId = useStudioStore((s: StudioState) => s.activeDocumentId);
@@ -147,6 +148,12 @@ export function ToolSidebar({ collapsed, onToggleCollapsed }: ToolSidebarProps) 
             <NavLink
               to={item.href}
               state={toolNavState}
+              onClick={(event) => {
+                if (location.pathname === '/studio' && item.toolId === 'compress-pdf') {
+                  event.preventDefault();
+                  requestInlineTool('compress-pdf');
+                }
+              }}
               className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}
               title={item.label}
               aria-label={item.label}

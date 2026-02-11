@@ -28,6 +28,7 @@ export interface StudioState {
     documents: StudioDocument[];
     detachedPages: DetachedPageItem[];
     selection: { docId: string; pageId: string }[];
+    requestedInlineTool: 'compress-pdf' | null;
     isDraggingFile: boolean;
     activeDocumentId: string | null;
     workspaceVersion: number;
@@ -47,6 +48,7 @@ export interface StudioState {
     updatePage: (docId: string, pageId: string, updates: Partial<PageItem>) => void;
 
     setSelection: (selection: { docId: string; pageId: string }[]) => void;
+    requestInlineTool: (toolId: 'compress-pdf' | null) => void;
     setDraggingFile: (isDragging: boolean) => void;
     recountWorkspacePages: () => void;
     markWorkspaceExported: () => void;
@@ -82,6 +84,7 @@ export const useStudioStore = create<StudioState>((set) => ({
     documents: [],
     detachedPages: [],
     selection: [],
+    requestedInlineTool: null,
     isDraggingFile: false,
     activeDocumentId: null,
     workspaceVersion: 0,
@@ -264,9 +267,13 @@ export const useStudioStore = create<StudioState>((set) => ({
         return commitWorkspaceMutation(state, nextState);
     }),
 
-    setSelection: (selection) => set({ selection }),
+    setSelection: (selection) => set((state) => ({
+        selection,
+        requestedInlineTool: selection.length === 0 ? null : state.requestedInlineTool,
+    })),
+    requestInlineTool: (toolId) => set({ requestedInlineTool: toolId }),
     setDraggingFile: (isDragging) => set({ isDraggingFile: isDragging }),
     recountWorkspacePages: () => set((state) => commitWorkspaceMutation(state, state)),
     markWorkspaceExported: () => set((state) => ({ lastExportedVersion: state.workspaceVersion })),
-    clear: () => set({ documents: [], detachedPages: [], selection: [], activeDocumentId: null, workspaceVersion: 0, lastExportedVersion: 0 }),
+    clear: () => set({ documents: [], detachedPages: [], selection: [], requestedInlineTool: null, activeDocumentId: null, workspaceVersion: 0, lastExportedVersion: 0 }),
 }));
