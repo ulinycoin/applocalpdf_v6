@@ -1,7 +1,7 @@
 import { useStudioStore } from './studio-store';
 import { LinearIcon } from '../icons/linear-icon';
-import { IPipelineRecipe } from '../../core/pipeline/types';
-import { PipelineRunner } from '../../core/pipeline/PipelineRunner';
+import { IPipelineRecipe } from '../../studio/pipeline/types';
+import { PipelineRunner } from '../../studio/pipeline/PipelineRunner';
 import { usePlatform } from '../../../app/react/platform-context';
 
 // Define interfaces for the types used in the store and documents

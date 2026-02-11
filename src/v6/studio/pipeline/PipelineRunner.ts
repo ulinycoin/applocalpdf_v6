@@ -1,8 +1,15 @@
 import { IPipelineRecipe } from './types';
-import { VirtualFileSystem } from '../../../core/vfs/virtual-file-system';
+
+interface PipelineFileEntry {
+    getBlob(): Promise<Blob>;
+}
+
+interface PipelineFileSystem {
+    read(id: string): Promise<PipelineFileEntry>;
+}
 
 export class PipelineRunner {
-    constructor(private readonly vfs: VirtualFileSystem) { }
+    constructor(private readonly vfs: PipelineFileSystem) { }
 
     async execute(recipe: IPipelineRecipe): Promise<{ buffer: Uint8Array; fileName: string }> {
         // 1. Gather all unique input file buffers from VFS

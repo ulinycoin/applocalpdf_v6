@@ -5,7 +5,7 @@ import { useStudioStore, PageItem, StudioDocument as IStudioDocument } from './s
 import { StudioDocument } from './StudioDocument';
 import { StudioFloatingMenu } from './StudioFloatingMenu';
 import { StudioActionBar } from './StudioActionBar';
-import { ThumbnailService } from '../../core/services/ThumbnailService';
+import { ThumbnailService } from '../../studio/thumbnail/thumbnail-service';
 import * as pdfjs from 'pdfjs-dist';
 
 export interface StudioShellProps {
@@ -19,7 +19,7 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
     const { runtime } = usePlatform();
     const isDraggingFile = useStudioStore((s: any) => s.isDraggingFile);
     const setDraggingFile = useStudioStore((s: any) => s.setDraggingFile);
-    const documents = useStudioStore((s: any) => s.documents);
+    const documents = useStudioStore((s: { documents: IStudioDocument[] }) => s.documents);
     const addDocument = useStudioStore((s: any) => s.addDocument);
     const hasFiles = documents.length > 0;
 
@@ -54,7 +54,7 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
         const files = Array.from(e.dataTransfer.files);
 
         // Use a local tracker for vertical placement
-        let currentMaxY = documents.reduce((rawMax, d) => {
+        let currentMaxY = documents.reduce((rawMax: number, d: IStudioDocument) => {
             const docHeight = 320; // Approx height of a document container (CARD_HEIGHT + label + margin)
             return Math.max(rawMax, d.y + docHeight);
         }, 0);
