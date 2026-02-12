@@ -22,12 +22,42 @@ function isLikelyExcelBinary(bytes: Uint8Array): boolean {
     return isZipContainer(bytes) || isCfbContainer(bytes);
 }
 
+function normalizeCellValue(value: unknown): string | number | null {
+    if (value === null || value === undefined) {
+        return null;
+    }
+    if (typeof value === 'number' || typeof value === 'string') {
+        return value;
+    }
+    if (value instanceof Date) {
+        return value.toISOString();
+    }
+    if (typeof value === 'boolean') {
+        return value ? 'TRUE' : 'FALSE';
+    }
+    if (typeof value === 'object') {
+        if ('result' in value) {
+            const result = (value as { result?: unknown }).result;
+            return normalizeCellValue(result);
+        }
+        if ('text' in value && typeof (value as { text?: unknown }).text === 'string') {
+            return (value as { text: string }).text;
+        }
+        if ('richText' in value && Array.isArray((value as { richText?: unknown }).richText)) {
+            return ((value as { richText: Array<{ text?: string }> }).richText)
+                .map(part => part.text ?? '')
+                .join('');
+        }
+    }
+    return String(value);
+}
+
 export const run: ToolLogicFunction = async ({ inputIds, fs, emitProgress }) => {
     if (inputIds.length === 0) {
         throw new Error('Excel to PDF requires at least one input file');
     }
 
-    const { read, utils } = await import('xlsx');
+    const { Workbook } = await import('exceljs');
     const { jsPDF } = await import('jspdf');
     const { default: autoTable } = await import('jspdf-autotable');
 
@@ -42,25 +72,29 @@ export const run: ToolLogicFunction = async ({ inputIds, fs, emitProgress }) => 
             throw new Error(`Failed to parse Excel file ${inputIds[i]}: unsupported container format`);
         }
 
-        const workbook = read(arrayBuffer, { type: 'array' });
+        const workbook = new Workbook();
+        await workbook.xlsx.load(arrayBuffer);
 
-        if (workbook.SheetNames.length === 0) {
+        if (workbook.worksheets.length === 0) {
             throw new Error(`Failed to parse Excel file ${inputIds[i]}: no sheets found`);
         }
 
         const doc = new jsPDF();
 
         // Convert each sheet to a table in PDF
-        workbook.SheetNames.forEach((sheetName, index) => {
+        workbook.worksheets.forEach((worksheet, index) => {
             if (index > 0) {
                 doc.addPage();
             }
 
-            const worksheet = workbook.Sheets[sheetName];
-            const data = utils.sheet_to_json(worksheet, { header: 1 }) as any[][];
+            const data: Array<Array<string | number | null>> = [];
+            worksheet.eachRow({ includeEmpty: true }, row => {
+                const rowValues = Array.isArray(row.values) ? row.values.slice(1) : [];
+                data.push(rowValues.map(cell => normalizeCellValue(cell)));
+            });
 
             if (data.length > 0) {
-                doc.text(`Sheet: ${sheetName}`, 14, 15);
+                doc.text(`Sheet: ${worksheet.name}`, 14, 15);
                 autoTable(doc, {
                     head: [data[0]],
                     body: data.slice(1),

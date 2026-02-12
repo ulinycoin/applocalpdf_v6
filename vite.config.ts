@@ -23,8 +23,8 @@ export default defineConfig({
           if (id.includes('/tesseract.js') || id.includes('/tesseract.js-core/')) {
             return 'vendor-ocr';
           }
-          if (id.includes('/xlsx/')) {
-            return 'vendor-xlsx';
+          if (id.includes('/exceljs/')) {
+            return 'vendor-excel';
           }
           if (id.includes('/jspdf/') || id.includes('/jspdf-autotable/')) {
             return 'vendor-jspdf';

@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 import { existsSync, unlinkSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import * as XLSX from 'xlsx';
+import { Workbook } from 'exceljs';
 import { PDFDocument } from 'pdf-lib';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -19,16 +19,14 @@ async function createDummyPdf(name: string, pages = 1): Promise<string> {
   return path;
 }
 
-function createDummyXlsx(name: string): string {
+async function createDummyXlsx(name: string): Promise<string> {
   const path = join(__dirname, `dummy-${name}.xlsx`);
-  const wb = XLSX.utils.book_new();
-  const ws = XLSX.utils.aoa_to_sheet([
-    ['Name', 'Score'],
-    ['Alice', 10],
-    ['Bob', 20],
-  ]);
-  XLSX.utils.book_append_sheet(wb, ws, 'Sheet1');
-  XLSX.writeFile(wb, path);
+  const wb = new Workbook();
+  const ws = wb.addWorksheet('Sheet1');
+  ws.addRow(['Name', 'Score']);
+  ws.addRow(['Alice', 10]);
+  ws.addRow(['Bob', 20]);
+  await wb.xlsx.writeFile(path);
   return path;
 }
 
@@ -124,7 +122,7 @@ test.describe('LocalPDF V6 Smoke (V6 Wizard)', () => {
   });
 
   test('excel-to-pdf: upload -> config -> processing -> result', async ({ page }) => {
-    const dummyXlsxPath = createDummyXlsx('excel');
+    const dummyXlsxPath = await createDummyXlsx('excel');
     try {
       await uploadThenOpenConfig(page, 'Excel to PDF', [dummyXlsxPath], 'Run Excel to PDF');
       await runWithNoFilesRecovery(page, [dummyXlsxPath], 'Run Excel to PDF');

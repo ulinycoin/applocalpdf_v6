@@ -12,6 +12,6 @@ test('excel-to-pdf logic throws on invalid excel', async () => {
     const fs = new InMemoryFileSystem();
     fs.seed('f1', new Blob(['not an excel'], { type: 'application/vnd.ms-excel' }));
 
-    // xlsx.read should fail on random bytes
+    // Excel parser should fail on random bytes
     await assert.rejects(() => run({ inputIds: ['f1'], fs }));
 });

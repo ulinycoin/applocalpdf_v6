@@ -15,6 +15,7 @@
     "audit:workerization:strict": "node scripts/workerization-audit.mjs --strict"
   },
   "dependencies": {
+    "exceljs": "^4.4.0",
     "jspdf": "^4.1.0",
     "jspdf-autotable": "^5.0.7",
     "konva": "^9.3.22",
@@ -27,7 +28,6 @@
     "react-router-dom": "^6.30.1",
     "tesseract.js": "^5.1.1",
     "use-image": "^1.1.4",
-    "xlsx": "^0.18.5",
     "zustand": "^5.0.11"
   },
   "devDependencies": {
