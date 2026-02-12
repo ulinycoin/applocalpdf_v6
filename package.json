@@ -15,6 +15,8 @@
     "audit:workerization:strict": "node scripts/workerization-audit.mjs --strict"
   },
   "dependencies": {
+    "@fontsource/noto-sans": "^5.2.10",
+    "@pdf-lib/fontkit": "^1.1.1",
     "exceljs": "^4.4.0",
     "jspdf": "^4.1.0",
     "jspdf-autotable": "^5.0.7",

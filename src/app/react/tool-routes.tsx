@@ -3,6 +3,7 @@ import { Navigate, Route, Routes } from 'react-router-dom';
 import { usePlatform } from './platform-context';
 import { WizardShell as V6WizardShell } from '../../v6/components/Wizard/WizardShell';
 import { StudioShell } from '../../v6/components/Studio/StudioShell';
+import { OcrPdfTestPage } from './ocr-pdf-test-page';
 
 function LoadingScreen() {
   return <div>Loading tool...</div>;
@@ -28,11 +29,12 @@ export function ToolRoutes() {
             <Route
               key={toolRoute.toolId}
               path={toolRoute.path}
-              element={<V6WizardShell toolId={toolRoute.toolId} />}
+              element={toolRoute.toolId === 'ocr-pdf' ? <OcrPdfTestPage /> : <V6WizardShell toolId={toolRoute.toolId} />}
             />
           );
         })}
         <Route path="/studio" element={<StudioShell />} />
+        <Route path="/ocr-pdf-test" element={<Navigate to="/ocr-pdf" replace />} />
         <Route path="*" element={<Navigate to="/studio" replace />} />
       </Routes>
     </Suspense>

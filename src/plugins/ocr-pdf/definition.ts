@@ -3,7 +3,7 @@ import type { IToolDefinition } from '../../core/types/contracts';
 export const ocrPdfDefinition: IToolDefinition = {
   id: 'ocr-pdf',
   name: 'OCR PDF',
-  description: 'Recognize text in scanned PDF files.',
+  description: 'Recognize text in PDFs, scans, and document photos.',
   entitlements: ['pdf.ocr'],
   limits: {
     featureTier: 'pro',

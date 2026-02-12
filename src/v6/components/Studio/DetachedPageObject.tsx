@@ -87,6 +87,7 @@ export const DetachedPageObject: React.FC<DetachedPageObjectProps> = ({ page }) 
                     image={image}
                     width={180}
                     height={250}
+                    imageSmoothingEnabled={false}
                     cornerRadius={4}
                 />
             )}

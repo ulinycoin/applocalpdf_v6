@@ -28,6 +28,8 @@ export function toUserMessage(result: RunnerExecuteResult): string {
       return 'OCR engine is unavailable in this runtime.';
     case 'OCR_UNSUPPORTED_INPUT':
       return 'OCR input format is not supported by the current engine.';
+    case 'OCR_LANGUAGE_PACK_UNAVAILABLE':
+      return result.message || 'Requested OCR language pack is unavailable. Try another language.';
     case 'OCR_RECOGNITION_FAILED':
       return result.message || 'OCR recognition failed.';
     case 'PROTECT_QPDF_UNAVAILABLE':

@@ -20,6 +20,9 @@ function extensionFromMime(mime: string): string {
   if (mime === 'text/plain') {
     return 'txt';
   }
+  if (mime === 'application/json') {
+    return 'json';
+  }
   return 'bin';
 }
 

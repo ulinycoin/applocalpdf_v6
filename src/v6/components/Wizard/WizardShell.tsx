@@ -275,7 +275,7 @@ export function WizardShell({ toolId, context = DEFAULT_TOOL_CONTEXT, ioAdapter,
     }
     return 'application/pdf';
   }, [toolId]);
-  const allowMultiple = useMemo(() => !['ocr-pdf', 'pdf-to-jpg', 'split-pdf'].includes(toolId), [toolId]);
+  const allowMultiple = useMemo(() => !['pdf-to-jpg', 'split-pdf'].includes(toolId), [toolId]);
   const routeState = (location.state as StudioToolRouteState | null) ?? null;
   const isStudioFlow = routeState?.source === 'studio';
   const routeStudioContext = routeState?.studioContext;

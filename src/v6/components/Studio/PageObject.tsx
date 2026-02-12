@@ -159,6 +159,7 @@ export const PageObject: React.FC<PageObjectProps> = ({ page, docId, x, y, curre
                     image={image}
                     width={PAGE_WIDTH}
                     height={PAGE_HEIGHT}
+                    imageSmoothingEnabled={false}
                     cornerRadius={4}
                 />
             )}

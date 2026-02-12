@@ -4,7 +4,16 @@ export interface PdfRasterizer {
 
 interface PdfPageLike {
   getViewport(params: { scale: number }): { width: number; height: number };
-  render(params: { canvasContext: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D; viewport: { width: number; height: number } }): { promise: Promise<void> };
+  render(params: {
+    canvasContext: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
+    viewport: { width: number; height: number };
+    annotationMode?: number;
+    canvasFactory?: {
+      create: (width: number, height: number) => { canvas: OffscreenCanvas | HTMLCanvasElement; context: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D };
+      reset: (target: { canvas: OffscreenCanvas | HTMLCanvasElement; context: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D }, width: number, height: number) => void;
+      destroy: (target: { canvas: OffscreenCanvas | HTMLCanvasElement; context: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D }) => void;
+    };
+  }): { promise: Promise<void> };
 }
 
 interface PdfDocumentLike {
@@ -13,16 +22,51 @@ interface PdfDocumentLike {
 }
 
 interface PdfJsLike {
-  getDocument(params: { data: ArrayBuffer; disableWorker: boolean }): { promise: Promise<PdfDocumentLike> };
+  getDocument(params: { data: ArrayBuffer; disableWorker: boolean; verbosity?: number }): { promise: Promise<PdfDocumentLike> };
   GlobalWorkerOptions?: { workerSrc?: string };
+  VerbosityLevel?: { ERRORS?: number };
 }
 
 class PdfJsRasterizer implements PdfRasterizer {
   constructor(private pdfjs: PdfJsLike) { }
 
+  private createCanvasFactory() {
+    return {
+      create: (width: number, height: number) => {
+        const canvas =
+          typeof OffscreenCanvas !== 'undefined'
+            ? new OffscreenCanvas(width, height)
+            : typeof document !== 'undefined'
+              ? document.createElement('canvas')
+              : null;
+        if (!canvas) {
+          throw new Error('Canvas factory cannot create canvas in this runtime');
+        }
+        if (typeof HTMLCanvasElement !== 'undefined' && canvas instanceof HTMLCanvasElement) {
+          canvas.width = width;
+          canvas.height = height;
+        }
+        const context = canvas.getContext('2d');
+        if (!context) {
+          throw new Error('Canvas factory failed to get 2d context');
+        }
+        return { canvas, context };
+      },
+      reset: (target: { canvas: OffscreenCanvas | HTMLCanvasElement }, width: number, height: number) => {
+        target.canvas.width = width;
+        target.canvas.height = height;
+      },
+      destroy: (target: { canvas: OffscreenCanvas | HTMLCanvasElement }) => {
+        target.canvas.width = 0;
+        target.canvas.height = 0;
+      },
+    };
+  }
+
   async rasterize(pdfBlob: Blob): Promise<Blob[]> {
     const arrayBuffer = await pdfBlob.arrayBuffer();
-    const loadingTask = this.pdfjs.getDocument({ data: arrayBuffer, disableWorker: true });
+    const errorOnlyVerbosity = this.pdfjs.VerbosityLevel?.ERRORS ?? 0;
+    const loadingTask = this.pdfjs.getDocument({ data: arrayBuffer, disableWorker: true, verbosity: errorOnlyVerbosity });
     const pdf = await loadingTask.promise;
     const blobs: Blob[] = [];
 
@@ -54,6 +98,8 @@ class PdfJsRasterizer implements PdfRasterizer {
       await page.render({
         canvasContext: context,
         viewport,
+        annotationMode: 0,
+        canvasFactory: this.createCanvasFactory(),
       }).promise;
 
       const blob = await new Promise<Blob | null>((resolve) => {

@@ -409,6 +409,12 @@ textarea:focus-visible {
   padding: clamp(1rem, 2vw, 1.5rem);
 }
 
+.ocr-test-shell {
+  max-width: none;
+  width: 100%;
+  margin: 0;
+}
+
 .wizard-shell-workspace {
   max-width: min(1540px, calc(100vw - 2.2rem));
 }
@@ -818,6 +824,354 @@ textarea:focus-visible {
   border: 1px solid rgba(183, 202, 219, 0.24);
   background: rgba(19, 31, 43, 0.86);
   padding: 0.52rem 0.62rem;
+}
+
+.ocr-concept-root {
+  gap: 1rem;
+}
+
+.ocr-concept-workspace {
+  display: grid;
+  grid-template-columns: minmax(280px, 340px) minmax(0, 1fr);
+  gap: 0.9rem;
+}
+
+.ocr-concept-left {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+
+.ocr-concept-upload {
+  border: 1px dashed rgba(96, 165, 250, 0.48);
+  border-radius: 14px;
+  padding: 0.95rem;
+  background: linear-gradient(180deg, rgba(36, 64, 92, 0.34) 0%, rgba(18, 30, 42, 0.68) 100%);
+  cursor: pointer;
+  transition: border-color 160ms ease, background 160ms ease, box-shadow 160ms ease;
+}
+
+.ocr-concept-upload.dragging,
+.ocr-concept-upload:not(.upload-readonly):hover {
+  border-color: rgba(96, 165, 250, 0.75);
+  background: linear-gradient(180deg, rgba(39, 71, 104, 0.44) 0%, rgba(20, 34, 48, 0.82) 100%);
+  box-shadow: inset 0 0 0 1px rgba(96, 165, 250, 0.28);
+}
+
+.ocr-concept-upload.upload-readonly {
+  cursor: default;
+}
+
+.ocr-concept-upload-icon {
+  width: 2.3rem;
+  height: 2.3rem;
+  border-radius: 999px;
+  border: 1px solid rgba(96, 165, 250, 0.42);
+  background: rgba(59, 130, 246, 0.12);
+  display: grid;
+  place-items: center;
+  color: #bcdcff;
+}
+
+.ocr-concept-upload-title {
+  margin: 0.62rem 0 0.24rem;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #f3f8fd;
+}
+
+.ocr-concept-upload-copy {
+  margin: 0;
+  color: #bfd2e4;
+  font-size: 0.8rem;
+}
+
+.ocr-concept-file-chip {
+  margin-top: 0.75rem;
+  border-radius: 10px;
+  border: 1px solid rgba(96, 165, 250, 0.34);
+  background: rgba(15, 24, 34, 0.9);
+  padding: 0.52rem 0.62rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  color: #dceaf7;
+}
+
+.ocr-concept-file-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.82rem;
+}
+
+.ocr-concept-clear-btn {
+  border: 0;
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #dceaf7;
+  width: 1.5rem;
+  height: 1.5rem;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+
+.ocr-concept-upload-actions {
+  margin-top: 0.62rem;
+  display: flex;
+  gap: 0.46rem;
+}
+
+.ocr-concept-mini-btn {
+  flex: 1;
+  min-height: 2rem;
+  padding: 0.42rem 0.5rem;
+  font-size: 0.75rem;
+}
+
+.ocr-concept-settings {
+  display: grid;
+  gap: 0.62rem;
+}
+
+.ocr-concept-mode-switch {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(183, 202, 219, 0.24);
+  border-radius: 10px;
+  padding: 0.18rem;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.2rem;
+}
+
+.ocr-concept-mode-option {
+  border: 0;
+  border-radius: 8px;
+  padding: 0.44rem 0.52rem;
+  font-size: 0.8rem;
+  color: #b9cde0;
+  background: transparent;
+  cursor: pointer;
+  transition: background 160ms ease, color 160ms ease, box-shadow 160ms ease;
+}
+
+.ocr-concept-mode-option.active {
+  background: rgba(59, 130, 246, 0.22);
+  color: #eef5fc;
+  box-shadow: inset 0 0 0 1px rgba(96, 165, 250, 0.38);
+}
+
+.ocr-concept-checks {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.ocr-concept-check {
+  display: flex;
+  gap: 0.48rem;
+  align-items: center;
+  color: #d7e7f6;
+  font-size: 0.82rem;
+}
+
+.ocr-concept-check input {
+  accent-color: #3b82f6;
+}
+
+.ocr-concept-actions {
+  margin-top: auto;
+}
+
+.ocr-concept-right {
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 560px;
+}
+
+.ocr-concept-empty,
+.ocr-concept-loading {
+  flex: 1;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 0.5rem;
+  color: #d8e8f7;
+}
+
+.ocr-concept-empty-title,
+.ocr-concept-loading-title {
+  margin: 0.2rem 0 0;
+  color: #eff7ff;
+  font-size: 1rem;
+}
+
+.ocr-concept-empty-copy,
+.ocr-concept-loading-copy {
+  margin: 0;
+  font-size: 0.84rem;
+  color: #bfd2e4;
+}
+
+.ocr-concept-progress-track {
+  width: min(340px, 100%);
+}
+
+.ocr-concept-spinner {
+  width: 42px;
+  height: 42px;
+  border-radius: 999px;
+  border: 3px solid rgba(191, 219, 254, 0.34);
+  border-top-color: #60a5fa;
+  animation: ocrSpin 0.9s linear infinite;
+}
+
+@keyframes ocrSpin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.ocr-concept-tabs {
+  border-bottom: 1px solid rgba(183, 202, 219, 0.24);
+  display: flex;
+  gap: 0.35rem;
+  padding: 0.52rem 0.65rem 0;
+}
+
+.ocr-concept-tab {
+  border: 0;
+  background: transparent;
+  color: #b4c9dc;
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 0.5rem 0.62rem;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+}
+
+.ocr-concept-tab.active {
+  color: #edf6ff;
+  border-bottom-color: #60a5fa;
+}
+
+.ocr-concept-toolbar {
+  display: flex;
+  gap: 0.44rem;
+  align-items: center;
+  padding: 0.58rem 0.65rem;
+  border-bottom: 1px solid rgba(183, 202, 219, 0.22);
+  background: rgba(11, 18, 25, 0.42);
+}
+
+.ocr-concept-tool-btn {
+  border: 1px solid rgba(183, 202, 219, 0.28);
+  background: rgba(255, 255, 255, 0.04);
+  color: #dceaf7;
+  padding: 0.36rem 0.55rem;
+  border-radius: 9px;
+  font-size: 0.75rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.32rem;
+  cursor: pointer;
+}
+
+.ocr-concept-tool-btn-accent {
+  margin-left: auto;
+  border-color: rgba(96, 165, 250, 0.52);
+  color: #a9d0ff;
+}
+
+.ocr-concept-tool-btn.active {
+  border-color: rgba(96, 165, 250, 0.72);
+  background: rgba(59, 130, 246, 0.18);
+  color: #d6e9ff;
+}
+
+.ocr-concept-editor {
+  flex: 1;
+  padding: 0.9rem;
+  overflow: auto;
+  background: linear-gradient(180deg, rgba(14, 22, 30, 0.7) 0%, rgba(10, 16, 23, 0.9) 100%);
+}
+
+.ocr-concept-editor-copy {
+  margin: 0;
+  white-space: pre-wrap;
+  font-family: var(--font-mono);
+  color: #dce8f4;
+  font-size: 0.79rem;
+  line-height: 1.54;
+}
+
+.ocr-concept-editor-input {
+  width: 100%;
+  min-height: 420px;
+  border-radius: 10px;
+  border: 1px solid rgba(183, 202, 219, 0.28);
+  background: rgba(12, 19, 27, 0.9);
+  color: #dce8f4;
+  font-family: var(--font-mono);
+  font-size: 0.79rem;
+  line-height: 1.54;
+  resize: vertical;
+  padding: 0.65rem 0.7rem;
+}
+
+.ocr-concept-placeholder {
+  margin: 0;
+  color: #bdd0e3;
+  font-size: 0.84rem;
+}
+
+.ocr-concept-pdf-preview {
+  width: 100%;
+  height: 100%;
+  min-height: 420px;
+  border: 1px solid rgba(183, 202, 219, 0.22);
+  border-radius: 10px;
+  background: rgba(10, 16, 23, 0.9);
+}
+
+.ocr-concept-pdf-preview-wrap {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.ocr-concept-pdf-preview-lock {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 56px;
+  border-radius: 10px;
+  background: transparent;
+}
+
+.ocr-concept-stats {
+  border-top: 1px solid rgba(183, 202, 219, 0.22);
+  padding: 0.58rem 0.74rem;
+  background: rgba(11, 18, 25, 0.54);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.64rem;
+}
+
+.ocr-concept-stat {
+  font-size: 0.74rem;
+  color: #c8dbed;
 }
 
 .compress-config-header {
@@ -1817,6 +2171,14 @@ textarea:focus-visible {
 
   .wizard-result-split {
     grid-template-columns: 1fr;
+  }
+
+  .ocr-concept-workspace {
+    grid-template-columns: 1fr;
+  }
+
+  .ocr-concept-right {
+    min-height: 460px;
   }
 
   .preview-grid {

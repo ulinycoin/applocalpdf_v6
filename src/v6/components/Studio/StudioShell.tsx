@@ -26,8 +26,8 @@ const DOC_WRAP_GAP_X = 48;
 const DOC_WRAP_GAP_Y = 56;
 const DOC_BLOCK_HEIGHT = CARD_HEIGHT + CARD_GAP + 40;
 const ZOOM_MIN = 0.35;
-const ZOOM_MAX = 2.5;
-const ZOOM_STEP = 1.15;
+const ZOOM_MAX = 6;
+const ZOOM_STEP = 1.2;
 
 interface NewDocumentDraft {
     id: string;
@@ -118,6 +118,7 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
     const containerRef = useRef<HTMLDivElement>(null);
     const uploadInputRef = useRef<HTMLInputElement | null>(null);
     const stageRef = useRef<Konva.Stage | null>(null);
+    const stagePixelRatio = Math.max(1, Math.ceil(window.devicePixelRatio || 1));
 
     const location = useLocation();
     const navigate = useNavigate();
@@ -461,6 +462,7 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
                 ref={stageRef}
                 width={dimensions.width}
                 height={dimensions.height}
+                pixelRatio={stagePixelRatio}
                 draggable={hasFiles}
                 x={viewPosition.x}
                 y={viewPosition.y}
