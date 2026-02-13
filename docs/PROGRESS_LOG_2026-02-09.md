@@ -55,3 +55,27 @@
 
 ## Notes
 - Decision baseline is documented in `docs/UI_UX_2026_DECISIONS.md`.
+
+## Update (2026-02-13)
+- Word to PDF config screen migrated to concept-driven workspace layout:
+  - old minimal config UI removed
+  - inline upload in config enabled (no standalone upload card for `word-to-pdf`)
+  - full-width + full-height alignment tuned to match OCR workspace behavior
+- OCR PDF screen cleanup and alignment:
+  - removed concept placeholder copy from OCR test/config screens
+  - header alignment adjusted
+  - reduced page-level vertical scroll by constraining OCR test shell and moving scroll to inner panels
+  - left settings menu compacted; action row kept visible with sticky bottom behavior
+- Excel to PDF migrated to the same modern workspace pattern as OCR/Word:
+  - concept-based settings + preview layout added
+  - inline upload in config enabled
+  - sizing aligned with OCR/Word (full-width/full-height behavior)
+- Standalone navigation cleanup:
+  - removed standalone routes and sidebar entries for `rotate-pdf`, `split-pdf`, `delete-pages-pdf` (functions remain available via Studio)
+- Sidebar ordering updated:
+  - top sequence set to `Studio -> OCR -> Word -> Excel -> PDF to JPG`
+  - all other tools preserved and shown after prioritized items
+
+## Current Quality Snapshot (2026-02-13)
+- `npm run build`: green
+- `npm test`: 90/90 pass

@@ -39,6 +39,8 @@ export interface IToolConfigProps {
   inputFiles: string[];
   onStart: (options?: Record<string, unknown>) => void;
   onBack: () => void;
+  onPickFiles?: (files: File[]) => void | Promise<void>;
+  onClearFiles?: () => void | Promise<void>;
 }
 
 export interface WizardFlowOptions {

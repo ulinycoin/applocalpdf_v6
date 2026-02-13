@@ -1,5 +1,6 @@
 import type { GlobalRegistry } from '../../core/registry/global-registry';
 import type { ToolUiModule } from '../../core/types/contracts';
+import { isStandaloneToolHidden } from '../tool-visibility';
 
 export interface ToolRouteModel {
   toolId: string;
@@ -9,10 +10,13 @@ export interface ToolRouteModel {
 }
 
 export function buildToolRoutes(registry: GlobalRegistry): ToolRouteModel[] {
-  return registry.list().map((tool) => ({
-    toolId: tool.id,
-    path: `/${tool.id}`,
-    title: tool.name,
-    loadUi: tool.uiLoader,
-  }));
+  return registry
+    .list()
+    .filter((tool) => !isStandaloneToolHidden(tool.id))
+    .map((tool) => ({
+      toolId: tool.id,
+      path: `/${tool.id}`,
+      title: tool.name,
+      loadUi: tool.uiLoader,
+    }));
 }

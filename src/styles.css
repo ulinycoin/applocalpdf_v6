@@ -413,10 +413,98 @@ textarea:focus-visible {
   max-width: none;
   width: 100%;
   margin: 0;
+  height: calc(100vh - 5rem);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.ocr-test-header {
+  justify-content: flex-start;
+  align-items: center;
+}
+
+.ocr-test-shell .wizard-config-card {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.ocr-test-shell .ocr-concept-root,
+.ocr-test-shell .ocr-concept-workspace {
+  height: 100%;
+  min-height: 0;
+}
+
+.ocr-test-shell .ocr-concept-right {
+  min-height: 0;
+}
+
+.ocr-test-shell .ocr-concept-left {
+  gap: 0.62rem;
+  overflow: auto;
+  padding-right: 0.2rem;
+}
+
+.ocr-test-shell .ocr-concept-upload {
+  padding: 0.72rem;
+}
+
+.ocr-test-shell .ocr-concept-upload-title {
+  margin: 0.45rem 0 0.18rem;
+  font-size: 0.84rem;
+}
+
+.ocr-test-shell .ocr-concept-upload-copy {
+  font-size: 0.75rem;
+}
+
+.ocr-test-shell .ocr-concept-file-chip {
+  margin-top: 0.58rem;
+  padding: 0.46rem 0.56rem;
+}
+
+.ocr-test-shell .ocr-concept-settings {
+  gap: 0.5rem;
+}
+
+.ocr-test-shell .tool-config-label {
+  margin-bottom: 0.22rem;
+  font-size: 0.78rem;
+}
+
+.ocr-test-shell .tool-config-select,
+.ocr-test-shell .tool-config-input {
+  padding: 0.48rem 0.56rem;
+  font-size: 0.84rem;
+}
+
+.ocr-test-shell .ocr-concept-mode-option {
+  padding: 0.38rem 0.46rem;
+  font-size: 0.75rem;
+}
+
+.ocr-test-shell .ocr-concept-check {
+  font-size: 0.78rem;
+}
+
+.ocr-test-shell .ocr-concept-actions {
+  margin-top: 0.3rem;
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  background: linear-gradient(180deg, rgba(21, 32, 43, 0) 0%, rgba(21, 32, 43, 0.94) 28%);
+  padding-top: 0.58rem;
 }
 
 .wizard-shell-workspace {
   max-width: min(1540px, calc(100vw - 2.2rem));
+}
+
+.wizard-shell-fullwidth {
+  max-width: none;
+  width: 100%;
+  margin: 0;
 }
 
 .wizard-header {
@@ -437,44 +525,6 @@ textarea:focus-visible {
   margin: 0.28rem 0 0;
   color: var(--text-muted);
   font-size: 0.85rem;
-}
-
-.wizard-steps {
-  display: flex;
-  gap: 0.4rem;
-  flex-wrap: wrap;
-}
-
-.wizard-step-chip {
-  font-size: 0.68rem;
-  border-radius: 999px;
-  padding: 0.28rem 0.6rem;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  color: rgba(255, 255, 255, 0.7);
-  background: rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(12px);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  transition: border-color 200ms ease, background 200ms ease, color 200ms ease, box-shadow 200ms ease;
-}
-
-.wizard-step-chip-pending {
-  border-color: rgba(255, 255, 255, 0.2);
-  color: rgba(255, 255, 255, 0.5);
-  background: rgba(255, 255, 255, 0.1);
-}
-
-.wizard-step-chip-active {
-  color: #ffffff;
-  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
-  border-color: rgba(59, 130, 246, 0.6);
-  box-shadow: 0 0 20px rgba(59, 130, 246, 0.4);
-}
-
-.wizard-step-chip-completed {
-  color: #b7f7d4;
-  background: rgba(34, 197, 94, 0.2);
-  border-color: rgba(74, 222, 128, 0.45);
 }
 
 .wizard-upload-card,
@@ -1172,6 +1222,229 @@ textarea:focus-visible {
 .ocr-concept-stat {
   font-size: 0.74rem;
   color: #c8dbed;
+}
+
+.word-concept-root {
+  gap: 1rem;
+  min-height: clamp(560px, 74vh, 920px);
+}
+
+.word-concept-root .ocr-concept-workspace {
+  min-height: inherit;
+  height: 100%;
+}
+
+.word-concept-root .ocr-concept-left,
+.word-concept-root .ocr-concept-right {
+  height: 100%;
+}
+
+.word-concept-root .ocr-concept-right {
+  min-height: 0;
+}
+
+.word-concept-root .ocr-concept-editor {
+  min-height: 0;
+  height: 100%;
+}
+
+.word-concept-left {
+  display: flex;
+  flex-direction: column;
+  gap: 0.82rem;
+}
+
+.word-concept-title {
+  margin: 0;
+  font-size: 1rem;
+  color: #eff7ff;
+}
+
+.word-concept-file-name-group {
+  display: flex;
+  align-items: center;
+  gap: 0.48rem;
+  color: #dceaf7;
+}
+
+.word-concept-pdf-page {
+  width: 100%;
+  margin: 0;
+  min-height: 100%;
+  height: 100%;
+  background: #f8fafc;
+  border-radius: 10px;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.3);
+  padding: 1.3rem 1.35rem;
+}
+
+.word-concept-header-skeleton {
+  height: 24px;
+  width: 50%;
+  background: #cbd5e1;
+  border-radius: 5px;
+  margin-bottom: 1.1rem;
+}
+
+.word-concept-skeleton-line {
+  height: 11px;
+  background: #e2e8f0;
+  border-radius: 4px;
+  margin-bottom: 0.52rem;
+}
+
+.word-concept-skeleton-line.w-100 {
+  width: 100%;
+}
+
+.word-concept-skeleton-line.w-80 {
+  width: 80%;
+}
+
+.word-concept-skeleton-line.w-60 {
+  width: 60%;
+}
+
+.word-concept-skeleton-spacer {
+  height: 0.62rem;
+}
+
+.word-concept-table-skeleton {
+  border: 1px solid #cbd5e1;
+  background: #f1f5f9;
+  border-radius: 5px;
+  min-height: 120px;
+  margin: 0.92rem 0;
+}
+
+.excel-concept-root {
+  gap: 1rem;
+  min-height: clamp(560px, 74vh, 920px);
+}
+
+.excel-concept-root .ocr-concept-workspace {
+  min-height: inherit;
+  height: 100%;
+}
+
+.excel-concept-root .ocr-concept-left,
+.excel-concept-root .ocr-concept-right {
+  height: 100%;
+}
+
+.excel-concept-root .ocr-concept-right {
+  min-height: 0;
+}
+
+.excel-concept-root .ocr-concept-editor {
+  min-height: 0;
+  height: 100%;
+}
+
+.excel-concept-left {
+  display: flex;
+  flex-direction: column;
+  gap: 0.82rem;
+}
+
+.excel-concept-title {
+  margin: 0;
+  font-size: 1rem;
+  color: #eff7ff;
+}
+
+.excel-concept-pdf-page {
+  width: 100%;
+  min-height: 100%;
+  height: 100%;
+  background: #f8fafc;
+  border-radius: 10px;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.3);
+  padding: 1rem;
+  transition: all 200ms ease;
+}
+
+.excel-concept-pdf-page.landscape {
+  min-height: 100%;
+}
+
+.excel-concept-sheet-title {
+  height: 20px;
+  width: 40%;
+  background: #cbd5e1;
+  border-radius: 4px;
+  margin-bottom: 0.9rem;
+}
+
+.excel-concept-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.excel-concept-table th,
+.excel-concept-table td {
+  border: 1px solid #cbd5e1;
+  padding: 0.36rem;
+  height: 1.6rem;
+}
+
+.excel-concept-table th {
+  background: #f1f5f9;
+}
+
+.excel-concept-table.no-grid th,
+.excel-concept-table.no-grid td {
+  border-color: transparent;
+}
+
+.excel-concept-cell-skel {
+  height: 8px;
+  border-radius: 2px;
+  background: #dbe2ea;
+  width: 60%;
+}
+
+.excel-concept-cell-skel.long {
+  width: 90%;
+}
+
+.excel-concept-chart {
+  margin-top: 0.9rem;
+  height: 130px;
+  border: 1px solid #bfdbfe;
+  border-radius: 6px;
+  background: #eaf3ff;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-around;
+  padding: 0.5rem;
+}
+
+.excel-concept-bar {
+  width: 10%;
+  background: #3b82f6;
+  border-radius: 2px 2px 0 0;
+  display: block;
+}
+
+.excel-concept-bar.h40 {
+  height: 40%;
+}
+
+.excel-concept-bar.h50 {
+  height: 50%;
+}
+
+.excel-concept-bar.h60 {
+  height: 60%;
+}
+
+.excel-concept-bar.h70 {
+  height: 70%;
+}
+
+.excel-concept-bar.h90 {
+  height: 90%;
 }
 
 .compress-config-header {
@@ -2161,6 +2434,17 @@ textarea:focus-visible {
     min-height: calc(100vh - 320px);
   }
 
+  .ocr-test-shell {
+    height: auto;
+    overflow: visible;
+  }
+
+  .ocr-test-shell .wizard-config-card,
+  .ocr-test-shell .ocr-concept-root,
+  .ocr-test-shell .ocr-concept-workspace {
+    height: auto;
+  }
+
   .wizard-header {
     flex-direction: column;
   }
@@ -2178,6 +2462,23 @@ textarea:focus-visible {
   }
 
   .ocr-concept-right {
+    min-height: 460px;
+  }
+
+  .word-concept-root {
+    min-height: 460px;
+  }
+
+  .word-concept-pdf-page {
+    min-height: 460px;
+  }
+
+  .excel-concept-root {
+    min-height: 460px;
+  }
+
+  .excel-concept-pdf-page,
+  .excel-concept-pdf-page.landscape {
     min-height: 460px;
   }
 

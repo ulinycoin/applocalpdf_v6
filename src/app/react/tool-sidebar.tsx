@@ -4,6 +4,13 @@ import { usePlatform } from './platform-context';
 import { useStudioStore, type StudioState, type StudioDocument, type PageItem } from '../../v6/components/Studio/studio-store';
 import type { StudioSelectedPageRef, StudioToolLaunchContext } from '../../v6/studio/navigation/studio-tool-context';
 
+const SIDEBAR_TOOL_ORDER: Record<string, number> = {
+  'ocr-pdf': 0,
+  'word-to-pdf': 1,
+  'excel-to-pdf': 2,
+  'pdf-to-jpg': 3,
+};
+
 function getToolIcon(toolId: string): Parameters<typeof LinearIcon>[0]['name'] {
   switch (toolId) {
     case 'merge-pdf':
@@ -107,6 +114,20 @@ export function ToolSidebar({ collapsed, onToggleCollapsed }: ToolSidebarProps) 
     studioContext
       ? { preloadedFileIds: selectedInputIds, source: 'studio' as const, studioContext }
       : undefined;
+  const orderedMenu = [...menu].sort((a, b) => {
+    const aHasOrder = Object.prototype.hasOwnProperty.call(SIDEBAR_TOOL_ORDER, a.toolId);
+    const bHasOrder = Object.prototype.hasOwnProperty.call(SIDEBAR_TOOL_ORDER, b.toolId);
+    if (aHasOrder && bHasOrder) {
+      return SIDEBAR_TOOL_ORDER[a.toolId] - SIDEBAR_TOOL_ORDER[b.toolId];
+    }
+    if (aHasOrder) {
+      return -1;
+    }
+    if (bHasOrder) {
+      return 1;
+    }
+    return 0;
+  });
 
   return (
     <>
@@ -143,7 +164,7 @@ export function ToolSidebar({ collapsed, onToggleCollapsed }: ToolSidebarProps) 
             </span>
           </NavLink>
         </div>
-        {menu.map((item) => (
+        {orderedMenu.map((item) => (
           <div key={item.toolId} className="nav-item">
             <NavLink
               to={item.href}

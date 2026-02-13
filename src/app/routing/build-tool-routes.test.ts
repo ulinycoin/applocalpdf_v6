@@ -22,3 +22,17 @@ test('buildToolRoutes derives routes from registry', () => {
   assert.equal(routes[0].path, '/merge-pdf');
   assert.equal(routes[0].title, 'Merge PDF');
 });
+
+test('buildToolRoutes hides Studio-only standalone routes', () => {
+  const registry = new GlobalRegistry();
+  registry.register({
+    id: 'split-pdf',
+    name: 'Split PDF',
+    description: 'split',
+    uiLoader: async () => ({ default: () => null }),
+    logicLoader: async () => ({ run: async ({ inputIds }) => ({ outputIds: inputIds }) }),
+  });
+
+  const routes = buildToolRoutes(registry);
+  assert.equal(routes.length, 0);
+});

@@ -135,11 +135,6 @@ export default function OcrPdfConfig({
 
   return (
     <div className="tool-config-root ocr-concept-root">
-      <p className="tool-config-copy">
-        OCR concept screen for <strong>{fileName || 'selected file'}</strong>. Layout mirrors your sample with project-native colors,
-        cards, and controls.
-      </p>
-
       <div className="ocr-concept-workspace">
         <section className="tool-config-card ocr-concept-left">
           <div

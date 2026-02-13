@@ -224,10 +224,9 @@ export function OcrPdfTestPage() {
 
   return (
     <div className="wizard-shell ocr-test-shell">
-      <div className="wizard-header">
+      <div className="wizard-header ocr-test-header">
         <div>
           <h1 className="wizard-title">OCR PDF</h1>
-          <p className="wizard-subtitle">Advanced OCR workspace with live preview and editable output.</p>
         </div>
       </div>
 

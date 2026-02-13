@@ -1,6 +1,7 @@
 import {
   Component,
   Suspense,
+  useCallback,
   useEffect,
   type KeyboardEvent,
   useMemo,
@@ -131,8 +132,6 @@ function createBrowserIOAdapter(runtime: ReturnType<typeof usePlatform>['runtime
   };
 }
 
-const STEP_ORDER: WizardStep[] = ['upload', 'config', 'processing', 'result'];
-
 const PROCESSING_VERB_BY_TOOL: Record<string, string> = {
   'merge-pdf': 'Merging',
   'split-pdf': 'Splitting',
@@ -161,37 +160,12 @@ const COMPLETION_BY_TOOL: Record<string, string> = {
   'unlock-pdf': 'Unlock complete',
 };
 
-function getStepLabel(step: WizardStep): string {
-  switch (step) {
-    case 'upload':
-      return 'Upload';
-    case 'config':
-      return 'Config';
-    case 'processing':
-      return 'Processing';
-    case 'result':
-      return 'Result';
-    default:
-      return step;
-  }
-}
-
 function getProcessingLabel(toolId: string): string {
   return PROCESSING_VERB_BY_TOOL[toolId] ?? 'Processing';
 }
 
 function getResultLabel(toolId: string): string {
   return COMPLETION_BY_TOOL[toolId] ?? 'Action complete';
-}
-
-function getStepStatus(stepIndex: number, currentStepIndex: number): 'pending' | 'active' | 'completed' {
-  if (stepIndex < currentStepIndex) {
-    return 'completed';
-  }
-  if (stepIndex === currentStepIndex) {
-    return 'active';
-  }
-  return 'pending';
 }
 
 async function buildSinglePageInputIdsFromSelection(
@@ -260,7 +234,6 @@ export function WizardShell({ toolId, context = DEFAULT_TOOL_CONTEXT, ioAdapter,
   const previewFileIds = state.step === 'result' ? state.outputIds : state.fileIds;
   const { previews, isLoading: isPreviewLoading } = useFilePreviews(runtime, toolId, previewFileIds);
   const isSplitLayout = (state.step === 'config' || state.step === 'result') && toolDef.layout === 'split';
-  const currentStepIndex = useMemo(() => STEP_ORDER.indexOf(state.step), [state.step]);
   const uiRunId = useMemo(() => `wizard-ui-${crypto.randomUUID()}`, []);
   const io = useMemo(() => ioAdapter ?? createBrowserIOAdapter(runtime), [ioAdapter, runtime]);
   const uploadAccept = useMemo(() => {
@@ -279,6 +252,20 @@ export function WizardShell({ toolId, context = DEFAULT_TOOL_CONTEXT, ioAdapter,
   const routeState = (location.state as StudioToolRouteState | null) ?? null;
   const isStudioFlow = routeState?.source === 'studio';
   const routeStudioContext = routeState?.studioContext;
+  const isInlineUploadConfigFlow = toolId === 'word-to-pdf' || toolId === 'excel-to-pdf';
+
+  const handleWordFilesPicked = useCallback(
+    async (files: File[]): Promise<void> => {
+      if (files.length === 0) {
+        return;
+      }
+      if (state.fileIds.length > 0) {
+        await resetFlow(true);
+      }
+      await handleFilesAdded(files);
+    },
+    [handleFilesAdded, resetFlow, state.fileIds.length],
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -345,28 +332,16 @@ export function WizardShell({ toolId, context = DEFAULT_TOOL_CONTEXT, ioAdapter,
   }, [dismissUpsell, state.upsellReason]);
 
   return (
-    <section className={classNames('wizard-shell', isSplitLayout && 'wizard-shell-workspace')}>
+    <section
+      className={classNames(
+        'wizard-shell',
+        isSplitLayout && 'wizard-shell-workspace',
+        (toolId === 'word-to-pdf' || toolId === 'excel-to-pdf') && 'wizard-shell-fullwidth',
+      )}
+    >
       <header className="wizard-header">
         <div>
           <h2 className="wizard-title">{toolDef.name}</h2>
-          <p className="wizard-subtitle">Focus mode: Upload -&gt; Config -&gt; Processing -&gt; Result</p>
-        </div>
-        <div
-          className="wizard-steps"
-          role="progressbar"
-          aria-label={`Wizard progress, current step: ${getStepLabel(state.step)}`}
-          aria-valuemin={1}
-          aria-valuemax={STEP_ORDER.length}
-          aria-valuenow={currentStepIndex + 1}
-        >
-          {STEP_ORDER.map((step, index) => {
-            const status = getStepStatus(index, currentStepIndex);
-            return (
-              <span key={step} className={classNames('wizard-step-chip', `wizard-step-chip-${status}`)}>
-                {getStepLabel(step)}
-              </span>
-            );
-          })}
         </div>
       </header>
 
@@ -380,21 +355,43 @@ export function WizardShell({ toolId, context = DEFAULT_TOOL_CONTEXT, ioAdapter,
           previews={previews}
           isLoading={isPreviewLoading}
           toolId={toolId}
-          title={state.step === 'result' ? 'Result Preview' : 'Input Preview'}
+          title={state.step === 'result' ? 'Result Preview' : 'Preview'}
         />
       )}
 
       <AnimatePresence>
         {state.step === 'upload' && (
-          <div className="animate-fade-in wizard-upload-card">
-            <SmartUploadZone
-              onFilesAdded={handleFilesAdded}
-              disabled={state.isValidating}
-              multiple={allowMultiple}
-              accept={uploadAccept}
-            />
-            {state.isValidating && <p className="wizard-subtitle" style={{ marginTop: '0.75rem' }}>Validating access limits...</p>}
-          </div>
+                  isInlineUploadConfigFlow && ConfigComponent ? (
+            <div className="animate-fade-in wizard-config-card">
+              <ConfigErrorBoundary
+                onRetry={() => {
+                  retryConfigLoad();
+                  setConfigBoundaryKey((current) => current + 1);
+                }}
+                key={configBoundaryKey}
+              >
+                <Suspense fallback={<p className="wizard-subtitle">Loading configuration...</p>}>
+                  <ConfigComponent
+                    inputFiles={state.fileIds}
+                    onStart={startProcessingWithContext}
+                    onBack={() => void resetFlow(true)}
+                    onPickFiles={handleWordFilesPicked}
+                    onClearFiles={() => void resetFlow(true)}
+                  />
+                </Suspense>
+              </ConfigErrorBoundary>
+            </div>
+          ) : (
+            <div className="animate-fade-in wizard-upload-card">
+              <SmartUploadZone
+                onFilesAdded={handleFilesAdded}
+                disabled={state.isValidating}
+                multiple={allowMultiple}
+                accept={uploadAccept}
+              />
+              {state.isValidating && <p className="wizard-subtitle" style={{ marginTop: '0.75rem' }}>Validating access limits...</p>}
+            </div>
+          )
         )}
 
         {state.step === 'config' && ConfigComponent && (
@@ -407,7 +404,7 @@ export function WizardShell({ toolId, context = DEFAULT_TOOL_CONTEXT, ioAdapter,
                     previews={previews}
                     isLoading={isPreviewLoading}
                     toolId={toolId}
-                    title="Input Preview"
+                    title="Preview"
                   />
                 </div>
                 <div className="wizard-config-controls-pane">
@@ -419,7 +416,13 @@ export function WizardShell({ toolId, context = DEFAULT_TOOL_CONTEXT, ioAdapter,
                     key={configBoundaryKey}
                   >
                     <Suspense fallback={<p className="wizard-subtitle">Loading configuration...</p>}>
-                      <ConfigComponent inputFiles={state.fileIds} onStart={startProcessingWithContext} onBack={() => void resetFlow(true)} />
+                      <ConfigComponent
+                        inputFiles={state.fileIds}
+                        onStart={startProcessingWithContext}
+                        onBack={() => void resetFlow(true)}
+                        onPickFiles={isInlineUploadConfigFlow ? handleWordFilesPicked : undefined}
+                        onClearFiles={isInlineUploadConfigFlow ? (() => void resetFlow(true)) : undefined}
+                      />
                     </Suspense>
                   </ConfigErrorBoundary>
                 </div>
@@ -433,7 +436,13 @@ export function WizardShell({ toolId, context = DEFAULT_TOOL_CONTEXT, ioAdapter,
                 key={configBoundaryKey}
               >
                 <Suspense fallback={<p className="wizard-subtitle">Loading configuration...</p>}>
-                  <ConfigComponent inputFiles={state.fileIds} onStart={startProcessingWithContext} onBack={() => void resetFlow(true)} />
+                  <ConfigComponent
+                    inputFiles={state.fileIds}
+                    onStart={startProcessingWithContext}
+                    onBack={() => void resetFlow(true)}
+                    onPickFiles={isInlineUploadConfigFlow ? handleWordFilesPicked : undefined}
+                    onClearFiles={isInlineUploadConfigFlow ? (() => void resetFlow(true)) : undefined}
+                  />
                 </Suspense>
               </ConfigErrorBoundary>
             )}

@@ -25,3 +25,17 @@ test('buildToolMenu derives menu metadata from registry', () => {
   assert.equal(menu[0].requiresPro, true);
   assert.deepEqual(menu[0].requiredEntitlements, ['pdf.ocr']);
 });
+
+test('buildToolMenu hides tools that are Studio-only in standalone navigation', () => {
+  const registry = new GlobalRegistry();
+  registry.register({
+    id: 'rotate-pdf',
+    name: 'Rotate PDF',
+    description: 'rotate',
+    uiLoader: async () => ({ default: () => null }),
+    logicLoader: async () => ({ run: async ({ inputIds }) => ({ outputIds: inputIds }) }),
+  });
+
+  const menu = buildToolMenu(registry);
+  assert.equal(menu.length, 0);
+});

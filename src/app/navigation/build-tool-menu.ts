@@ -1,4 +1,5 @@
 import type { GlobalRegistry } from '../../core/registry/global-registry';
+import { isStandaloneToolHidden } from '../tool-visibility';
 
 export interface ToolMenuItem {
   toolId: string;
@@ -9,11 +10,14 @@ export interface ToolMenuItem {
 }
 
 export function buildToolMenu(registry: GlobalRegistry): ToolMenuItem[] {
-  return registry.list().map((tool) => ({
-    toolId: tool.id,
-    label: tool.name,
-    href: `/${tool.id}`,
-    requiredEntitlements: tool.entitlements ?? [],
-    requiresPro: tool.limits?.featureTier === 'pro',
-  }));
+  return registry
+    .list()
+    .filter((tool) => !isStandaloneToolHidden(tool.id))
+    .map((tool) => ({
+      toolId: tool.id,
+      label: tool.name,
+      href: `/${tool.id}`,
+      requiredEntitlements: tool.entitlements ?? [],
+      requiresPro: tool.limits?.featureTier === 'pro',
+    }));
 }
