@@ -7,6 +7,7 @@ import {
   useMemo,
   useRef,
   useState,
+  type ComponentType,
   type ChangeEvent,
   type DragEvent,
   type ReactNode,
@@ -231,6 +232,7 @@ export function WizardShell({ toolId, context = DEFAULT_TOOL_CONTEXT, ioAdapter,
 
   const toolDef = runtime.registry.get(toolId);
   const ConfigComponent = configComponent;
+  const WordConfigComponent = ConfigComponent as ComponentType<any> | null;
   const previewFileIds = state.step === 'result' ? state.outputIds : state.fileIds;
   const { previews, isLoading: isPreviewLoading } = useFilePreviews(runtime, toolId, previewFileIds);
   const isSplitLayout = (state.step === 'config' || state.step === 'result') && toolDef.layout === 'split';
@@ -238,7 +240,7 @@ export function WizardShell({ toolId, context = DEFAULT_TOOL_CONTEXT, ioAdapter,
   const io = useMemo(() => ioAdapter ?? createBrowserIOAdapter(runtime), [ioAdapter, runtime]);
   const uploadAccept = useMemo(() => {
     if (toolId === 'word-to-pdf') {
-      return '.doc,.docx,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+      return '.docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document';
     }
     if (toolId === 'excel-to-pdf') {
       return '.xls,.xlsx,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
@@ -253,6 +255,7 @@ export function WizardShell({ toolId, context = DEFAULT_TOOL_CONTEXT, ioAdapter,
   const isStudioFlow = routeState?.source === 'studio';
   const routeStudioContext = routeState?.studioContext;
   const isInlineUploadConfigFlow = toolId === 'word-to-pdf' || toolId === 'excel-to-pdf';
+  const isWordSinglePageFlow = toolId === 'word-to-pdf';
 
   const handleWordFilesPicked = useCallback(
     async (files: File[]): Promise<void> => {
@@ -349,7 +352,7 @@ export function WizardShell({ toolId, context = DEFAULT_TOOL_CONTEXT, ioAdapter,
         <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 wizard-error-banner">{state.error}</div>
       )}
 
-      {!isSplitLayout && (
+      {!isWordSinglePageFlow && !isSplitLayout && (
         <PreviewPanel
           runtime={runtime}
           previews={previews}
@@ -360,7 +363,35 @@ export function WizardShell({ toolId, context = DEFAULT_TOOL_CONTEXT, ioAdapter,
       )}
 
       <AnimatePresence>
-        {state.step === 'upload' && (
+        {isWordSinglePageFlow && WordConfigComponent && (
+          <div className="animate-fade-in wizard-config-card">
+            <ConfigErrorBoundary
+              onRetry={() => {
+                retryConfigLoad();
+                setConfigBoundaryKey((current) => current + 1);
+              }}
+              key={configBoundaryKey}
+            >
+              <Suspense fallback={<p className="wizard-subtitle">Loading configuration...</p>}>
+                <WordConfigComponent
+                  inputFiles={state.fileIds}
+                  onStart={startProcessingWithContext}
+                  onBack={() => void resetFlow(true)}
+                  onPickFiles={state.isProcessing ? undefined : handleWordFilesPicked}
+                  onClearFiles={() => void resetFlow(true)}
+                  currentStep={state.step}
+                  progress={state.progress}
+                  outputCount={state.outputIds.length}
+                  onDownload={() => {
+                    void Promise.all(state.outputIds.map(async (fileId) => io.save(fileId)));
+                  }}
+                />
+              </Suspense>
+            </ConfigErrorBoundary>
+          </div>
+        )}
+
+        {!isWordSinglePageFlow && state.step === 'upload' && (
                   isInlineUploadConfigFlow && ConfigComponent ? (
             <div className="animate-fade-in wizard-config-card">
               <ConfigErrorBoundary
@@ -394,7 +425,7 @@ export function WizardShell({ toolId, context = DEFAULT_TOOL_CONTEXT, ioAdapter,
           )
         )}
 
-        {state.step === 'config' && ConfigComponent && (
+        {!isWordSinglePageFlow && state.step === 'config' && ConfigComponent && (
           <div className="animate-fade-in wizard-config-card">
             {isSplitLayout ? (
               <div className="wizard-config-split">
@@ -449,7 +480,7 @@ export function WizardShell({ toolId, context = DEFAULT_TOOL_CONTEXT, ioAdapter,
           </div>
         )}
 
-        {state.step === 'processing' && (
+        {!isWordSinglePageFlow && state.step === 'processing' && (
           <div className="animate-fade-in wizard-processing-card" style={{ textAlign: 'center' }}>
             <h3 style={{ margin: 0 }}>{getProcessingLabel(toolId)}...</h3>
             <p className="wizard-subtitle">{getProcessingLabel(toolId)} your file in local worker runtime.</p>
@@ -468,7 +499,7 @@ export function WizardShell({ toolId, context = DEFAULT_TOOL_CONTEXT, ioAdapter,
           </div>
         )}
 
-        {state.step === 'result' && (
+        {!isWordSinglePageFlow && state.step === 'result' && (
           <div className="animate-fade-in wizard-result-card" style={{ textAlign: 'center' }}>
             {isSplitLayout ? (
               <div className="wizard-result-split">

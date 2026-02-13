@@ -1226,26 +1226,35 @@ textarea:focus-visible {
 
 .word-concept-root {
   gap: 1rem;
-  min-height: clamp(560px, 74vh, 920px);
+  min-height: 560px;
+  height: clamp(560px, 74vh, 920px);
+  max-height: 920px;
+  overflow: hidden;
 }
 
 .word-concept-root .ocr-concept-workspace {
-  min-height: inherit;
+  min-height: 0;
   height: 100%;
 }
 
 .word-concept-root .ocr-concept-left,
 .word-concept-root .ocr-concept-right {
   height: 100%;
+  min-height: 0;
 }
 
 .word-concept-root .ocr-concept-right {
   min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 .word-concept-root .ocr-concept-editor {
   min-height: 0;
   height: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .word-concept-left {
@@ -1265,6 +1274,38 @@ textarea:focus-visible {
   align-items: center;
   gap: 0.48rem;
   color: #dceaf7;
+}
+
+.word-concept-preview-image {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  height: auto;
+  border-radius: 10px;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  background: #fff;
+}
+
+.word-preview-upload-target {
+  cursor: pointer;
+}
+
+.word-preview-drop-active {
+  outline: 2px dashed rgba(96, 165, 250, 0.85);
+  outline-offset: -6px;
+}
+
+.word-preview-pager {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.38rem;
+}
+
+.word-preview-select {
+  min-width: 124px;
+  height: 32px;
+  padding: 0 0.45rem;
 }
 
 .word-concept-pdf-page {
@@ -2467,6 +2508,8 @@ textarea:focus-visible {
 
   .word-concept-root {
     min-height: 460px;
+    height: auto;
+    max-height: none;
   }
 
   .word-concept-pdf-page {
