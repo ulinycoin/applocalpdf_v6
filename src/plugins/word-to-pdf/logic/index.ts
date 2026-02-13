@@ -10,6 +10,7 @@ interface RenderBlock {
   kind: BlockKind;
   text: string;
   imageDataUrl?: string;
+  headingLevel?: 1 | 2 | 3;
 }
 
 interface ConversionOptions {
@@ -31,6 +32,7 @@ interface QualityProfile {
 
 const ZIP_SIGNATURE = [0x50, 0x4b];
 const CFB_SIGNATURE = [0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1];
+const RASTER_FONT_STACK = '"Noto Sans","Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji","Segoe UI Symbol","Arial Unicode MS","Noto Sans Symbols 2","Noto Sans CJK SC","Noto Sans CJK JP","Noto Sans Devanagari","PingFang SC","Hiragino Sans","Yu Gothic","Microsoft YaHei","Mangal","Kohinoor Devanagari",sans-serif';
 
 function isZipContainer(bytes: Uint8Array): boolean {
   return bytes.length >= 2 && bytes[0] === ZIP_SIGNATURE[0] && bytes[1] === ZIP_SIGNATURE[1];
@@ -82,6 +84,20 @@ function extractAttributeValue(tag: string, attribute: string): string {
   return match?.[1] ?? '';
 }
 
+function flattenAnchorLinks(input: string): string {
+  return input.replace(/<a\b([^>]*)>([\s\S]*?)<\/a>/gi, (_whole, attrs: string, body: string) => {
+    const href = extractAttributeValue(attrs, 'href').trim();
+    const label = stripHtmlTags(body);
+    if (label.length === 0) {
+      return href.length > 0 ? href : '';
+    }
+    if (href.length === 0) {
+      return label;
+    }
+    return `${label} (${href})`;
+  });
+}
+
 function extractTableRows(html: string): string[] {
   const rows: string[] = [];
   const rowRegex = /<tr[^>]*>([\s\S]*?)<\/tr>/gi;
@@ -92,7 +108,7 @@ function extractTableRows(html: string): string[] {
     const cells: string[] = [];
     let cellMatch = cellRegex.exec(rowHtml);
     while (cellMatch) {
-      const cellText = stripHtmlTags(cellMatch[1]);
+      const cellText = stripHtmlTags(flattenAnchorLinks(cellMatch[1]));
       if (cellText.length > 0) {
         cells.push(cellText);
       }
@@ -113,7 +129,7 @@ function extractBlocksFromHtml(htmlRaw: string): RenderBlock[] {
     .replace(/<!--[\s\S]*?-->/g, ' ')
     .replace(/\n/g, ' ');
   const blocks: RenderBlock[] = [];
-  const tokenRegex = /<(h1|h2|h3|p|li|table)\b[^>]*>[\s\S]*?<\/\1>|<img\b[^>]*>/gi;
+  const tokenRegex = /<(h1|h2|h3|p|table|ol|ul)\b[^>]*>[\s\S]*?<\/\1>|<img\b[^>]*>/gi;
   let match = tokenRegex.exec(html);
 
   while (match) {
@@ -130,7 +146,7 @@ function extractBlocksFromHtml(htmlRaw: string): RenderBlock[] {
       continue;
     }
 
-    const tagMatch = /^<(h1|h2|h3|p|li|table)\b[^>]*>([\s\S]*?)<\/\1>$/i.exec(token);
+    const tagMatch = /^<(h1|h2|h3|p|table|ol|ul)\b[^>]*>([\s\S]*?)<\/\1>$/i.exec(token);
     if (!tagMatch) {
       match = tokenRegex.exec(html);
       continue;
@@ -148,20 +164,35 @@ function extractBlocksFromHtml(htmlRaw: string): RenderBlock[] {
       continue;
     }
 
-    const text = stripHtmlTags(body);
+    if (tag === 'ol' || tag === 'ul') {
+      const itemRegex = /<li\b[^>]*>([\s\S]*?)<\/li>/gi;
+      let itemMatch = itemRegex.exec(body);
+      let itemIndex = 1;
+      while (itemMatch) {
+        const itemText = stripHtmlTags(flattenAnchorLinks(itemMatch[1]));
+        if (itemText.length > 0) {
+          const marker = tag === 'ol' ? `${itemIndex}. ` : '• ';
+          blocks.push({ kind: 'list', text: `${marker}${itemText}` });
+          itemIndex += 1;
+        }
+        itemMatch = itemRegex.exec(body);
+      }
+      match = tokenRegex.exec(html);
+      continue;
+    }
+
+    const text = stripHtmlTags(flattenAnchorLinks(body));
     if (text.length === 0) {
       match = tokenRegex.exec(html);
       continue;
     }
 
     if (tag === 'h1') {
-      blocks.push({ kind: 'heading1', text });
+      blocks.push({ kind: 'heading1', text, headingLevel: 1 });
     } else if (tag === 'h2') {
-      blocks.push({ kind: 'heading2', text });
+      blocks.push({ kind: 'heading2', text, headingLevel: 2 });
     } else if (tag === 'h3') {
-      blocks.push({ kind: 'heading3', text });
-    } else if (tag === 'li') {
-      blocks.push({ kind: 'list', text: `• ${text}` });
+      blocks.push({ kind: 'heading3', text, headingLevel: 3 });
     } else {
       blocks.push({ kind: 'paragraph', text });
     }
@@ -361,12 +392,13 @@ async function loadFontBytes(url: string): Promise<Uint8Array> {
   return new Uint8Array(await response.arrayBuffer());
 }
 
-async function resolveNotoFontUrls(): Promise<{ latinUrl: string; cyrillicUrl: string }> {
-  const [latinMod, cyrillicMod] = await Promise.all([
+async function resolveNotoFontUrls(): Promise<{ latinUrl: string; cyrillicUrl: string; cyrillicExtUrl: string }> {
+  const [latinMod, cyrillicMod, cyrillicExtMod] = await Promise.all([
     import('@fontsource/noto-sans/files/noto-sans-latin-400-normal.woff?url') as Promise<{ default: string }>,
+    import('@fontsource/noto-sans/files/noto-sans-cyrillic-400-normal.woff?url') as Promise<{ default: string }>,
     import('@fontsource/noto-sans/files/noto-sans-cyrillic-ext-400-normal.woff?url') as Promise<{ default: string }>,
   ]);
-  return { latinUrl: latinMod.default, cyrillicUrl: cyrillicMod.default };
+  return { latinUrl: latinMod.default, cyrillicUrl: cyrillicMod.default, cyrillicExtUrl: cyrillicExtMod.default };
 }
 
 function hasCyrillic(text: string): boolean {
@@ -431,7 +463,7 @@ async function rasterizeTextLine(
   }
   const probeContext = probe.context;
   const fontWeight = bold ? '700' : '400';
-  probeContext.font = `${fontWeight} ${fontSize}px "Noto Sans","Noto Sans CJK SC","Noto Sans CJK JP","Noto Sans Devanagari","PingFang SC","Hiragino Sans","Yu Gothic","Microsoft YaHei","Mangal","Kohinoor Devanagari","Arial Unicode MS",sans-serif`;
+  probeContext.font = `${fontWeight} ${fontSize}px ${RASTER_FONT_STACK}`;
   const measured = probeContext.measureText(text);
   const naturalWidth = Math.max(8, Math.ceil(measured.width) + 6);
   const imageWidth = Math.min(Math.max(8, maxWidth), naturalWidth);
@@ -446,7 +478,7 @@ async function rasterizeTextLine(
   context.clearRect(0, 0, imageWidth, imageHeight);
   context.fillStyle = '#111';
   context.textBaseline = 'top';
-  context.font = `${fontWeight} ${fontSize}px "Noto Sans","Noto Sans CJK SC","Noto Sans CJK JP","Noto Sans Devanagari","PingFang SC","Hiragino Sans","Yu Gothic","Microsoft YaHei","Mangal","Kohinoor Devanagari","Arial Unicode MS",sans-serif`;
+  context.font = `${fontWeight} ${fontSize}px ${RASTER_FONT_STACK}`;
   context.fillText(text, 0, 1, imageWidth);
 
   let blob: Blob | null = null;
@@ -534,7 +566,7 @@ function wrapTextByCanvas(text: string, maxWidth: number, fontSize: number): str
   }
 
   const context = canvasNode.context;
-  context.font = `${fontSize}px "Noto Sans","Noto Sans CJK SC","Noto Sans CJK JP","Noto Sans Devanagari","PingFang SC","Hiragino Sans","Yu Gothic","Microsoft YaHei","Mangal","Kohinoor Devanagari","Arial Unicode MS",sans-serif`;
+  context.font = `${fontSize}px ${RASTER_FONT_STACK}`;
 
   const lines: string[] = [];
   for (const paragraph of text.split('\n')) {
@@ -563,45 +595,183 @@ function wrapTextByCanvas(text: string, maxWidth: number, fontSize: number): str
   return lines.length > 0 ? lines : [''];
 }
 
-function getCodePoints(text: string): number[] {
-  return Array.from(text).map((ch) => ch.codePointAt(0) ?? 0).filter((code) => code > 0);
-}
-
 function countRenderableCodePoints(
-  font: { getCharacterSet?: () => number[] },
+  font: { widthOfTextAtSize?: (text: string, size: number) => number },
   text: string,
+  size: number,
 ): number {
-  if (typeof font.getCharacterSet !== 'function') {
-    return 0;
-  }
-  const charset = new Set<number>(font.getCharacterSet());
   let ok = 0;
-  for (const code of getCodePoints(text)) {
-    if (charset.has(code)) {
+  for (const ch of Array.from(text)) {
+    if (canMeasureTextWithFont(font, ch, size)) {
       ok += 1;
     }
   }
   return ok;
 }
 
-function canFontRenderText(
-  font: { getCharacterSet?: () => number[] },
+function canMeasureTextWithFont(
+  font: { widthOfTextAtSize?: (text: string, size: number) => number },
   text: string,
+  size: number,
 ): boolean {
-  const codes = getCodePoints(text);
-  if (codes.length === 0) {
-    return true;
+  if (typeof font.widthOfTextAtSize !== 'function') {
+    return false;
   }
-  if (typeof font.getCharacterSet !== 'function') {
-    return true;
+  try {
+    const width = font.widthOfTextAtSize(text.length > 0 ? text : ' ', size);
+    return Number.isFinite(width);
+  } catch {
+    return false;
   }
-  const charset = new Set<number>(font.getCharacterSet());
-  for (const code of codes) {
-    if (!charset.has(code)) {
-      return false;
+}
+
+function canFontRenderText(
+  font: { widthOfTextAtSize?: (text: string, size: number) => number },
+  text: string,
+  size: number,
+): boolean {
+  return canMeasureTextWithFont(font, text, size);
+}
+
+function isRasterPreferredCodePoint(codePoint: number): boolean {
+  return (
+    (codePoint >= 0x1f000 && codePoint <= 0x1faff) || // Emoji and symbols
+    (codePoint >= 0x2190 && codePoint <= 0x21ff) || // Arrows
+    (codePoint >= 0x2300 && codePoint <= 0x23ff) || // Misc technical
+    (codePoint >= 0x2460 && codePoint <= 0x24ff) || // Enclosed alphanumerics
+    (codePoint >= 0x25a0 && codePoint <= 0x25ff) || // Geometric shapes
+    (codePoint >= 0x2600 && codePoint <= 0x27bf) || // Misc symbols + dingbats (includes checkmarks)
+    (codePoint >= 0x2b00 && codePoint <= 0x2bff) || // Misc symbols and arrows
+    codePoint === 0x200d || // ZWJ (emoji sequences)
+    codePoint === 0xfe0f // Variation selector-16
+  );
+}
+
+function isRasterPreferredChar(ch: string): boolean {
+  const codePoint = ch.codePointAt(0);
+  if (typeof codePoint !== 'number') {
+    return false;
+  }
+  return isRasterPreferredCodePoint(codePoint);
+}
+
+async function convertDocxWithMammoth(
+  mammoth: {
+    convertToHtml: (input: any) => Promise<{ value: string }>;
+    extractRawText: (input: any) => Promise<{ value: string }>;
+  },
+  arrayBuffer: ArrayBuffer,
+): Promise<{ html: string; text: string }> {
+  const browserInput = { arrayBuffer };
+  try {
+    const [htmlResult, textResult] = await Promise.all([
+      mammoth.convertToHtml(browserInput),
+      mammoth.extractRawText(browserInput),
+    ]);
+    return { html: htmlResult.value, text: textResult.value };
+  } catch (error) {
+    const supportsNodeBuffer = typeof Buffer !== 'undefined';
+    const message = error instanceof Error ? error.message : '';
+    const shouldRetryWithBuffer = supportsNodeBuffer && /could not find file in options/i.test(message);
+    if (!shouldRetryWithBuffer) {
+      throw error;
     }
+
+    const nodeInput = { buffer: Buffer.from(arrayBuffer) };
+    const [htmlResult, textResult] = await Promise.all([
+      mammoth.convertToHtml(nodeInput),
+      mammoth.extractRawText(nodeInput),
+    ]);
+    return { html: htmlResult.value, text: textResult.value };
   }
-  return true;
+}
+
+interface HeadingAnchor {
+  title: string;
+  level: 1 | 2 | 3;
+  pageRef: unknown;
+}
+
+interface PdfLibAnnots {
+  PDFName: { of: (value: string) => unknown };
+  PDFNumber: { of: (value: number) => unknown };
+  PDFString: { of: (value: string) => unknown };
+  PDFArray: unknown;
+}
+
+function addGoToLinkAnnotation(
+  pdfLib: PdfLibAnnots,
+  doc: { context: { obj: (value: unknown) => unknown; register: (value: unknown) => unknown } },
+  sourcePage: { node: { lookupMaybe: (key: unknown, type: unknown) => any; set: (key: unknown, value: unknown) => void } },
+  rect: { x: number; y: number; width: number; height: number },
+  destinationPageRef: unknown,
+): void {
+  const { PDFName, PDFNumber, PDFArray } = pdfLib;
+  const annotsKey = PDFName.of('Annots');
+  const rectArray = doc.context.obj([
+    PDFNumber.of(rect.x),
+    PDFNumber.of(rect.y),
+    PDFNumber.of(rect.x + rect.width),
+    PDFNumber.of(rect.y + rect.height),
+  ]);
+  const borderArray = doc.context.obj([PDFNumber.of(0), PDFNumber.of(0), PDFNumber.of(0)]);
+  const destArray = doc.context.obj([destinationPageRef, PDFName.of('Fit')]);
+  const action = doc.context.obj({
+    S: PDFName.of('GoTo'),
+    D: destArray,
+  });
+  const annot = doc.context.obj({
+    Type: PDFName.of('Annot'),
+    Subtype: PDFName.of('Link'),
+    Rect: rectArray,
+    Border: borderArray,
+    A: action,
+  });
+  const annotRef = doc.context.register(annot);
+  let annots = sourcePage.node.lookupMaybe(annotsKey, PDFArray as any) as { push: (value: unknown) => void } | undefined;
+  if (!annots) {
+    const created = doc.context.obj([]) as { push: (value: unknown) => void };
+    sourcePage.node.set(annotsKey, created);
+    annots = created;
+  }
+  annots.push(annotRef);
+}
+
+function addUriLinkAnnotation(
+  pdfLib: PdfLibAnnots,
+  doc: { context: { obj: (value: unknown) => unknown; register: (value: unknown) => unknown } },
+  sourcePage: { node: { lookupMaybe: (key: unknown, type: unknown) => any; set: (key: unknown, value: unknown) => void } },
+  rect: { x: number; y: number; width: number; height: number },
+  uri: string,
+): void {
+  const { PDFName, PDFNumber, PDFString, PDFArray } = pdfLib;
+  const annotsKey = PDFName.of('Annots');
+  const rectArray = doc.context.obj([
+    PDFNumber.of(rect.x),
+    PDFNumber.of(rect.y),
+    PDFNumber.of(rect.x + rect.width),
+    PDFNumber.of(rect.y + rect.height),
+  ]);
+  const borderArray = doc.context.obj([PDFNumber.of(0), PDFNumber.of(0), PDFNumber.of(0)]);
+  const action = doc.context.obj({
+    S: PDFName.of('URI'),
+    URI: PDFString.of(uri),
+  });
+  const annot = doc.context.obj({
+    Type: PDFName.of('Annot'),
+    Subtype: PDFName.of('Link'),
+    Rect: rectArray,
+    Border: borderArray,
+    A: action,
+  });
+  const annotRef = doc.context.register(annot);
+  let annots = sourcePage.node.lookupMaybe(annotsKey, PDFArray as any) as { push: (value: unknown) => void } | undefined;
+  if (!annots) {
+    const created = doc.context.obj([]) as { push: (value: unknown) => void };
+    sourcePage.node.set(annotsKey, created);
+    annots = created;
+  }
+  annots.push(annotRef);
 }
 
 async function protectPdfIfRequested(
@@ -635,7 +805,7 @@ export async function runWordToPdf(
   const parsedOptions = parseOptions(options);
 
   const mammoth = await import('mammoth');
-  const { PDFDocument, StandardFonts } = await import('pdf-lib');
+  const { PDFDocument, StandardFonts, PDFArray, PDFName, PDFNumber, PDFString } = await import('pdf-lib');
 
   const outputIds: string[] = [];
 
@@ -652,14 +822,10 @@ export async function runWordToPdf(
       throw new Error(`Unsupported Word file format for ${inputIds[i]}. Please upload a .docx file.`);
     }
 
-    const [htmlResult, textResult] = await Promise.all([
-      mammoth.convertToHtml({ arrayBuffer }),
-      mammoth.extractRawText({ arrayBuffer }),
-    ]);
-
-    const blocks = extractBlocksFromHtml(htmlResult.value);
+    const converted = await convertDocxWithMammoth(mammoth, arrayBuffer);
+    const blocks = extractBlocksFromHtml(converted.html);
     if (blocks.length === 1 && blocks[0].kind === 'blank') {
-      const fallbackText = normalizeWhitespace(textResult.value);
+      const fallbackText = normalizeWhitespace(converted.text);
       if (fallbackText.length > 0) {
         blocks[0] = { kind: 'paragraph', text: fallbackText };
       }
@@ -678,35 +844,129 @@ export async function runWordToPdf(
 
       let latinFont = await doc.embedFont(StandardFonts.Helvetica);
       let cyrillicFont = latinFont;
+      let cyrillicExtFont = latinFont;
 
       try {
         doc.registerFontkit(fontkit);
-        const { latinUrl, cyrillicUrl } = await resolveNotoFontUrls();
-        const [latinBytes, cyrillicBytes] = await Promise.all([
+        const { latinUrl, cyrillicUrl, cyrillicExtUrl } = await resolveNotoFontUrls();
+        const [latinBytes, cyrillicBytes, cyrillicExtBytes] = await Promise.all([
           loadFontBytes(latinUrl),
           loadFontBytes(cyrillicUrl),
+          loadFontBytes(cyrillicExtUrl),
         ]);
         latinFont = await doc.embedFont(latinBytes, { subset: true });
         cyrillicFont = await doc.embedFont(cyrillicBytes, { subset: true });
+        cyrillicExtFont = await doc.embedFont(cyrillicExtBytes, { subset: true });
       } catch {
         // Keep Helvetica fallback for environments where custom font loading is unavailable.
       }
 
-      const selectFont = (text: string): typeof latinFont => {
-        if (canFontRenderText(latinFont, text)) {
-          return latinFont;
+      const selectFont = (text: string, size = 12): typeof latinFont => {
+        const preferCyrillic = hasCyrillic(text);
+        const candidates = preferCyrillic
+          ? [cyrillicFont, cyrillicExtFont, latinFont]
+          : [latinFont, cyrillicFont, cyrillicExtFont];
+        for (const candidate of candidates) {
+          if (canFontRenderText(candidate, text, size)) {
+            return candidate;
+          }
         }
-        if (canFontRenderText(cyrillicFont, text)) {
-          return cyrillicFont;
+
+        let best = latinFont;
+        let bestScore = countRenderableCodePoints(latinFont, text, size);
+        for (const candidate of [cyrillicFont, cyrillicExtFont]) {
+          const score = countRenderableCodePoints(candidate, text, size);
+          if (score > bestScore) {
+            best = candidate;
+            bestScore = score;
+          }
         }
-        const latinScore = countRenderableCodePoints(latinFont, text);
-        const cyrScore = countRenderableCodePoints(cyrillicFont, text);
-        return cyrScore > latinScore ? cyrillicFont : latinFont;
+        return best;
+      };
+
+      const drawSegmentedTextLine = async (
+        text: string,
+        x: number,
+        y: number,
+        size: number,
+        lineHeightPx: number,
+        maxLineLengthPx: number,
+        bold: boolean,
+      ): Promise<void> => {
+        const chars = Array.from(text.length > 0 ? text : ' ');
+        let cursorX = x;
+        let segment = chars[0] ?? ' ';
+        let segmentFont = selectFont(segment, size);
+        let rasterSegment = isRasterPreferredChar(segment);
+
+        const flush = async (): Promise<void> => {
+          if (segment.length === 0) {
+            return;
+          }
+          if (rasterSegment) {
+            const remainingWidth = Math.max(8, Math.round((x + maxLineLengthPx) - cursorX));
+            const raster = await rasterizeTextLine(
+              segment,
+              remainingWidth,
+              Math.round(lineHeightPx),
+              Math.round(size),
+              bold,
+            );
+            if (raster) {
+              const image = await doc.embedPng(raster.bytes);
+              page.drawImage(image, {
+                x: cursorX,
+                y: y - Math.max(0, raster.height - lineHeightPx),
+                width: raster.width,
+                height: raster.height,
+              });
+              cursorX += raster.width;
+              return;
+            }
+          }
+
+          page.drawText(segment, {
+            x: cursorX,
+            y,
+            size,
+            font: segmentFont,
+          });
+          cursorX += segmentFont.widthOfTextAtSize(segment, size);
+        };
+
+        for (let index = 1; index < chars.length; index += 1) {
+          const nextChar = chars[index];
+          const nextFont = selectFont(nextChar, size);
+          const nextRaster = isRasterPreferredChar(nextChar);
+          if (nextRaster === rasterSegment && (nextRaster || nextFont === segmentFont)) {
+            segment += nextChar;
+            continue;
+          }
+          await flush();
+          segment = nextChar;
+          segmentFont = nextFont;
+          rasterSegment = nextRaster;
+        }
+        await flush();
+      };
+
+      const measureSegmentedWidth = (text: string, size: number): number => {
+        let width = 0;
+        for (const ch of Array.from(text)) {
+          const font = selectFont(ch, size);
+          try {
+            width += font.widthOfTextAtSize(ch, size);
+          } catch {
+            width += Math.max(2, size * 0.55);
+          }
+        }
+        return width;
       };
 
       let page = doc.addPage(pageSize);
       let pageIndex = 0;
       const pagesWithContent = new Set<number>();
+      const headingAnchors: HeadingAnchor[] = [];
       const livePageWidth = page.getWidth();
       const livePageHeight = page.getHeight();
       let yTop = livePageHeight - profile.topBottomMargin;
@@ -785,9 +1045,15 @@ export async function runWordToPdf(
           continue;
         }
 
-        const lines = shouldUseRasterFallback(block.text, parsedOptions.searchablePdf)
-          ? wrapTextByCanvas(block.text, maxLineLength, blockSize)
-          : wrapText(block.text, selectFont(block.text), blockSize, maxLineLength);
+        let lines: string[];
+        try {
+          lines = shouldUseRasterFallback(block.text, parsedOptions.searchablePdf)
+            ? wrapTextByCanvas(block.text, maxLineLength, blockSize)
+            : wrapText(block.text, selectFont(block.text, blockSize), blockSize, maxLineLength);
+        } catch {
+          lines = wrapTextByCanvas(block.text, maxLineLength, blockSize);
+        }
+        let headingAnchorCaptured = false;
         for (const line of lines) {
           let lineAdvance = lineHeight;
           let rasterLine: { bytes: Uint8Array; width: number; height: number } | null = null;
@@ -825,17 +1091,16 @@ export async function runWordToPdf(
             });
             pagesWithContent.add(pageIndex);
           } else {
-            const lineFont = selectFont(cleanLine);
             try {
-              if (!canFontRenderText(lineFont, cleanLine)) {
-                throw new Error('Missing glyphs in selected font');
-              }
-              page.drawText(cleanLine, {
-                x: profile.leftRightMargin,
-                y: yTop - lineHeight,
-                size: blockSize,
-                font: lineFont,
-              });
+              await drawSegmentedTextLine(
+                cleanLine,
+                profile.leftRightMargin,
+                yTop - lineHeight,
+                blockSize,
+                lineHeight,
+                maxLineLength,
+                block.kind.startsWith('heading'),
+              );
             } catch {
               const fallbackRaster = await rasterizeTextLine(
                 cleanLine,
@@ -856,11 +1121,110 @@ export async function runWordToPdf(
               }
             }
             pagesWithContent.add(pageIndex);
+
+            const urlRegex = /https?:\/\/[^\s)]+/gi;
+            let urlMatch = urlRegex.exec(cleanLine);
+            while (urlMatch) {
+              const matchedUrl = urlMatch[0];
+              const prefix = cleanLine.slice(0, urlMatch.index);
+              const linkX = profile.leftRightMargin + measureSegmentedWidth(prefix, blockSize);
+              const linkWidth = Math.max(8, measureSegmentedWidth(matchedUrl, blockSize));
+              addUriLinkAnnotation(
+                { PDFArray, PDFName, PDFNumber, PDFString },
+                doc as unknown as { context: { obj: (value: unknown) => unknown; register: (value: unknown) => unknown } },
+                page as unknown as { node: { lookupMaybe: (key: unknown, type: unknown) => any; set: (key: unknown, value: unknown) => void } },
+                {
+                  x: linkX,
+                  y: yTop - lineHeight - 1,
+                  width: linkWidth,
+                  height: lineHeight + 3,
+                },
+                matchedUrl,
+              );
+              urlMatch = urlRegex.exec(cleanLine);
+            }
+          }
+
+          if (block.headingLevel && !headingAnchorCaptured && line.trim().length > 0) {
+            const currentPage = page as unknown as { ref?: unknown };
+            if (currentPage.ref) {
+              headingAnchors.push({
+                title: line.trim(),
+                level: block.headingLevel,
+                pageRef: currentPage.ref,
+              });
+              headingAnchorCaptured = true;
+            }
           }
 
           yTop -= lineAdvance;
         }
         yTop -= getParagraphGap(block.kind, profile);
+      }
+
+      if (headingAnchors.length > 0) {
+        const tocPage = doc.insertPage(0, pageSize);
+        const tocFont = selectFont('Table of Contents', 18);
+        const bodyFont = selectFont('Contents', 11);
+        const toAsciiFallback = (value: string): string => {
+          const normalized = value.replace(/[^\x20-\x7E]/g, '');
+          return normalized.trim().length > 0 ? normalized : 'Section';
+        };
+        const left = profile.leftRightMargin;
+        const top = tocPage.getHeight() - profile.topBottomMargin;
+        try {
+          tocPage.drawText('Table of Contents', {
+            x: left,
+            y: top,
+            size: 18,
+            font: tocFont,
+          });
+        } catch {
+          tocPage.drawText('Table of Contents', {
+            x: left,
+            y: top,
+            size: 18,
+            font: latinFont,
+          });
+        }
+
+        let tocY = top - 30;
+        const tocLineHeight = 16;
+        const maxTocLines = Math.max(1, Math.floor((tocPage.getHeight() - profile.topBottomMargin * 2 - 40) / tocLineHeight));
+        const tocItems = headingAnchors.slice(0, maxTocLines);
+
+        for (const anchor of tocItems) {
+          const indent = (anchor.level - 1) * 14;
+          const rawLabel = anchor.title.length > 110 ? `${anchor.title.slice(0, 107)}...` : anchor.title;
+          let label = rawLabel;
+          let width = 0;
+          try {
+            tocPage.drawText(label, {
+              x: left + indent,
+              y: tocY,
+              size: 11,
+              font: bodyFont,
+            });
+            width = bodyFont.widthOfTextAtSize(label, 11);
+          } catch {
+            label = toAsciiFallback(rawLabel);
+            tocPage.drawText(label, {
+              x: left + indent,
+              y: tocY,
+              size: 11,
+              font: latinFont,
+            });
+            width = latinFont.widthOfTextAtSize(label, 11);
+          }
+          addGoToLinkAnnotation(
+            { PDFArray, PDFName, PDFNumber, PDFString },
+            doc as unknown as { context: { obj: (value: unknown) => unknown; register: (value: unknown) => unknown } },
+            tocPage as unknown as { node: { lookupMaybe: (key: unknown, type: unknown) => any; set: (key: unknown, value: unknown) => void } },
+            { x: left + indent, y: tocY - 2, width, height: tocLineHeight },
+            anchor.pageRef,
+          );
+          tocY -= tocLineHeight;
+        }
       }
 
       if (!pagesWithContent.has(pageIndex) && doc.getPageCount() > 1) {
