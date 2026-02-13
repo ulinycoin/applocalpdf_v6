@@ -1,10 +1,8 @@
 import { Suspense, lazy, useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import type { ToolRunContext } from '../../core/types/contracts';
 import { usePlatform } from './platform-context';
 import { downloadOutputFiles } from '../platform/download-output-files';
 import type { StudioToolRouteState } from '../../v6/studio/navigation/studio-tool-context';
-import { extractEmbeddedPdfText } from '../../services/pdf/pdf-text-extractor';
 
 const OcrPdfConfig = lazy(() => import('../../plugins/ocr-pdf/ui'));
 
@@ -15,7 +13,7 @@ interface ParsedRunPreview {
   language: string | null;
 }
 
-const demoContext: ToolRunContext = {
+const demoContext = {
   userId: 'ocr-test-user',
   plan: 'pro',
   entitlements: ['pdf.ocr'],
@@ -199,9 +197,8 @@ export function OcrPdfTestPage() {
 
     if (mime === 'application/pdf') {
       const pdfUrl = URL.createObjectURL(blob);
-      const extracted = await extractEmbeddedPdfText(blob);
       setPreview({
-        text: extracted?.text || 'Searchable PDF generated. Use Download to save the output file.',
+        text: 'Searchable PDF generated. Use Download to save the output file.',
         json: '',
         accuracy: null,
         language: null,
