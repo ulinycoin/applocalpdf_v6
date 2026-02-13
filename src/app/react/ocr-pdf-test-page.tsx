@@ -1,5 +1,6 @@
 import { Suspense, lazy, useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import type { ToolRunContext } from '../../core/public/contracts';
 import { usePlatform } from './platform-context';
 import { downloadOutputFiles } from '../platform/download-output-files';
 import type { StudioToolRouteState } from '../../v6/studio/navigation/studio-tool-context';
@@ -13,7 +14,7 @@ interface ParsedRunPreview {
   language: string | null;
 }
 
-const demoContext = {
+const demoContext: ToolRunContext = {
   userId: 'ocr-test-user',
   plan: 'pro',
   entitlements: ['pdf.ocr'],
