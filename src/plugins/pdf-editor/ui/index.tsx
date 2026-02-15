@@ -26,6 +26,7 @@ interface TextEditDraft {
   fontSizeRatio: number;
   color: string;
   backgroundColor: string;
+  fontName?: string;
 }
 
 interface DragState {
@@ -44,6 +45,7 @@ interface TextLayerSpan {
   widthRatio: number;
   heightRatio: number;
   fontSizeRatio: number;
+  fontName?: string;
 }
 
 interface PdfJsLike {
@@ -78,6 +80,7 @@ function makeDraft(pageIndex: number, xRatio: number, yRatio: number): TextEditD
     fontSizeRatio: 0.035,
     color: '#1f2937',
     backgroundColor: '#ffffff',
+    fontName: 'Helvetica',
   };
 }
 
@@ -137,8 +140,14 @@ async function buildTextLayerSpans(pdfBytes: Uint8Array, pageNumber: number): Pr
       fontAscent = (1 + style.descent) * fontHeight;
     }
 
-    const width = Math.max(1, Number(item.width) * PREVIEW_SCALE || fontHeight * Math.max(1, item.str.length * 0.42));
-    const height = Math.max(1, Number(item.height) * PREVIEW_SCALE || fontHeight);
+    // More precise width calculation. 
+    // item.width is often more reliable but can be bloated if it includes trailing spaces.
+    // fontHeight * chars * 0.5 is a decent estimate for proportional fonts if width is missing.
+    const estimatedWidth = fontHeight * item.str.length * 0.46;
+    const width = Math.max(1, (Number(item.width) * PREVIEW_SCALE || estimatedWidth));
+
+    // Height should be exactly the font height to avoid overlapping other lines.
+    const height = Math.max(1, (Number(item.height) * PREVIEW_SCALE || fontHeight * 1.1));
     const top = y - fontAscent;
 
     spans.push({
@@ -149,6 +158,7 @@ async function buildTextLayerSpans(pdfBytes: Uint8Array, pageNumber: number): Pr
       widthRatio: clamp(width / viewport.width, 0.001, 1),
       heightRatio: clamp(height / viewport.height, 0.001, 1),
       fontSizeRatio: clamp(fontHeight / viewport.height, 0.004, 0.25),
+      fontName: item.fontName,
     });
   }
 
@@ -183,6 +193,7 @@ export default function PdfEditorConfig({
   const [selectedEditId, setSelectedEditId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'preview' | 'details'>('preview');
   const [textLayerSpans, setTextLayerSpans] = useState<TextLayerSpan[]>([]);
+  const [stageHeight, setStageHeight] = useState(0);
 
   const fileId = inputFiles[0] ?? null;
   const hasMultipleFiles = inputFiles.length > 1;
@@ -287,6 +298,26 @@ export default function PdfEditorConfig({
   }, [currentPage, fileId, runtime.vfs, selectTextMode]);
 
   useEffect(() => {
+    const host = previewRef.current;
+    if (!host) {
+      return;
+    }
+
+    const observer = new ResizeObserver((entries) => {
+      const entry = entries[0];
+      if (entry) {
+        const stage = host.querySelector('.pdf-editor-preview-stage');
+        if (stage) {
+          setStageHeight(stage.clientHeight);
+        }
+      }
+    });
+
+    observer.observe(host);
+    return () => observer.disconnect();
+  }, [fileId]);
+
+  useEffect(() => {
     const onPointerMove = (event: PointerEvent) => {
       const drag = dragRef.current;
       const host = previewRef.current;
@@ -340,18 +371,16 @@ export default function PdfEditorConfig({
       return;
     }
 
-    const host = previewRef.current;
-    if (!host) {
-      return;
-    }
+    const stage = host.querySelector('.pdf-editor-preview-stage');
+    if (!stage) return;
 
-    const bounds = host.getBoundingClientRect();
+    const bounds = stage.getBoundingClientRect(); // Use stage bounds!
     if (bounds.width <= 0 || bounds.height <= 0) {
       return;
     }
 
-    const nextX = clamp((event.clientX - bounds.left) / bounds.width - 0.17, 0, 0.66);
-    const nextY = clamp((event.clientY - bounds.top) / bounds.height - 0.045, 0, 0.91);
+    const nextX = clamp((event.clientX - bounds.left) / bounds.width, 0, 1 - 0.2);
+    const nextY = clamp((event.clientY - bounds.top) / bounds.height, 0, 1 - 0.05);
     const next = [...edits, makeDraft(currentPage - 1, nextX, nextY)];
     setEdits(next);
     setSelectedEditId(next[next.length - 1].id);
@@ -399,17 +428,19 @@ export default function PdfEditorConfig({
     yRatio: number;
     widthRatio: number;
     heightRatio: number;
+    fontSizeRatio: number;
+    fontName?: string;
   }) => {
     const text = params.text.trim();
     if (!fileId || text.length === 0) {
       return;
     }
 
-    const widthRatio = clamp(params.widthRatio + 0.02, 0.06, 0.96);
-    const heightRatio = clamp(params.heightRatio + 0.02, 0.04, 0.4);
-    const xRatio = clamp(params.xRatio - 0.01, 0, 1 - widthRatio);
-    const yRatio = clamp(params.yRatio - 0.01, 0, 1 - heightRatio);
-    const fontSizeRatio = clamp(params.heightRatio * 0.9, 0.01, 0.2);
+    const widthRatio = clamp(params.widthRatio, 0.001, 1);
+    const heightRatio = clamp(params.heightRatio, 0.001, 1);
+    const xRatio = clamp(params.xRatio, 0, 1 - widthRatio);
+    const yRatio = clamp(params.yRatio, 0, 1 - heightRatio);
+    const fontSizeRatio = clamp(params.fontSizeRatio, 0.001, 0.2);
 
     const nextEdit: TextEditDraft = {
       id: crypto.randomUUID(),
@@ -422,6 +453,7 @@ export default function PdfEditorConfig({
       fontSizeRatio,
       color: '#1f2937',
       backgroundColor: '#ffffff',
+      fontName: params.fontName || 'Helvetica',
     };
 
     setEdits((current) => [...current, nextEdit]);
@@ -436,6 +468,8 @@ export default function PdfEditorConfig({
       yRatio: span.yRatio,
       widthRatio: span.widthRatio,
       heightRatio: span.heightRatio,
+      fontSizeRatio: span.fontSizeRatio,
+      fontName: span.fontName,
     });
   }, [appendEditFromBounds]);
 
@@ -459,14 +493,16 @@ export default function PdfEditorConfig({
       return;
     }
 
+    const stage = host.querySelector('.pdf-editor-preview-stage');
+    if (!stage) return;
+
     const range = selection.getRangeAt(0);
     const rect = range.getBoundingClientRect();
-    const bounds = host.getBoundingClientRect();
+    const bounds = stage.getBoundingClientRect(); // Use stage bounds!
     if (rect.width <= 0 || rect.height <= 0 || bounds.width <= 0 || bounds.height <= 0) {
       return;
     }
 
-    // Ignore accidental full-layer selections.
     const coverX = rect.width / bounds.width;
     const coverY = rect.height / bounds.height;
     if (coverX > 0.95 || coverY > 0.95) {
@@ -485,6 +521,7 @@ export default function PdfEditorConfig({
       yRatio: rawY,
       widthRatio: rawW,
       heightRatio: rawH,
+      fontSizeRatio: rawH, // 1:1 match by default
     });
     selection.removeAllRanges();
   }, [appendEditFromBounds, fileId, selectTextMode]);
@@ -500,6 +537,7 @@ export default function PdfEditorConfig({
       fontSizeRatio: edit.fontSizeRatio,
       color: edit.color,
       backgroundColor: edit.backgroundColor,
+      fontName: edit.fontName,
     }));
 
     onStart({ edits: payload });
@@ -804,7 +842,8 @@ export default function PdfEditorConfig({
                                 top: `${span.yRatio * 100}%`,
                                 width: `${span.widthRatio * 100}%`,
                                 height: `${span.heightRatio * 100}%`,
-                                fontSize: `${Math.max(8, span.fontSizeRatio * 1000)}%`,
+                                fontSize: `${span.fontSizeRatio * stageHeight}px`,
+                                transform: 'translateY(-5%)', // Slight upward shift to align better with selection glow
                               }}
                               onClick={(event) => {
                                 event.stopPropagation();
@@ -828,7 +867,7 @@ export default function PdfEditorConfig({
                             height: `${edit.heightRatio * 100}%`,
                             color: edit.color,
                             backgroundColor: edit.backgroundColor,
-                            fontSize: `${Math.max(10, edit.fontSizeRatio * 100)}%`,
+                            fontSize: `${edit.fontSizeRatio * stageHeight}px`,
                           }}
                           onPointerDown={(event) => {
                             if (selectTextMode) {
@@ -845,7 +884,17 @@ export default function PdfEditorConfig({
                             };
                           }}
                         >
-                          <span className="pdf-editor-overlay-text">{edit.text || 'Text'}</span>
+                          {edit.id === selectedEditId ? (
+                            <textarea
+                              className="pdf-editor-overlay-input"
+                              value={edit.text}
+                              autoFocus
+                              onChange={(e) => updateSelectedEdit({ text: e.target.value })}
+                              onPointerDown={(e) => e.stopPropagation()}
+                            />
+                          ) : (
+                            <span className="pdf-editor-overlay-text">{edit.text || 'Text'}</span>
+                          )}
                         </div>
                       ))}
 

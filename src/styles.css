@@ -2737,11 +2737,11 @@ textarea:focus-visible {
 
 .pdf-editor-preview-stage {
   position: relative;
-  min-width: 100%;
-  overflow: hidden;
-  border-radius: 10px;
-  border: 1px solid rgba(148, 163, 184, 0.55);
-  background: linear-gradient(180deg, rgba(28, 46, 66, 0.7) 0%, rgba(15, 25, 36, 0.92) 100%);
+  margin: 0 auto;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  background: white;
+  cursor: crosshair;
+  display: block;
 }
 
 .pdf-editor-preview-add {
@@ -2769,29 +2769,44 @@ textarea:focus-visible {
 .pdf-editor-overlay {
   position: absolute;
   border: 1px dashed rgba(15, 23, 42, 0.4);
-  border-radius: 6px;
-  padding: 0.3rem 0.4rem;
+  border-radius: 4px;
+  padding: 0;
   display: flex;
   align-items: flex-start;
   justify-content: flex-start;
-  overflow: hidden;
+  overflow: visible;
   cursor: move;
-  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.2) inset;
-}
-
-.pdf-editor-overlay.selection-disabled {
-  pointer-events: none;
-  opacity: 0.36;
+  background: transparent;
 }
 
 .pdf-editor-overlay.active {
-  border: 2px solid #0f172a;
-  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.65) inset;
+  border: 1px solid var(--accent);
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+  z-index: 10;
+}
+
+.pdf-editor-overlay-input {
+  width: 100%;
+  height: 100%;
+  border: none;
+  background: transparent;
+  padding: 0.1rem 0.2rem;
+  margin: 0;
+  color: inherit;
+  font-family: inherit;
+  font-size: inherit;
+  line-height: 1;
+  outline: none;
+  resize: none;
+  display: block;
 }
 
 .pdf-editor-overlay-text {
+  padding: 0.1rem 0.2rem;
   white-space: pre-wrap;
-  line-height: 1.1;
+  line-height: 1;
+  display: block;
+  pointer-events: none;
 }
 
 .pdf-editor-field {

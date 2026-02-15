@@ -35,6 +35,8 @@ function getToolIcon(toolId: string): Parameters<typeof LinearIcon>[0]['name'] {
       return 'rotate';
     case 'excel-to-pdf':
       return 'excel';
+    case 'pdf-editor':
+      return 'edit';
     default:
       return 'tool';
   }
@@ -64,6 +66,8 @@ function getToolShortLabel(toolId: string): string {
       return 'ROT';
     case 'excel-to-pdf':
       return 'XLS';
+    case 'pdf-editor':
+      return 'EDT';
     default:
       return 'TOOL';
   }
