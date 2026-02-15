@@ -29,7 +29,11 @@ export function ToolRoutes() {
             <Route
               key={toolRoute.toolId}
               path={toolRoute.path}
-              element={toolRoute.toolId === 'ocr-pdf' ? <OcrPdfTestPage /> : <V6WizardShell toolId={toolRoute.toolId} />}
+              element={
+                toolRoute.toolId === 'ocr-pdf'
+                  ? <OcrPdfTestPage />
+                  : <V6WizardShell key={toolRoute.toolId} toolId={toolRoute.toolId} />
+              }
             />
           );
         })}

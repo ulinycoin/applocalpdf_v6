@@ -228,7 +228,7 @@ export function OcrPdfTestPage() {
         </div>
       </div>
 
-      <div className="wizard-config-card animate-fade-in">
+      <div className="wizard-config-card animate-fade-in ocr-test-config-card">
         <Suspense fallback={<p className="wizard-subtitle">Loading OCR concept...</p>}>
           <OcrPdfConfig
             inputFiles={inputIds}

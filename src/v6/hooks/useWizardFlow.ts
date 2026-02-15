@@ -130,6 +130,7 @@ export const DEFAULT_TOOL_CONTEXT: ToolRunContext = {
     'pdf.ocr',
     'pdf.rotate',
     'pdf.delete_pages',
+    'pdf.edit',
     'pdf.to_image',
     'office.convert',
     'pdf.protect.encrypt',

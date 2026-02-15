@@ -138,6 +138,7 @@ const PROCESSING_VERB_BY_TOOL: Record<string, string> = {
   'split-pdf': 'Splitting',
   'rotate-pdf': 'Rotating',
   'delete-pages-pdf': 'Deleting pages',
+  'pdf-editor': 'Applying edits',
   'compress-pdf': 'Compressing',
   'ocr-pdf': 'Scanning',
   'pdf-to-jpg': 'Converting',
@@ -152,6 +153,7 @@ const COMPLETION_BY_TOOL: Record<string, string> = {
   'split-pdf': 'Split complete',
   'rotate-pdf': 'Rotation complete',
   'delete-pages-pdf': 'Delete pages complete',
+  'pdf-editor': 'Edits applied',
   'compress-pdf': 'Compression complete',
   'ocr-pdf': 'OCR complete',
   'pdf-to-jpg': 'Conversion complete',
@@ -254,8 +256,8 @@ export function WizardShell({ toolId, context = DEFAULT_TOOL_CONTEXT, ioAdapter,
   const routeState = (location.state as StudioToolRouteState | null) ?? null;
   const isStudioFlow = routeState?.source === 'studio';
   const routeStudioContext = routeState?.studioContext;
-  const isInlineUploadConfigFlow = toolId === 'word-to-pdf' || toolId === 'excel-to-pdf';
-  const isWordSinglePageFlow = toolId === 'word-to-pdf';
+  const isInlineUploadConfigFlow = toolId === 'word-to-pdf' || toolId === 'excel-to-pdf' || toolId === 'pdf-to-jpg' || toolId === 'pdf-editor';
+  const isWordSinglePageFlow = toolId === 'word-to-pdf' || toolId === 'excel-to-pdf' || toolId === 'pdf-to-jpg' || toolId === 'pdf-editor';
 
   const handleWordFilesPicked = useCallback(
     async (files: File[]): Promise<void> => {
@@ -352,7 +354,7 @@ export function WizardShell({ toolId, context = DEFAULT_TOOL_CONTEXT, ioAdapter,
         <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 wizard-error-banner">{state.error}</div>
       )}
 
-      {!isWordSinglePageFlow && !isSplitLayout && (
+      {!isWordSinglePageFlow && !isSplitLayout && toolId !== 'excel-to-pdf' && toolId !== 'pdf-editor' && (
         <PreviewPanel
           runtime={runtime}
           previews={previews}

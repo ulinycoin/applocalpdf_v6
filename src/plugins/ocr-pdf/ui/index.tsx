@@ -134,9 +134,9 @@ export default function OcrPdfConfig({
   };
 
   return (
-    <div className="tool-config-root ocr-concept-root">
+    <div className="tool-config-root ocr-concept-root ocr-pdf-concept-root">
       <div className="ocr-concept-workspace">
-        <section className="tool-config-card ocr-concept-left">
+        <section className="tool-config-card ocr-concept-left ocr-pdf-concept-left">
           <div
             className={`ocr-concept-upload ${dragging ? 'dragging' : ''} ${onPickFiles ? '' : 'upload-readonly'}`}
             onClick={() => {
@@ -335,6 +335,10 @@ export default function OcrPdfConfig({
               <LinearIcon name="ocr" className="linear-icon icon-md" />
               <h3 className="ocr-concept-empty-title">Ready to process OCR</h3>
               <p className="ocr-concept-empty-copy">Upload a document on the left, configure options, then run OCR.</p>
+              <div className="ocr-pdf-empty-hint">
+                <span className="ocr-pdf-empty-pill">Local runtime only</span>
+                <span className="ocr-pdf-empty-pill">Text + JSON + PDF overlay</span>
+              </div>
             </div>
           )}
 

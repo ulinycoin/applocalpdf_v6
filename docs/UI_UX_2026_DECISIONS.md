@@ -69,3 +69,8 @@ Wizard/button states:
   - `.btn-primary`: blue gradient + blue shadow.
   - `.btn-secondary`, `.btn-ghost`: glass variants with blue hover border and readable text.
   - Disabled buttons use muted contrast and no glow/shadow.
+
+## 7) Tool UI Standard Pattern (2026-02-15)
+- Canonical reference for all tool screens: `docs/WORD_TO_PDF_UI_INTERFACE_SPEC.md`.
+- Baseline reference implementation: `word-to-pdf` layout and interaction pattern.
+- New tools should follow this pattern by default unless a tool has explicit domain-specific UX constraints.
