@@ -6,6 +6,102 @@ import { defaultFilePreviewService } from '../../preview/preview-service';
 import { useStudioStore, type PageItem, type StudioDocument, type StudioState } from './studio-store';
 import { LinearIcon } from '../icons/linear-icon';
 
+interface TextLayerSpan {
+  id: string;
+  text: string;
+  xRatio: number;
+  yRatio: number;
+  widthRatio: number;
+  heightRatio: number;
+  fontSizeRatio: number;
+  fontName?: string;
+}
+
+interface PdfJsLike {
+  getDocument(params: { data: Uint8Array; disableWorker: boolean; verbosity?: number }): { promise: Promise<any> };
+  GlobalWorkerOptions?: { workerSrc?: string };
+  VerbosityLevel?: { ERRORS?: number };
+  Util?: {
+    transform: (m1: number[], m2: number[]) => number[];
+  };
+}
+
+let pdfJsPromise: Promise<PdfJsLike | null> | null = null;
+
+async function loadPdfJs(): Promise<PdfJsLike | null> {
+  if (!pdfJsPromise) {
+    pdfJsPromise = (async () => {
+      try {
+        const pdfjs = (await import('pdfjs-dist/legacy/build/pdf.mjs')) as unknown as PdfJsLike;
+        if (pdfjs.GlobalWorkerOptions && !pdfjs.GlobalWorkerOptions.workerSrc) {
+          const workerSrcMod = (await import('pdfjs-dist/legacy/build/pdf.worker.min.mjs?url')) as { default?: string };
+          if (workerSrcMod.default) {
+            pdfjs.GlobalWorkerOptions.workerSrc = workerSrcMod.default;
+          }
+        }
+        return pdfjs;
+      } catch {
+        return null;
+      }
+    })();
+  }
+  return pdfJsPromise;
+}
+
+async function buildTextLayerSpans(pdfBytes: Uint8Array, pageNumber: number): Promise<TextLayerSpan[]> {
+  const pdfjs = await loadPdfJs();
+  if (!pdfjs || !pdfjs.Util?.transform) {
+    return [];
+  }
+
+  const loadingTask = pdfjs.getDocument({
+    data: pdfBytes,
+    disableWorker: true,
+    verbosity: pdfjs.VerbosityLevel?.ERRORS ?? 0,
+  });
+  const pdf = await loadingTask.promise;
+  const page = await pdf.getPage(pageNumber);
+  const viewport = page.getViewport({ scale: 2.0 });
+  const textContent = await page.getTextContent();
+  const textStyles = textContent.styles as Record<string, { ascent?: number; descent?: number }>;
+
+  const spans: TextLayerSpan[] = [];
+  for (let i = 0; i < textContent.items.length; i += 1) {
+    const item = textContent.items[i] as any;
+    if (!item || typeof item.str !== 'string' || item.str.trim().length === 0 || !Array.isArray(item.transform)) {
+      continue;
+    }
+
+    const tx = pdfjs.Util.transform(viewport.transform, item.transform);
+    const x = tx[4];
+    const y = tx[5];
+    const fontHeight = Math.hypot(tx[2], tx[3]) || (Number(item.height) * 2.0) || 8;
+    const style = textStyles[item.fontName];
+    let fontAscent = fontHeight;
+    if (style?.ascent) {
+      fontAscent = style.ascent * fontHeight;
+    }
+
+    const estimatedWidth = fontHeight * item.str.length * 0.46;
+    const width = Math.max(1, (Number(item.width) * 2.0 || estimatedWidth));
+    const height = Math.max(1, (Number(item.height) * 2.0 || fontHeight * 1.1));
+    const top = y - fontAscent;
+
+    spans.push({
+      id: `span-${i}-${item.str.length}`,
+      text: item.str,
+      xRatio: clamp01(x / viewport.width),
+      yRatio: clamp01(top / viewport.height),
+      widthRatio: clamp01(width / viewport.width),
+      heightRatio: clamp01(height / viewport.height),
+      fontSizeRatio: clamp(fontHeight / viewport.height, 0.004, 0.25),
+      fontName: item.fontName,
+    });
+  }
+
+  return spans;
+}
+
 type EditorToolId = 'text' | 'annotate' | 'whiteout' | 'shapes';
 type FontFamilyId = 'sora' | 'times' | 'mono';
 type TextAlignId = 'left' | 'center' | 'right';
@@ -263,6 +359,107 @@ function resizeStrokePoints(
   return out;
 }
 
+interface StudioFloatingMenuProps {
+  element: EditElement;
+  onUpdate: (patch: Partial<EditElement>) => void;
+  onDelete: () => void;
+  onDuplicate: () => void;
+  onClose: () => void;
+}
+
+function StudioFloatingMenu({ element, onUpdate, onDelete, onDuplicate, onClose }: StudioFloatingMenuProps) {
+  if (element.type !== 'text') {
+    return (
+      <div className="studio-floating-menu non-text">
+        <button type="button" className="studio-floating-btn" onClick={onDuplicate} title="Duplicate">
+          <LinearIcon name="word" />
+        </button>
+        <button type="button" className="studio-floating-btn delete" onClick={onDelete} title="Delete">
+          <LinearIcon name="x" />
+        </button>
+      </div>
+    );
+  }
+
+  const textElem = element as TextElement;
+
+  return (
+    <div className="studio-floating-menu">
+      <div className="studio-floating-group">
+        <button
+          type="button"
+          className={`studio-floating-btn ${textElem.fontWeight === 'bold' ? 'active' : ''}`}
+          onClick={() => onUpdate({ fontWeight: textElem.fontWeight === 'bold' ? 'normal' : 'bold' })}
+          title="Bold"
+        >
+          <span className="font-icon-b">B</span>
+        </button>
+        <button
+          type="button"
+          className={`studio-floating-btn ${textElem.fontStyle === 'italic' ? 'active' : ''}`}
+          onClick={() => onUpdate({ fontStyle: textElem.fontStyle === 'italic' ? 'normal' : 'italic' })}
+          title="Italic"
+        >
+          <span className="font-icon-i">I</span>
+        </button>
+      </div>
+
+      <div className="studio-floating-divider" />
+
+      <div className="studio-floating-group">
+        <select
+          className="studio-floating-select font-family"
+          value={textElem.fontFamily}
+          onChange={(e) => onUpdate({ fontFamily: e.target.value as FontFamilyId })}
+        >
+          <option value="sora">Sora</option>
+          <option value="times">Times</option>
+          <option value="mono">Mono</option>
+        </select>
+        <input
+          type="number"
+          className="studio-floating-input font-size"
+          value={textElem.fontSize}
+          min={8}
+          max={96}
+          onChange={(e) => onUpdate({ fontSize: clamp(Number(e.target.value) || 16, 8, 96) })}
+        />
+      </div>
+
+      <div className="studio-floating-divider" />
+
+      <div className="studio-floating-group">
+        <input
+          type="color"
+          className="studio-floating-color"
+          value={textElem.color}
+          onChange={(e) => onUpdate({ color: e.target.value })}
+        />
+        <select
+          className="studio-floating-select"
+          value={textElem.textAlign}
+          onChange={(e) => onUpdate({ textAlign: e.target.value as TextAlignId })}
+        >
+          <option value="left">Left</option>
+          <option value="center">Center</option>
+          <option value="right">Right</option>
+        </select>
+      </div>
+
+      <div className="studio-floating-divider" />
+
+      <div className="studio-floating-group">
+        <button type="button" className="studio-floating-btn" onClick={onDuplicate} title="Duplicate">
+          <LinearIcon name="word" />
+        </button>
+        <button type="button" className="studio-floating-btn delete" onClick={onDelete} title="Delete">
+          <LinearIcon name="x" />
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export function StudioEditWorkspace() {
   const navigate = useNavigate();
   const { runtime } = usePlatform();
@@ -286,6 +483,8 @@ export function StudioEditWorkspace() {
   const [message, setMessage] = useState<string | null>(null);
   const [isApplying, setIsApplying] = useState(false);
   const [textEditor, setTextEditor] = useState<TextEditorState | null>(null);
+  const [textLayerSpans, setTextLayerSpans] = useState<TextLayerSpan[]>([]);
+  const [isSelectMode, setIsSelectMode] = useState(false);
 
   const selectedPages = useMemo(() => buildSelectedPages(documents, selection), [documents, selection]);
   const activeDocument = useMemo(
@@ -331,7 +530,22 @@ export function StudioEditWorkspace() {
     setDraftRect(null);
     setDraftStroke(null);
     setTextEditor(null);
-  }, [preview?.page.id]);
+    setTextLayerSpans([]);
+
+    if (preview) {
+      void (async () => {
+        try {
+          const entry = await runtime.vfs.read(preview.page.fileId);
+          const blob = await entry.getBlob();
+          const bytes = new Uint8Array(await blob.arrayBuffer());
+          const spans = await buildTextLayerSpans(bytes, preview.page.pageIndex + 1);
+          setTextLayerSpans(spans);
+        } catch (error) {
+          console.error('Failed to load text layer:', error);
+        }
+      })();
+    }
+  }, [preview?.page.id, runtime.vfs]);
 
   const pushHistory = useCallback((next: EditElement[]) => {
     setHistory((prev) => {
@@ -538,6 +752,111 @@ export function StudioEditWorkspace() {
       if (textEditor) {
         commitTextEditor();
       }
+
+      if (isSelectMode) {
+        // Find if we clicked on a text span
+        const clickedSpan = textLayerSpans.find(span =>
+          point.x >= span.xRatio && point.x <= span.xRatio + span.widthRatio &&
+          point.y >= span.yRatio && point.y <= span.yRatio + span.heightRatio
+        );
+
+        if (clickedSpan) {
+          // Merge spans into a line (logic from pdf-editor)
+          const lineThreshold = Math.max(0.0025, clickedSpan.heightRatio * 0.55);
+          const lineSpans = textLayerSpans
+            .filter((candidate) => (
+              Math.abs(candidate.yRatio - clickedSpan.yRatio) <= lineThreshold ||
+              Math.abs((candidate.yRatio + candidate.heightRatio) - (clickedSpan.yRatio + clickedSpan.heightRatio)) <= lineThreshold
+            ))
+            .sort((a, b) => a.xRatio - b.xRatio);
+
+          if (lineSpans.length > 0) {
+            const left = Math.min(...lineSpans.map((s) => s.xRatio));
+            const top = Math.min(...lineSpans.map((s) => s.yRatio));
+            const right = Math.max(...lineSpans.map((s) => s.xRatio + s.widthRatio));
+            const bottom = Math.max(...lineSpans.map((s) => s.yRatio + s.heightRatio));
+            const width = right - left;
+            const height = bottom - top;
+
+            let mergedText = '';
+            for (let i = 0; i < lineSpans.length; i += 1) {
+              const current = lineSpans[i];
+              if (i > 0) {
+                const prev = lineSpans[i - 1];
+                const gap = current.xRatio - (prev.xRatio + prev.widthRatio);
+                if (gap > Math.max(0.0015, current.heightRatio * 0.2) && !mergedText.endsWith(' ') && !current.text.startsWith(' ')) {
+                  mergedText += ' ';
+                }
+              }
+              mergedText += current.text;
+            }
+            mergedText = mergedText.replace(/\s+/g, ' ').trim();
+
+            if (!mergedText) return;
+
+            // Check if we already have an element for this line
+            const existing = elements.find(el =>
+              el.type === 'text' &&
+              Math.abs(el.x - left) < 0.005 &&
+              Math.abs(el.y - top) < 0.005
+            );
+
+            if (existing) {
+              setSelectedElementId(existing.id);
+              startEditingText(existing as TextElement);
+              return;
+            }
+
+            const whiteout: RectElement = {
+              id: crypto.randomUUID(),
+              type: 'rect',
+              x: left - 0.001,
+              y: top - 0.001,
+              w: width + 0.002,
+              h: height + 0.002,
+              fill: '#ffffff',
+              stroke: 'transparent',
+              strokeWidth: 0,
+              opacity: 1,
+            };
+
+            // Font detection logic
+            let fontFamily: FontFamilyId = 'sora';
+            if (clickedSpan.fontName) {
+              const lowerName = clickedSpan.fontName.toLowerCase();
+              if (lowerName.includes('serif') || lowerName.includes('times')) {
+                fontFamily = 'times';
+              } else if (lowerName.includes('mono') || lowerName.includes('courier')) {
+                fontFamily = 'mono';
+              }
+            }
+
+            const next: TextElement = {
+              id: crypto.randomUUID(),
+              type: 'text',
+              x: left,
+              y: top - 0.0005, // Subtle upward shift for baseline alignment
+              w: width + 0.02,
+              h: height + 0.005,
+              text: mergedText,
+              color: '#000000',
+              fontSize: Math.round(clickedSpan.fontSizeRatio * 842 * 0.98), // Refined scale
+              fontFamily,
+              fontWeight: 'normal',
+              fontStyle: 'normal',
+              textAlign: 'left',
+              opacity: 1,
+            };
+            console.log('E2E_DEBUG: whiteout_rect', whiteout);
+            console.log('E2E_DEBUG: text_element', next);
+            applyElements([...elements, whiteout, next]);
+            setSelectedElementId(next.id);
+            startEditingText(next);
+            return;
+          }
+        }
+      }
+
       const next: TextElement = {
         id: crypto.randomUUID(),
         type: 'text',
@@ -926,29 +1245,38 @@ export function StudioEditWorkspace() {
   return (
     <section className="studio-edit-shell">
       <header className="studio-edit-toolbar" aria-label="Edit tools">
-        <button type="button" className={`studio-edit-tool-btn ${tool === 'text' ? 'active' : ''}`} onClick={() => setTool('text')}>
-          <LinearIcon name="word" className="linear-icon" /><span>Text</span>
+        <button
+          type="button"
+          className={`studio-edit-tool-btn ${tool === 'text' ? 'active' : ''} ${isSelectMode ? 'select-mode' : ''}`}
+          onClick={() => {
+            setTool('text');
+            if (tool === 'text') setIsSelectMode(!isSelectMode);
+          }}
+          title={isSelectMode ? "Switch to Manual Mode" : "Switch to Select Text Mode"}
+        >
+          <LinearIcon name="word" className="linear-icon" />
+          <span>{isSelectMode ? 'Select Text' : 'Text'}</span>
         </button>
-        <button type="button" className="studio-edit-tool-btn" disabled title="Coming soon">
-          <LinearIcon name="tool" className="linear-icon" /><span>Links</span>
+        <button type="button" className="studio-edit-tool-btn" title="Coming soon">
+          <LinearIcon name="merge" className="linear-icon" /><span>Links</span>
         </button>
-        <button type="button" className="studio-edit-tool-btn" disabled title="Coming soon">
-          <LinearIcon name="tool" className="linear-icon" /><span>Forms</span>
+        <button type="button" className="studio-edit-tool-btn" title="Coming soon">
+          <LinearIcon name="split" className="linear-icon" /><span>Forms</span>
         </button>
-        <button type="button" className="studio-edit-tool-btn" disabled title="Coming soon">
+        <button type="button" className="studio-edit-tool-btn" title="Coming soon">
           <LinearIcon name="image" className="linear-icon" /><span>Images</span>
         </button>
-        <button type="button" className="studio-edit-tool-btn" disabled title="Coming soon">
-          <LinearIcon name="tool" className="linear-icon" /><span>Sign</span>
+        <button type="button" className="studio-edit-tool-btn" title="Coming soon">
+          <LinearIcon name="lock" className="linear-icon" /><span>Sign</span>
         </button>
-        <button type="button" className={`studio-edit-tool-btn ${tool === 'whiteout' ? 'active' : ''}`} onClick={() => setTool('whiteout')}>
+        <button type="button" className={`studio-edit-tool-btn ${tool === 'whiteout' ? 'active' : ''}`} onClick={() => { setTool('whiteout'); setIsSelectMode(false); }}>
           <LinearIcon name="delete-pages" className="linear-icon" /><span>Whiteout</span>
         </button>
-        <button type="button" className={`studio-edit-tool-btn ${tool === 'annotate' ? 'active' : ''}`} onClick={() => setTool('annotate')}>
+        <button type="button" className={`studio-edit-tool-btn ${tool === 'annotate' ? 'active' : ''}`} onClick={() => { setTool('annotate'); setIsSelectMode(false); }}>
           <LinearIcon name="tool" className="linear-icon" /><span>Annotate</span>
         </button>
-        <button type="button" className={`studio-edit-tool-btn ${tool === 'shapes' ? 'active' : ''}`} onClick={() => setTool('shapes')}>
-          <LinearIcon name="tool" className="linear-icon" /><span>Shapes</span>
+        <button type="button" className={`studio-edit-tool-btn ${tool === 'shapes' ? 'active' : ''}`} onClick={() => { setTool('shapes'); setIsSelectMode(false); }}>
+          <LinearIcon name="rotate" className="linear-icon" /><span>Shapes</span>
         </button>
         <button type="button" className="studio-edit-tool-btn" onClick={undo} disabled={historyIndex <= 0}>
           <LinearIcon name="chevron-left" className="linear-icon" /><span>Undo</span>
@@ -967,242 +1295,219 @@ export function StudioEditWorkspace() {
         </button>
       </header>
 
-      {selectedText && (
-        <div className="studio-text-style-panel" aria-label="Text styles">
-          <label className="studio-text-style-field">
-            <span>Font</span>
-            <select value={selectedText.fontFamily} onChange={(event) => updateSelectedText({ fontFamily: event.target.value as FontFamilyId })}>
-              <option value="sora">Sora</option>
-              <option value="times">Times</option>
-              <option value="mono">Mono</option>
-            </select>
-          </label>
-          <label className="studio-text-style-field">
-            <span>Size</span>
-            <input
-              type="number"
-              min={8}
-              max={96}
-              value={selectedText.fontSize}
-              onChange={(event) => updateSelectedText({ fontSize: clamp(Number(event.target.value) || 16, 8, 96) })}
-            />
-          </label>
-          <label className="studio-text-style-field">
-            <span>Color</span>
-            <input type="color" value={selectedText.color} onChange={(event) => updateSelectedText({ color: event.target.value })} />
-          </label>
-          <label className="studio-text-style-field">
-            <span>Align</span>
-            <select value={selectedText.textAlign} onChange={(event) => updateSelectedText({ textAlign: event.target.value as TextAlignId })}>
-              <option value="left">Left</option>
-              <option value="center">Center</option>
-              <option value="right">Right</option>
-            </select>
-          </label>
-          <button
-            type="button"
-            className={`studio-text-style-toggle ${selectedText.fontWeight === 'bold' ? 'active' : ''}`}
-            onClick={() => updateSelectedText({ fontWeight: selectedText.fontWeight === 'bold' ? 'normal' : 'bold' })}
-          >
-            Bold
-          </button>
-          <button
-            type="button"
-            className={`studio-text-style-toggle ${selectedText.fontStyle === 'italic' ? 'active' : ''}`}
-            onClick={() => updateSelectedText({ fontStyle: selectedText.fontStyle === 'italic' ? 'normal' : 'italic' })}
-          >
-            Italic
-          </button>
-          <label className="studio-text-style-field studio-text-style-opacity">
-            <span>Opacity</span>
-            <input
-              type="range"
-              min={20}
-              max={100}
-              value={Math.round(selectedText.opacity * 100)}
-              onChange={(event) => updateSelectedText({ opacity: Number(event.target.value) / 100 })}
-            />
-          </label>
-        </div>
-      )}
-
       <div className="studio-edit-meta">
         <span className="studio-edit-page-badge">Page {preview.indexInDoc + 1}</span>
         <span className="studio-edit-page-badge">{preview.docName}</span>
         <span className="studio-edit-page-badge">Selection: {selectedPages.length || 1}</span>
         {message && <span className="studio-edit-page-badge studio-edit-message">{message}</span>}
+        {selectedElement && (
+          <span className="studio-edit-page-badge debugging" style={{ background: '#f59e0b', color: '#000' }}>
+            DEBUG: x={selectedElement.x.toFixed(4)} y={selectedElement.y.toFixed(4)} w={('w' in selectedElement ? (selectedElement.w as number).toFixed(4) : '0')}
+          </span>
+        )}
       </div>
 
       <div className="studio-edit-canvas">
         <div
           ref={canvasRef}
           className="studio-edit-page-sheet"
-          onPointerDown={onPointerDown}
           onPointerMove={onPointerMove}
           onPointerUp={onPointerUp}
           onPointerLeave={onPointerUp}
         >
-          <img
-            ref={imageRef}
-            src={preview.page.thumbnailUrl}
-            alt={`Document page ${preview.indexInDoc + 1}`}
-            className="studio-edit-preview-image"
-            draggable={false}
-          />
+          <div className="studio-edit-canvas-content" onPointerDown={onPointerDown}>
+            <img
+              ref={imageRef}
+              src={preview.page.thumbnailUrl}
+              alt={`Document page ${preview.indexInDoc + 1}`}
+              className="studio-edit-preview-image"
+              draggable={false}
+            />
 
-          <svg className="studio-edit-overlay" viewBox="0 0 1000 1000" preserveAspectRatio="none">
-            {elements.filter((item): item is StrokeElement => item.type === 'stroke').map((stroke) => (
-              <polyline
-                key={stroke.id}
-                points={stroke.points.map((value, index) => {
-                  const scaled = value * 1000;
-                  return index % 2 === 0 ? `${scaled},` : `${scaled}`;
-                }).join(' ')}
-                fill="none"
-                stroke={stroke.color}
-                opacity={stroke.opacity}
-                strokeWidth={stroke.width * 3}
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                onPointerDown={(event) => {
-                  beginMoveStroke(event, stroke);
-                }}
-              />
-            ))}
-            {draftStroke && draftStroke.points.length >= 4 && (
-              <polyline
-                points={draftStroke.points.map((value, index) => {
-                  const scaled = value * 1000;
-                  return index % 2 === 0 ? `${scaled},` : `${scaled}`;
-                }).join(' ')}
-                fill="none"
-                stroke="#2563eb"
-                strokeWidth={6}
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            )}
-          </svg>
+            {isSelectMode && textLayerSpans
+              .filter(span => !elements.some(el => el.type === 'text' && Math.abs(el.x - span.xRatio) < 0.001)) // Прячем подсветку, если уже есть элемент
+              .map(span => (
+                <div
+                  key={span.id}
+                  className="studio-edit-text-highlight"
+                  style={{
+                    left: `${span.xRatio * 100}%`,
+                    top: `${span.yRatio * 100}%`,
+                    width: `${span.widthRatio * 100}%`,
+                    height: `${span.heightRatio * 100}%`,
+                  }}
+                />
+              ))}
 
-          {elements.filter((item): item is RectElement => item.type === 'rect').map((rect) => (
-            <div
-              key={rect.id}
-              className={`studio-edit-rect ${selectedElementId === rect.id ? 'active' : ''}`}
-              style={{
-                left: `${rect.x * 100}%`,
-                top: `${rect.y * 100}%`,
-                width: `${rect.w * 100}%`,
-                height: `${rect.h * 100}%`,
-                background: rect.fill,
-                border: `${rect.strokeWidth}px solid ${rect.stroke}`,
-                opacity: rect.opacity,
-              }}
-              onPointerDown={(event) => beginMoveRect(event, rect)}
-            >
-              {selectedElementId === rect.id && (
-                <button
-                  type="button"
-                  className="studio-edit-text-resize"
-                  onPointerDown={(event) => beginResizeRect(event, rect)}
-                  aria-label="Resize rectangle"
+            <svg className="studio-edit-overlay" viewBox="0 0 1000 1000" preserveAspectRatio="none">
+              {elements.filter((item): item is StrokeElement => item.type === 'stroke').map((stroke) => (
+                <polyline
+                  key={stroke.id}
+                  points={stroke.points.map((value, index) => {
+                    const scaled = value * 1000;
+                    return index % 2 === 0 ? `${scaled},` : `${scaled}`;
+                  }).join(' ')}
+                  fill="none"
+                  stroke={stroke.color}
+                  opacity={stroke.opacity}
+                  strokeWidth={stroke.width * 3}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  onPointerDown={(event) => {
+                    beginMoveStroke(event, stroke);
+                  }}
+                />
+              ))}
+              {draftStroke && draftStroke.points.length >= 4 && (
+                <polyline
+                  points={draftStroke.points.map((value, index) => {
+                    const scaled = value * 1000;
+                    return index % 2 === 0 ? `${scaled},` : `${scaled}`;
+                  }).join(' ')}
+                  fill="none"
+                  stroke="#2563eb"
+                  strokeWidth={6}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
                 />
               )}
-            </div>
-          ))}
+            </svg>
 
-          {draftRect && (
-            <div
-              className="studio-edit-rect"
-              style={{
-                left: `${draftRect.x * 100}%`,
-                top: `${draftRect.y * 100}%`,
-                width: `${draftRect.w * 100}%`,
-                height: `${draftRect.h * 100}%`,
-                background: tool === 'whiteout' ? '#ffffff' : 'transparent',
-                border: `2px solid ${tool === 'whiteout' ? '#d1d5db' : '#2563eb'}`,
-              }}
-            />
-          )}
-
-          {elements.filter((item): item is TextElement => item.type === 'text').map((text) => {
-            const isEditing = textEditor?.id === text.id;
-            return (
+            {elements.filter((item): item is RectElement => item.type === 'rect').map((rect) => (
               <div
-                key={text.id}
-                className={`studio-edit-text ${selectedElementId === text.id ? 'active' : ''}`}
+                key={rect.id}
+                className={`studio-edit-rect ${selectedElementId === rect.id ? 'active' : ''}`}
                 style={{
-                  left: `${text.x * 100}%`,
-                  top: `${text.y * 100}%`,
-                  width: `${text.w * 100}%`,
-                  minHeight: `${text.h * 100}%`,
-                  color: text.color,
-                  fontSize: `${text.fontSize}px`,
-                  fontFamily: text.fontFamily === 'times' ? 'Times New Roman, serif' : text.fontFamily === 'mono' ? 'JetBrains Mono, monospace' : 'Sora, sans-serif',
-                  fontWeight: text.fontWeight,
-                  fontStyle: text.fontStyle,
-                  textAlign: text.textAlign,
-                  opacity: text.opacity,
+                  left: `${rect.x * 100}%`,
+                  top: `${rect.y * 100}%`,
+                  width: `${rect.w * 100}%`,
+                  height: `${rect.h * 100}%`,
+                  background: rect.fill,
+                  border: `${rect.strokeWidth}px solid ${rect.stroke}`,
+                  opacity: rect.opacity,
                 }}
-                onPointerDown={(event) => handleTextPointerDown(event, text)}
-                onPointerUp={(event) => handleTextPointerUp(event, text)}
+                onPointerDown={(event) => beginMoveRect(event, rect)}
               >
-                {isEditing ? (
-                  <textarea
-                    value={textEditor.value}
-                    onChange={(event) => handleTextEditorChange(text.id, event.target.value)}
-                    onBlur={commitTextEditor}
-                    onKeyDown={(event) => {
-                      if (event.key === 'Escape') {
-                        setElements((prev) => prev.map((item) => {
-                          if (item.id !== text.id || item.type !== 'text') {
-                            return item;
-                          }
-                          return { ...item, text: textEditor.initialValue };
-                        }));
-                        setTextEditor(null);
-                      }
-                      if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
-                        event.preventDefault();
-                        commitTextEditor();
-                      }
-                    }}
-                    autoFocus
-                    className="studio-edit-textarea"
-                  />
-                ) : (
-                  <span className="studio-edit-text-content">{text.text}</span>
-                )}
-                {selectedElementId === text.id && !isEditing && (
+                {selectedElementId === rect.id && (
                   <button
                     type="button"
                     className="studio-edit-text-resize"
-                    onPointerDown={(event) => beginResizeText(event, text)}
-                    aria-label="Resize text box"
+                    onPointerDown={(event) => beginResizeRect(event, rect)}
+                    aria-label="Resize rectangle"
                   />
                 )}
               </div>
-            );
-          })}
+            ))}
 
-          {selectedStroke && selectedStrokeBounds && (
-            <div
-              className="studio-edit-stroke-box"
-              style={{
-                left: `${selectedStrokeBounds.minX * 100}%`,
-                top: `${selectedStrokeBounds.minY * 100}%`,
-                width: `${Math.max(0.2, (selectedStrokeBounds.maxX - selectedStrokeBounds.minX) * 100)}%`,
-                height: `${Math.max(0.2, (selectedStrokeBounds.maxY - selectedStrokeBounds.minY) * 100)}%`,
-              }}
-              onPointerDown={(event) => beginMoveStroke(event, selectedStroke)}
-            >
-              <button
-                type="button"
-                className="studio-edit-text-resize"
-                onPointerDown={(event) => beginResizeStroke(event, selectedStroke)}
-                aria-label="Resize stroke"
+            {draftRect && (
+              <div
+                className="studio-edit-rect"
+                style={{
+                  left: `${draftRect.x * 100}%`,
+                  top: `${draftRect.y * 100}%`,
+                  width: `${draftRect.w * 100}%`,
+                  height: `${draftRect.h * 100}%`,
+                  background: tool === 'whiteout' ? '#ffffff' : 'transparent',
+                  border: `2px solid ${tool === 'whiteout' ? '#d1d5db' : '#2563eb'}`,
+                }}
               />
-            </div>
-          )}
+            )}
+
+            {elements.filter((item): item is TextElement => item.type === 'text').map((text) => {
+              const isEditing = textEditor?.id === text.id;
+              return (
+                <div
+                  key={text.id}
+                  className={`studio-edit-text ${selectedElementId === text.id ? 'active' : ''}`}
+                  style={{
+                    left: `${text.x * 100}%`,
+                    top: `${text.y * 100}%`,
+                    width: `${text.w * 100}%`,
+                    height: `${text.h * 100}%`,
+                    color: text.color,
+                    fontSize: `${text.fontSize}px`,
+                    fontFamily: text.fontFamily === 'times' ? 'Times New Roman, serif' : text.fontFamily === 'mono' ? 'JetBrains Mono, monospace' : 'Sora, sans-serif',
+                    fontWeight: text.fontWeight,
+                    fontStyle: text.fontStyle,
+                    textAlign: text.textAlign,
+                    opacity: text.opacity,
+                  }}
+                  onPointerDown={(event) => handleTextPointerDown(event, text)}
+                  onPointerUp={(event) => handleTextPointerUp(event, text)}
+                >
+                  {isEditing ? (
+                    <textarea
+                      value={textEditor.value}
+                      onChange={(event) => handleTextEditorChange(text.id, event.target.value)}
+                      onBlur={commitTextEditor}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Escape') {
+                          setElements((prev) => prev.map((item) => {
+                            if (item.id !== text.id || item.type !== 'text') {
+                              return item;
+                            }
+                            return { ...item, text: textEditor.initialValue };
+                          }));
+                          setTextEditor(null);
+                        }
+                        if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
+                          event.preventDefault();
+                          commitTextEditor();
+                        }
+                      }}
+                      autoFocus
+                      className="studio-edit-textarea"
+                    />
+                  ) : (
+                    <span className="studio-edit-text-content">{text.text}</span>
+                  )}
+                  {selectedElementId === text.id && (
+                    <div className="studio-edit-element-controls">
+                      <StudioFloatingMenu
+                        element={text}
+                        onUpdate={(patch) => updateSelectedText(patch as Partial<TextElement>)}
+                        onDelete={deleteSelected}
+                        onDuplicate={() => {
+                          const dup: TextElement = { ...text, id: crypto.randomUUID(), x: text.x + 0.02, y: text.y + 0.02 };
+                          applyElements([...elements, dup]);
+                          setSelectedElementId(dup.id);
+                        }}
+                        onClose={() => setSelectedElementId(null)}
+                      />
+                      {!isEditing && (
+                        <button
+                          type="button"
+                          className="studio-edit-text-resize"
+                          onPointerDown={(event) => beginResizeText(event, text)}
+                          aria-label="Resize text box"
+                        />
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+
+            {selectedStroke && selectedStrokeBounds && (
+              <div
+                className="studio-edit-stroke-box"
+                style={{
+                  left: `${selectedStrokeBounds.minX * 100}%`,
+                  top: `${selectedStrokeBounds.minY * 100}%`,
+                  width: `${Math.max(0.2, (selectedStrokeBounds.maxX - selectedStrokeBounds.minX) * 100)}%`,
+                  height: `${Math.max(0.2, (selectedStrokeBounds.maxY - selectedStrokeBounds.minY) * 100)}%`,
+                }}
+                onPointerDown={(event) => beginMoveStroke(event, selectedStroke)}
+              >
+                <button
+                  type="button"
+                  className="studio-edit-text-resize"
+                  onPointerDown={(event) => beginResizeStroke(event, selectedStroke)}
+                  aria-label="Resize stroke"
+                />
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </section>
