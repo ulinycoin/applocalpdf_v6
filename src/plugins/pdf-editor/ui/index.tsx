@@ -19,14 +19,26 @@ interface TextEditDraft {
   id: string;
   pageIndex: number;
   text: string;
-  xRatio: number;
-  yRatio: number;
+  xRatio: number; // Percentage 0-100
+  yRatio: number; // Percentage 0-100
   widthRatio: number;
   heightRatio: number;
-  fontSizeRatio: number;
+  fontSize: number;
+  fontFamily: string;
   color: string;
   backgroundColor: string;
-  fontName?: string;
+  bold: boolean;
+  italic: boolean;
+  opacity: number;
+  rotation: number;
+  textAlign: 'left' | 'center' | 'right';
+  horizontalScaling: number;
+  originalRect?: {
+    x: number;
+    y: number;
+    w: number;
+    h: number;
+  };
 }
 
 interface DragState {
@@ -69,18 +81,25 @@ function clamp(value: number, min: number, max: number): number {
 }
 
 function makeDraft(pageIndex: number, xRatio: number, yRatio: number): TextEditDraft {
+  const hRatio = 5;
   return {
     id: crypto.randomUUID(),
     pageIndex,
     text: 'New text',
-    xRatio,
-    yRatio,
-    widthRatio: 0.34,
-    heightRatio: 0.09,
-    fontSizeRatio: 0.035,
-    color: '#1f2937',
+    xRatio: clamp(xRatio, 0, 95),
+    yRatio: clamp(yRatio - hRatio / 2, 0, 95),
+    widthRatio: 30,
+    heightRatio: hRatio,
+    fontSize: 14,
+    fontFamily: 'Roboto',
+    color: '#000000',
     backgroundColor: '#ffffff',
-    fontName: 'Helvetica',
+    bold: false,
+    italic: false,
+    opacity: 100,
+    rotation: 0,
+    textAlign: 'left',
+    horizontalScaling: 1.0,
   };
 }
 
@@ -190,6 +209,8 @@ export default function PdfEditorConfig({
   const [selectTextMode, setSelectTextMode] = useState(false);
   const [previewZoom, setPreviewZoom] = useState(1);
   const [edits, setEdits] = useState<TextEditDraft[]>([]);
+  const [history, setHistory] = useState<TextEditDraft[][]>([[]]);
+  const [historyIndex, setHistoryIndex] = useState(0);
   const [selectedEditId, setSelectedEditId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'preview' | 'details'>('preview');
   const [textLayerSpans, setTextLayerSpans] = useState<TextLayerSpan[]>([]);
@@ -217,6 +238,31 @@ export default function PdfEditorConfig({
       setSelectedEditId(next[0]?.id ?? null);
     }
   }, [selectedEditId]);
+
+  const saveToHistory = useCallback((elements: TextEditDraft[]) => {
+    setHistory((prev) => {
+      const next = prev.slice(0, historyIndex + 1);
+      next.push([...elements]);
+      return next;
+    });
+    setHistoryIndex((prev) => prev + 1);
+  }, [historyIndex]);
+
+  const undo = useCallback(() => {
+    if (historyIndex > 0) {
+      const newIndex = historyIndex - 1;
+      setHistoryIndex(newIndex);
+      setEdits([...history[newIndex]]);
+    }
+  }, [history, historyIndex]);
+
+  const redo = useCallback(() => {
+    if (historyIndex < history.length - 1) {
+      const newIndex = historyIndex + 1;
+      setHistoryIndex(newIndex);
+      setEdits([...history[newIndex]]);
+    }
+  }, [history, historyIndex]);
 
   useEffect(() => {
     if (inputFiles.length === 0) {
@@ -268,94 +314,194 @@ export default function PdfEditorConfig({
     };
   }, [currentPage, fileId, runtime]);
 
-  useEffect(() => {
-    let cancelled = false;
+  const detectTextAt = useCallback(async (pdfBytes: Uint8Array, pageNumber: number, xPercent: number, yPercent: number) => {
+    const pdfjsBase = await loadPdfJs();
+    if (!pdfjsBase) return null;
 
-    if (!fileId || !selectTextMode) {
-      setTextLayerSpans([]);
+    try {
+      const loadingTask = pdfjsBase.getDocument({ data: pdfBytes, disableWorker: true });
+      const pdf = await loadingTask.promise;
+      const page = await pdf.getPage(pageNumber);
+      const textContent = await (page as any).getTextContent({ includeStyles: true });
+      const viewport = page.getViewport({ scale: 1.0 });
+
+      const targetX = (xPercent / 100) * viewport.width;
+      const targetY = (yPercent / 100) * viewport.height;
+
+      let targetItem: any = null;
+      let minDistance = Infinity;
+
+      for (const item of textContent.items) {
+        if (!('str' in item)) continue;
+
+        const transform = item.transform;
+        const fontSize = Math.sqrt(transform[0] * transform[0] + transform[1] * transform[1]);
+        const itemX = transform[4];
+        const itemY = viewport.height - transform[5] - (item.height || fontSize);
+        const itemW = (item as any).width || ((item as any).str.length * fontSize * 0.5);
+        const itemH = (item as any).height || fontSize;
+
+        const centerX = itemX + itemW / 2;
+        const centerY = itemY + itemH / 2;
+        const dist = Math.sqrt(Math.pow(targetX - centerX, 2) + Math.pow(targetY - centerY, 2));
+
+        if (dist < minDistance && dist < 50) {
+          minDistance = dist;
+          targetItem = { item, fontSize, centerY };
+        }
+      }
+
+      if (!targetItem) return null;
+
+      const Y_TOLERANCE = targetItem.fontSize * 0.5;
+      const lineItems = textContent.items.filter((item: any) => {
+        if (!('str' in item)) return false;
+        const itemY = viewport.height - item.transform[5] - (item.height || targetItem.fontSize);
+        const itemFontSize = Math.sqrt(item.transform[0] * item.transform[0] + item.transform[1] * item.transform[1]);
+        const itemCenterY = itemY + (item.height || itemFontSize) / 2;
+        return Math.abs(itemCenterY - targetItem.centerY) < Y_TOLERANCE;
+      }).sort((a: any, b: any) => a.transform[4] - b.transform[4]);
+
+      if (lineItems.length === 0) return null;
+
+      const firstItem = lineItems[0] as any;
+      const lastItem = lineItems[lineItems.length - 1] as any;
+
+      const firstX = firstItem.transform[4];
+      const lastX = lastItem.transform[4];
+      const lastW = (lastItem as any).width || (lastItem.str.length * targetItem.fontSize * 0.5);
+
+      const totalWidth = (lastX + lastW) - firstX;
+      const itemStyle = textContent.styles[targetItem.item.fontName];
+      let fontFamily = 'Roboto';
+      let bold = false;
+      let italic = false;
+      const scaleX = Math.sqrt(targetItem.item.transform[0] * targetItem.item.transform[0] + targetItem.item.transform[1] * targetItem.item.transform[1]);
+      const scaleY = Math.sqrt(targetItem.item.transform[2] * targetItem.item.transform[2] + targetItem.item.transform[3] * targetItem.item.transform[3]);
+      const fontSize = Math.round(Math.max(scaleX, scaleY) * 100) / 100;
+
+      if (itemStyle) {
+        const rawFontName = itemStyle.fontFamily || '';
+        const fontName = (rawFontName.includes('+') ? rawFontName.split('+')[1] : rawFontName).toLowerCase();
+        bold = fontName.includes('bold') || fontName.includes('heavy') || fontName.includes('black') || fontName.includes('medium') || fontName.includes('demi');
+        italic = fontName.includes('italic') || fontName.includes('oblique') || fontName.includes('slanted');
+
+        if (fontName.includes('roboto')) fontFamily = 'Roboto';
+        else if (fontName.includes('arial') || fontName.includes('helvetica') || fontName.includes('sans')) fontFamily = 'Arial';
+        else if (fontName.includes('times') || fontName.includes('serif')) fontFamily = 'Times New Roman';
+        else if (fontName.includes('courier') || fontName.includes('mono')) fontFamily = 'Courier New';
+      }
+
+      let mergedText = "";
+      for (let i = 0; i < lineItems.length; i++) {
+        const item = lineItems[i] as any;
+        if (i > 0) {
+          const prevItem = lineItems[i - 1] as any;
+          const prevX = prevItem.transform[4];
+          const prevW = (prevItem as any).width || (prevItem.str.length * targetItem.fontSize * 0.5);
+          const gap = item.transform[4] - (prevX + prevW);
+          if (gap > targetItem.fontSize * 0.1 && !mergedText.endsWith(' ') && !item.str.startsWith(' ')) {
+            mergedText += " ";
+          }
+        }
+        mergedText += item.str;
+      }
+      mergedText = mergedText.replace(/\s+/g, ' ').trim();
+
+      return {
+        text: mergedText,
+        xRatio: ((firstX + totalWidth / 2) / viewport.width) * 100,
+        yRatio: (targetItem.centerY / viewport.height) * 100,
+        widthRatio: (totalWidth / viewport.width) * 100,
+        heightRatio: (fontSize * 1.1 / viewport.height) * 100,
+        fontSize: fontSize,
+        fontFamily,
+        bold,
+        italic
+      };
+    } catch (error) {
+      console.error('Error detecting text line:', error);
+      return null;
+    }
+  }, []);
+
+  const appendEditFromBounds = useCallback((params: {
+    text: string;
+    xRatio: number;
+    yRatio: number;
+    widthRatio?: number;
+    heightRatio?: number;
+    fontSize: number;
+    fontFamily?: string;
+    bold?: boolean;
+    italic?: boolean;
+    textAlign?: 'left' | 'center' | 'right';
+    originalRect?: TextEditDraft['originalRect'];
+  }) => {
+    const text = params.text.trim();
+    if (!fileId || text.length === 0) {
       return;
     }
 
-    void (async () => {
-      try {
-        const entry = await runtime.vfs.read(fileId);
-        const blob = await entry.getBlob();
-        const bytes = new Uint8Array(await blob.arrayBuffer());
-        const spans = await buildTextLayerSpans(bytes, currentPage);
-        if (!cancelled) {
-          setTextLayerSpans(spans);
-        }
-      } catch {
-        if (!cancelled) {
-          setTextLayerSpans([]);
-        }
-      }
-    })();
-
-    return () => {
-      cancelled = true;
+    const nextEdit: TextEditDraft = {
+      id: crypto.randomUUID(),
+      pageIndex: currentPage - 1,
+      text,
+      xRatio: params.xRatio,
+      yRatio: params.yRatio,
+      widthRatio: params.widthRatio ?? 30, // Default 30% width
+      heightRatio: params.heightRatio ?? 10,
+      fontSize: params.fontSize,
+      fontFamily: params.fontFamily || 'Roboto',
+      color: '#000000',
+      backgroundColor: '#ffffff',
+      bold: params.bold || false,
+      italic: params.italic || false,
+      opacity: 100,
+      rotation: 0,
+      textAlign: params.textAlign || 'left',
+      horizontalScaling: 1.0,
+      originalRect: params.originalRect,
     };
-  }, [currentPage, fileId, runtime.vfs, selectTextMode]);
 
-  useEffect(() => {
-    const host = previewRef.current;
-    if (!host) {
-      return;
-    }
-
-    const observer = new ResizeObserver((entries) => {
-      const entry = entries[0];
-      if (entry) {
-        const stage = host.querySelector('.pdf-editor-preview-stage');
-        if (stage) {
-          setStageHeight(stage.clientHeight);
-        }
-      }
+    setEdits((current) => {
+      const next = [...current, nextEdit];
+      saveToHistory(next);
+      return next;
     });
+    setSelectedEditId(nextEdit.id);
+    setActiveTab('preview');
+  }, [currentPage, fileId, saveToHistory]);
 
-    observer.observe(host);
-    return () => observer.disconnect();
-  }, [fileId]);
+  const handleSmartDetect = useCallback(async (x: number, y: number) => {
+    if (!fileId) return;
 
-  useEffect(() => {
-    const onPointerMove = (event: PointerEvent) => {
-      const drag = dragRef.current;
-      const host = previewRef.current;
-      if (!drag || !host || selectTextMode) {
-        return;
-      }
+    const entry = await runtime.vfs.read(fileId);
+    const blob = await entry.getBlob();
+    const bytes = new Uint8Array(await blob.arrayBuffer());
 
-      const bounds = host.getBoundingClientRect();
-      if (bounds.width <= 0 || bounds.height <= 0) {
-        return;
-      }
-
-      const dxRatio = (event.clientX - drag.startClientX) / bounds.width;
-      const dyRatio = (event.clientY - drag.startClientY) / bounds.height;
-
-      setEdits((current) => current.map((item) => {
-        if (item.id !== drag.id) {
-          return item;
+    const detected = await detectTextAt(bytes, currentPage, x, y);
+    if (detected) {
+      appendEditFromBounds({
+        text: detected.text,
+        xRatio: detected.xRatio - detected.widthRatio / 2,
+        yRatio: detected.yRatio - detected.heightRatio / 2,
+        widthRatio: detected.widthRatio,
+        heightRatio: detected.heightRatio,
+        fontSize: detected.fontSize,
+        fontFamily: 'Roboto', // Force Roboto for best support
+        bold: detected.bold,
+        italic: detected.italic,
+        textAlign: 'left',
+        originalRect: {
+          x: detected.xRatio - detected.widthRatio / 2,
+          y: detected.yRatio - detected.heightRatio / 2,
+          w: detected.widthRatio,
+          h: detected.heightRatio
         }
-        return {
-          ...item,
-          xRatio: clamp(drag.originXRatio + dxRatio, 0, 1 - item.widthRatio),
-          yRatio: clamp(drag.originYRatio + dyRatio, 0, 1 - item.heightRatio),
-        };
-      }));
-    };
-
-    const onPointerUp = () => {
-      dragRef.current = null;
-    };
-
-    window.addEventListener('pointermove', onPointerMove);
-    window.addEventListener('pointerup', onPointerUp);
-    return () => {
-      window.removeEventListener('pointermove', onPointerMove);
-      window.removeEventListener('pointerup', onPointerUp);
-    };
-  }, [selectTextMode]);
+      });
+    }
+  }, [fileId, currentPage, detectTextAt, appendEditFromBounds, runtime.vfs]);
 
   const handleFileInput = async (event: ChangeEvent<HTMLInputElement>): Promise<void> => {
     const files = event.target.files ? Array.from(event.target.files) : [];
@@ -367,11 +513,9 @@ export default function PdfEditorConfig({
   };
 
   const handleAddAtPoint = useCallback((event: React.MouseEvent<HTMLDivElement>) => {
-    if (!addMode || selectTextMode) {
-      return;
-    }
-
-    const stage = host.querySelector('.pdf-editor-preview-stage');
+    const hostOrNull = previewRef.current;
+    if (!hostOrNull) return;
+    const stage = hostOrNull.querySelector('.pdf-editor-preview-stage');
     if (!stage) return;
 
     const bounds = stage.getBoundingClientRect(); // Use stage bounds!
@@ -379,36 +523,49 @@ export default function PdfEditorConfig({
       return;
     }
 
-    const nextX = clamp((event.clientX - bounds.left) / bounds.width, 0, 1 - 0.2);
-    const nextY = clamp((event.clientY - bounds.top) / bounds.height, 0, 1 - 0.05);
+    const nextX = clamp(((event.clientX - bounds.left) / bounds.width) * 100, 0, 100);
+    const nextY = clamp(((event.clientY - bounds.top) / bounds.height) * 100, 0, 100);
+
+    if (selectTextMode) {
+      void handleSmartDetect(nextX, nextY);
+      return;
+    }
+
+    if (!addMode) {
+      return;
+    }
+
     const next = [...edits, makeDraft(currentPage - 1, nextX, nextY)];
     setEdits(next);
+    saveToHistory(next);
     setSelectedEditId(next[next.length - 1].id);
     setAddMode(false);
     setActiveTab('preview');
-  }, [addMode, currentPage, edits, selectTextMode]);
+  }, [addMode, currentPage, edits, selectTextMode, saveToHistory, handleSmartDetect]);
 
   const updateSelectedEdit = useCallback((updates: Partial<TextEditDraft>) => {
     if (!selectedEditId) {
       return;
     }
 
-    setEdits((current) => current.map((item) => {
-      if (item.id !== selectedEditId) {
-        return item;
-      }
+    setEdits((current) => {
+      const next = current.map((item) => {
+        if (item.id !== selectedEditId) {
+          return item;
+        }
 
-      const merged = { ...item, ...updates };
-      return {
-        ...merged,
-        xRatio: clamp(merged.xRatio, 0, 1 - merged.widthRatio),
-        yRatio: clamp(merged.yRatio, 0, 1 - merged.heightRatio),
-        widthRatio: clamp(merged.widthRatio, 0.04, 1),
-        heightRatio: clamp(merged.heightRatio, 0.04, 1),
-        fontSizeRatio: clamp(merged.fontSizeRatio, 0.005, 0.2),
-      };
-    }));
-  }, [selectedEditId]);
+        const merged = { ...item, ...updates };
+        return {
+          ...merged,
+          xRatio: clamp(merged.xRatio, 0, 100),
+          yRatio: clamp(merged.yRatio, 0, 100),
+          fontSize: clamp(merged.fontSize, 4, 144),
+        };
+      });
+      saveToHistory(next);
+      return next;
+    });
+  }, [selectedEditId, saveToHistory]);
 
   const removeSelected = useCallback(() => {
     if (!selectedEditId) {
@@ -417,59 +574,21 @@ export default function PdfEditorConfig({
 
     setEdits((current) => {
       const next = current.filter((item) => item.id !== selectedEditId);
+      saveToHistory(next);
       syncSelected(next);
       return next;
     });
-  }, [selectedEditId, syncSelected]);
-
-  const appendEditFromBounds = useCallback((params: {
-    text: string;
-    xRatio: number;
-    yRatio: number;
-    widthRatio: number;
-    heightRatio: number;
-    fontSizeRatio: number;
-    fontName?: string;
-  }) => {
-    const text = params.text.trim();
-    if (!fileId || text.length === 0) {
-      return;
-    }
-
-    const widthRatio = clamp(params.widthRatio, 0.001, 1);
-    const heightRatio = clamp(params.heightRatio, 0.001, 1);
-    const xRatio = clamp(params.xRatio, 0, 1 - widthRatio);
-    const yRatio = clamp(params.yRatio, 0, 1 - heightRatio);
-    const fontSizeRatio = clamp(params.fontSizeRatio, 0.001, 0.2);
-
-    const nextEdit: TextEditDraft = {
-      id: crypto.randomUUID(),
-      pageIndex: currentPage - 1,
-      text,
-      xRatio,
-      yRatio,
-      widthRatio,
-      heightRatio,
-      fontSizeRatio,
-      color: '#1f2937',
-      backgroundColor: '#ffffff',
-      fontName: params.fontName || 'Helvetica',
-    };
-
-    setEdits((current) => [...current, nextEdit]);
-    setSelectedEditId(nextEdit.id);
-    setActiveTab('preview');
-  }, [currentPage, fileId]);
+  }, [selectedEditId, syncSelected, saveToHistory]);
 
   const createEditFromSpan = useCallback((span: TextLayerSpan) => {
     appendEditFromBounds({
       text: span.text,
-      xRatio: span.xRatio,
-      yRatio: span.yRatio,
-      widthRatio: span.widthRatio,
-      heightRatio: span.heightRatio,
-      fontSizeRatio: span.fontSizeRatio,
-      fontName: span.fontName,
+      xRatio: span.xRatio * 100,
+      yRatio: span.yRatio * 100,
+      widthRatio: span.widthRatio * 100,
+      heightRatio: span.heightRatio * 100,
+      fontSize: span.fontSizeRatio * 1000, // Roughly
+      fontFamily: span.fontName,
     });
   }, [appendEditFromBounds]);
 
@@ -517,14 +636,24 @@ export default function PdfEditorConfig({
 
     appendEditFromBounds({
       text,
-      xRatio: rawX,
-      yRatio: rawY,
-      widthRatio: rawW,
-      heightRatio: rawH,
-      fontSizeRatio: rawH, // 1:1 match by default
+      xRatio: rawX * 100,
+      yRatio: rawY * 100,
+      widthRatio: rawW * 100,
+      heightRatio: rawH * 100,
+      fontSize: rawH * 1000,
     });
     selection.removeAllRanges();
   }, [appendEditFromBounds, fileId, selectTextMode]);
+
+  useEffect(() => {
+    if (!thumbnailUrl) return;
+    const host = previewRef.current;
+    if (!host) return;
+    const stage = host.querySelector('.pdf-editor-preview-stage');
+    if (stage) {
+      setStageHeight(stage.clientHeight);
+    }
+  }, [thumbnailUrl]);
 
   const startProcessing = useCallback(() => {
     const payload = edits.map((edit) => ({
@@ -532,12 +661,17 @@ export default function PdfEditorConfig({
       text: edit.text,
       xRatio: edit.xRatio,
       yRatio: edit.yRatio,
-      widthRatio: edit.widthRatio,
-      heightRatio: edit.heightRatio,
-      fontSizeRatio: edit.fontSizeRatio,
+      fontSize: edit.fontSize,
+      fontFamily: edit.fontFamily,
       color: edit.color,
       backgroundColor: edit.backgroundColor,
-      fontName: edit.fontName,
+      bold: edit.bold,
+      italic: edit.italic,
+      opacity: edit.opacity,
+      rotation: edit.rotation,
+      textAlign: edit.textAlign,
+      horizontalScaling: edit.horizontalScaling,
+      originalRect: edit.originalRect,
     }));
 
     onStart({ edits: payload });
@@ -640,40 +774,45 @@ export default function PdfEditorConfig({
               disabled={!selectedEdit}
             />
 
-            <label className="tool-config-label" htmlFor="pdf-editor-width">Width</label>
-            <input
-              id="pdf-editor-width"
-              className="pdf-editor-range"
-              type="range"
-              min={5}
-              max={100}
-              value={Math.round((selectedEdit?.widthRatio ?? 0.34) * 100)}
-              onChange={(event) => updateSelectedEdit({ widthRatio: Number(event.target.value) / 100 })}
-              disabled={!selectedEdit}
-            />
+            <div className="pdf-editor-format-controls">
+              <button
+                type="button"
+                className={`format-btn ${selectedEdit?.bold ? 'active' : ''}`}
+                onClick={() => updateSelectedEdit({ bold: !selectedEdit?.bold })}
+                disabled={!selectedEdit}
+              >
+                B
+              </button>
+              <button
+                type="button"
+                className={`format-btn ${selectedEdit?.italic ? 'active' : ''}`}
+                onClick={() => updateSelectedEdit({ italic: !selectedEdit?.italic })}
+                disabled={!selectedEdit}
+              >
+                I
+              </button>
+              <select
+                className="tool-config-input font-select"
+                value={selectedEdit?.fontFamily ?? 'Roboto'}
+                onChange={(e) => updateSelectedEdit({ fontFamily: e.target.value })}
+                disabled={!selectedEdit}
+              >
+                <option value="Roboto">Roboto</option>
+                <option value="Arial">Arial</option>
+                <option value="Times New Roman">Times</option>
+                <option value="Courier New">Courier</option>
+              </select>
+            </div>
 
-            <label className="tool-config-label" htmlFor="pdf-editor-height">Height</label>
-            <input
-              id="pdf-editor-height"
-              className="pdf-editor-range"
-              type="range"
-              min={4}
-              max={60}
-              value={Math.round((selectedEdit?.heightRatio ?? 0.09) * 100)}
-              onChange={(event) => updateSelectedEdit({ heightRatio: Number(event.target.value) / 100 })}
-              disabled={!selectedEdit}
-            />
-
-            <label className="tool-config-label" htmlFor="pdf-editor-font">Font size</label>
+            <label className="tool-config-label" htmlFor="pdf-editor-font">Font size: {selectedEdit?.fontSize ?? 24}px</label>
             <input
               id="pdf-editor-font"
               className="pdf-editor-range"
               type="range"
-              min={1}
-              max={12}
-              step={0.5}
-              value={Math.round((selectedEdit?.fontSizeRatio ?? 0.035) * 1000) / 10}
-              onChange={(event) => updateSelectedEdit({ fontSizeRatio: Number(event.target.value) / 100 })}
+              min={8}
+              max={120}
+              value={selectedEdit?.fontSize ?? 24}
+              onChange={(event) => updateSelectedEdit({ fontSize: Number(event.target.value) })}
               disabled={!selectedEdit}
             />
 
@@ -770,6 +909,27 @@ export default function PdfEditorConfig({
                   </button>
                 </div>
 
+                <div className="pdf-editor-history-controls">
+                  <button
+                    type="button"
+                    className="ocr-concept-tool-btn"
+                    onClick={undo}
+                    disabled={historyIndex <= 0}
+                    title="Undo (Ctrl+Z)"
+                  >
+                    <LinearIcon name="refresh" className="linear-icon" style={{ transform: 'scaleX(-1)' }} />
+                  </button>
+                  <button
+                    type="button"
+                    className="ocr-concept-tool-btn"
+                    onClick={redo}
+                    disabled={historyIndex >= history.length - 1}
+                    title="Redo (Ctrl+Y)"
+                  >
+                    <LinearIcon name="refresh" className="linear-icon" />
+                  </button>
+                </div>
+
                 <div className="pdf-editor-toolbar-right">
                   <button
                     type="button"
@@ -861,13 +1021,13 @@ export default function PdfEditorConfig({
                           key={edit.id}
                           className={`pdf-editor-overlay ${edit.id === selectedEditId ? 'active' : ''} ${selectTextMode ? 'selection-disabled' : ''}`}
                           style={{
-                            left: `${edit.xRatio * 100}%`,
-                            top: `${edit.yRatio * 100}%`,
-                            width: `${edit.widthRatio * 100}%`,
-                            height: `${edit.heightRatio * 100}%`,
+                            left: `${edit.xRatio}%`,
+                            top: `${edit.yRatio}%`,
+                            width: `${edit.widthRatio}%`,
+                            height: `${edit.heightRatio}%`,
                             color: edit.color,
                             backgroundColor: edit.backgroundColor,
-                            fontSize: `${edit.fontSizeRatio * stageHeight}px`,
+                            fontSize: `${(edit.fontSize / 842) * stageHeight}px`,
                           }}
                           onPointerDown={(event) => {
                             if (selectTextMode) {

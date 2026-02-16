@@ -2766,6 +2766,10 @@ textarea:focus-visible {
   border-radius: 999px;
 }
 
+.pdf-editor-overlay.selection-disabled {
+  pointer-events: none;
+}
+
 .pdf-editor-overlay {
   position: absolute;
   border: 1px dashed rgba(15, 23, 42, 0.4);
