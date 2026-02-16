@@ -8,7 +8,6 @@ import { useStudioStore, PageItem, StudioDocument as IStudioDocument, StudioStat
 import { StudioDocument } from './StudioDocument';
 import { DetachedPageObject } from './DetachedPageObject';
 import { StudioFloatingMenu } from './StudioFloatingMenu';
-import { StudioActionBar } from './StudioActionBar';
 import { ThumbnailService } from '../../studio/thumbnail/thumbnail-service';
 import type { StudioToolRouteState } from '../../studio/navigation/studio-tool-context';
 import * as pdfjs from 'pdfjs-dist';
@@ -523,7 +522,6 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
                 onChange={handleUploadInputChange}
             />
             <StudioFloatingMenu />
-            <StudioActionBar />
         </div>
     );
 }

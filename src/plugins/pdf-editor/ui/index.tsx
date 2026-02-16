@@ -198,6 +198,7 @@ export default function PdfEditorConfig({
   const { runtime } = usePlatform();
   const inputRef = useRef<HTMLInputElement | null>(null);
   const previewRef = useRef<HTMLDivElement | null>(null);
+  const stageRef = useRef<HTMLDivElement | null>(null);
   const dragRef = useRef<DragState | null>(null);
 
   const [fileNames, setFileNames] = useState<string[]>([]);
@@ -227,6 +228,7 @@ export default function PdfEditorConfig({
     () => edits.find((edit) => edit.id === selectedEditId) ?? null,
     [edits, selectedEditId],
   );
+  const renderStageHeight = stageHeight > 0 ? stageHeight : 842;
 
   const pageEdits = useMemo(
     () => edits.filter((edit) => edit.pageIndex === currentPage - 1),
@@ -313,6 +315,34 @@ export default function PdfEditorConfig({
       abortController.abort();
     };
   }, [currentPage, fileId, runtime]);
+
+  useEffect(() => {
+    if (!fileId) {
+      setTextLayerSpans([]);
+      return;
+    }
+
+    let cancelled = false;
+    void (async () => {
+      try {
+        const entry = await runtime.vfs.read(fileId);
+        const blob = await entry.getBlob();
+        const bytes = new Uint8Array(await blob.arrayBuffer());
+        const spans = await buildTextLayerSpans(bytes, currentPage);
+        if (!cancelled) {
+          setTextLayerSpans(spans);
+        }
+      } catch {
+        if (!cancelled) {
+          setTextLayerSpans([]);
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [currentPage, fileId, runtime.vfs]);
 
   const detectTextAt = useCallback(async (pdfBytes: Uint8Array, pageNumber: number, xPercent: number, yPercent: number) => {
     const pdfjsBase = await loadPdfJs();
@@ -443,15 +473,18 @@ export default function PdfEditorConfig({
       return;
     }
 
+    const normalizedHeight = clamp(params.heightRatio ?? 10, 1.6, 100);
+    const derivedFontSize = normalizedHeight * 8.42 * 0.86;
+
     const nextEdit: TextEditDraft = {
       id: crypto.randomUUID(),
       pageIndex: currentPage - 1,
       text,
-      xRatio: params.xRatio,
-      yRatio: params.yRatio,
-      widthRatio: params.widthRatio ?? 30, // Default 30% width
-      heightRatio: params.heightRatio ?? 10,
-      fontSize: params.fontSize,
+      xRatio: clamp(params.xRatio, 0, 100),
+      yRatio: clamp(params.yRatio, 0, 100),
+      widthRatio: clamp(params.widthRatio ?? 30, 0.5, 100),
+      heightRatio: normalizedHeight,
+      fontSize: clamp(Math.max(params.fontSize, derivedFontSize), 8, 144),
       fontFamily: params.fontFamily || 'Roboto',
       color: '#000000',
       backgroundColor: '#ffffff',
@@ -482,26 +515,48 @@ export default function PdfEditorConfig({
 
     const detected = await detectTextAt(bytes, currentPage, x, y);
     if (detected) {
+      const normalizedHeight = Math.max(1.6, detected.heightRatio);
+      const leftX = detected.xRatio - detected.widthRatio / 2;
+      const topY = detected.yRatio - normalizedHeight / 2;
+      const existing = edits.find((edit) => (
+        edit.pageIndex === currentPage - 1 &&
+        edit.originalRect &&
+        Math.abs(edit.originalRect.x - leftX) < 0.6 &&
+        Math.abs(edit.originalRect.y - topY) < 0.6 &&
+        Math.abs(edit.originalRect.w - detected.widthRatio) < 0.6 &&
+        Math.abs(edit.originalRect.h - normalizedHeight) < 0.6
+      ));
+      if (existing) {
+        const derivedFontSize = normalizedHeight * 8.42 * 0.86;
+        if (existing.fontSize < derivedFontSize) {
+          setEdits((current) => current.map((item) => (
+            item.id === existing.id ? { ...item, fontSize: derivedFontSize } : item
+          )));
+        }
+        setSelectedEditId(existing.id);
+        return;
+      }
+
       appendEditFromBounds({
         text: detected.text,
-        xRatio: detected.xRatio - detected.widthRatio / 2,
-        yRatio: detected.yRatio - detected.heightRatio / 2,
+        xRatio: leftX,
+        yRatio: topY,
         widthRatio: detected.widthRatio,
-        heightRatio: detected.heightRatio,
+        heightRatio: normalizedHeight,
         fontSize: detected.fontSize,
         fontFamily: 'Roboto', // Force Roboto for best support
         bold: detected.bold,
         italic: detected.italic,
         textAlign: 'left',
         originalRect: {
-          x: detected.xRatio - detected.widthRatio / 2,
-          y: detected.yRatio - detected.heightRatio / 2,
+          x: leftX,
+          y: topY,
           w: detected.widthRatio,
-          h: detected.heightRatio
+          h: normalizedHeight
         }
       });
     }
-  }, [fileId, currentPage, detectTextAt, appendEditFromBounds, runtime.vfs]);
+  }, [appendEditFromBounds, currentPage, detectTextAt, edits, fileId, runtime.vfs]);
 
   const handleFileInput = async (event: ChangeEvent<HTMLInputElement>): Promise<void> => {
     const files = event.target.files ? Array.from(event.target.files) : [];
@@ -581,16 +636,74 @@ export default function PdfEditorConfig({
   }, [selectedEditId, syncSelected, saveToHistory]);
 
   const createEditFromSpan = useCallback((span: TextLayerSpan) => {
+    const lineThreshold = Math.max(0.0025, span.heightRatio * 0.55);
+    const lineSpans = textLayerSpans
+      .filter((candidate) => (
+        Math.abs(candidate.yRatio - span.yRatio) <= lineThreshold ||
+        Math.abs((candidate.yRatio + candidate.heightRatio) - (span.yRatio + span.heightRatio)) <= lineThreshold
+      ))
+      .sort((a, b) => a.xRatio - b.xRatio);
+
+    if (lineSpans.length === 0) {
+      return;
+    }
+
+    const left = Math.min(...lineSpans.map((s) => s.xRatio));
+    const top = Math.min(...lineSpans.map((s) => s.yRatio));
+    const right = Math.max(...lineSpans.map((s) => s.xRatio + s.widthRatio));
+    const bottom = Math.max(...lineSpans.map((s) => s.yRatio + s.heightRatio));
+    const width = right - left;
+    const height = bottom - top;
+
+    const ordered = [...lineSpans].sort((a, b) => a.xRatio - b.xRatio);
+    let mergedText = '';
+    for (let i = 0; i < ordered.length; i += 1) {
+      const current = ordered[i];
+      if (i > 0) {
+        const prev = ordered[i - 1];
+        const gap = current.xRatio - (prev.xRatio + prev.widthRatio);
+        if (gap > Math.max(0.0015, current.heightRatio * 0.2) && !mergedText.endsWith(' ') && !current.text.startsWith(' ')) {
+          mergedText += ' ';
+        }
+      }
+      mergedText += current.text;
+    }
+    mergedText = mergedText.replace(/\s+/g, ' ').trim();
+    if (!mergedText) {
+      return;
+    }
+
+    const rect = {
+      x: left * 100,
+      y: top * 100,
+      w: width * 100,
+      h: Math.max(height * 100, 1.6),
+    };
+
+    const existing = edits.find((edit) => (
+      edit.pageIndex === currentPage - 1 &&
+      edit.originalRect &&
+      Math.abs(edit.originalRect.x - rect.x) < 0.6 &&
+      Math.abs(edit.originalRect.y - rect.y) < 0.6 &&
+      Math.abs(edit.originalRect.w - rect.w) < 0.8 &&
+      Math.abs(edit.originalRect.h - rect.h) < 0.8
+    ));
+    if (existing) {
+      setSelectedEditId(existing.id);
+      return;
+    }
+
     appendEditFromBounds({
-      text: span.text,
-      xRatio: span.xRatio * 100,
-      yRatio: span.yRatio * 100,
-      widthRatio: span.widthRatio * 100,
-      heightRatio: span.heightRatio * 100,
-      fontSize: span.fontSizeRatio * 1000, // Roughly
-      fontFamily: span.fontName,
+      text: mergedText,
+      xRatio: rect.x,
+      yRatio: rect.y,
+      widthRatio: rect.w,
+      heightRatio: rect.h,
+      fontSize: (rect.h / 100) * 842 * 0.9,
+      fontFamily: 'Roboto',
+      originalRect: rect,
     });
-  }, [appendEditFromBounds]);
+  }, [appendEditFromBounds, currentPage, edits, textLayerSpans]);
 
   const createEditFromSelection = useCallback(() => {
     if (!selectTextMode || !fileId) {
@@ -640,7 +753,13 @@ export default function PdfEditorConfig({
       yRatio: rawY * 100,
       widthRatio: rawW * 100,
       heightRatio: rawH * 100,
-      fontSize: rawH * 1000,
+      fontSize: (rawH * 842) * 0.9,
+      originalRect: {
+        x: rawX * 100,
+        y: rawY * 100,
+        w: rawW * 100,
+        h: rawH * 100,
+      },
     });
     selection.removeAllRanges();
   }, [appendEditFromBounds, fileId, selectTextMode]);
@@ -655,12 +774,32 @@ export default function PdfEditorConfig({
     }
   }, [thumbnailUrl]);
 
+  useEffect(() => {
+    const stage = stageRef.current;
+    if (!stage || typeof ResizeObserver === 'undefined') {
+      return;
+    }
+
+    const update = () => {
+      if (stage.clientHeight > 0) {
+        setStageHeight(stage.clientHeight);
+      }
+    };
+    update();
+
+    const observer = new ResizeObserver(() => update());
+    observer.observe(stage);
+    return () => observer.disconnect();
+  }, [previewZoom, thumbnailUrl, currentPage, fileId]);
+
   const startProcessing = useCallback(() => {
     const payload = edits.map((edit) => ({
       pageIndex: edit.pageIndex,
       text: edit.text,
       xRatio: edit.xRatio,
       yRatio: edit.yRatio,
+      widthRatio: edit.widthRatio,
+      heightRatio: edit.heightRatio,
       fontSize: edit.fontSize,
       fontFamily: edit.fontFamily,
       color: edit.color,
@@ -683,7 +822,7 @@ export default function PdfEditorConfig({
         <section className="tool-config-card ocr-concept-left pdf-editor-left">
           <h3 className="pdf-editor-title">Edit PDF Text</h3>
           <p className="tool-config-copy">
-            Place text areas directly on the page preview. The editor covers old content and writes new text in place.
+            Click a line on preview, edit text inline, then save.
           </p>
 
           <div
@@ -743,106 +882,9 @@ export default function PdfEditorConfig({
 
           {hasMultipleFiles && (
             <p className="pdf-editor-warning">
-              Multiple files selected: the same edit coordinates are applied to each file.
+              Multiple files selected: the same edits are applied to each file.
             </p>
           )}
-
-          <div className="ocr-concept-settings">
-            <label className="tool-config-label">Text area</label>
-            <button
-              type="button"
-              className={`btn-ghost ${addMode ? 'pdf-editor-btn-active' : ''}`}
-              onClick={() => {
-                setAddMode((current) => !current);
-                if (!addMode) {
-                  setSelectTextMode(false);
-                }
-              }}
-              disabled={!fileId}
-            >
-              {addMode ? 'Click preview to place area' : 'Add text area'}
-            </button>
-
-            <label className="tool-config-label" htmlFor="pdf-editor-text">Text</label>
-            <textarea
-              id="pdf-editor-text"
-              className="tool-config-input pdf-editor-textarea"
-              value={selectedEdit?.text ?? ''}
-              rows={4}
-              placeholder="Select a text area on preview"
-              onChange={(event) => updateSelectedEdit({ text: event.target.value })}
-              disabled={!selectedEdit}
-            />
-
-            <div className="pdf-editor-format-controls">
-              <button
-                type="button"
-                className={`format-btn ${selectedEdit?.bold ? 'active' : ''}`}
-                onClick={() => updateSelectedEdit({ bold: !selectedEdit?.bold })}
-                disabled={!selectedEdit}
-              >
-                B
-              </button>
-              <button
-                type="button"
-                className={`format-btn ${selectedEdit?.italic ? 'active' : ''}`}
-                onClick={() => updateSelectedEdit({ italic: !selectedEdit?.italic })}
-                disabled={!selectedEdit}
-              >
-                I
-              </button>
-              <select
-                className="tool-config-input font-select"
-                value={selectedEdit?.fontFamily ?? 'Roboto'}
-                onChange={(e) => updateSelectedEdit({ fontFamily: e.target.value })}
-                disabled={!selectedEdit}
-              >
-                <option value="Roboto">Roboto</option>
-                <option value="Arial">Arial</option>
-                <option value="Times New Roman">Times</option>
-                <option value="Courier New">Courier</option>
-              </select>
-            </div>
-
-            <label className="tool-config-label" htmlFor="pdf-editor-font">Font size: {selectedEdit?.fontSize ?? 24}px</label>
-            <input
-              id="pdf-editor-font"
-              className="pdf-editor-range"
-              type="range"
-              min={8}
-              max={120}
-              value={selectedEdit?.fontSize ?? 24}
-              onChange={(event) => updateSelectedEdit({ fontSize: Number(event.target.value) })}
-              disabled={!selectedEdit}
-            />
-
-            <div className="pdf-editor-color-row">
-              <label className="pdf-editor-field" htmlFor="pdf-editor-color-text">
-                <span>Text color</span>
-                <input
-                  id="pdf-editor-color-text"
-                  type="color"
-                  value={selectedEdit?.color ?? '#1f2937'}
-                  onChange={(event) => updateSelectedEdit({ color: event.target.value })}
-                  disabled={!selectedEdit}
-                />
-              </label>
-              <label className="pdf-editor-field" htmlFor="pdf-editor-color-bg">
-                <span>Cover color</span>
-                <input
-                  id="pdf-editor-color-bg"
-                  type="color"
-                  value={selectedEdit?.backgroundColor ?? '#ffffff'}
-                  onChange={(event) => updateSelectedEdit({ backgroundColor: event.target.value })}
-                  disabled={!selectedEdit}
-                />
-              </label>
-            </div>
-
-            <button type="button" className="btn-danger" onClick={removeSelected} disabled={!selectedEdit}>
-              Remove selected area
-            </button>
-          </div>
 
           <div className="tool-config-actions ocr-concept-actions">
             <button className="btn-ghost" onClick={onBack}>Cancel</button>
@@ -857,7 +899,7 @@ export default function PdfEditorConfig({
               }}
               disabled={hasResult ? false : (!fileId || edits.length === 0 || isProcessing)}
             >
-              {hasResult ? 'Download File' : (isProcessing ? `Applying ${loadingPercent}%` : 'Run PDF Editor')}
+              {hasResult ? 'Download File' : (isProcessing ? `Saving ${loadingPercent}%` : 'Save PDF')}
             </button>
           </div>
         </section>
@@ -867,27 +909,10 @@ export default function PdfEditorConfig({
             <div className="ocr-concept-empty">
               <LinearIcon name="tool" className="linear-icon icon-md" />
               <h4 className="ocr-concept-empty-title">PDF Editor</h4>
-              <p className="ocr-concept-empty-copy">Upload a PDF in the left panel to start editing text in preview.</p>
+              <p className="ocr-concept-empty-copy">Upload a PDF to start inline text editing.</p>
             </div>
           ) : (
             <>
-              <div className="ocr-concept-tabs" role="tablist" aria-label="PDF editor tabs">
-                <button
-                  type="button"
-                  className={`ocr-concept-tab ${activeTab === 'preview' ? 'active' : ''}`}
-                  onClick={() => setActiveTab('preview')}
-                >
-                  Preview
-                </button>
-                <button
-                  type="button"
-                  className={`ocr-concept-tab ${activeTab === 'details' ? 'active' : ''}`}
-                  onClick={() => setActiveTab('details')}
-                >
-                  Details
-                </button>
-              </div>
-
               <div className="ocr-concept-toolbar pdf-editor-toolbar">
                 <div className="pdf-editor-pager">
                   <button
@@ -909,42 +934,7 @@ export default function PdfEditorConfig({
                   </button>
                 </div>
 
-                <div className="pdf-editor-history-controls">
-                  <button
-                    type="button"
-                    className="ocr-concept-tool-btn"
-                    onClick={undo}
-                    disabled={historyIndex <= 0}
-                    title="Undo (Ctrl+Z)"
-                  >
-                    <LinearIcon name="refresh" className="linear-icon" style={{ transform: 'scaleX(-1)' }} />
-                  </button>
-                  <button
-                    type="button"
-                    className="ocr-concept-tool-btn"
-                    onClick={redo}
-                    disabled={historyIndex >= history.length - 1}
-                    title="Redo (Ctrl+Y)"
-                  >
-                    <LinearIcon name="refresh" className="linear-icon" />
-                  </button>
-                </div>
-
                 <div className="pdf-editor-toolbar-right">
-                  <button
-                    type="button"
-                    className={`ocr-concept-tool-btn ${selectTextMode ? 'active' : ''}`}
-                    onClick={() => {
-                      const next = !selectTextMode;
-                      setSelectTextMode(next);
-                      if (next) {
-                        setAddMode(false);
-                      }
-                    }}
-                    title="Enable selectable text layer"
-                  >
-                    Select text
-                  </button>
                   <button
                     type="button"
                     className="ocr-concept-tool-btn"
@@ -976,101 +966,86 @@ export default function PdfEditorConfig({
               </div>
 
               <div className="ocr-concept-editor">
-                {activeTab === 'preview' ? (
-                  <div className="pdf-editor-preview-scroll" ref={previewRef}>
-                    <div
-                      className={`pdf-editor-preview-stage ${addMode ? 'pdf-editor-preview-add' : ''}`}
-                      style={{ width: `${previewZoom * 100}%` }}
-                      onClick={handleAddAtPoint}
-                    >
-                      {thumbnailUrl
-                        ? <img src={thumbnailUrl} alt={`PDF page ${currentPage}`} className="pdf-editor-preview-image" />
-                        : <div className="preview-fallback">No preview for this page</div>}
+                <div className="pdf-editor-preview-scroll" ref={previewRef}>
+                  <div
+                    className="pdf-editor-preview-stage"
+                    ref={stageRef}
+                    style={{ width: `${previewZoom * 100}%` }}
+                    onClick={() => setSelectedEditId(null)}
+                  >
+                    {thumbnailUrl
+                      ? <img
+                        src={thumbnailUrl}
+                        alt={`PDF page ${currentPage}`}
+                        className="pdf-editor-preview-image"
+                        onLoad={(event) => {
+                          const image = event.currentTarget;
+                          if (image.clientHeight > 0) {
+                            setStageHeight(image.clientHeight);
+                          }
+                        }}
+                      />
+                      : <div className="preview-fallback">No preview for this page</div>}
 
-                      {selectTextMode && textLayerSpans.length > 0 && (
-                        <div
-                          className="pdf-editor-text-layer"
-                          aria-label="Selectable text layer"
-                          onMouseUp={createEditFromSelection}
-                        >
-                          {textLayerSpans.map((span) => (
-                            <span
-                              key={span.id}
-                              className="pdf-editor-text-span"
-                              style={{
-                                left: `${span.xRatio * 100}%`,
-                                top: `${span.yRatio * 100}%`,
-                                width: `${span.widthRatio * 100}%`,
-                                height: `${span.heightRatio * 100}%`,
-                                fontSize: `${span.fontSizeRatio * stageHeight}px`,
-                                transform: 'translateY(-5%)', // Slight upward shift to align better with selection glow
-                              }}
-                              onClick={(event) => {
-                                event.stopPropagation();
-                                createEditFromSpan(span);
-                              }}
-                            >
-                              {span.text}
-                            </span>
-                          ))}
-                        </div>
-                      )}
+                    {textLayerSpans.length > 0 && (
+                      <div className="pdf-editor-text-layer" aria-label="Text layer for inline editing">
+                        {textLayerSpans.map((span) => (
+                          <span
+                            key={span.id}
+                            className="pdf-editor-text-span"
+                            style={{
+                              left: `${span.xRatio * 100}%`,
+                              top: `${span.yRatio * 100}%`,
+                              width: `${span.widthRatio * 100}%`,
+                              height: `${span.heightRatio * 100}%`,
+                              fontSize: `${span.fontSizeRatio * renderStageHeight}px`,
+                            }}
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              createEditFromSpan(span);
+                            }}
+                          >
+                            {span.text}
+                          </span>
+                        ))}
+                      </div>
+                    )}
 
-                      {pageEdits.map((edit) => (
-                        <div
-                          key={edit.id}
-                          className={`pdf-editor-overlay ${edit.id === selectedEditId ? 'active' : ''} ${selectTextMode ? 'selection-disabled' : ''}`}
-                          style={{
-                            left: `${edit.xRatio}%`,
-                            top: `${edit.yRatio}%`,
-                            width: `${edit.widthRatio}%`,
-                            height: `${edit.heightRatio}%`,
-                            color: edit.color,
-                            backgroundColor: edit.backgroundColor,
-                            fontSize: `${(edit.fontSize / 842) * stageHeight}px`,
-                          }}
-                          onPointerDown={(event) => {
-                            if (selectTextMode) {
-                              return;
-                            }
-                            event.stopPropagation();
-                            setSelectedEditId(edit.id);
-                            dragRef.current = {
-                              id: edit.id,
-                              startClientX: event.clientX,
-                              startClientY: event.clientY,
-                              originXRatio: edit.xRatio,
-                              originYRatio: edit.yRatio,
-                            };
-                          }}
-                        >
-                          {edit.id === selectedEditId ? (
-                            <textarea
-                              className="pdf-editor-overlay-input"
-                              value={edit.text}
-                              autoFocus
-                              onChange={(e) => updateSelectedEdit({ text: e.target.value })}
-                              onPointerDown={(e) => e.stopPropagation()}
-                            />
-                          ) : (
-                            <span className="pdf-editor-overlay-text">{edit.text || 'Text'}</span>
-                          )}
-                        </div>
-                      ))}
+                    {pageEdits.map((edit) => (
+                      <div
+                        key={edit.id}
+                        className={`pdf-editor-overlay ${edit.id === selectedEditId ? 'active' : ''}`}
+                        style={{
+                          left: `${edit.xRatio}%`,
+                          top: `${edit.yRatio}%`,
+                          width: `${edit.widthRatio}%`,
+                          height: `${edit.heightRatio}%`,
+                          color: edit.color,
+                          backgroundColor: edit.id === selectedEditId ? edit.backgroundColor : 'transparent',
+                          fontSize: `${Math.max((edit.fontSize / 842) * renderStageHeight, (edit.heightRatio / 100) * renderStageHeight * 0.84)}px`,
+                        }}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          setSelectedEditId(edit.id);
+                        }}
+                      >
+                        {edit.id === selectedEditId ? (
+                          <textarea
+                            className="pdf-editor-overlay-input"
+                            value={edit.text}
+                            autoFocus
+                            onChange={(e) => updateSelectedEdit({ text: e.target.value })}
+                            onClick={(e) => e.stopPropagation()}
+                          />
+                        ) : (
+                          <span className="pdf-editor-overlay-text">{edit.text || 'Text'}</span>
+                        )}
+                      </div>
+                    ))}
 
-                      {isLoadingPreview && <div className="pdf-editor-preview-loading">Rendering preview...</div>}
-                    </div>
+                    {isLoadingPreview && <div className="pdf-editor-preview-loading">Rendering preview...</div>}
                   </div>
-                ) : (
-                  <pre className="ocr-concept-editor-copy">{`Areas total: ${edits.length}
-Areas on current page: ${pageEdits.length}
-Selected area: ${selectedEdit ? 'yes' : 'no'}
-Current page: ${currentPage}/${pageCount}
-Zoom: ${Math.round(previewZoom * 100)}%
-Text selection mode: ${selectTextMode ? 'enabled' : 'disabled'}
-
-Tip: enable "Select text", then highlight a word/line on preview. An editable area will be created automatically.`}</pre>
-                )}
+                </div>
               </div>
             </>
           )}

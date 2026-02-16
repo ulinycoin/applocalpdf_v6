@@ -8,20 +8,12 @@ import { PageItem, StudioDocument, StudioState, useStudioStore } from './studio-
 import { LinearIcon } from '../icons/linear-icon';
 import * as pdfjs from 'pdfjs-dist';
 
-interface SelectionItem {
-    docId: string;
-    pageId: string;
-}
-
 export function StudioFloatingMenu() {
     const { runtime } = usePlatform();
     const selection = useStudioStore((s: StudioState) => s.selection);
     const activeDocumentId = useStudioStore((s: StudioState) => s.activeDocumentId);
     const requestedInlineTool = useStudioStore((s: StudioState) => s.requestedInlineTool);
-    const updatePage = useStudioStore((s: StudioState) => s.updatePage);
     const updateDocument = useStudioStore((s: StudioState) => s.updateDocument);
-    const movePage = useStudioStore((s: StudioState) => s.movePage);
-    const addDocument = useStudioStore((s: StudioState) => s.addDocument);
     const setActiveDocument = useStudioStore((s: StudioState) => s.setActiveDocument);
     const requestInlineTool = useStudioStore((s: StudioState) => s.requestInlineTool);
     const documents = useStudioStore((s: StudioState) => s.documents);
@@ -88,46 +80,6 @@ export function StudioFloatingMenu() {
             offsetY: event.clientY - menuRect.top,
         };
         event.preventDefault();
-    };
-
-    const rotateSelection = (angle: number) => {
-        selection.forEach((s: SelectionItem) => {
-            const doc = documents.find((d: StudioDocument) => d.id === s.docId);
-            const page = doc?.pages.find((p: PageItem) => p.id === s.pageId);
-            if (page) {
-                updatePage(s.docId, s.pageId, { rotation: (page.rotation + angle) % 360 });
-            }
-        });
-    };
-
-    const deleteSelection = () => {
-        selection.forEach((_s: SelectionItem) => {
-            // ... logical delete
-        });
-        clearSelection();
-    };
-
-    const handleSplit = () => {
-        if (selection.length === 0) return;
-
-        const newDocId = Math.random().toString(36).substr(2, 9);
-        // Create new doc slightly offset from first selected item's doc
-        const firstS = selection[0];
-        const sourceDoc = documents.find((d: StudioDocument) => d.id === firstS.docId);
-
-        addDocument({
-            id: newDocId,
-            name: 'Split Result',
-            x: (sourceDoc?.x ?? 0) + 300,
-            y: (sourceDoc?.y ?? 0),
-            pages: [] // movePage will fill this
-        });
-
-        selection.forEach((s: SelectionItem) => {
-            movePage(s.docId, s.pageId, newDocId);
-        });
-
-        clearSelection();
     };
 
     const buildPagesFromFileId = async (fileId: string): Promise<PageItem[]> => {
@@ -239,15 +191,6 @@ export function StudioFloatingMenu() {
                 <>
                     <div className="studio-menu-divider" />
                     <div className="studio-menu-actions">
-                        <button className="menu-btn" title="Rotate Clockwise" onClick={() => rotateSelection(90)}>
-                            <LinearIcon name="rotate" className="linear-icon" />
-                        </button>
-                        <button className="menu-btn" title="Delete Pages" onClick={() => deleteSelection()}>
-                            <LinearIcon name="delete-pages" className="linear-icon" />
-                        </button>
-                        <button className="menu-btn" title="Duplicate">
-                            <LinearIcon name="tool" className="linear-icon" />
-                        </button>
                         <button
                             className={`menu-btn ${isCompressMode ? 'active' : ''}`}
                             title="Compress selected file"
@@ -258,11 +201,6 @@ export function StudioFloatingMenu() {
                         >
                             <LinearIcon name="compress" className="linear-icon" />
                             <span style={{ fontSize: '10px', fontWeight: 'bold' }}>CMP</span>
-                        </button>
-                        <div className="studio-menu-divider" />
-                        <button className="menu-btn" title="Split into new document" onClick={handleSplit}>
-                            <LinearIcon name="split" className="linear-icon" />
-                            <span style={{ fontSize: '10px', fontWeight: 'bold' }}>SPLIT</span>
                         </button>
                     </div>
                 </>

@@ -3,6 +3,7 @@ import { Navigate, Route, Routes } from 'react-router-dom';
 import { usePlatform } from './platform-context';
 import { WizardShell as V6WizardShell } from '../../v6/components/Wizard/WizardShell';
 import { StudioShell } from '../../v6/components/Studio/StudioShell';
+import { StudioEditWorkspace } from '../../v6/components/Studio/StudioEditWorkspace';
 import { OcrPdfTestPage } from './ocr-pdf-test-page';
 
 function LoadingScreen() {
@@ -38,6 +39,7 @@ export function ToolRoutes() {
           );
         })}
         <Route path="/studio" element={<StudioShell />} />
+        <Route path="/studio/edit" element={<StudioEditWorkspace />} />
         <Route path="/ocr-pdf-test" element={<Navigate to="/ocr-pdf" replace />} />
         <Route path="*" element={<Navigate to="/studio" replace />} />
       </Routes>

@@ -24,6 +24,9 @@ export interface StudioDocument {
     includeInExport?: boolean;
 }
 
+export type StudioInteractionMode = 'edit' | 'convert' | null;
+export type StudioOperationScope = 'selection' | 'document';
+
 export interface StudioState {
     documents: StudioDocument[];
     detachedPages: DetachedPageItem[];
@@ -31,6 +34,8 @@ export interface StudioState {
     requestedInlineTool: 'compress-pdf' | null;
     isDraggingFile: boolean;
     activeDocumentId: string | null;
+    interactionMode: StudioInteractionMode;
+    operationScope: StudioOperationScope;
     workspaceVersion: number;
     lastExportedVersion: number;
 
@@ -39,6 +44,8 @@ export interface StudioState {
     removeDocument: (id: string) => void;
     setDocuments: (docs: StudioDocument[]) => void;
     setActiveDocument: (id: string | null) => void;
+    setInteractionMode: (mode: StudioInteractionMode) => void;
+    setOperationScope: (scope: StudioOperationScope) => void;
 
     movePage: (sourceDocId: string, pageId: string, targetDocId: string, index?: number) => void;
     detachPage: (docId: string, pageId: string, x: number, y: number) => void;
@@ -87,6 +94,8 @@ export const useStudioStore = create<StudioState>((set) => ({
     requestedInlineTool: null,
     isDraggingFile: false,
     activeDocumentId: null,
+    interactionMode: null,
+    operationScope: 'selection',
     workspaceVersion: 0,
     lastExportedVersion: 0,
 
@@ -125,6 +134,8 @@ export const useStudioStore = create<StudioState>((set) => ({
         return commitWorkspaceMutation(state, nextState);
     }),
     setActiveDocument: (id) => set({ activeDocumentId: id }),
+    setInteractionMode: (mode) => set({ interactionMode: mode }),
+    setOperationScope: (scope) => set({ operationScope: scope }),
 
     updatePage: (docId, pageId, updates) => set((state) => {
         const nextState: StudioState = {
@@ -275,5 +286,25 @@ export const useStudioStore = create<StudioState>((set) => ({
     setDraggingFile: (isDragging) => set({ isDraggingFile: isDragging }),
     recountWorkspacePages: () => set((state) => commitWorkspaceMutation(state, state)),
     markWorkspaceExported: () => set((state) => ({ lastExportedVersion: state.workspaceVersion })),
-    clear: () => set({ documents: [], detachedPages: [], selection: [], requestedInlineTool: null, activeDocumentId: null, workspaceVersion: 0, lastExportedVersion: 0 }),
+    clear: () => set({
+        documents: [],
+        detachedPages: [],
+        selection: [],
+        requestedInlineTool: null,
+        activeDocumentId: null,
+        interactionMode: null,
+        operationScope: 'selection',
+        workspaceVersion: 0,
+        lastExportedVersion: 0
+    }),
 }));
+
+declare global {
+    interface Window {
+        __LOCALPDF_STUDIO_STORE__?: typeof useStudioStore;
+    }
+}
+
+if (typeof window !== 'undefined' && (import.meta.env.DEV || window.navigator.webdriver)) {
+    window.__LOCALPDF_STUDIO_STORE__ = useStudioStore;
+}
