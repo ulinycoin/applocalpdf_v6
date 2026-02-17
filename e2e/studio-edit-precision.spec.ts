@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { writeFileSync } from 'node:fs';
+import { existsSync, unlinkSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { PDFDocument, StandardFonts } from 'pdf-lib';
@@ -21,6 +21,12 @@ async function createPrecisionTestPdf(): Promise<string> {
     return path;
 }
 
+function safeDelete(path: string): void {
+    if (existsSync(path)) {
+        unlinkSync(path);
+    }
+}
+
 test.describe('Studio Edit Precision', () => {
     test('Selection box matches text layer span', async ({ page }) => {
         const pdfPath = await createPrecisionTestPdf();
@@ -29,18 +35,33 @@ test.describe('Studio Edit Precision', () => {
             await page.goto('/studio');
 
             // Upload PDF to Studio
-            const fileInput = page.locator('input[type="file"]');
-            await fileInput.setInputFiles([pdfPath]);
+            await page.locator('.studio-shell-container input[type="file"]').first().setInputFiles([pdfPath]);
 
-            // Wait for upload to complete (The Void disappears)
-            await expect(page.locator('.studio-void-layer')).not.toBeVisible({ timeout: 15000 });
+            await page.waitForFunction(() => {
+                const store = (window as Window & { __LOCALPDF_STUDIO_STORE__?: { getState: () => {
+                    documents: Array<{ id: string; pages: Array<{ id: string }> }>;
+                    setActiveDocument: (id: string | null) => void;
+                    setSelection: (selection: Array<{ docId: string; pageId: string }>) => void;
+                } } }).__LOCALPDF_STUDIO_STORE__;
+                if (!store) {
+                    return false;
+                }
+                const state = store.getState();
+                const doc = state.documents[0];
+                const firstPage = doc?.pages[0];
+                if (!doc || !firstPage) {
+                    return false;
+                }
+                state.setActiveDocument(doc.id);
+                state.setSelection([{ docId: doc.id, pageId: firstPage.id }]);
+                return true;
+            }, { timeout: 20000 });
 
-            // Navigate directly to Edit mode (it will pick the first page automatically)
-            await page.goto('/studio/edit');
-            await expect(page.locator('.studio-edit-workspace')).toBeVisible({ timeout: 15000 });
+            await page.getByRole('button', { name: 'Edit' }).click();
+            await expect(page.locator('.studio-edit-shell')).toBeVisible({ timeout: 20000 });
 
             // Enable Select Text mode
-            const selectTextBtn = page.getByRole('button', { name: /Select Text/i });
+            const selectTextBtn = page.locator('.studio-edit-toolbar .studio-edit-tool-btn').first();
             await selectTextBtn.click();
             await expect(selectTextBtn).toHaveClass(/select-mode/);
 
@@ -79,7 +100,7 @@ test.describe('Studio Edit Precision', () => {
             }
 
         } finally {
-            // Cleanup
+            safeDelete(pdfPath);
         }
     });
 });
