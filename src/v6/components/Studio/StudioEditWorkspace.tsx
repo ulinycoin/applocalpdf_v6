@@ -417,6 +417,8 @@ function StudioFloatingMenu({ element, onUpdate, onDelete, onDuplicate }: Studio
       <div className="studio-floating-group">
         <select
           className="studio-floating-select font-family"
+          aria-label="Font family"
+          title="Font family"
           value={textElem.fontFamily}
           onChange={(e) => onUpdate({ fontFamily: e.target.value as FontFamilyId })}
         >
@@ -427,6 +429,9 @@ function StudioFloatingMenu({ element, onUpdate, onDelete, onDuplicate }: Studio
         <input
           type="number"
           className="studio-floating-input font-size"
+          data-testid="studio-floating-font-size"
+          aria-label="Font size"
+          title="Font size"
           value={textElem.fontSize}
           min={8}
           max={96}
@@ -435,6 +440,8 @@ function StudioFloatingMenu({ element, onUpdate, onDelete, onDuplicate }: Studio
         <input
           type="number"
           className="studio-floating-input font-size"
+          data-testid="studio-floating-line-height"
+          aria-label="Line height"
           value={textElem.lineHeight}
           min={0.8}
           max={3}
@@ -445,6 +452,8 @@ function StudioFloatingMenu({ element, onUpdate, onDelete, onDuplicate }: Studio
         <input
           type="number"
           className="studio-floating-input font-size"
+          data-testid="studio-floating-letter-spacing"
+          aria-label="Letter spacing"
           value={textElem.letterSpacing}
           min={-2}
           max={20}

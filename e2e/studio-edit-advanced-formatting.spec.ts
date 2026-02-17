@@ -70,10 +70,10 @@ test.describe('Studio advanced formatting P2', () => {
       await expect(textBox).toBeVisible({ timeout: 10000 });
 
       await textBox.click();
-      const controls = page.locator('.studio-floating-input.font-size');
-      await expect(controls).toHaveCount(3, { timeout: 10000 });
-      await controls.nth(1).fill('1.8');
-      await controls.nth(2).fill('2.4');
+      await expect(page.getByTestId('studio-floating-line-height')).toBeVisible({ timeout: 10000 });
+      await expect(page.getByTestId('studio-floating-letter-spacing')).toBeVisible({ timeout: 10000 });
+      await page.getByTestId('studio-floating-line-height').fill('1.8');
+      await page.getByTestId('studio-floating-letter-spacing').fill('2.4');
 
       const lineHeight = await textBox.evaluate((el) => window.getComputedStyle(el).lineHeight);
       const letterSpacing = await textBox.evaluate((el) => window.getComputedStyle(el).letterSpacing);
