@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useTelemetryLog } from './use-telemetry-log';
 import type { RunnerTelemetryEvent } from '../../core/public/contracts';
 
-function formatEvent(event: RunnerTelemetryEvent): string {
+export function formatEvent(event: RunnerTelemetryEvent): string {
   switch (event.type) {
     case 'TOOL_RUN_ERROR':
       return `${event.type} ${event.toolId} code=${event.code ?? 'n/a'} msg=${event.message}`;
