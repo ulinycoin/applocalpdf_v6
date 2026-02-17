@@ -194,4 +194,16 @@ export type RunnerTelemetryEvent =
   | { type: 'UI_UPSELL_CTA_CLICKED'; runId: string; toolId: string; destination: string }
   | { type: 'UI_PREVIEW_RENDERED'; runId: string; toolId: string; fileId: string; durationMs: number; pageCount?: number }
   | { type: 'UI_PREVIEW_ERROR'; runId: string; toolId: string; fileId: string; message: string }
-  | { type: 'STUDIO_EDIT_GUARDRAIL'; runId: string; toolId: string; fileId: string; pageIndex: number; code?: string; message: string };
+  | { type: 'STUDIO_EDIT_GUARDRAIL'; runId: string; toolId: string; fileId: string; pageIndex: number; code?: string; message: string }
+  | {
+    type: 'STUDIO_EDIT_SAVE_ACTION';
+    runId: string;
+    toolId: string;
+    action: 'apply' | 'undo' | 'redo';
+    scope: 'single' | 'selection';
+    pagesTotal: number;
+    pagesSucceeded: number;
+    pagesFailed: number;
+    overflowCount?: number;
+    message?: string;
+  };

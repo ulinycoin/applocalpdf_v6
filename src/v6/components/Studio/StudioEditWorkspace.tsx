@@ -1221,14 +1221,14 @@ export function StudioEditWorkspace() {
       return;
     }
 
+    const targets = applyToSelection && canApplyToSelection ? selectedPages : [preview];
+    let overflowCount = 0;
+    let failureCount = 0;
     setIsApplying(true);
     setInlineUiState('saving');
     setMessage(null);
     const runId = crypto.randomUUID();
     try {
-      const targets = applyToSelection && canApplyToSelection ? selectedPages : [preview];
-      let overflowCount = 0;
-      let failureCount = 0;
       const failureDetails: string[] = [];
       const checkpointEntries: SaveCheckpointEntry[] = [];
 
@@ -1314,6 +1314,18 @@ export function StudioEditWorkspace() {
         setSaveUndoStack((prev) => [...prev, { entries: checkpointEntries }]);
         setSaveRedoStack([]);
       }
+      runtime.telemetry.track({
+        type: 'STUDIO_EDIT_SAVE_ACTION',
+        runId,
+        toolId: 'studio.edit.text',
+        action: 'apply',
+        scope: targets.length > 1 ? 'selection' : 'single',
+        pagesTotal: targets.length,
+        pagesSucceeded: targets.length - failureCount,
+        pagesFailed: failureCount,
+        overflowCount,
+        message: failureCount > 0 ? ui.partialSaveFailed : ui.changesApplied,
+      });
 
       if (targets.length > 1) {
         const baseMessage = `${ui.changesAppliedSelection} ${targets.length}`;
@@ -1326,6 +1338,7 @@ export function StudioEditWorkspace() {
     } catch (error) {
       setInlineUiState('error');
       const details = error instanceof Error ? error.message : ui.saveFailed;
+      const pagesFailed = failureCount > 0 ? failureCount : targets.length;
       const typed = error as { code?: unknown; message?: unknown };
       const code = typeof typed.code === 'string' ? typed.code : undefined;
       if (code?.startsWith('STUDIO_EDIT_')) {
@@ -1339,6 +1352,18 @@ export function StudioEditWorkspace() {
           message: typeof typed.message === 'string' ? typed.message : details,
         });
       }
+      runtime.telemetry.track({
+        type: 'STUDIO_EDIT_SAVE_ACTION',
+        runId,
+        toolId: 'studio.edit.text',
+        action: 'apply',
+        scope: targets.length > 1 ? 'selection' : 'single',
+        pagesTotal: targets.length,
+        pagesSucceeded: Math.max(0, targets.length - pagesFailed),
+        pagesFailed,
+        overflowCount,
+        message: details,
+      });
       setMessage(`${ui.saveFailed}${details ? ` ${details}` : ''}`.trim());
     } finally {
       setIsApplying(false);
@@ -1350,6 +1375,7 @@ export function StudioEditWorkspace() {
     if (!checkpoint || isApplying) {
       return;
     }
+    const runId = crypto.randomUUID();
     setIsApplying(true);
     try {
       for (const entry of checkpoint.entries) {
@@ -1363,6 +1389,17 @@ export function StudioEditWorkspace() {
       setSaveRedoStack((prev) => [...prev, checkpoint]);
       setMessage(ui.saveReverted);
       setInlineUiState('saved');
+      runtime.telemetry.track({
+        type: 'STUDIO_EDIT_SAVE_ACTION',
+        runId,
+        toolId: 'studio.edit.text',
+        action: 'undo',
+        scope: checkpoint.entries.length > 1 ? 'selection' : 'single',
+        pagesTotal: checkpoint.entries.length,
+        pagesSucceeded: checkpoint.entries.length,
+        pagesFailed: 0,
+        message: ui.saveReverted,
+      });
     } finally {
       setIsApplying(false);
     }
@@ -1373,6 +1410,7 @@ export function StudioEditWorkspace() {
     if (!checkpoint || isApplying) {
       return;
     }
+    const runId = crypto.randomUUID();
     setIsApplying(true);
     try {
       for (const entry of checkpoint.entries) {
@@ -1386,6 +1424,17 @@ export function StudioEditWorkspace() {
       setSaveUndoStack((prev) => [...prev, checkpoint]);
       setMessage(checkpoint.entries.length > 1 ? `${ui.changesAppliedSelection} ${checkpoint.entries.length}.` : ui.changesApplied);
       setInlineUiState('saved');
+      runtime.telemetry.track({
+        type: 'STUDIO_EDIT_SAVE_ACTION',
+        runId,
+        toolId: 'studio.edit.text',
+        action: 'redo',
+        scope: checkpoint.entries.length > 1 ? 'selection' : 'single',
+        pagesTotal: checkpoint.entries.length,
+        pagesSucceeded: checkpoint.entries.length,
+        pagesFailed: 0,
+        message: checkpoint.entries.length > 1 ? `${ui.changesAppliedSelection} ${checkpoint.entries.length}.` : ui.changesApplied,
+      });
     } finally {
       setIsApplying(false);
     }

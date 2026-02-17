@@ -28,6 +28,8 @@ function formatEvent(event: RunnerTelemetryEvent): string {
       return `${event.type} ${event.toolId} file=${event.fileId} msg=${event.message}`;
     case 'STUDIO_EDIT_GUARDRAIL':
       return `${event.type} ${event.toolId} file=${event.fileId} page=${event.pageIndex} code=${event.code ?? 'n/a'} msg=${event.message}`;
+    case 'STUDIO_EDIT_SAVE_ACTION':
+      return `${event.type} ${event.toolId} action=${event.action} scope=${event.scope} ok=${event.pagesSucceeded}/${event.pagesTotal} failed=${event.pagesFailed}${event.overflowCount !== undefined ? ` overflow=${event.overflowCount}` : ''}${event.message ? ` msg=${event.message}` : ''}`;
     default:
       return `${event.type} ${event.toolId}`;
   }
