@@ -3409,6 +3409,12 @@ textarea:focus-visible {
   color: #d1fae5;
 }
 
+.studio-edit-message.is-error {
+  border-color: rgba(239, 68, 68, 0.62);
+  background: rgba(127, 29, 29, 0.42);
+  color: #fecaca;
+}
+
 .studio-text-style-panel {
   border-radius: 12px;
   border: 1px solid rgba(59, 130, 246, 0.34);
@@ -3645,20 +3651,25 @@ textarea:focus-visible {
   outline: none;
   padding: 0;
   margin: 0;
-  overflow: hidden;
+  overflow: auto hidden;
   line-height: 1.15;
-  /* Матчим стандартный PDF */
+  white-space: nowrap;
+  caret-color: currentColor;
 }
 
 .studio-edit-text-highlight {
   position: absolute;
   background: rgba(59, 130, 246, 0.1);
-  pointer-events: none;
+  pointer-events: auto;
   z-index: 5;
   border-radius: 2px;
+  border: 1px solid rgba(59, 130, 246, 0.2);
+  transition: background 140ms ease, border-color 140ms ease;
+  cursor: text;
 }
 
-.studio-edit-text-highlight:hover {
+.studio-edit-text-highlight:hover,
+.studio-edit-text-highlight.hovered {
   background: rgba(59, 130, 246, 0.15);
   border-color: rgba(59, 130, 246, 0.4);
 }

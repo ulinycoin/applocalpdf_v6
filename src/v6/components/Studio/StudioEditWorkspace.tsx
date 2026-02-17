@@ -5,6 +5,17 @@ import { usePlatform } from '../../../app/react/platform-context';
 import { defaultFilePreviewService } from '../../preview/preview-service';
 import { useStudioStore, type PageItem, type StudioDocument, type StudioState } from './studio-store';
 import { LinearIcon } from '../icons/linear-icon';
+import {
+  clamp,
+  estimateInlineFontSizePt,
+  findNearestTextSpan,
+  fitTextToWidth,
+  mergeTextLine,
+  resolveFontFamily,
+  sanitizeInlineText,
+  type FontFamilyId,
+} from './inline-text-utils';
+import { detectStudioEditLocale, getStudioEditMessages } from './studio-edit-i18n';
 
 interface TextLayerSpan {
   id: string;
@@ -15,6 +26,8 @@ interface TextLayerSpan {
   heightRatio: number;
   fontSizeRatio: number;
   fontName?: string;
+  fontFamilyHint?: string;
+  pageHeightPt?: number;
 }
 
 interface PdfJsLike {
@@ -61,9 +74,10 @@ async function buildTextLayerSpans(pdfBytes: Uint8Array, pageNumber: number): Pr
   });
   const pdf = await loadingTask.promise;
   const page = await pdf.getPage(pageNumber);
+  const pageViewport = page.getViewport({ scale: 1.0 });
   const viewport = page.getViewport({ scale: 2.0 });
   const textContent = await page.getTextContent();
-  const textStyles = textContent.styles as Record<string, { ascent?: number; descent?: number }>;
+  const textStyles = textContent.styles as Record<string, { ascent?: number; descent?: number; fontFamily?: string }>;
 
   const spans: TextLayerSpan[] = [];
   for (let i = 0; i < textContent.items.length; i += 1) {
@@ -96,6 +110,8 @@ async function buildTextLayerSpans(pdfBytes: Uint8Array, pageNumber: number): Pr
       heightRatio: clamp01(height / viewport.height),
       fontSizeRatio: clamp(fontHeight / viewport.height, 0.004, 0.25),
       fontName: item.fontName,
+      fontFamilyHint: style?.fontFamily,
+      pageHeightPt: pageViewport.height,
     });
   }
 
@@ -103,7 +119,6 @@ async function buildTextLayerSpans(pdfBytes: Uint8Array, pageNumber: number): Pr
 }
 
 type EditorToolId = 'text' | 'annotate' | 'whiteout' | 'shapes';
-type FontFamilyId = 'sora' | 'times' | 'mono';
 type TextAlignId = 'left' | 'center' | 'right';
 
 interface SelectedPage {
@@ -228,12 +243,10 @@ interface TextEditorState {
   initialValue: string;
 }
 
+type InlineUiState = 'idle' | 'hover' | 'selected' | 'editing' | 'saving' | 'saved' | 'error';
+
 function clamp01(value: number): number {
   return Math.max(0, Math.min(1, value));
-}
-
-function clamp(value: number, min: number, max: number): number {
-  return Math.max(min, Math.min(max, value));
 }
 
 function isTextElement(element: EditElement | null | undefined): element is TextElement {
@@ -485,6 +498,11 @@ export function StudioEditWorkspace() {
   const [textEditor, setTextEditor] = useState<TextEditorState | null>(null);
   const [textLayerSpans, setTextLayerSpans] = useState<TextLayerSpan[]>([]);
   const [isSelectMode, setIsSelectMode] = useState(false);
+  const [inlineUiState, setInlineUiState] = useState<InlineUiState>('idle');
+  const [hoveredTextSpanId, setHoveredTextSpanId] = useState<string | null>(null);
+
+  const locale = useMemo(() => detectStudioEditLocale(), []);
+  const ui = useMemo(() => getStudioEditMessages(locale), [locale]);
 
   const selectedPages = useMemo(() => buildSelectedPages(documents, selection), [documents, selection]);
   const activeDocument = useMemo(
@@ -511,6 +529,20 @@ export function StudioEditWorkspace() {
     () => (selectedStroke ? getStrokeBounds(selectedStroke.points) : null),
     [selectedStroke],
   );
+  const hasDirtyChanges = historyIndex > 0 || Boolean(textEditor && textEditor.value !== textEditor.initialValue);
+  const uiStateLabel = inlineUiState === 'idle'
+    ? ui.statusIdle
+    : inlineUiState === 'hover'
+      ? ui.statusHover
+      : inlineUiState === 'selected'
+        ? ui.statusSelected
+        : inlineUiState === 'editing'
+          ? ui.statusEditing
+          : inlineUiState === 'saving'
+            ? ui.statusSaving
+            : inlineUiState === 'saved'
+              ? ui.statusSaved
+              : ui.statusError;
 
   const resolveCanvasRect = useCallback((): DOMRect | null => {
     if (imageRef.current) {
@@ -523,6 +555,18 @@ export function StudioEditWorkspace() {
   }, []);
 
   useEffect(() => {
+    const onBeforeUnload = (event: BeforeUnloadEvent) => {
+      if (!hasDirtyChanges) {
+        return;
+      }
+      event.preventDefault();
+      event.returnValue = '';
+    };
+    window.addEventListener('beforeunload', onBeforeUnload);
+    return () => window.removeEventListener('beforeunload', onBeforeUnload);
+  }, [hasDirtyChanges]);
+
+  useEffect(() => {
     setElements([]);
     setHistory([[]]);
     setHistoryIndex(0);
@@ -531,6 +575,9 @@ export function StudioEditWorkspace() {
     setDraftStroke(null);
     setTextEditor(null);
     setTextLayerSpans([]);
+    setMessage(null);
+    setInlineUiState('idle');
+    setHoveredTextSpanId(null);
 
     if (preview) {
       void (async () => {
@@ -540,12 +587,16 @@ export function StudioEditWorkspace() {
           const bytes = new Uint8Array(await blob.arrayBuffer());
           const spans = await buildTextLayerSpans(bytes, preview.page.pageIndex + 1);
           setTextLayerSpans(spans);
+          if (spans.length === 0) {
+            setMessage(ui.noTextLayer);
+          }
         } catch (error) {
           console.error('Failed to load text layer:', error);
+          setMessage(ui.noTextLayer);
         }
       })();
     }
-  }, [preview?.page.id, runtime.vfs]);
+  }, [preview?.page.id, runtime.vfs, ui.noTextLayer]);
 
   const pushHistory = useCallback((next: EditElement[]) => {
     setHistory((prev) => {
@@ -754,107 +805,82 @@ export function StudioEditWorkspace() {
       }
 
       if (isSelectMode) {
-        // Find if we clicked on a text span
-        const clickedSpan = textLayerSpans.find(span =>
-          point.x >= span.xRatio && point.x <= span.xRatio + span.widthRatio &&
-          point.y >= span.yRatio && point.y <= span.yRatio + span.heightRatio
-        );
-
-        if (clickedSpan) {
-          // Merge spans into a line (logic from pdf-editor)
-          const lineThreshold = Math.max(0.0025, clickedSpan.heightRatio * 0.55);
-          const lineSpans = textLayerSpans
-            .filter((candidate) => (
-              Math.abs(candidate.yRatio - clickedSpan.yRatio) <= lineThreshold ||
-              Math.abs((candidate.yRatio + candidate.heightRatio) - (clickedSpan.yRatio + clickedSpan.heightRatio)) <= lineThreshold
-            ))
-            .sort((a, b) => a.xRatio - b.xRatio);
-
-          if (lineSpans.length > 0) {
-            const left = Math.min(...lineSpans.map((s) => s.xRatio));
-            const top = Math.min(...lineSpans.map((s) => s.yRatio));
-            const right = Math.max(...lineSpans.map((s) => s.xRatio + s.widthRatio));
-            const bottom = Math.max(...lineSpans.map((s) => s.yRatio + s.heightRatio));
-            const width = right - left;
-            const height = bottom - top;
-
-            let mergedText = '';
-            for (let i = 0; i < lineSpans.length; i += 1) {
-              const current = lineSpans[i];
-              if (i > 0) {
-                const prev = lineSpans[i - 1];
-                const gap = current.xRatio - (prev.xRatio + prev.widthRatio);
-                if (gap > Math.max(0.0015, current.heightRatio * 0.2) && !mergedText.endsWith(' ') && !current.text.startsWith(' ')) {
-                  mergedText += ' ';
-                }
-              }
-              mergedText += current.text;
-            }
-            mergedText = mergedText.replace(/\s+/g, ' ').trim();
-
-            if (!mergedText) return;
-
-            // Check if we already have an element for this line
-            const existing = elements.find(el =>
-              el.type === 'text' &&
-              Math.abs(el.x - left) < 0.005 &&
-              Math.abs(el.y - top) < 0.005
-            );
-
-            if (existing) {
-              setSelectedElementId(existing.id);
-              startEditingText(existing as TextElement);
-              return;
-            }
-
-            const whiteout: RectElement = {
-              id: crypto.randomUUID(),
-              type: 'rect',
-              x: left - 0.001,
-              y: top - 0.001,
-              w: width + 0.002,
-              h: height + 0.002,
-              fill: '#ffffff',
-              stroke: 'transparent',
-              strokeWidth: 0,
-              opacity: 1,
-            };
-
-            // Font detection logic
-            let fontFamily: FontFamilyId = 'sora';
-            if (clickedSpan.fontName) {
-              const lowerName = clickedSpan.fontName.toLowerCase();
-              if (lowerName.includes('serif') || lowerName.includes('times')) {
-                fontFamily = 'times';
-              } else if (lowerName.includes('mono') || lowerName.includes('courier')) {
-                fontFamily = 'mono';
-              }
-            }
-
-            const next: TextElement = {
-              id: crypto.randomUUID(),
-              type: 'text',
-              x: left,
-              y: top - 0.0005, // Subtle upward shift for baseline alignment
-              w: width + 0.02,
-              h: height + 0.005,
-              text: mergedText,
-              color: '#000000',
-              fontSize: Math.round(clickedSpan.fontSizeRatio * 842 * 0.98), // Refined scale
-              fontFamily,
-              fontWeight: 'normal',
-              fontStyle: 'normal',
-              textAlign: 'left',
-              opacity: 1,
-            };
-            console.log('E2E_DEBUG: whiteout_rect', whiteout);
-            console.log('E2E_DEBUG: text_element', next);
-            applyElements([...elements, whiteout, next]);
-            setSelectedElementId(next.id);
-            startEditingText(next);
-            return;
-          }
+        if (textLayerSpans.length === 0) {
+          setInlineUiState('error');
+          setMessage(ui.noTextLayer);
+          return;
         }
+
+        const clickedSpan = findNearestTextSpan(point, textLayerSpans);
+        if (!clickedSpan) {
+          setInlineUiState('idle');
+          return;
+        }
+
+        const mergedLine = mergeTextLine(textLayerSpans, clickedSpan);
+        if (!mergedLine) {
+          setInlineUiState('idle');
+          return;
+        }
+
+        const { left, top, width, height } = mergedLine;
+        const existing = elements.find((el) => (
+          el.type === 'text'
+          && Math.abs(el.x - left) < 0.005
+          && Math.abs(el.y - top) < 0.005
+        ));
+
+        if (existing) {
+          setSelectedElementId(existing.id);
+          setInlineUiState('selected');
+          startEditingText(existing as TextElement);
+          return;
+        }
+
+        const leftPad = Math.max(0.0015, width * 0.01);
+        const topPad = Math.max(0.002, height * 0.18);
+        const bottomPad = Math.max(0.004, height * 0.38);
+        const whiteoutLeft = clamp01(left - leftPad);
+        const whiteoutTop = clamp01(top - topPad);
+        const whiteoutRight = clamp01(left + width + leftPad);
+        const whiteoutBottom = clamp01(top + height + bottomPad);
+
+        const whiteout: RectElement = {
+          id: crypto.randomUUID(),
+          type: 'rect',
+          x: whiteoutLeft,
+          y: whiteoutTop,
+          w: Math.max(0.001, whiteoutRight - whiteoutLeft),
+          h: Math.max(0.001, whiteoutBottom - whiteoutTop),
+          fill: '#ffffff',
+          stroke: 'transparent',
+          strokeWidth: 0,
+          opacity: 1,
+        };
+
+        const fontFamily = resolveFontFamily(mergedLine.fontName, mergedLine.fontFamilyHint);
+        const next: TextElement = {
+          id: crypto.randomUUID(),
+          type: 'text',
+          x: left,
+          y: top - 0.0005,
+          w: width + 0.02,
+          h: height + 0.005,
+          text: mergedLine.text,
+          color: '#000000',
+          fontSize: estimateInlineFontSizePt(mergedLine.fontSizeRatio, mergedLine.pageHeightPt ?? 842),
+          fontFamily,
+          fontWeight: 'normal',
+          fontStyle: 'normal',
+          textAlign: 'left',
+          opacity: 1,
+        };
+
+        applyElements([...elements, whiteout, next]);
+        setSelectedElementId(next.id);
+        setInlineUiState('selected');
+        startEditingText(next);
+        return;
       }
 
       const next: TextElement = {
@@ -864,7 +890,7 @@ export function StudioEditWorkspace() {
         y: point.y,
         w: 0.22,
         h: 0.06,
-        text: 'Text',
+        text: ui.text,
         color: '#0f172a',
         fontSize: 18,
         fontFamily: 'sora',
@@ -875,6 +901,7 @@ export function StudioEditWorkspace() {
       };
       applyElements([...elements, next]);
       setSelectedElementId(next.id);
+      setInlineUiState('editing');
       setTextEditor({ id: next.id, value: next.text, initialValue: next.text });
       return;
     }
@@ -959,8 +986,13 @@ export function StudioEditWorkspace() {
 
   const handleTextPointerDown = (event: React.PointerEvent<Element>, element: TextElement) => {
     event.stopPropagation();
+    const target = event.target as HTMLElement | null;
+    if (target?.closest('.studio-floating-menu') || target?.closest('.studio-edit-text-resize')) {
+      return;
+    }
     if (tool === 'text') {
       setSelectedElementId(element.id);
+      setInlineUiState('selected');
       return;
     }
 
@@ -982,16 +1014,20 @@ export function StudioEditWorkspace() {
 
   const handleTextPointerUp = (event: React.PointerEvent<Element>, element: TextElement) => {
     event.stopPropagation();
+    const target = event.target as HTMLElement | null;
+    if (target?.closest('.studio-floating-menu') || target?.closest('.studio-edit-text-resize')) {
+      return;
+    }
     if (tool !== 'text') {
       return;
     }
-    const target = event.target as HTMLElement | null;
     if (target && target.tagName === 'TEXTAREA') {
       return;
     }
     if (textEditor?.id !== element.id && textEditor) {
       commitTextEditor();
     }
+    setInlineUiState('editing');
     startEditingText(element);
   };
 
@@ -1082,6 +1118,7 @@ export function StudioEditWorkspace() {
 
   const startEditingText = (element: TextElement) => {
     setSelectedElementId(element.id);
+    setInlineUiState('editing');
     setTextEditor({ id: element.id, value: element.text, initialValue: element.text });
   };
 
@@ -1092,16 +1129,18 @@ export function StudioEditWorkspace() {
     if (textEditor.value !== textEditor.initialValue) {
       pushHistory(elements);
     }
+    setInlineUiState(selectedElementId ? 'selected' : 'idle');
     setTextEditor(null);
-  }, [elements, pushHistory, textEditor]);
+  }, [elements, pushHistory, selectedElementId, textEditor]);
 
   const handleTextEditorChange = useCallback((id: string, value: string) => {
-    setTextEditor((prev) => (prev && prev.id === id ? { ...prev, value } : prev));
+    const normalizedValue = sanitizeInlineText(value);
+    setTextEditor((prev) => (prev && prev.id === id ? { ...prev, value: normalizedValue } : prev));
     setElements((prev) => prev.map((item) => {
       if (item.id !== id || item.type !== 'text') {
         return item;
       }
-      return { ...item, text: value };
+      return { ...item, text: normalizedValue };
     }));
   }, []);
 
@@ -1111,6 +1150,7 @@ export function StudioEditWorkspace() {
     }
 
     setIsApplying(true);
+    setInlineUiState('saving');
     setMessage(null);
     try {
       const sourceEntry = await runtime.vfs.read(preview.page.fileId);
@@ -1134,33 +1174,49 @@ export function StudioEditWorkspace() {
         return embedded;
       };
 
+      let overflowDetected = false;
       for (const element of elements) {
         if (element.type === 'text') {
           const font = await getFont(element.fontFamily, element.fontWeight, element.fontStyle);
           const { r, g, b } = hexToRgb(element.color);
-          const lines = element.text.split('\n');
-          const lineHeight = element.fontSize * 1.25;
-          for (let i = 0; i < lines.length; i += 1) {
-            const line = lines[i] || ' ';
-            const lineWidth = font.widthOfTextAtSize(line, element.fontSize);
-            const blockWidth = element.w * pageWidth;
-            let x = element.x * pageWidth;
-            if (element.textAlign === 'center') {
-              x += Math.max(0, (blockWidth - lineWidth) / 2);
-            }
-            if (element.textAlign === 'right') {
-              x += Math.max(0, blockWidth - lineWidth);
-            }
-            const yTop = element.y * pageHeight + i * lineHeight;
-            const y = pageHeight - yTop - element.fontSize;
+          const line = sanitizeInlineText(element.text || ' ');
+          const blockWidth = element.w * pageWidth;
+          const fit = fitTextToWidth(font, line, blockWidth, element.fontSize, 8);
+          overflowDetected ||= fit.overflow;
+
+          const lineWidth = font.widthOfTextAtSize(line, fit.fontSize) + fit.tracking * Math.max(0, line.length - 1);
+          let x = element.x * pageWidth;
+          if (element.textAlign === 'center') {
+            x += Math.max(0, (blockWidth - lineWidth) / 2);
+          }
+          if (element.textAlign === 'right') {
+            x += Math.max(0, blockWidth - lineWidth);
+          }
+          const yTop = element.y * pageHeight;
+          const y = pageHeight - yTop - fit.fontSize;
+
+          if (fit.tracking === 0 || line.length <= 1) {
             page.drawText(line, {
               x,
               y,
-              size: element.fontSize,
+              size: fit.fontSize,
               font,
               color: rgb(r, g, b),
               opacity: element.opacity,
             });
+          } else {
+            let cursor = x;
+            for (const char of line) {
+              page.drawText(char, {
+                x: cursor,
+                y,
+                size: fit.fontSize,
+                font,
+                color: rgb(r, g, b),
+                opacity: element.opacity,
+              });
+              cursor += font.widthOfTextAtSize(char, fit.fontSize) + fit.tracking;
+            }
           }
           continue;
         }
@@ -1220,10 +1276,16 @@ export function StudioEditWorkspace() {
         pageIndex: preview.page.pageIndex,
         thumbnailUrl: previewData.thumbnailUrl ?? preview.page.thumbnailUrl,
       });
-      setMessage('Changes applied to PDF page.');
+      setInlineUiState('saved');
+      setTextEditor(null);
+      setSelectedElementId(null);
+      setHistory([elements]);
+      setHistoryIndex(0);
+      setMessage(overflowDetected ? `${ui.changesApplied} ${ui.overflowWarning}` : ui.changesApplied);
     } catch (error) {
-      const msg = error instanceof Error ? error.message : 'Failed to apply changes';
-      setMessage(msg);
+      setInlineUiState('error');
+      const details = error instanceof Error ? error.message : ui.saveFailed;
+      setMessage(`${ui.saveFailed}${details ? ` ${details}` : ''}`.trim());
     } finally {
       setIsApplying(false);
     }
@@ -1233,9 +1295,9 @@ export function StudioEditWorkspace() {
     return (
       <section className="studio-edit-shell">
         <div className="studio-edit-empty">
-          <h2 className="studio-edit-empty-title">Select a page to start Edit mode</h2>
+          <h2 className="studio-edit-empty-title">{ui.selectPageTitle}</h2>
           <button type="button" className="studio-edit-back-btn" onClick={() => navigate('/studio')}>
-            Back to Canvas
+            {ui.backToCanvas}
           </button>
         </div>
       </section>
@@ -1250,59 +1312,86 @@ export function StudioEditWorkspace() {
           className={`studio-edit-tool-btn ${tool === 'text' ? 'active' : ''} ${isSelectMode ? 'select-mode' : ''}`}
           onClick={() => {
             setTool('text');
-            if (tool === 'text') setIsSelectMode(!isSelectMode);
+            if (tool === 'text') {
+              const next = !isSelectMode;
+              setIsSelectMode(next);
+              if (next && textLayerSpans.length === 0) {
+                setInlineUiState('error');
+                setMessage(ui.noTextLayer);
+              }
+            }
           }}
-          title={isSelectMode ? "Switch to Manual Mode" : "Switch to Select Text Mode"}
+          title={isSelectMode ? ui.switchToManualMode : ui.switchToSelectTextMode}
         >
           <LinearIcon name="word" className="linear-icon" />
-          <span>{isSelectMode ? 'Select Text' : 'Text'}</span>
+          <span>{isSelectMode ? ui.selectText : ui.text}</span>
         </button>
         <button type="button" className="studio-edit-tool-btn" title="Coming soon">
-          <LinearIcon name="merge" className="linear-icon" /><span>Links</span>
+          <LinearIcon name="merge" className="linear-icon" /><span>{ui.links}</span>
         </button>
         <button type="button" className="studio-edit-tool-btn" title="Coming soon">
-          <LinearIcon name="split" className="linear-icon" /><span>Forms</span>
+          <LinearIcon name="split" className="linear-icon" /><span>{ui.forms}</span>
         </button>
         <button type="button" className="studio-edit-tool-btn" title="Coming soon">
-          <LinearIcon name="image" className="linear-icon" /><span>Images</span>
+          <LinearIcon name="image" className="linear-icon" /><span>{ui.images}</span>
         </button>
         <button type="button" className="studio-edit-tool-btn" title="Coming soon">
-          <LinearIcon name="lock" className="linear-icon" /><span>Sign</span>
+          <LinearIcon name="lock" className="linear-icon" /><span>{ui.sign}</span>
         </button>
         <button type="button" className={`studio-edit-tool-btn ${tool === 'whiteout' ? 'active' : ''}`} onClick={() => { setTool('whiteout'); setIsSelectMode(false); }}>
-          <LinearIcon name="delete-pages" className="linear-icon" /><span>Whiteout</span>
+          <LinearIcon name="delete-pages" className="linear-icon" /><span>{ui.whiteout}</span>
         </button>
         <button type="button" className={`studio-edit-tool-btn ${tool === 'annotate' ? 'active' : ''}`} onClick={() => { setTool('annotate'); setIsSelectMode(false); }}>
-          <LinearIcon name="tool" className="linear-icon" /><span>Annotate</span>
+          <LinearIcon name="tool" className="linear-icon" /><span>{ui.annotate}</span>
         </button>
         <button type="button" className={`studio-edit-tool-btn ${tool === 'shapes' ? 'active' : ''}`} onClick={() => { setTool('shapes'); setIsSelectMode(false); }}>
-          <LinearIcon name="rotate" className="linear-icon" /><span>Shapes</span>
+          <LinearIcon name="rotate" className="linear-icon" /><span>{ui.shapes}</span>
         </button>
         <button type="button" className="studio-edit-tool-btn" onClick={undo} disabled={historyIndex <= 0}>
-          <LinearIcon name="chevron-left" className="linear-icon" /><span>Undo</span>
+          <LinearIcon name="chevron-left" className="linear-icon" /><span>{ui.undo}</span>
         </button>
         <button type="button" className="studio-edit-tool-btn" onClick={redo} disabled={historyIndex >= history.length - 1}>
-          <LinearIcon name="chevron-right" className="linear-icon" /><span>Redo</span>
+          <LinearIcon name="chevron-right" className="linear-icon" /><span>{ui.redo}</span>
         </button>
         <button type="button" className="studio-edit-tool-btn" onClick={deleteSelected} disabled={!selectedElementId}>
-          <LinearIcon name="x" className="linear-icon" /><span>Delete</span>
+          <LinearIcon name="x" className="linear-icon" /><span>{ui.delete}</span>
         </button>
-        <button type="button" className="studio-edit-tool-btn studio-edit-apply-btn" onClick={() => { void applyChanges(); }} disabled={isApplying}>
-          <span>{isApplying ? 'Applying...' : 'Apply changes'}</span>
+        <button
+          type="button"
+          className="studio-edit-tool-btn studio-edit-apply-btn"
+          onClick={() => {
+            if (textEditor) {
+              commitTextEditor();
+            }
+            void applyChanges();
+          }}
+          disabled={isApplying}
+        >
+          <span>{isApplying ? ui.saving : ui.save}</span>
         </button>
-        <button type="button" className="studio-edit-back-btn" onClick={() => navigate('/studio')}>
-          Back
+        <button
+          type="button"
+          className="studio-edit-back-btn"
+          onClick={() => {
+            if (hasDirtyChanges && !window.confirm(ui.unsavedConfirm)) {
+              return;
+            }
+            navigate('/studio');
+          }}
+        >
+          {ui.back}
         </button>
       </header>
 
       <div className="studio-edit-meta">
-        <span className="studio-edit-page-badge">Page {preview.indexInDoc + 1}</span>
+        <span className="studio-edit-page-badge">{ui.page} {preview.indexInDoc + 1}</span>
         <span className="studio-edit-page-badge">{preview.docName}</span>
-        <span className="studio-edit-page-badge">Selection: {selectedPages.length || 1}</span>
-        {message && <span className="studio-edit-page-badge studio-edit-message">{message}</span>}
-        {selectedElement && (
-          <span className="studio-edit-page-badge debugging" style={{ background: '#f59e0b', color: '#000' }}>
-            DEBUG: x={selectedElement.x.toFixed(4)} y={selectedElement.y.toFixed(4)} w={('w' in selectedElement ? (selectedElement.w as number).toFixed(4) : '0')}
+        <span className="studio-edit-page-badge">{ui.selection}: {selectedPages.length || 1}</span>
+        <span className="studio-edit-page-badge">UI: {uiStateLabel}</span>
+        {hasDirtyChanges && <span className="studio-edit-page-badge studio-edit-message">{ui.dirty}</span>}
+        {message && (
+          <span className={`studio-edit-page-badge studio-edit-message ${inlineUiState === 'error' ? 'is-error' : 'is-success'}`}>
+            {message}
           </span>
         )}
       </div>
@@ -1325,16 +1414,28 @@ export function StudioEditWorkspace() {
             />
 
             {isSelectMode && textLayerSpans
-              .filter(span => !elements.some(el => el.type === 'text' && Math.abs(el.x - span.xRatio) < 0.001)) // Прячем подсветку, если уже есть элемент
+              .filter(span => !elements.some(el => el.type === 'text' && Math.abs(el.x - span.xRatio) < 0.001))
               .map(span => (
                 <div
                   key={span.id}
-                  className="studio-edit-text-highlight"
+                  className={`studio-edit-text-highlight ${hoveredTextSpanId === span.id ? 'hovered' : ''}`}
                   style={{
                     left: `${span.xRatio * 100}%`,
                     top: `${span.yRatio * 100}%`,
                     width: `${span.widthRatio * 100}%`,
                     height: `${span.heightRatio * 100}%`,
+                  }}
+                  onPointerEnter={() => {
+                    setHoveredTextSpanId(span.id);
+                    setInlineUiState('hover');
+                  }}
+                  onPointerLeave={() => {
+                    setHoveredTextSpanId((prev) => (prev === span.id ? null : prev));
+                    if (!textEditor && selectedElementId) {
+                      setInlineUiState('selected');
+                    } else if (!textEditor) {
+                      setInlineUiState('idle');
+                    }
                   }}
                 />
               ))}
@@ -1448,14 +1549,17 @@ export function StudioEditWorkspace() {
                             }
                             return { ...item, text: textEditor.initialValue };
                           }));
+                          setInlineUiState('selected');
                           setTextEditor(null);
                         }
-                        if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
+                        if (event.key === 'Enter') {
                           event.preventDefault();
                           commitTextEditor();
+                          void applyChanges();
                         }
                       }}
                       autoFocus
+                      rows={1}
                       className="studio-edit-textarea"
                     />
                   ) : (

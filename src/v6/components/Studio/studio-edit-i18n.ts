@@ -1,0 +1,165 @@
+export type StudioEditLocale = 'en' | 'ru' | 'de' | 'es' | 'fr' | 'it' | 'pt' | 'ja' | 'zh';
+
+export interface StudioEditMessages {
+  selectPageTitle: string;
+  backToCanvas: string;
+  switchToManualMode: string;
+  switchToSelectTextMode: string;
+  selectText: string;
+  text: string;
+  links: string;
+  forms: string;
+  images: string;
+  sign: string;
+  whiteout: string;
+  annotate: string;
+  shapes: string;
+  undo: string;
+  redo: string;
+  delete: string;
+  save: string;
+  saving: string;
+  back: string;
+  page: string;
+  selection: string;
+  noTextLayer: string;
+  changesApplied: string;
+  saveFailed: string;
+  unsavedConfirm: string;
+  overflowWarning: string;
+  statusIdle: string;
+  statusHover: string;
+  statusSelected: string;
+  statusEditing: string;
+  statusSaving: string;
+  statusSaved: string;
+  statusError: string;
+  dirty: string;
+}
+
+const EN_MESSAGES: StudioEditMessages = {
+  selectPageTitle: 'Select a page to start Edit mode',
+  backToCanvas: 'Back to Canvas',
+  switchToManualMode: 'Switch to Manual Mode',
+  switchToSelectTextMode: 'Switch to Select Text Mode',
+  selectText: 'Select Text',
+  text: 'Text',
+  links: 'Links',
+  forms: 'Forms',
+  images: 'Images',
+  sign: 'Sign',
+  whiteout: 'Whiteout',
+  annotate: 'Annotate',
+  shapes: 'Shapes',
+  undo: 'Undo',
+  redo: 'Redo',
+  delete: 'Delete',
+  save: 'Save',
+  saving: 'Saving...',
+  back: 'Back',
+  page: 'Page',
+  selection: 'Selection',
+  noTextLayer: 'Inline editing is unavailable: no text layer found.',
+  changesApplied: 'Changes applied to PDF page.',
+  saveFailed: 'Failed to save changes.',
+  unsavedConfirm: 'You have unsaved changes. Leave without saving?',
+  overflowWarning: 'Text overflowed available width. Font size was reduced to fit.',
+  statusIdle: 'idle',
+  statusHover: 'hover',
+  statusSelected: 'selected',
+  statusEditing: 'editing',
+  statusSaving: 'saving',
+  statusSaved: 'saved',
+  statusError: 'error',
+  dirty: 'dirty',
+};
+
+const RU_MESSAGES: StudioEditMessages = {
+  ...EN_MESSAGES,
+  selectPageTitle: 'Выберите страницу для режима редактирования',
+  backToCanvas: 'Назад к холсту',
+  switchToManualMode: 'Переключить в ручной режим',
+  switchToSelectTextMode: 'Переключить в режим выбора текста',
+  selectText: 'Выбор текста',
+  text: 'Текст',
+  links: 'Ссылки',
+  forms: 'Формы',
+  images: 'Изображения',
+  sign: 'Подпись',
+  whiteout: 'Скрытие',
+  annotate: 'Аннотация',
+  shapes: 'Фигуры',
+  undo: 'Отменить',
+  redo: 'Повторить',
+  delete: 'Удалить',
+  save: 'Сохранить',
+  saving: 'Сохранение...',
+  back: 'Назад',
+  page: 'Страница',
+  selection: 'Выбор',
+  noTextLayer: 'Inline-редактирование недоступно: отсутствует текстовый слой.',
+  changesApplied: 'Изменения сохранены в PDF-страницу.',
+  saveFailed: 'Не удалось сохранить изменения.',
+  unsavedConfirm: 'Есть несохранённые изменения. Выйти без сохранения?',
+  overflowWarning: 'Текст не помещался по ширине. Размер шрифта уменьшен.',
+  statusIdle: 'ожидание',
+  statusHover: 'наведение',
+  statusSelected: 'выбрано',
+  statusEditing: 'редактирование',
+  statusSaving: 'сохранение',
+  statusSaved: 'сохранено',
+  statusError: 'ошибка',
+  dirty: 'изменения',
+};
+
+const SIMPLE_FALLBACKS: Record<Exclude<StudioEditLocale, 'en' | 'ru'>, StudioEditMessages> = {
+  de: EN_MESSAGES,
+  es: EN_MESSAGES,
+  fr: EN_MESSAGES,
+  it: EN_MESSAGES,
+  pt: EN_MESSAGES,
+  ja: EN_MESSAGES,
+  zh: EN_MESSAGES,
+};
+
+const TRANSLATIONS: Record<StudioEditLocale, StudioEditMessages> = {
+  en: EN_MESSAGES,
+  ru: RU_MESSAGES,
+  ...SIMPLE_FALLBACKS,
+};
+
+export function detectStudioEditLocale(): StudioEditLocale {
+  if (typeof navigator === 'undefined') {
+    return 'en';
+  }
+  const raw = (navigator.language || 'en').trim().toLowerCase();
+  if (raw.startsWith('ru')) {
+    return 'ru';
+  }
+  if (raw.startsWith('de')) {
+    return 'de';
+  }
+  if (raw.startsWith('es')) {
+    return 'es';
+  }
+  if (raw.startsWith('fr')) {
+    return 'fr';
+  }
+  if (raw.startsWith('it')) {
+    return 'it';
+  }
+  if (raw.startsWith('pt')) {
+    return 'pt';
+  }
+  if (raw.startsWith('ja')) {
+    return 'ja';
+  }
+  if (raw.startsWith('zh')) {
+    return 'zh';
+  }
+  return 'en';
+}
+
+export function getStudioEditMessages(locale: StudioEditLocale): StudioEditMessages {
+  return TRANSLATIONS[locale] ?? EN_MESSAGES;
+}
