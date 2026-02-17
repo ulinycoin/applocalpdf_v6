@@ -74,7 +74,6 @@ test.describe('Studio Edit Precision', () => {
 
             // Get highlight bounds in client coordinates
             const box = await highlight.boundingBox();
-            console.log('Highlight Box (Playwright):', box);
             expect(box).not.toBeNull();
 
             // Click to edit
@@ -86,13 +85,11 @@ test.describe('Studio Edit Precision', () => {
 
             // Get textarea bounds
             const editBox = await textarea.boundingBox();
-            console.log('Edit Area Box (Playwright):', editBox);
             expect(editBox).not.toBeNull();
 
             if (box && editBox) {
                 const diffX = Math.abs(editBox.x - box.x);
                 const diffY = Math.abs(editBox.y - box.y);
-                console.log(`Precision Diff: X=${diffX}, Y=${diffY}`);
 
                 // Assertions with tolerance (V6 should be within 2-3px)
                 expect(diffX).toBeLessThan(5);
