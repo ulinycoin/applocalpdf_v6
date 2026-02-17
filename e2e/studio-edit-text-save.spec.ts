@@ -72,7 +72,7 @@ test.describe('Studio edit text save P0', () => {
       const textarea = page.locator('.studio-edit-textarea').first();
       await expect(textarea).toBeVisible({ timeout: 10000 });
       await textarea.fill('INLINE UPDATED P0');
-      await page.getByRole('button', { name: 'Save' }).click();
+      await page.locator('.studio-edit-apply-btn').click();
 
       const afterFileId = await page.waitForFunction((prevId) => {
         const store = (window as Window & { __LOCALPDF_STUDIO_STORE__?: { getState: () => {

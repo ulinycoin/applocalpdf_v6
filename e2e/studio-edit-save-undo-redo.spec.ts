@@ -7,14 +7,12 @@ import { PDFDocument, StandardFonts } from 'pdf-lib';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-async function createTwoPagePdf(name: string): Promise<string> {
-  const path = join(__dirname, `p1-batch-save-${name}.pdf`);
+async function createPdf(name: string): Promise<string> {
+  const path = join(__dirname, `p1-save-undo-redo-${name}.pdf`);
   const doc = await PDFDocument.create();
+  const page = doc.addPage([612, 792]);
   const font = await doc.embedFont(StandardFonts.Helvetica);
-  const p1 = doc.addPage([612, 792]);
-  p1.drawText('BATCH PAGE ONE', { x: 80, y: 700, size: 24, font });
-  const p2 = doc.addPage([612, 792]);
-  p2.drawText('BATCH PAGE TWO', { x: 80, y: 700, size: 24, font });
+  page.drawText('UNDO REDO SAMPLE', { x: 80, y: 700, size: 24, font });
   writeFileSync(path, await doc.save());
   return path;
 }
@@ -25,14 +23,14 @@ function safeDelete(path: string): void {
   }
 }
 
-test.describe('Studio edit batch save P1', () => {
-  test('applies save to all selected pages', async ({ page }) => {
-    const pdfPath = await createTwoPagePdf('batch');
+test.describe('Studio save undo/redo P1', () => {
+  test('reverts and reapplies saved output file id', async ({ page }) => {
+    const pdfPath = await createPdf('single');
     try {
       await page.goto('/studio');
       await page.locator('.studio-shell-container input[type="file"]').first().setInputFiles(pdfPath);
 
-      const initialIds = await page.waitForFunction(() => {
+      const initialFileIdHandle = await page.waitForFunction(() => {
         const store = (window as Window & { __LOCALPDF_STUDIO_STORE__?: { getState: () => {
           documents: Array<{ id: string; pages: Array<{ id: string; fileId: string }> }>;
           setActiveDocument: (id: string | null) => void;
@@ -43,20 +41,16 @@ test.describe('Studio edit batch save P1', () => {
         }
         const state = store.getState();
         const doc = state.documents[0];
-        const first = doc?.pages[0];
-        const second = doc?.pages[1];
-        if (!doc || !first || !second) {
+        const firstPage = doc?.pages[0];
+        if (!doc || !firstPage) {
           return null;
         }
         state.setActiveDocument(doc.id);
-        state.setSelection([
-          { docId: doc.id, pageId: first.id },
-          { docId: doc.id, pageId: second.id },
-        ]);
-        return [first.fileId, second.fileId];
+        state.setSelection([{ docId: doc.id, pageId: firstPage.id }]);
+        return firstPage.fileId;
       }, { timeout: 20000 });
 
-      const [beforeFirst, beforeSecond] = await initialIds.jsonValue() as [string, string];
+      const initialFileId = await initialFileIdHandle.jsonValue() as string;
 
       await page.getByRole('button', { name: 'Edit' }).click();
       await expect(page.locator('.studio-edit-shell')).toBeVisible({ timeout: 20000 });
@@ -76,26 +70,36 @@ test.describe('Studio edit batch save P1', () => {
 
       const textarea = page.locator('.studio-edit-textarea').first();
       await expect(textarea).toBeVisible({ timeout: 10000 });
-      await textarea.fill('BATCH UPDATE P1');
+      await textarea.fill('SAVE UNDO REDO P1');
       await page.locator('.studio-edit-apply-btn').click();
 
-      await expect(page.getByText(/selected pages:\s*2|выбранных страниц:\s*2/i)).toBeVisible({ timeout: 15000 });
-
-      const changed = await page.waitForFunction((firstId, secondId) => {
+      const savedFileIdHandle = await page.waitForFunction((prevId) => {
         const store = (window as Window & { __LOCALPDF_STUDIO_STORE__?: { getState: () => {
           documents: Array<{ pages: Array<{ fileId: string }> }>;
         } } }).__LOCALPDF_STUDIO_STORE__;
-        const pages = store?.getState().documents[0]?.pages;
-        if (!pages?.[0]?.fileId || !pages?.[1]?.fileId) {
+        const next = store?.getState().documents[0]?.pages[0]?.fileId;
+        if (!next || next === prevId) {
           return null;
         }
-        if (pages[0].fileId === firstId || pages[1].fileId === secondId) {
-          return null;
-        }
-        return true;
-      }, beforeFirst, beforeSecond, { timeout: 20000 });
+        return next;
+      }, initialFileId, { timeout: 20000 });
+      const savedFileId = await savedFileIdHandle.jsonValue() as string;
 
-      expect(await changed.jsonValue()).toBe(true);
+      await page.getByRole('button', { name: /Undo Save|Отменить сохранение/i }).click();
+      await page.waitForFunction((expected) => {
+        const store = (window as Window & { __LOCALPDF_STUDIO_STORE__?: { getState: () => {
+          documents: Array<{ pages: Array<{ fileId: string }> }>;
+        } } }).__LOCALPDF_STUDIO_STORE__;
+        return store?.getState().documents[0]?.pages[0]?.fileId === expected;
+      }, initialFileId, { timeout: 20000 });
+
+      await page.getByRole('button', { name: /Redo Save|Повторить сохранение/i }).click();
+      await page.waitForFunction((expected) => {
+        const store = (window as Window & { __LOCALPDF_STUDIO_STORE__?: { getState: () => {
+          documents: Array<{ pages: Array<{ fileId: string }> }>;
+        } } }).__LOCALPDF_STUDIO_STORE__;
+        return store?.getState().documents[0]?.pages[0]?.fileId === expected;
+      }, savedFileId, { timeout: 20000 });
     } finally {
       safeDelete(pdfPath);
     }

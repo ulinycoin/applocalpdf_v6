@@ -16,6 +16,8 @@ export interface StudioEditMessages {
   shapes: string;
   undo: string;
   redo: string;
+  undoSave: string;
+  redoSave: string;
   delete: string;
   save: string;
   saving: string;
@@ -38,6 +40,7 @@ export interface StudioEditMessages {
   statusSaved: string;
   statusError: string;
   dirty: string;
+  saveReverted: string;
 }
 
 const EN_MESSAGES: StudioEditMessages = {
@@ -56,6 +59,8 @@ const EN_MESSAGES: StudioEditMessages = {
   shapes: 'Shapes',
   undo: 'Undo',
   redo: 'Redo',
+  undoSave: 'Undo Save',
+  redoSave: 'Redo Save',
   delete: 'Delete',
   save: 'Save',
   saving: 'Saving...',
@@ -78,6 +83,7 @@ const EN_MESSAGES: StudioEditMessages = {
   statusSaved: 'saved',
   statusError: 'error',
   dirty: 'dirty',
+  saveReverted: 'Saved changes reverted.',
 };
 
 const RU_MESSAGES: StudioEditMessages = {
@@ -97,6 +103,8 @@ const RU_MESSAGES: StudioEditMessages = {
   shapes: 'Фигуры',
   undo: 'Отменить',
   redo: 'Повторить',
+  undoSave: 'Отменить сохранение',
+  redoSave: 'Повторить сохранение',
   delete: 'Удалить',
   save: 'Сохранить',
   saving: 'Сохранение...',
@@ -119,6 +127,7 @@ const RU_MESSAGES: StudioEditMessages = {
   statusSaved: 'сохранено',
   statusError: 'ошибка',
   dirty: 'изменения',
+  saveReverted: 'Сохранённые изменения отменены.',
 };
 
 const SIMPLE_FALLBACKS: Record<Exclude<StudioEditLocale, 'en' | 'ru'>, StudioEditMessages> = {

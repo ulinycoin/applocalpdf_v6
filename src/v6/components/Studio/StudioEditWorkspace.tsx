@@ -147,6 +147,20 @@ interface TextEditorState {
   initialValue: string;
 }
 
+interface SaveCheckpointEntry {
+  docId: string;
+  pageId: string;
+  pageIndex: number;
+  prevFileId: string;
+  prevThumbnailUrl: string;
+  nextFileId: string;
+  nextThumbnailUrl: string;
+}
+
+interface SaveCheckpoint {
+  entries: SaveCheckpointEntry[];
+}
+
 type InlineUiState = 'idle' | 'hover' | 'selected' | 'editing' | 'saving' | 'saved' | 'error';
 
 function clamp01(value: number): number {
@@ -502,6 +516,8 @@ export function StudioEditWorkspace() {
   const [applyToSelection, setApplyToSelection] = useState(true);
   const [inlineUiState, setInlineUiState] = useState<InlineUiState>('idle');
   const [hoveredTextSpanId, setHoveredTextSpanId] = useState<string | null>(null);
+  const [saveUndoStack, setSaveUndoStack] = useState<SaveCheckpoint[]>([]);
+  const [saveRedoStack, setSaveRedoStack] = useState<SaveCheckpoint[]>([]);
 
   const locale = useMemo(() => detectStudioEditLocale(), []);
   const ui = useMemo(() => getStudioEditMessages(locale), [locale]);
@@ -590,6 +606,8 @@ export function StudioEditWorkspace() {
     setTextLayerSpans([]);
     setInlineUiState('idle');
     setHoveredTextSpanId(null);
+    setSaveUndoStack([]);
+    setSaveRedoStack([]);
 
     if (!preview) {
       return;
@@ -1212,9 +1230,12 @@ export function StudioEditWorkspace() {
       let overflowCount = 0;
       let failureCount = 0;
       const failureDetails: string[] = [];
+      const checkpointEntries: SaveCheckpointEntry[] = [];
 
       for (const target of targets) {
         try {
+          const prevFileId = target.page.fileId;
+          const prevThumbnailUrl = target.page.thumbnailUrl;
           const command: IWorkerCommand = {
             id: crypto.randomUUID(),
             type: 'COMMAND',
@@ -1245,10 +1266,20 @@ export function StudioEditWorkspace() {
             target.page.pageIndex + 1,
             { scale: 2 },
           );
+          const nextThumbnailUrl = previewData.thumbnailUrl ?? target.page.thumbnailUrl;
           updatePage(target.docId, target.page.id, {
             fileId: finalEvent.payload.payload.outputId,
             pageIndex: target.page.pageIndex,
-            thumbnailUrl: previewData.thumbnailUrl ?? target.page.thumbnailUrl,
+            thumbnailUrl: nextThumbnailUrl,
+          });
+          checkpointEntries.push({
+            docId: target.docId,
+            pageId: target.page.id,
+            pageIndex: target.page.pageIndex,
+            prevFileId,
+            prevThumbnailUrl,
+            nextFileId: finalEvent.payload.payload.outputId,
+            nextThumbnailUrl,
           });
         } catch (targetError) {
           failureCount += 1;
@@ -1279,6 +1310,10 @@ export function StudioEditWorkspace() {
       setSelectedElementId(null);
       setHistory([elements]);
       setHistoryIndex(0);
+      if (checkpointEntries.length > 0) {
+        setSaveUndoStack((prev) => [...prev, { entries: checkpointEntries }]);
+        setSaveRedoStack([]);
+      }
 
       if (targets.length > 1) {
         const baseMessage = `${ui.changesAppliedSelection} ${targets.length}`;
@@ -1305,6 +1340,52 @@ export function StudioEditWorkspace() {
         });
       }
       setMessage(`${ui.saveFailed}${details ? ` ${details}` : ''}`.trim());
+    } finally {
+      setIsApplying(false);
+    }
+  };
+
+  const undoLastSave = async () => {
+    const checkpoint = saveUndoStack[saveUndoStack.length - 1];
+    if (!checkpoint || isApplying) {
+      return;
+    }
+    setIsApplying(true);
+    try {
+      for (const entry of checkpoint.entries) {
+        updatePage(entry.docId, entry.pageId, {
+          fileId: entry.prevFileId,
+          pageIndex: entry.pageIndex,
+          thumbnailUrl: entry.prevThumbnailUrl,
+        });
+      }
+      setSaveUndoStack((prev) => prev.slice(0, -1));
+      setSaveRedoStack((prev) => [...prev, checkpoint]);
+      setMessage(ui.saveReverted);
+      setInlineUiState('saved');
+    } finally {
+      setIsApplying(false);
+    }
+  };
+
+  const redoLastSave = async () => {
+    const checkpoint = saveRedoStack[saveRedoStack.length - 1];
+    if (!checkpoint || isApplying) {
+      return;
+    }
+    setIsApplying(true);
+    try {
+      for (const entry of checkpoint.entries) {
+        updatePage(entry.docId, entry.pageId, {
+          fileId: entry.nextFileId,
+          pageIndex: entry.pageIndex,
+          thumbnailUrl: entry.nextThumbnailUrl,
+        });
+      }
+      setSaveRedoStack((prev) => prev.slice(0, -1));
+      setSaveUndoStack((prev) => [...prev, checkpoint]);
+      setMessage(checkpoint.entries.length > 1 ? `${ui.changesAppliedSelection} ${checkpoint.entries.length}.` : ui.changesApplied);
+      setInlineUiState('saved');
     } finally {
       setIsApplying(false);
     }
@@ -1381,6 +1462,12 @@ export function StudioEditWorkspace() {
         </button>
         <button type="button" className="studio-edit-tool-btn" onClick={redo} disabled={historyIndex >= history.length - 1}>
           <LinearIcon name="chevron-right" className="linear-icon" /><span>{ui.redo}</span>
+        </button>
+        <button type="button" className="studio-edit-tool-btn" onClick={() => { void undoLastSave(); }} disabled={saveUndoStack.length === 0 || isApplying}>
+          <LinearIcon name="chevron-left" className="linear-icon" /><span>{ui.undoSave}</span>
+        </button>
+        <button type="button" className="studio-edit-tool-btn" onClick={() => { void redoLastSave(); }} disabled={saveRedoStack.length === 0 || isApplying}>
+          <LinearIcon name="chevron-right" className="linear-icon" /><span>{ui.redoSave}</span>
         </button>
         <button type="button" className="studio-edit-tool-btn" onClick={deleteSelected} disabled={!selectedElementId}>
           <LinearIcon name="x" className="linear-icon" /><span>{ui.delete}</span>
