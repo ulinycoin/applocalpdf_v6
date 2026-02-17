@@ -19,11 +19,14 @@ export interface StudioEditMessages {
   delete: string;
   save: string;
   saving: string;
+  saveSelection: string;
   back: string;
   page: string;
   selection: string;
   noTextLayer: string;
   changesApplied: string;
+  changesAppliedSelection: string;
+  partialSaveFailed: string;
   saveFailed: string;
   unsavedConfirm: string;
   overflowWarning: string;
@@ -56,11 +59,14 @@ const EN_MESSAGES: StudioEditMessages = {
   delete: 'Delete',
   save: 'Save',
   saving: 'Saving...',
+  saveSelection: 'Save all selected pages',
   back: 'Back',
   page: 'Page',
   selection: 'Selection',
   noTextLayer: 'Inline editing is unavailable: no text layer found.',
   changesApplied: 'Changes applied to PDF page.',
+  changesAppliedSelection: 'Changes applied to selected pages:',
+  partialSaveFailed: 'Some selected pages failed to save.',
   saveFailed: 'Failed to save changes.',
   unsavedConfirm: 'You have unsaved changes. Leave without saving?',
   overflowWarning: 'Text overflowed available width. Font size was reduced to fit.',
@@ -94,11 +100,14 @@ const RU_MESSAGES: StudioEditMessages = {
   delete: 'Удалить',
   save: 'Сохранить',
   saving: 'Сохранение...',
+  saveSelection: 'Сохранить все выбранные страницы',
   back: 'Назад',
   page: 'Страница',
   selection: 'Выбор',
   noTextLayer: 'Inline-редактирование недоступно: отсутствует текстовый слой.',
   changesApplied: 'Изменения сохранены в PDF-страницу.',
+  changesAppliedSelection: 'Изменения сохранены для выбранных страниц:',
+  partialSaveFailed: 'Не удалось сохранить часть выбранных страниц.',
   saveFailed: 'Не удалось сохранить изменения.',
   unsavedConfirm: 'Есть несохранённые изменения. Выйти без сохранения?',
   overflowWarning: 'Текст не помещался по ширине. Размер шрифта уменьшен.',

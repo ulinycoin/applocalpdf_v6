@@ -477,6 +477,7 @@ export function StudioEditWorkspace() {
   const [textEditor, setTextEditor] = useState<TextEditorState | null>(null);
   const [textLayerSpans, setTextLayerSpans] = useState<TextLayerSpan[]>([]);
   const [isSelectMode, setIsSelectMode] = useState(false);
+  const [applyToSelection, setApplyToSelection] = useState(true);
   const [inlineUiState, setInlineUiState] = useState<InlineUiState>('idle');
   const [hoveredTextSpanId, setHoveredTextSpanId] = useState<string | null>(null);
 
@@ -497,6 +498,17 @@ export function StudioEditWorkspace() {
       indexInDoc: 0,
     }
     : null);
+  const canApplyToSelection = selectedPages.length > 1;
+
+  useEffect(() => {
+    if (!canApplyToSelection && applyToSelection) {
+      setApplyToSelection(false);
+      return;
+    }
+    if (canApplyToSelection && !applyToSelection) {
+      setApplyToSelection(true);
+    }
+  }, [applyToSelection, canApplyToSelection]);
 
   const selectedElement = useMemo(
     () => elements.find((element) => element.id === selectedElementId) ?? null,
@@ -1170,44 +1182,86 @@ export function StudioEditWorkspace() {
     setMessage(null);
     const runId = crypto.randomUUID();
     try {
-      const command: IWorkerCommand = {
-        id: crypto.randomUUID(),
-        type: 'COMMAND',
-        payload: {
-          type: 'APPLY_STUDIO_TEXT_EDITS',
-          payload: {
-            fileId: preview.page.fileId,
-            pageIndex: preview.page.pageIndex,
-            elements: elements as WorkerStudioEditElement[],
-          },
-        },
-      };
-      const finalEvent = await runtime.workerOrchestrator.dispatch(command);
-      if (finalEvent.payload.type === 'ERROR') {
-        const error = new Error(finalEvent.payload.payload.message) as Error & { code?: string };
-        error.code = finalEvent.payload.payload.code;
-        throw error;
+      const targets = applyToSelection && canApplyToSelection ? selectedPages : [preview];
+      let overflowCount = 0;
+      let failureCount = 0;
+      const failureDetails: string[] = [];
+
+      for (const target of targets) {
+        try {
+          const command: IWorkerCommand = {
+            id: crypto.randomUUID(),
+            type: 'COMMAND',
+            payload: {
+              type: 'APPLY_STUDIO_TEXT_EDITS',
+              payload: {
+                fileId: target.page.fileId,
+                pageIndex: target.page.pageIndex,
+                elements: elements as WorkerStudioEditElement[],
+              },
+            },
+          };
+          const finalEvent = await runtime.workerOrchestrator.dispatch(command);
+          if (finalEvent.payload.type === 'ERROR') {
+            const error = new Error(finalEvent.payload.payload.message) as Error & { code?: string };
+            error.code = finalEvent.payload.payload.code;
+            throw error;
+          }
+          if (finalEvent.payload.type !== 'STUDIO_TEXT_EDITS_APPLIED') {
+            throw new Error('Unexpected worker response for studio text edits');
+          }
+          if (finalEvent.payload.payload.overflowDetected) {
+            overflowCount += 1;
+          }
+          const previewData = await defaultFilePreviewService.getPdfPagePreview(
+            runtime,
+            finalEvent.payload.payload.outputId,
+            target.page.pageIndex + 1,
+            { scale: 2 },
+          );
+          updatePage(target.docId, target.page.id, {
+            fileId: finalEvent.payload.payload.outputId,
+            pageIndex: target.page.pageIndex,
+            thumbnailUrl: previewData.thumbnailUrl ?? target.page.thumbnailUrl,
+          });
+        } catch (targetError) {
+          failureCount += 1;
+          const details = targetError instanceof Error ? targetError.message : ui.saveFailed;
+          const typed = targetError as { code?: unknown; message?: unknown };
+          const code = typeof typed.code === 'string' ? typed.code : undefined;
+          if (code?.startsWith('STUDIO_EDIT_')) {
+            runtime.telemetry.track({
+              type: 'STUDIO_EDIT_GUARDRAIL',
+              runId,
+              toolId: 'studio.edit.text',
+              fileId: target.page.fileId,
+              pageIndex: target.page.pageIndex,
+              code,
+              message: typeof typed.message === 'string' ? typed.message : details,
+            });
+          }
+          failureDetails.push(details);
+        }
       }
-      if (finalEvent.payload.type !== 'STUDIO_TEXT_EDITS_APPLIED') {
-        throw new Error('Unexpected worker response for studio text edits');
+
+      if (failureCount > 0 && failureCount === targets.length) {
+        throw new Error(failureDetails[0] ?? ui.saveFailed);
       }
-      const previewData = await defaultFilePreviewService.getPdfPagePreview(
-        runtime,
-        finalEvent.payload.payload.outputId,
-        preview.page.pageIndex + 1,
-        { scale: 2 },
-      );
-      updatePage(preview.docId, preview.page.id, {
-        fileId: finalEvent.payload.payload.outputId,
-        pageIndex: preview.page.pageIndex,
-        thumbnailUrl: previewData.thumbnailUrl ?? preview.page.thumbnailUrl,
-      });
-      setInlineUiState('saved');
+
+      setInlineUiState(failureCount > 0 ? 'error' : 'saved');
       setTextEditor(null);
       setSelectedElementId(null);
       setHistory([elements]);
       setHistoryIndex(0);
-      setMessage(finalEvent.payload.payload.overflowDetected ? `${ui.changesApplied} ${ui.overflowWarning}` : ui.changesApplied);
+
+      if (targets.length > 1) {
+        const baseMessage = `${ui.changesAppliedSelection} ${targets.length}`;
+        const overflowMessage = overflowCount > 0 ? ` ${ui.overflowWarning}` : '';
+        const partialMessage = failureCount > 0 ? ` ${ui.partialSaveFailed}` : '';
+        setMessage(`${baseMessage}.${overflowMessage}${partialMessage}`.trim());
+      } else {
+        setMessage(overflowCount > 0 ? `${ui.changesApplied} ${ui.overflowWarning}` : ui.changesApplied);
+      }
     } catch (error) {
       setInlineUiState('error');
       const details = error instanceof Error ? error.message : ui.saveFailed;
@@ -1304,6 +1358,15 @@ export function StudioEditWorkspace() {
         </button>
         <button type="button" className="studio-edit-tool-btn" onClick={deleteSelected} disabled={!selectedElementId}>
           <LinearIcon name="x" className="linear-icon" /><span>{ui.delete}</span>
+        </button>
+        <button
+          type="button"
+          className={`studio-edit-tool-btn ${applyToSelection && canApplyToSelection ? 'active' : ''}`}
+          onClick={() => setApplyToSelection((prev) => !prev)}
+          disabled={!canApplyToSelection || isApplying}
+          title={ui.saveSelection}
+        >
+          <span>{ui.selection}: {applyToSelection && canApplyToSelection ? selectedPages.length : 1}</span>
         </button>
         <button
           type="button"
