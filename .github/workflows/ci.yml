@@ -50,6 +50,16 @@ jobs:
       - name: Install Playwright Chromium
         run: npx playwright install --with-deps chromium
 
+      - name: E2E Studio Edit Quality Gate
+        env:
+          VITE_V6_PAGE_COUNT_FALLBACK_MODE: 'limited'
+          E2E_FALLBACK_MAX_RATE: '1'
+          E2E_FALLBACK_ALERT_RATE: '0.2'
+          E2E_FALLBACK_SAMPLE_RUNS: '5'
+          E2E_FALLBACK_MAX_CONSECUTIVE: '999'
+          E2E_FALLBACK_ALERT_CONSECUTIVE: '3'
+        run: npm run test:e2e:studio-edit
+
       - name: E2E Smoke
         env:
           VITE_V6_PAGE_COUNT_FALLBACK_MODE: 'limited'
