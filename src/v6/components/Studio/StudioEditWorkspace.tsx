@@ -1512,10 +1512,24 @@ export function StudioEditWorkspace() {
         <button type="button" className="studio-edit-tool-btn" onClick={redo} disabled={historyIndex >= history.length - 1}>
           <LinearIcon name="chevron-right" className="linear-icon" /><span>{ui.redo}</span>
         </button>
-        <button type="button" className="studio-edit-tool-btn" onClick={() => { void undoLastSave(); }} disabled={saveUndoStack.length === 0 || isApplying}>
+        <button
+          type="button"
+          className="studio-edit-tool-btn"
+          onClick={() => { void undoLastSave(); }}
+          disabled={saveUndoStack.length === 0 || isApplying}
+          aria-label={ui.undoSave}
+          title={ui.undoSave}
+        >
           <LinearIcon name="chevron-left" className="linear-icon" /><span>{ui.undoSave}</span>
         </button>
-        <button type="button" className="studio-edit-tool-btn" onClick={() => { void redoLastSave(); }} disabled={saveRedoStack.length === 0 || isApplying}>
+        <button
+          type="button"
+          className="studio-edit-tool-btn"
+          onClick={() => { void redoLastSave(); }}
+          disabled={saveRedoStack.length === 0 || isApplying}
+          aria-label={ui.redoSave}
+          title={ui.redoSave}
+        >
           <LinearIcon name="chevron-right" className="linear-icon" /><span>{ui.redoSave}</span>
         </button>
         <button type="button" className="studio-edit-tool-btn" onClick={deleteSelected} disabled={!selectedElementId}>
@@ -1533,6 +1547,8 @@ export function StudioEditWorkspace() {
         <button
           type="button"
           className="studio-edit-tool-btn studio-edit-apply-btn"
+          data-testid="studio-edit-save-btn"
+          aria-label={ui.save}
           onClick={() => {
             if (textEditor) {
               commitTextEditor();

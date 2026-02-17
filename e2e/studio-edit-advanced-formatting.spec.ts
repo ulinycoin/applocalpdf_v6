@@ -80,7 +80,7 @@ test.describe('Studio advanced formatting P2', () => {
       expect(Number.parseFloat(lineHeight)).toBeGreaterThan(20);
       expect(Number.parseFloat(letterSpacing)).toBeGreaterThan(2);
 
-      await page.locator('.studio-edit-apply-btn').click();
+      await page.getByTestId('studio-edit-save-btn').click();
       await expect(page.getByText(/Changes applied|Изменения сохранены/i)).toBeVisible({ timeout: 15000 });
     } finally {
       safeDelete(pdfPath);

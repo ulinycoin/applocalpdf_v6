@@ -79,7 +79,7 @@ test.describe('Studio telemetry save actions P2', () => {
       const textarea = page.locator('.studio-edit-textarea').first();
       await expect(textarea).toBeVisible({ timeout: 10000 });
       await textarea.fill('TELEMETRY ACTIONS UPDATED');
-      await page.locator('.studio-edit-apply-btn').click();
+      await page.getByTestId('studio-edit-save-btn').click();
 
       await expect(page.getByText(/selected pages:\s*2|выбранных страниц:\s*2/i)).toBeVisible({ timeout: 15000 });
       await page.getByRole('button', { name: /Undo Save|Отменить сохранение/i }).click();

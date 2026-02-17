@@ -71,7 +71,7 @@ test.describe('Studio save undo/redo P1', () => {
       const textarea = page.locator('.studio-edit-textarea').first();
       await expect(textarea).toBeVisible({ timeout: 10000 });
       await textarea.fill('SAVE UNDO REDO P1');
-      await page.locator('.studio-edit-apply-btn').click();
+      await page.getByTestId('studio-edit-save-btn').click();
 
       const savedFileIdHandle = await page.waitForFunction((prevId) => {
         const store = (window as Window & { __LOCALPDF_STUDIO_STORE__?: { getState: () => {

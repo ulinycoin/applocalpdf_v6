@@ -73,7 +73,7 @@ test.describe('Studio telemetry P2', () => {
       const textarea = page.locator('.studio-edit-textarea').first();
       await expect(textarea).toBeVisible({ timeout: 10000 });
       await textarea.fill('TELEMETRY UPDATED');
-      await page.locator('.studio-edit-apply-btn').click();
+      await page.getByTestId('studio-edit-save-btn').click();
       await expect(page.getByText(/Changes applied|Изменения сохранены/i)).toBeVisible({ timeout: 15000 });
 
       const saveActions = await page.waitForFunction(() => {
