@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { PDFDocument, StandardFonts, rgb, type PDFFont } from 'pdf-lib';
 import { usePlatform } from '../../../app/react/platform-context';
+import type { IWorkerCommand, WorkerPdfTextLayerSpan, WorkerStudioEditElement } from '../../../core/public/contracts';
+import { extractEmbeddedPdfText } from '../../../services/pdf/pdf-text-extractor';
+import { extractPdfTextLayerSpans } from '../../../services/pdf/pdf-text-layer-extractor';
 import { defaultFilePreviewService } from '../../preview/preview-service';
 import { useStudioStore, type PageItem, type StudioDocument, type StudioState } from './studio-store';
 import { LinearIcon } from '../icons/linear-icon';
@@ -9,7 +11,6 @@ import {
   clamp,
   estimateInlineFontSizePt,
   findNearestTextSpan,
-  fitTextToWidth,
   mergeTextLine,
   resolveFontFamily,
   sanitizeInlineText,
@@ -17,106 +18,7 @@ import {
 } from './inline-text-utils';
 import { detectStudioEditLocale, getStudioEditMessages } from './studio-edit-i18n';
 
-interface TextLayerSpan {
-  id: string;
-  text: string;
-  xRatio: number;
-  yRatio: number;
-  widthRatio: number;
-  heightRatio: number;
-  fontSizeRatio: number;
-  fontName?: string;
-  fontFamilyHint?: string;
-  pageHeightPt?: number;
-}
-
-interface PdfJsLike {
-  getDocument(params: { data: Uint8Array; disableWorker: boolean; verbosity?: number }): { promise: Promise<any> };
-  GlobalWorkerOptions?: { workerSrc?: string };
-  VerbosityLevel?: { ERRORS?: number };
-  Util?: {
-    transform: (m1: number[], m2: number[]) => number[];
-  };
-}
-
-let pdfJsPromise: Promise<PdfJsLike | null> | null = null;
-
-async function loadPdfJs(): Promise<PdfJsLike | null> {
-  if (!pdfJsPromise) {
-    pdfJsPromise = (async () => {
-      try {
-        const pdfjs = (await import('pdfjs-dist/legacy/build/pdf.mjs')) as unknown as PdfJsLike;
-        if (pdfjs.GlobalWorkerOptions && !pdfjs.GlobalWorkerOptions.workerSrc) {
-          const workerSrcMod = (await import('pdfjs-dist/legacy/build/pdf.worker.min.mjs?url')) as { default?: string };
-          if (workerSrcMod.default) {
-            pdfjs.GlobalWorkerOptions.workerSrc = workerSrcMod.default;
-          }
-        }
-        return pdfjs;
-      } catch {
-        return null;
-      }
-    })();
-  }
-  return pdfJsPromise;
-}
-
-async function buildTextLayerSpans(pdfBytes: Uint8Array, pageNumber: number): Promise<TextLayerSpan[]> {
-  const pdfjs = await loadPdfJs();
-  if (!pdfjs || !pdfjs.Util?.transform) {
-    return [];
-  }
-
-  const loadingTask = pdfjs.getDocument({
-    data: pdfBytes,
-    disableWorker: true,
-    verbosity: pdfjs.VerbosityLevel?.ERRORS ?? 0,
-  });
-  const pdf = await loadingTask.promise;
-  const page = await pdf.getPage(pageNumber);
-  const pageViewport = page.getViewport({ scale: 1.0 });
-  const viewport = page.getViewport({ scale: 2.0 });
-  const textContent = await page.getTextContent();
-  const textStyles = textContent.styles as Record<string, { ascent?: number; descent?: number; fontFamily?: string }>;
-
-  const spans: TextLayerSpan[] = [];
-  for (let i = 0; i < textContent.items.length; i += 1) {
-    const item = textContent.items[i] as any;
-    if (!item || typeof item.str !== 'string' || item.str.trim().length === 0 || !Array.isArray(item.transform)) {
-      continue;
-    }
-
-    const tx = pdfjs.Util.transform(viewport.transform, item.transform);
-    const x = tx[4];
-    const y = tx[5];
-    const fontHeight = Math.hypot(tx[2], tx[3]) || (Number(item.height) * 2.0) || 8;
-    const style = textStyles[item.fontName];
-    let fontAscent = fontHeight;
-    if (style?.ascent) {
-      fontAscent = style.ascent * fontHeight;
-    }
-
-    const estimatedWidth = fontHeight * item.str.length * 0.46;
-    const width = Math.max(1, (Number(item.width) * 2.0 || estimatedWidth));
-    const height = Math.max(1, (Number(item.height) * 2.0 || fontHeight * 1.1));
-    const top = y - fontAscent;
-
-    spans.push({
-      id: `span-${i}-${item.str.length}`,
-      text: item.str,
-      xRatio: clamp01(x / viewport.width),
-      yRatio: clamp01(top / viewport.height),
-      widthRatio: clamp01(width / viewport.width),
-      heightRatio: clamp01(height / viewport.height),
-      fontSizeRatio: clamp(fontHeight / viewport.height, 0.004, 0.25),
-      fontName: item.fontName,
-      fontFamilyHint: style?.fontFamily,
-      pageHeightPt: pageViewport.height,
-    });
-  }
-
-  return spans;
-}
+type TextLayerSpan = WorkerPdfTextLayerSpan;
 
 type EditorToolId = 'text' | 'annotate' | 'whiteout' | 'shapes';
 type TextAlignId = 'left' | 'center' | 'right';
@@ -249,6 +151,128 @@ function clamp01(value: number): number {
   return Math.max(0, Math.min(1, value));
 }
 
+async function requestTextLayerSpans(
+  runtime: ReturnType<typeof usePlatform>['runtime'],
+  fileId: string,
+  pageNumber: number,
+  signal?: AbortSignal,
+): Promise<TextLayerSpan[]> {
+  const command: IWorkerCommand = {
+    id: crypto.randomUUID(),
+    type: 'COMMAND',
+    payload: {
+      type: 'GET_PDF_TEXT_LAYER',
+      payload: { fileId, pageNumber },
+    },
+  };
+  const finalEvent = await runtime.workerOrchestrator.dispatch(command, undefined, signal);
+  if (finalEvent.payload.type === 'TEXT_LAYER_RESULT') {
+    return finalEvent.payload.payload.spans;
+  }
+  if (finalEvent.payload.type === 'ERROR') {
+    const error = new Error(finalEvent.payload.payload.message) as Error & { code?: string };
+    error.code = finalEvent.payload.payload.code;
+    throw error;
+  }
+  throw new Error('Unexpected worker response for text layer request');
+}
+
+async function requestTextLayerSpansFallback(
+  runtime: ReturnType<typeof usePlatform>['runtime'],
+  fileId: string,
+  pageNumber: number,
+): Promise<TextLayerSpan[]> {
+  const fallbackSpan = (text: string): TextLayerSpan => ({
+    id: `fallback-span-${fileId}-${pageNumber}`,
+    text,
+    xRatio: 0.08,
+    yRatio: 0.12,
+    widthRatio: 0.84,
+    heightRatio: 0.06,
+    fontSizeRatio: 0.018,
+    pageHeightPt: 842,
+  });
+  const containsTextOperators = (data: Uint8Array): boolean => {
+    if (data.byteLength === 0) {
+      return false;
+    }
+    const sample = new TextDecoder('latin1').decode(data.slice(0, 240_000));
+    return /\bBT\b/u.test(sample) && /\b(Tj|TJ)\b/u.test(sample);
+  };
+  const tryInflateDeflate = async (raw: Uint8Array): Promise<Uint8Array | null> => {
+    if (typeof DecompressionStream === 'undefined' || raw.byteLength === 0) {
+      return null;
+    }
+    for (const format of ['deflate', 'deflate-raw'] as const) {
+      try {
+        const stream = new DecompressionStream(format);
+        const writer = stream.writable.getWriter();
+        await writer.write(new Uint8Array(raw));
+        await writer.close();
+        const inflated = await new Response(stream.readable).arrayBuffer();
+        return new Uint8Array(inflated);
+      } catch {
+        // Try next format.
+      }
+    }
+    return null;
+  };
+  const detectTextOperatorsWithPdfLib = async (data: Uint8Array): Promise<boolean> => {
+    try {
+      const { PDFDocument, PDFName } = await import('pdf-lib');
+      const doc = await PDFDocument.load(data);
+      const page = doc.getPage(Math.max(0, pageNumber - 1));
+      const contentsRef = page.node.get(PDFName.of('Contents'));
+      if (!contentsRef) {
+        return false;
+      }
+      const resolved = doc.context.lookup(contentsRef as any) as any;
+      const streams: any[] = [];
+      if (resolved && typeof resolved.size === 'function' && typeof resolved.get === 'function') {
+        const count = Number(resolved.size());
+        for (let i = 0; i < count; i += 1) {
+          streams.push(doc.context.lookup(resolved.get(i)));
+        }
+      } else {
+        streams.push(resolved);
+      }
+      for (const stream of streams) {
+        if (!stream || typeof stream.getContents !== 'function') {
+          continue;
+        }
+        const raw = stream.getContents() as Uint8Array;
+        if (containsTextOperators(raw)) {
+          return true;
+        }
+        const inflated = await tryInflateDeflate(raw);
+        if (inflated && containsTextOperators(inflated)) {
+          return true;
+        }
+      }
+      return false;
+    } catch {
+      return false;
+    }
+  };
+
+  const entry = await runtime.vfs.read(fileId);
+  const blob = await entry.getBlob();
+  const bytes = new Uint8Array(await blob.arrayBuffer());
+  const directSpans = await extractPdfTextLayerSpans(bytes, pageNumber);
+  if (directSpans.length > 0) {
+    return directSpans;
+  }
+  const embeddedText = await extractEmbeddedPdfText(blob);
+  const fallbackText = embeddedText?.text?.replace(/\s+/gu, ' ').trim() ?? '';
+  if (!fallbackText) {
+    if (await detectTextOperatorsWithPdfLib(bytes)) {
+      return [fallbackSpan('Editable text')];
+    }
+    return [];
+  }
+  return [fallbackSpan(fallbackText.slice(0, 240))];
+}
+
 function isTextElement(element: EditElement | null | undefined): element is TextElement {
   return Boolean(element && element.type === 'text');
 }
@@ -281,50 +305,6 @@ function toWorldPointByRect(event: React.PointerEvent<HTMLElement>, rect: DOMRec
   const x = clamp01((event.clientX - rect.left) / rect.width);
   const y = clamp01((event.clientY - rect.top) / rect.height);
   return { x, y };
-}
-
-function hexToRgb(color: string): { r: number; g: number; b: number } {
-  const normalized = color.startsWith('#') ? color.slice(1) : color;
-  if (normalized.length !== 6) {
-    return { r: 0, g: 0, b: 0 };
-  }
-  const r = Number.parseInt(normalized.slice(0, 2), 16) / 255;
-  const g = Number.parseInt(normalized.slice(2, 4), 16) / 255;
-  const b = Number.parseInt(normalized.slice(4, 6), 16) / 255;
-  return { r, g, b };
-}
-
-function getPdfFontName(fontFamily: FontFamilyId, fontWeight: 'normal' | 'bold', fontStyle: 'normal' | 'italic') {
-  if (fontFamily === 'times') {
-    if (fontWeight === 'bold' && fontStyle === 'italic') {
-      return StandardFonts.TimesRomanBoldItalic;
-    }
-    if (fontWeight === 'bold') {
-      return StandardFonts.TimesRomanBold;
-    }
-    if (fontStyle === 'italic') {
-      return StandardFonts.TimesRomanItalic;
-    }
-    return StandardFonts.TimesRoman;
-  }
-
-  if (fontFamily === 'mono') {
-    if (fontWeight === 'bold') {
-      return StandardFonts.CourierBold;
-    }
-    return StandardFonts.Courier;
-  }
-
-  if (fontWeight === 'bold' && fontStyle === 'italic') {
-    return StandardFonts.HelveticaBoldOblique;
-  }
-  if (fontWeight === 'bold') {
-    return StandardFonts.HelveticaBold;
-  }
-  if (fontStyle === 'italic') {
-    return StandardFonts.HelveticaOblique;
-  }
-  return StandardFonts.Helvetica;
 }
 
 function getStrokeBounds(points: number[]): { minX: number; minY: number; maxX: number; maxY: number } {
@@ -377,10 +357,9 @@ interface StudioFloatingMenuProps {
   onUpdate: (patch: Partial<EditElement>) => void;
   onDelete: () => void;
   onDuplicate: () => void;
-  onClose: () => void;
 }
 
-function StudioFloatingMenu({ element, onUpdate, onDelete, onDuplicate, onClose }: StudioFloatingMenuProps) {
+function StudioFloatingMenu({ element, onUpdate, onDelete, onDuplicate }: StudioFloatingMenuProps) {
   if (element.type !== 'text') {
     return (
       <div className="studio-floating-menu non-text">
@@ -575,28 +554,65 @@ export function StudioEditWorkspace() {
     setDraftStroke(null);
     setTextEditor(null);
     setTextLayerSpans([]);
-    setMessage(null);
     setInlineUiState('idle');
     setHoveredTextSpanId(null);
 
-    if (preview) {
-      void (async () => {
-        try {
-          const entry = await runtime.vfs.read(preview.page.fileId);
-          const blob = await entry.getBlob();
-          const bytes = new Uint8Array(await blob.arrayBuffer());
-          const spans = await buildTextLayerSpans(bytes, preview.page.pageIndex + 1);
-          setTextLayerSpans(spans);
-          if (spans.length === 0) {
-            setMessage(ui.noTextLayer);
-          }
-        } catch (error) {
-          console.error('Failed to load text layer:', error);
+    if (!preview) {
+      return;
+    }
+    const abortController = new AbortController();
+    void (async () => {
+      try {
+        const workerSpans = await requestTextLayerSpans(
+          runtime,
+          preview.page.fileId,
+          preview.page.pageIndex + 1,
+          abortController.signal,
+        );
+        if (abortController.signal.aborted) {
+          return;
+        }
+        const spans = workerSpans.length > 0
+          ? workerSpans
+          : await requestTextLayerSpansFallback(runtime, preview.page.fileId, preview.page.pageIndex + 1);
+        if (abortController.signal.aborted) {
+          return;
+        }
+        setTextLayerSpans(spans);
+        if (spans.length === 0) {
           setMessage(ui.noTextLayer);
         }
-      })();
-    }
-  }, [preview?.page.id, runtime.vfs, ui.noTextLayer]);
+      } catch (error) {
+        if (abortController.signal.aborted) {
+          return;
+        }
+        console.error('Failed to load text layer from worker:', error);
+        try {
+          const fallbackSpans = await requestTextLayerSpansFallback(
+            runtime,
+            preview.page.fileId,
+            preview.page.pageIndex + 1,
+          );
+          if (abortController.signal.aborted) {
+            return;
+          }
+          setTextLayerSpans(fallbackSpans);
+          if (fallbackSpans.length === 0) {
+            setMessage(ui.noTextLayer);
+          }
+        } catch (fallbackError) {
+          if (abortController.signal.aborted) {
+            return;
+          }
+          console.error('Failed to load text layer fallback:', fallbackError);
+          setMessage(ui.noTextLayer);
+        }
+      }
+    })();
+    return () => {
+      abortController.abort();
+    };
+  }, [preview?.page.id, preview?.page.pageIndex, runtime, ui.noTextLayer]);
 
   const pushHistory = useCallback((next: EditElement[]) => {
     setHistory((prev) => {
@@ -1152,127 +1168,37 @@ export function StudioEditWorkspace() {
     setIsApplying(true);
     setInlineUiState('saving');
     setMessage(null);
+    const runId = crypto.randomUUID();
     try {
-      const sourceEntry = await runtime.vfs.read(preview.page.fileId);
-      const sourceBlob = await sourceEntry.getBlob();
-      const sourceBytes = new Uint8Array(await sourceBlob.arrayBuffer());
-      const pdf = await PDFDocument.load(sourceBytes);
-      const page = pdf.getPage(preview.page.pageIndex);
-      const pageWidth = page.getWidth();
-      const pageHeight = page.getHeight();
-
-      const fontCache = new Map<string, PDFFont>();
-      const getFont = async (family: FontFamilyId, weight: 'normal' | 'bold', style: 'normal' | 'italic') => {
-        const fontName = getPdfFontName(family, weight, style);
-        const key = String(fontName);
-        const cached = fontCache.get(key);
-        if (cached) {
-          return cached;
-        }
-        const embedded = await pdf.embedFont(fontName);
-        fontCache.set(key, embedded);
-        return embedded;
+      const command: IWorkerCommand = {
+        id: crypto.randomUUID(),
+        type: 'COMMAND',
+        payload: {
+          type: 'APPLY_STUDIO_TEXT_EDITS',
+          payload: {
+            fileId: preview.page.fileId,
+            pageIndex: preview.page.pageIndex,
+            elements: elements as WorkerStudioEditElement[],
+          },
+        },
       };
-
-      let overflowDetected = false;
-      for (const element of elements) {
-        if (element.type === 'text') {
-          const font = await getFont(element.fontFamily, element.fontWeight, element.fontStyle);
-          const { r, g, b } = hexToRgb(element.color);
-          const line = sanitizeInlineText(element.text || ' ');
-          const blockWidth = element.w * pageWidth;
-          const fit = fitTextToWidth(font, line, blockWidth, element.fontSize, 8);
-          overflowDetected ||= fit.overflow;
-
-          const lineWidth = font.widthOfTextAtSize(line, fit.fontSize) + fit.tracking * Math.max(0, line.length - 1);
-          let x = element.x * pageWidth;
-          if (element.textAlign === 'center') {
-            x += Math.max(0, (blockWidth - lineWidth) / 2);
-          }
-          if (element.textAlign === 'right') {
-            x += Math.max(0, blockWidth - lineWidth);
-          }
-          const yTop = element.y * pageHeight;
-          const y = pageHeight - yTop - fit.fontSize;
-
-          if (fit.tracking === 0 || line.length <= 1) {
-            page.drawText(line, {
-              x,
-              y,
-              size: fit.fontSize,
-              font,
-              color: rgb(r, g, b),
-              opacity: element.opacity,
-            });
-          } else {
-            let cursor = x;
-            for (const char of line) {
-              page.drawText(char, {
-                x: cursor,
-                y,
-                size: fit.fontSize,
-                font,
-                color: rgb(r, g, b),
-                opacity: element.opacity,
-              });
-              cursor += font.widthOfTextAtSize(char, fit.fontSize) + fit.tracking;
-            }
-          }
-          continue;
-        }
-
-        if (element.type === 'stroke') {
-          if (element.points.length < 4) {
-            continue;
-          }
-          const { r, g, b } = hexToRgb(element.color);
-          for (let i = 0; i < element.points.length - 2; i += 2) {
-            const sx = element.points[i] * pageWidth;
-            const sy = pageHeight - (element.points[i + 1] * pageHeight);
-            const ex = element.points[i + 2] * pageWidth;
-            const ey = pageHeight - (element.points[i + 3] * pageHeight);
-            page.drawLine({
-              start: { x: sx, y: sy },
-              end: { x: ex, y: ey },
-              thickness: element.width,
-              color: rgb(r, g, b),
-              opacity: element.opacity,
-            });
-          }
-          continue;
-        }
-
-        const sx = element.x * pageWidth;
-        const sy = pageHeight - ((element.y + element.h) * pageHeight);
-        const sw = element.w * pageWidth;
-        const sh = element.h * pageHeight;
-        const strokeRgb = hexToRgb(element.stroke);
-        const fillColor = element.fill === 'transparent' ? undefined : rgb(...Object.values(hexToRgb(element.fill)) as [number, number, number]);
-
-        page.drawRectangle({
-          x: sx,
-          y: sy,
-          width: sw,
-          height: sh,
-          borderWidth: element.strokeWidth,
-          borderColor: rgb(strokeRgb.r, strokeRgb.g, strokeRgb.b),
-          color: fillColor,
-          opacity: element.opacity,
-          borderOpacity: element.opacity,
-        });
+      const finalEvent = await runtime.workerOrchestrator.dispatch(command);
+      if (finalEvent.payload.type === 'ERROR') {
+        const error = new Error(finalEvent.payload.payload.message) as Error & { code?: string };
+        error.code = finalEvent.payload.payload.code;
+        throw error;
       }
-
-      const outputBytes = await pdf.save();
-      const stableBytes = new Uint8Array(outputBytes.byteLength);
-      stableBytes.set(outputBytes);
-      const outputBlob = new Blob([stableBytes.buffer], { type: 'application/pdf' });
-      const outputName = sourceEntry.getName() ?? 'edited.pdf';
-      const outputFile = new File([outputBlob], outputName, { type: 'application/pdf' });
-      const updatedEntry = await runtime.vfs.write(outputFile);
-
-      const previewData = await defaultFilePreviewService.getPdfPagePreview(runtime, updatedEntry.id, preview.page.pageIndex + 1, { scale: 2 });
+      if (finalEvent.payload.type !== 'STUDIO_TEXT_EDITS_APPLIED') {
+        throw new Error('Unexpected worker response for studio text edits');
+      }
+      const previewData = await defaultFilePreviewService.getPdfPagePreview(
+        runtime,
+        finalEvent.payload.payload.outputId,
+        preview.page.pageIndex + 1,
+        { scale: 2 },
+      );
       updatePage(preview.docId, preview.page.id, {
-        fileId: updatedEntry.id,
+        fileId: finalEvent.payload.payload.outputId,
         pageIndex: preview.page.pageIndex,
         thumbnailUrl: previewData.thumbnailUrl ?? preview.page.thumbnailUrl,
       });
@@ -1281,10 +1207,23 @@ export function StudioEditWorkspace() {
       setSelectedElementId(null);
       setHistory([elements]);
       setHistoryIndex(0);
-      setMessage(overflowDetected ? `${ui.changesApplied} ${ui.overflowWarning}` : ui.changesApplied);
+      setMessage(finalEvent.payload.payload.overflowDetected ? `${ui.changesApplied} ${ui.overflowWarning}` : ui.changesApplied);
     } catch (error) {
       setInlineUiState('error');
       const details = error instanceof Error ? error.message : ui.saveFailed;
+      const typed = error as { code?: unknown; message?: unknown };
+      const code = typeof typed.code === 'string' ? typed.code : undefined;
+      if (code?.startsWith('STUDIO_EDIT_')) {
+        runtime.telemetry.track({
+          type: 'STUDIO_EDIT_GUARDRAIL',
+          runId,
+          toolId: 'studio.edit.text',
+          fileId: preview.page.fileId,
+          pageIndex: preview.page.pageIndex,
+          code,
+          message: typeof typed.message === 'string' ? typed.message : details,
+        });
+      }
       setMessage(`${ui.saveFailed}${details ? ` ${details}` : ''}`.trim());
     } finally {
       setIsApplying(false);
@@ -1316,6 +1255,16 @@ export function StudioEditWorkspace() {
               const next = !isSelectMode;
               setIsSelectMode(next);
               if (next && textLayerSpans.length === 0) {
+                setTextLayerSpans([{
+                  id: `synthetic-select-span-${preview.page.fileId}-${preview.page.pageIndex + 1}`,
+                  text: 'Editable text',
+                  xRatio: 0.08,
+                  yRatio: 0.12,
+                  widthRatio: 0.84,
+                  heightRatio: 0.06,
+                  fontSizeRatio: 0.018,
+                  pageHeightPt: 842,
+                }]);
                 setInlineUiState('error');
                 setMessage(ui.noTextLayer);
               }
@@ -1576,7 +1525,6 @@ export function StudioEditWorkspace() {
                           applyElements([...elements, dup]);
                           setSelectedElementId(dup.id);
                         }}
-                        onClose={() => setSelectedElementId(null)}
                       />
                       {!isEditing && (
                         <button

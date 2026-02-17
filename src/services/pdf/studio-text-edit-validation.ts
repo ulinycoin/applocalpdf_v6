@@ -1,0 +1,162 @@
+import type {
+  WorkerStudioEditElement,
+  WorkerStudioFontFamilyId,
+  WorkerStudioRectEditElement,
+  WorkerStudioStrokeEditElement,
+  WorkerStudioTextAlign,
+  WorkerStudioTextEditElement,
+} from '../../core/types/contracts';
+
+const MAX_EDIT_ELEMENTS = 2000;
+const MAX_TEXT_LENGTH = 20_000;
+
+function fail(message: string, code: string): never {
+  const error = new Error(message) as Error & { code?: string };
+  error.code = code;
+  throw error;
+}
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, value));
+}
+
+function toFiniteNumber(value: unknown, field: string): number {
+  if (typeof value !== 'number' || !Number.isFinite(value)) {
+    fail(`Invalid numeric field: ${field}`, 'STUDIO_EDIT_INVALID_PAYLOAD');
+  }
+  return value;
+}
+
+function toSafeRatio(value: unknown, field: string): number {
+  return clamp(toFiniteNumber(value, field), 0, 1);
+}
+
+function normalizeOpacity(value: unknown): number {
+  return clamp(toFiniteNumber(value, 'opacity'), 0, 1);
+}
+
+function normalizeColor(value: unknown): string {
+  if (typeof value !== 'string') {
+    return '#000000';
+  }
+  const raw = value.trim().replace(/^#/u, '');
+  if (/^[0-9a-fA-F]{3}$/u.test(raw)) {
+    const expanded = raw
+      .split('')
+      .map((char) => char + char)
+      .join('')
+      .toLowerCase();
+    return `#${expanded}`;
+  }
+  if (/^[0-9a-fA-F]{6}$/u.test(raw)) {
+    return `#${raw.toLowerCase()}`;
+  }
+  return '#000000';
+}
+
+function normalizeFillColor(value: unknown): string {
+  if (typeof value === 'string' && value.trim().toLowerCase() === 'transparent') {
+    return 'transparent';
+  }
+  return normalizeColor(value);
+}
+
+function normalizeTextAlign(value: unknown): WorkerStudioTextAlign {
+  return value === 'center' || value === 'right' ? value : 'left';
+}
+
+function normalizeFontFamily(value: unknown): WorkerStudioFontFamilyId {
+  return value === 'times' || value === 'mono' ? value : 'sora';
+}
+
+function normalizeTextElement(input: WorkerStudioTextEditElement): WorkerStudioTextEditElement {
+  if (typeof input.text !== 'string') {
+    fail('Invalid text element payload: text must be a string', 'STUDIO_EDIT_INVALID_PAYLOAD');
+  }
+  const text = input.text.replace(/[\r\n]+/gu, ' ').slice(0, MAX_TEXT_LENGTH);
+  return {
+    id: typeof input.id === 'string' && input.id.trim().length > 0 ? input.id : crypto.randomUUID(),
+    type: 'text',
+    x: toSafeRatio(input.x, 'text.x'),
+    y: toSafeRatio(input.y, 'text.y'),
+    w: clamp(toFiniteNumber(input.w, 'text.w'), 0.001, 1),
+    h: clamp(toFiniteNumber(input.h, 'text.h'), 0.001, 1),
+    text,
+    color: normalizeColor(input.color),
+    fontSize: clamp(toFiniteNumber(input.fontSize, 'text.fontSize'), 4, 144),
+    fontFamily: normalizeFontFamily(input.fontFamily),
+    fontWeight: input.fontWeight === 'bold' ? 'bold' : 'normal',
+    fontStyle: input.fontStyle === 'italic' ? 'italic' : 'normal',
+    textAlign: normalizeTextAlign(input.textAlign),
+    opacity: normalizeOpacity(input.opacity),
+  };
+}
+
+function normalizeStrokePoints(points: unknown): number[] {
+  if (!Array.isArray(points) || points.length < 4 || points.length % 2 !== 0) {
+    fail('Invalid stroke payload: points must be an even array with at least 4 numbers', 'STUDIO_EDIT_INVALID_PAYLOAD');
+  }
+  return points.map((value, index) => toSafeRatio(value, `stroke.points[${index}]`));
+}
+
+function normalizeStrokeElement(input: WorkerStudioStrokeEditElement): WorkerStudioStrokeEditElement {
+  return {
+    id: typeof input.id === 'string' && input.id.trim().length > 0 ? input.id : crypto.randomUUID(),
+    type: 'stroke',
+    points: normalizeStrokePoints(input.points),
+    color: normalizeColor(input.color),
+    width: clamp(toFiniteNumber(input.width, 'stroke.width'), 0.1, 64),
+    opacity: normalizeOpacity(input.opacity),
+  };
+}
+
+function normalizeRectElement(input: WorkerStudioRectEditElement): WorkerStudioRectEditElement {
+  return {
+    id: typeof input.id === 'string' && input.id.trim().length > 0 ? input.id : crypto.randomUUID(),
+    type: 'rect',
+    x: toSafeRatio(input.x, 'rect.x'),
+    y: toSafeRatio(input.y, 'rect.y'),
+    w: clamp(toFiniteNumber(input.w, 'rect.w'), 0.001, 1),
+    h: clamp(toFiniteNumber(input.h, 'rect.h'), 0.001, 1),
+    fill: normalizeFillColor(input.fill),
+    stroke: normalizeColor(input.stroke),
+    strokeWidth: clamp(toFiniteNumber(input.strokeWidth, 'rect.strokeWidth'), 0, 32),
+    opacity: normalizeOpacity(input.opacity),
+  };
+}
+
+export function normalizeAndValidateStudioEditRequest(payload: {
+  pageIndex: unknown;
+  elements: unknown;
+}): { pageIndex: number; elements: WorkerStudioEditElement[] } {
+  const pageIndexRaw = toFiniteNumber(payload.pageIndex, 'pageIndex');
+  const pageIndex = Math.max(0, Math.floor(pageIndexRaw));
+  if (!Array.isArray(payload.elements)) {
+    fail('Invalid payload: elements must be an array', 'STUDIO_EDIT_INVALID_PAYLOAD');
+  }
+  if (payload.elements.length > MAX_EDIT_ELEMENTS) {
+    fail(`Too many edit elements: ${payload.elements.length}`, 'STUDIO_EDIT_TOO_LARGE');
+  }
+
+  const normalized: WorkerStudioEditElement[] = [];
+  for (const element of payload.elements) {
+    if (!element || typeof element !== 'object' || !('type' in element)) {
+      fail('Invalid edit element entry', 'STUDIO_EDIT_INVALID_PAYLOAD');
+    }
+    const typed = element as WorkerStudioEditElement;
+    if (typed.type === 'text') {
+      normalized.push(normalizeTextElement(typed));
+      continue;
+    }
+    if (typed.type === 'stroke') {
+      normalized.push(normalizeStrokeElement(typed));
+      continue;
+    }
+    if (typed.type === 'rect') {
+      normalized.push(normalizeRectElement(typed));
+      continue;
+    }
+    fail(`Unsupported edit element type: ${(typed as { type: unknown }).type as string}`, 'STUDIO_EDIT_UNSUPPORTED_ELEMENT');
+  }
+  return { pageIndex, elements: normalized };
+}

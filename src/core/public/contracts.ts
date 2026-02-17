@@ -19,4 +19,11 @@ export type {
   TieredNumberLimit,
   WorkerCommandPayload,
   WorkerEventPayload,
+  WorkerPdfTextLayerSpan,
+  WorkerStudioEditElement,
+  WorkerStudioFontFamilyId,
+  WorkerStudioRectEditElement,
+  WorkerStudioStrokeEditElement,
+  WorkerStudioTextAlign,
+  WorkerStudioTextEditElement,
 } from '../types/contracts';

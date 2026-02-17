@@ -26,6 +26,8 @@ function formatEvent(event: RunnerTelemetryEvent): string {
       return `${event.type} ${event.toolId} file=${event.fileId} ms=${event.durationMs}${event.pageCount !== undefined ? ` pages=${event.pageCount}` : ''}`;
     case 'UI_PREVIEW_ERROR':
       return `${event.type} ${event.toolId} file=${event.fileId} msg=${event.message}`;
+    case 'STUDIO_EDIT_GUARDRAIL':
+      return `${event.type} ${event.toolId} file=${event.fileId} page=${event.pageIndex} code=${event.code ?? 'n/a'} msg=${event.message}`;
     default:
       return `${event.type} ${event.toolId}`;
   }

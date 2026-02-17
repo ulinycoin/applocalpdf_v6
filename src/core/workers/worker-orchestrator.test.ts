@@ -109,6 +109,68 @@ test('WebWorkerOrchestrator resolves on PAGE_COUNT_RESULT final event', async ()
   assert.equal(result.payload.type, 'PAGE_COUNT_RESULT');
 });
 
+test('WebWorkerOrchestrator resolves on TEXT_LAYER_RESULT final event', async () => {
+  const textLayerWorker = {
+    onmessage: null as ((event: { data: IWorkerEvent }) => void) | null,
+    onerror: null as ((event: { message?: string }) => void) | null,
+    postMessage: (command: IWorkerCommand) => {
+      setTimeout(() => {
+        textLayerWorker.onmessage?.({
+          data: {
+            id: command.id,
+            type: 'EVENT',
+            payload: {
+              type: 'TEXT_LAYER_RESULT',
+              payload: { fileId: 'f1', pageNumber: 1, spans: [] },
+            },
+          },
+        });
+      }, 0);
+    },
+    terminate: () => {},
+  };
+
+  const orchestrator = new WebWorkerOrchestrator(() => textLayerWorker, 500);
+  const result = await orchestrator.dispatch({
+    id: 'cmd-text-layer',
+    type: 'COMMAND',
+    payload: { type: 'GET_PDF_TEXT_LAYER', payload: { fileId: 'f1', pageNumber: 1 } },
+  });
+
+  assert.equal(result.payload.type, 'TEXT_LAYER_RESULT');
+});
+
+test('WebWorkerOrchestrator resolves on STUDIO_TEXT_EDITS_APPLIED final event', async () => {
+  const editApplyWorker = {
+    onmessage: null as ((event: { data: IWorkerEvent }) => void) | null,
+    onerror: null as ((event: { message?: string }) => void) | null,
+    postMessage: (command: IWorkerCommand) => {
+      setTimeout(() => {
+        editApplyWorker.onmessage?.({
+          data: {
+            id: command.id,
+            type: 'EVENT',
+            payload: {
+              type: 'STUDIO_TEXT_EDITS_APPLIED',
+              payload: { fileId: 'f1', pageIndex: 0, outputId: 'out-1', overflowDetected: false },
+            },
+          },
+        });
+      }, 0);
+    },
+    terminate: () => {},
+  };
+
+  const orchestrator = new WebWorkerOrchestrator(() => editApplyWorker, 500);
+  const result = await orchestrator.dispatch({
+    id: 'cmd-apply-studio-edits',
+    type: 'COMMAND',
+    payload: { type: 'APPLY_STUDIO_TEXT_EDITS', payload: { fileId: 'f1', pageIndex: 0, elements: [] } },
+  });
+
+  assert.equal(result.payload.type, 'STUDIO_TEXT_EDITS_APPLIED');
+});
+
 test('WebWorkerOrchestrator returns WORKER_ABORTED for pre-aborted signal', async () => {
   const worker = {
     onmessage: null as ((event: { data: IWorkerEvent }) => void) | null,

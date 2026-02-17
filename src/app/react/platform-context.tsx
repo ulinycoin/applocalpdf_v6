@@ -1,6 +1,8 @@
 import type { ReactNode } from 'react';
 import { createContext, useContext, useEffect, useMemo } from 'react';
 import { bootstrapPlatform, type PlatformBootstrap } from '../platform/bootstrap';
+import { extractEmbeddedPdfText } from '../../services/pdf/pdf-text-extractor';
+import { extractPdfTextLayerSpans } from '../../services/pdf/pdf-text-layer-extractor';
 
 const PlatformContext = createContext<PlatformBootstrap | null>(null);
 
@@ -82,6 +84,34 @@ export function PlatformProvider({ children }: { children: ReactNode }) {
         (value.runtime.runner as any).pageCountTimeoutMs = 5_000;
         (value.runtime.runner as any).firstPageCountTimeoutMs = 10_000;
         (value.runtime.runner as any).pageCountFallbackMode = 'limited';
+      },
+      extractPdfText: async (fileId: string) => {
+        const entry = await value.runtime.vfs.read(fileId);
+        const blob = await entry.getBlob();
+        const result = await extractEmbeddedPdfText(blob);
+        if (result?.text && result.text.trim().length > 0) {
+          return result.text;
+        }
+        try {
+          const bytes = new Uint8Array(await blob.arrayBuffer());
+          const spans = await extractPdfTextLayerSpans(bytes, 1);
+          const fromLayer = spans.map((span) => span.text).join(' ').replace(/\s+/gu, ' ').trim();
+          return fromLayer;
+        } catch {
+          return '';
+        }
+      },
+      readFileBase64: async (fileId: string) => {
+        const entry = await value.runtime.vfs.read(fileId);
+        const blob = await entry.getBlob();
+        const bytes = new Uint8Array(await blob.arrayBuffer());
+        let binary = '';
+        const chunkSize = 0x8000;
+        for (let i = 0; i < bytes.length; i += chunkSize) {
+          const slice = bytes.subarray(i, i + chunkSize);
+          binary += String.fromCharCode(...slice);
+        }
+        return btoa(binary);
       },
     };
     return () => {

@@ -41,7 +41,13 @@ export class WebWorkerOrchestrator implements WorkerOrchestrator {
         return;
       }
       pending.onEvent?.(payload);
-      if (payload.payload.type === 'RESULT' || payload.payload.type === 'PAGE_COUNT_RESULT' || payload.payload.type === 'ERROR') {
+      if (
+        payload.payload.type === 'RESULT'
+        || payload.payload.type === 'PAGE_COUNT_RESULT'
+        || payload.payload.type === 'TEXT_LAYER_RESULT'
+        || payload.payload.type === 'STUDIO_TEXT_EDITS_APPLIED'
+        || payload.payload.type === 'ERROR'
+      ) {
         this.settle(payload.id, payload);
       }
     };

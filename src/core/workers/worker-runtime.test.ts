@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { PDFDocument, StandardFonts } from 'pdf-lib';
 import { GlobalRegistry } from '../registry/global-registry';
 import type { IFileEntry, IFileSystem, IToolDefinition } from '../types/contracts';
 import { createValidPdfBlob } from '../../shared/test/create-valid-pdf';
@@ -36,6 +37,17 @@ class MemFs implements IFileSystem {
   }
 
   async delete(): Promise<void> {}
+}
+
+async function createPdfWithText(text: string): Promise<Blob> {
+  const pdf = await PDFDocument.create();
+  const page = pdf.addPage([595, 842]);
+  const font = await pdf.embedFont(StandardFonts.Helvetica);
+  page.drawText(text, { x: 64, y: 720, size: 24, font });
+  const bytes = await pdf.save();
+  const stable = new Uint8Array(bytes.byteLength);
+  stable.set(bytes);
+  return new Blob([stable.buffer], { type: 'application/pdf' });
 }
 
 test('executeWorkerCommand propagates custom error codes', async () => {
@@ -136,4 +148,158 @@ test('executeWorkerCommand emits DIAGNOSTIC worker stages for GET_PDF_PAGE_COUNT
   assert.ok(seenStages.includes('WORKER_FS_READ_START'));
   assert.ok(seenStages.includes('WORKER_PARSE_START'));
   assert.ok(seenStages.includes('WORKER_COMMAND_DONE'));
+});
+
+test('executeWorkerCommand returns TEXT_LAYER_RESULT for GET_PDF_TEXT_LAYER', async () => {
+  const registry = new GlobalRegistry();
+  const fs = new MemFs();
+  fs.seed('pdf-text-layer', await createPdfWithText('Hello Worker'));
+
+  const event = await executeWorkerCommand(
+    {
+      id: 'cmd-text-layer',
+      type: 'COMMAND',
+      payload: { type: 'GET_PDF_TEXT_LAYER', payload: { fileId: 'pdf-text-layer', pageNumber: 1 } },
+    },
+    { registry, fs },
+  );
+
+  assert.equal(event.payload.type, 'TEXT_LAYER_RESULT');
+  if (event.payload.type === 'TEXT_LAYER_RESULT') {
+    assert.equal(event.payload.payload.fileId, 'pdf-text-layer');
+    assert.equal(event.payload.payload.pageNumber, 1);
+    assert.ok(event.payload.payload.spans.length > 0);
+    const mergedText = event.payload.payload.spans.map((span) => span.text).join(' ');
+    assert.match(mergedText, /Hello/);
+  }
+});
+
+test('executeWorkerCommand applies studio text edits and returns output id', async () => {
+  const registry = new GlobalRegistry();
+  const fs = new MemFs();
+  fs.seed('pdf-edit-source', await createPdfWithText('Original'));
+
+  const event = await executeWorkerCommand(
+    {
+      id: 'cmd-apply-studio-edits',
+      type: 'COMMAND',
+      payload: {
+        type: 'APPLY_STUDIO_TEXT_EDITS',
+        payload: {
+          fileId: 'pdf-edit-source',
+          pageIndex: 0,
+          elements: [
+            {
+              id: 'e1',
+              type: 'text',
+              x: 0.1,
+              y: 0.1,
+              w: 0.3,
+              h: 0.06,
+              text: 'Updated',
+              color: '#000000',
+              fontSize: 16,
+              fontFamily: 'sora',
+              fontWeight: 'normal',
+              fontStyle: 'normal',
+              textAlign: 'left',
+              opacity: 1,
+            },
+          ],
+        },
+      },
+    },
+    { registry, fs },
+  );
+
+  assert.equal(event.payload.type, 'STUDIO_TEXT_EDITS_APPLIED');
+  if (event.payload.type === 'STUDIO_TEXT_EDITS_APPLIED') {
+    assert.equal(event.payload.payload.fileId, 'pdf-edit-source');
+    assert.equal(event.payload.payload.pageIndex, 0);
+    assert.ok(event.payload.payload.outputId.length > 0);
+    const outputEntry = await fs.read(event.payload.payload.outputId);
+    const outputBlob = await outputEntry.getBlob();
+    assert.equal(outputBlob.type, 'application/pdf');
+    assert.ok(outputBlob.size > 0);
+  }
+});
+
+test('executeWorkerCommand rejects invalid studio edit payload', async () => {
+  const registry = new GlobalRegistry();
+  const fs = new MemFs();
+  fs.seed('pdf-edit-invalid', await createPdfWithText('Original'));
+
+  const event = await executeWorkerCommand(
+    {
+      id: 'cmd-apply-studio-edits-invalid',
+      type: 'COMMAND',
+      payload: {
+        type: 'APPLY_STUDIO_TEXT_EDITS',
+        payload: {
+          fileId: 'pdf-edit-invalid',
+          pageIndex: 0,
+          elements: [
+            {
+              id: 'broken-stroke',
+              type: 'stroke',
+              points: [0.2, 0.2, 0.4],
+              color: '#000000',
+              width: 2,
+              opacity: 1,
+            },
+          ],
+        },
+      },
+    },
+    { registry, fs },
+  );
+
+  assert.equal(event.payload.type, 'ERROR');
+  if (event.payload.type === 'ERROR') {
+    assert.equal(event.payload.payload.code, 'STUDIO_EDIT_INVALID_PAYLOAD');
+  }
+});
+
+test('executeWorkerCommand rejects oversized studio edit payload', async () => {
+  const registry = new GlobalRegistry();
+  const fs = new MemFs();
+  fs.seed('pdf-edit-oversized', await createPdfWithText('Original'));
+
+  const tooManyElements = Array.from({ length: 2001 }, (_, index) => ({
+    id: `t-${index}`,
+    type: 'text' as const,
+    x: 0.1,
+    y: 0.1,
+    w: 0.2,
+    h: 0.04,
+    text: 'x',
+    color: '#000000',
+    fontSize: 12,
+    fontFamily: 'sora' as const,
+    fontWeight: 'normal' as const,
+    fontStyle: 'normal' as const,
+    textAlign: 'left' as const,
+    opacity: 1,
+  }));
+
+  const event = await executeWorkerCommand(
+    {
+      id: 'cmd-apply-studio-edits-oversized',
+      type: 'COMMAND',
+      payload: {
+        type: 'APPLY_STUDIO_TEXT_EDITS',
+        payload: {
+          fileId: 'pdf-edit-oversized',
+          pageIndex: 0,
+          elements: tooManyElements,
+        },
+      },
+    },
+    { registry, fs },
+  );
+
+  assert.equal(event.payload.type, 'ERROR');
+  if (event.payload.type === 'ERROR') {
+    assert.equal(event.payload.payload.code, 'STUDIO_EDIT_TOO_LARGE');
+  }
 });

@@ -76,9 +76,71 @@ export interface IFileMetadataService {
   getPageCount(fileId: string): Promise<number>;
 }
 
+export interface WorkerPdfTextLayerSpan {
+  id: string;
+  text: string;
+  xRatio: number;
+  yRatio: number;
+  widthRatio: number;
+  heightRatio: number;
+  fontSizeRatio: number;
+  fontName?: string;
+  fontFamilyHint?: string;
+  pageHeightPt?: number;
+}
+
+export type WorkerStudioFontFamilyId = 'sora' | 'times' | 'mono';
+export type WorkerStudioTextAlign = 'left' | 'center' | 'right';
+
+export interface WorkerStudioTextEditElement {
+  id: string;
+  type: 'text';
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  text: string;
+  color: string;
+  fontSize: number;
+  fontFamily: WorkerStudioFontFamilyId;
+  fontWeight: 'normal' | 'bold';
+  fontStyle: 'normal' | 'italic';
+  textAlign: WorkerStudioTextAlign;
+  opacity: number;
+}
+
+export interface WorkerStudioStrokeEditElement {
+  id: string;
+  type: 'stroke';
+  points: number[];
+  color: string;
+  width: number;
+  opacity: number;
+}
+
+export interface WorkerStudioRectEditElement {
+  id: string;
+  type: 'rect';
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  fill: string;
+  stroke: string;
+  strokeWidth: number;
+  opacity: number;
+}
+
+export type WorkerStudioEditElement =
+  | WorkerStudioTextEditElement
+  | WorkerStudioStrokeEditElement
+  | WorkerStudioRectEditElement;
+
 export type WorkerCommandPayload =
   | { type: 'PROCESS_TOOL'; payload: { toolId: string; inputIds: string[]; options?: Record<string, unknown> } }
   | { type: 'GET_PDF_PAGE_COUNT'; payload: { fileId: string; bytes?: Uint8Array; mimeType?: string } }
+  | { type: 'GET_PDF_TEXT_LAYER'; payload: { fileId: string; pageNumber: number; bytes?: Uint8Array } }
+  | { type: 'APPLY_STUDIO_TEXT_EDITS'; payload: { fileId: string; pageIndex: number; elements: WorkerStudioEditElement[] } }
   | { type: 'READ_FILE'; payload: { fileId: string } };
 
 export interface IWorkerCommand {
@@ -92,6 +154,8 @@ export type WorkerEventPayload =
   | { type: 'DIAGNOSTIC'; payload: { channel: 'PAGE_COUNT'; stage: string; fileId?: string; durationMs?: number; note?: string } }
   | { type: 'RESULT'; payload: { outputIds: string[] } }
   | { type: 'PAGE_COUNT_RESULT'; payload: { fileId: string; pageCount: number } }
+  | { type: 'TEXT_LAYER_RESULT'; payload: { fileId: string; pageNumber: number; spans: WorkerPdfTextLayerSpan[] } }
+  | { type: 'STUDIO_TEXT_EDITS_APPLIED'; payload: { fileId: string; pageIndex: number; outputId: string; overflowDetected: boolean } }
   | { type: 'ERROR'; payload: { message: string; code?: string } };
 
 export interface IWorkerEvent {
@@ -127,4 +191,5 @@ export type RunnerTelemetryEvent =
   | { type: 'UI_TOAST_DEDUPED'; runId: string; toolId: string; key: string; suppressedCount: number }
   | { type: 'UI_UPSELL_CTA_CLICKED'; runId: string; toolId: string; destination: string }
   | { type: 'UI_PREVIEW_RENDERED'; runId: string; toolId: string; fileId: string; durationMs: number; pageCount?: number }
-  | { type: 'UI_PREVIEW_ERROR'; runId: string; toolId: string; fileId: string; message: string };
+  | { type: 'UI_PREVIEW_ERROR'; runId: string; toolId: string; fileId: string; message: string }
+  | { type: 'STUDIO_EDIT_GUARDRAIL'; runId: string; toolId: string; fileId: string; pageIndex: number; code?: string; message: string };

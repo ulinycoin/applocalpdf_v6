@@ -1,6 +1,9 @@
 import { GlobalRegistry } from '../registry/global-registry';
 import type { IFileSystem, IWorkerCommand, IWorkerEvent } from '../types/contracts';
 import { getPdfPageCountFromBytes } from '../pdf/page-count';
+import { extractPdfTextLayerSpans } from '../../services/pdf/pdf-text-layer-extractor';
+import { applyStudioTextEditsToPdfBytes } from '../../services/pdf/studio-text-edit-applier';
+import { normalizeAndValidateStudioEditRequest } from '../../services/pdf/studio-text-edit-validation';
 
 export interface WorkerRuntimeDeps {
   registry: GlobalRegistry;
@@ -59,6 +62,55 @@ export async function executeWorkerCommand(
         id: command.id,
         type: 'EVENT',
         payload: { type: 'PAGE_COUNT_RESULT', payload: { fileId, pageCount } },
+      };
+    }
+
+    if (command.payload.type === 'GET_PDF_TEXT_LAYER') {
+      const { fileId, pageNumber, bytes } = command.payload.payload;
+      let pdfBytes = bytes;
+      if (pdfBytes === undefined) {
+        const entry = await deps.fs.read(fileId);
+        const blob = await entry.getBlob();
+        pdfBytes = new Uint8Array(await blob.arrayBuffer());
+      }
+      const spans = await extractPdfTextLayerSpans(pdfBytes, pageNumber);
+      return {
+        id: command.id,
+        type: 'EVENT',
+        payload: { type: 'TEXT_LAYER_RESULT', payload: { fileId, pageNumber, spans } },
+      };
+    }
+
+    if (command.payload.type === 'APPLY_STUDIO_TEXT_EDITS') {
+      const { fileId } = command.payload.payload;
+      const { pageIndex, elements } = normalizeAndValidateStudioEditRequest({
+        pageIndex: command.payload.payload.pageIndex,
+        elements: command.payload.payload.elements,
+      });
+      const sourceEntry = await deps.fs.read(fileId);
+      const sourceBlob = await sourceEntry.getBlob();
+      const sourceBytes = new Uint8Array(await sourceBlob.arrayBuffer());
+      const { outputBytes, overflowDetected } = await applyStudioTextEditsToPdfBytes({
+        sourceBytes,
+        pageIndex,
+        elements,
+      });
+      const stableOutputBytes = new Uint8Array(outputBytes.byteLength);
+      stableOutputBytes.set(outputBytes);
+      const outputBlob = new Blob([stableOutputBytes.buffer], { type: 'application/pdf' });
+      const outputEntry = await deps.fs.write(outputBlob);
+      return {
+        id: command.id,
+        type: 'EVENT',
+        payload: {
+          type: 'STUDIO_TEXT_EDITS_APPLIED',
+          payload: {
+            fileId,
+            pageIndex,
+            outputId: outputEntry.id,
+            overflowDetected,
+          },
+        },
       };
     }
 
