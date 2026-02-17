@@ -90,9 +90,25 @@ test.describe('Studio telemetry undo/redo single P2', () => {
       }, { timeout: 15000 });
 
       const actions = await actionsHandle.jsonValue() as Array<any>;
-      const hasApply = actions.some((event) => event.action === 'apply');
-      const hasUndo = actions.some((event) => event.action === 'undo');
-      const hasRedo = actions.some((event) => event.action === 'redo');
+      const hasApply = actions.some((event) => (
+        event.action === 'apply'
+        && event.pagesTotal === 1
+        && event.pagesSucceeded === 1
+        && event.pagesFailed === 0
+        && typeof event.overflowCount === 'number'
+      ));
+      const hasUndo = actions.some((event) => (
+        event.action === 'undo'
+        && event.pagesTotal === 1
+        && event.pagesSucceeded === 1
+        && event.pagesFailed === 0
+      ));
+      const hasRedo = actions.some((event) => (
+        event.action === 'redo'
+        && event.pagesTotal === 1
+        && event.pagesSucceeded === 1
+        && event.pagesFailed === 0
+      ));
 
       expect(hasApply).toBe(true);
       expect(hasUndo).toBe(true);
