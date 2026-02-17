@@ -43,14 +43,14 @@ function multiplyTransform(m1: number[], m2: number[]): number[] {
 async function loadPdfJs(): Promise<PdfJsLike | null> {
   if (!pdfJsPromise) {
     pdfJsPromise = (async () => {
-      const candidates = [
-        'pdfjs-dist/legacy/build/pdf.mjs',
-        'pdfjs-dist/build/pdf.mjs',
-        'pdfjs-dist',
-      ] as const;
-      for (const candidate of candidates) {
+      const loaders: Array<() => Promise<unknown>> = [
+        () => import('pdfjs-dist/legacy/build/pdf.mjs'),
+        () => import('pdfjs-dist/build/pdf.mjs'),
+        () => import('pdfjs-dist'),
+      ];
+      for (const load of loaders) {
         try {
-          const mod = (await import(candidate)) as unknown as PdfJsLike;
+          const mod = (await load()) as PdfJsLike;
           if (mod && typeof mod.getDocument === 'function') {
             return mod;
           }
@@ -74,8 +74,9 @@ export async function extractPdfTextLayerSpans(
     return [];
   }
 
+  const safeBytes = new Uint8Array(pdfBytes);
   const loadingTask = pdfjs.getDocument({
-    data: pdfBytes,
+    data: safeBytes,
     disableWorker: true,
     verbosity: pdfjs.VerbosityLevel?.ERRORS ?? 0,
   });

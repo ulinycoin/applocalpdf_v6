@@ -1,7 +1,7 @@
 import type { ToolLogicFunction } from '../../../core/types/contracts';
 import { createPdfRasterizer } from '../../../services/pdf/pdf-rasterizer';
 
-export const run: ToolLogicFunction = async ({ inputIds, fs, options, emitProgress }) => {
+export const run: ToolLogicFunction = async ({ inputIds, fs, emitProgress }) => {
     if (inputIds.length === 0) {
         throw new Error('PDF to JPG requires at least one input file');
     }

@@ -90,7 +90,7 @@ export async function executeWorkerCommand(
       const sourceEntry = await deps.fs.read(fileId);
       const sourceBlob = await sourceEntry.getBlob();
       const sourceBytes = new Uint8Array(await sourceBlob.arrayBuffer());
-      const { outputBytes, overflowDetected } = await applyStudioTextEditsToPdfBytes({
+      const { outputBytes, overflowDetected, trueReplaceApplied, trueReplaceFallbackReason } = await applyStudioTextEditsToPdfBytes({
         sourceBytes,
         pageIndex,
         elements,
@@ -109,6 +109,8 @@ export async function executeWorkerCommand(
             pageIndex,
             outputId: outputEntry.id,
             overflowDetected,
+            trueReplaceApplied,
+            trueReplaceFallbackReason,
           },
         },
       };

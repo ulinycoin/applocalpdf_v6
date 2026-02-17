@@ -19,7 +19,7 @@ import { LinearIcon } from '../icons/linear-icon';
 import { DEFAULT_TOOL_CONTEXT, useWizardFlow } from '../../hooks/useWizardFlow';
 import { useFilePreviews } from '../../hooks/use-file-previews';
 import { PreviewPanel } from './PreviewPanel';
-import type { IOAdapter, SmartUploadZoneProps, WizardShellProps, WizardStep } from './types';
+import type { IOAdapter, SmartUploadZoneProps, WizardShellProps } from './types';
 import { PDFDocument } from 'pdf-lib';
 import type { StudioSelectedPageRef, StudioToolRouteState } from '../../studio/navigation/studio-tool-context';
 

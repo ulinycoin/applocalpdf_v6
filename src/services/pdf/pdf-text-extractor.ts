@@ -1,3 +1,5 @@
+import { extractPdfTextSegments } from './pdf-content-stream-parser';
+
 interface PdfTextItem {
   str?: string;
 }
@@ -23,52 +25,6 @@ interface PdfJsLike {
 export interface EmbeddedPdfTextResult {
   text: string;
   pageCount: number;
-}
-
-function decodePdfHexString(hex: string): string {
-  const normalized = hex.length % 2 === 0 ? hex : `${hex}0`;
-  const bytes = new Uint8Array(normalized.length / 2);
-  for (let i = 0; i < normalized.length; i += 2) {
-    const value = Number.parseInt(normalized.slice(i, i + 2), 16);
-    bytes[i / 2] = Number.isFinite(value) ? value : 0x20;
-  }
-  return new TextDecoder('latin1').decode(bytes);
-}
-
-function decodePdfLiteralString(input: string): string {
-  return input
-    .replace(/\\n/gu, '\n')
-    .replace(/\\r/gu, '\r')
-    .replace(/\\t/gu, '\t')
-    .replace(/\\b/gu, '\b')
-    .replace(/\\f/gu, '\f')
-    .replace(/\\\(/gu, '(')
-    .replace(/\\\)/gu, ')')
-    .replace(/\\\\/gu, '\\');
-}
-
-function extractTextOperators(content: string): string[] {
-  const chunks: string[] = [];
-
-  for (const match of content.matchAll(/<([0-9A-Fa-f]+)>\s*Tj/gu)) {
-    chunks.push(decodePdfHexString(match[1] ?? ''));
-  }
-  for (const match of content.matchAll(/\(([^()]*)\)\s*Tj/gu)) {
-    chunks.push(decodePdfLiteralString(match[1] ?? ''));
-  }
-  for (const match of content.matchAll(/\[([^\]]+)\]\s*TJ/gu)) {
-    const body = match[1] ?? '';
-    for (const hex of body.matchAll(/<([0-9A-Fa-f]+)>/gu)) {
-      chunks.push(decodePdfHexString(hex[1] ?? ''));
-    }
-    for (const literal of body.matchAll(/\(([^()]*)\)/gu)) {
-      chunks.push(decodePdfLiteralString(literal[1] ?? ''));
-    }
-  }
-
-  return chunks
-    .map((part) => part.replace(/\s+/gu, ' ').trim())
-    .filter(Boolean);
 }
 
 async function inflateIfNeeded(raw: Uint8Array): Promise<string> {
@@ -148,7 +104,7 @@ async function extractEmbeddedPdfTextViaPdfLib(pdfBytes: Uint8Array): Promise<Em
         if (!content) {
           continue;
         }
-        chunks.push(...extractTextOperators(content));
+        chunks.push(...extractPdfTextSegments(content));
       }
       pageTexts.push(chunks.join(' ').trim());
     }
@@ -165,15 +121,15 @@ async function extractEmbeddedPdfTextViaPdfLib(pdfBytes: Uint8Array): Promise<Em
 export async function extractEmbeddedPdfText(pdfBlob: Blob): Promise<EmbeddedPdfTextResult | null> {
   const bytes = new Uint8Array(await pdfBlob.arrayBuffer());
   try {
-    const candidates = [
-      'pdfjs-dist/legacy/build/pdf.mjs',
-      'pdfjs-dist/build/pdf.mjs',
-      'pdfjs-dist',
-    ] as const;
     let pdfjs: PdfJsLike | null = null;
-    for (const candidate of candidates) {
+    const loaders: Array<() => Promise<unknown>> = [
+      () => import('pdfjs-dist/legacy/build/pdf.mjs'),
+      () => import('pdfjs-dist/build/pdf.mjs'),
+      () => import('pdfjs-dist'),
+    ];
+    for (const load of loaders) {
       try {
-        const mod = (await import(candidate)) as unknown as PdfJsLike;
+        const mod = (await load()) as PdfJsLike;
         if (mod && typeof mod.getDocument === 'function') {
           pdfjs = mod;
           break;

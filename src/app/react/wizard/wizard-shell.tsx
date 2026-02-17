@@ -40,10 +40,9 @@ export function WizardShell({ toolId }: WizardShellProps) {
     const { runtime } = usePlatform();
     const [step, setStep] = useState<WizardStep>('upload');
     const [inputIds, setInputIds] = useState<string[]>([]);
-    const [options, setOptions] = useState<Record<string, unknown>>({});
     const [error, setError] = useState<string | null>(null);
 
-    const { execute, isRunning, progress, statusMessage, lastResult } = useToolExecution(toolId, demoContext);
+    const { execute, progress, statusMessage, lastResult } = useToolExecution(toolId, demoContext);
 
     const toolDef = runtime.registry.get(toolId);
     const ToolConfigUI = lazy(toolDef.uiLoader) as any as React.ComponentType<ToolConfigProps>;
@@ -64,7 +63,6 @@ export function WizardShell({ toolId }: WizardShellProps) {
 
     const handleStart = async (configOptions: Record<string, unknown>) => {
         const finalInputIds = (configOptions.inputIds as string[]) || inputIds;
-        setOptions(configOptions);
         setStep('processing');
 
         const result = await execute({
@@ -86,7 +84,6 @@ export function WizardShell({ toolId }: WizardShellProps) {
     const handleRestart = () => {
         setStep('upload');
         setInputIds([]);
-        setOptions({});
         setError(null);
     };
 

@@ -41,14 +41,6 @@ interface TextEditDraft {
   };
 }
 
-interface DragState {
-  id: string;
-  startClientX: number;
-  startClientY: number;
-  originXRatio: number;
-  originYRatio: number;
-}
-
 interface TextLayerSpan {
   id: string;
   text: string;
@@ -78,29 +70,6 @@ let pdfJsPromise: Promise<PdfJsLike | null> | null = null;
 
 function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
-}
-
-function makeDraft(pageIndex: number, xRatio: number, yRatio: number): TextEditDraft {
-  const hRatio = 5;
-  return {
-    id: crypto.randomUUID(),
-    pageIndex,
-    text: 'New text',
-    xRatio: clamp(xRatio, 0, 95),
-    yRatio: clamp(yRatio - hRatio / 2, 0, 95),
-    widthRatio: 30,
-    heightRatio: hRatio,
-    fontSize: 14,
-    fontFamily: 'Roboto',
-    color: '#000000',
-    backgroundColor: '#ffffff',
-    bold: false,
-    italic: false,
-    opacity: 100,
-    rotation: 0,
-    textAlign: 'left',
-    horizontalScaling: 1.0,
-  };
 }
 
 async function loadPdfJs(): Promise<PdfJsLike | null> {
@@ -199,21 +168,15 @@ export default function PdfEditorConfig({
   const inputRef = useRef<HTMLInputElement | null>(null);
   const previewRef = useRef<HTMLDivElement | null>(null);
   const stageRef = useRef<HTMLDivElement | null>(null);
-  const dragRef = useRef<DragState | null>(null);
 
   const [fileNames, setFileNames] = useState<string[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageCount, setPageCount] = useState(1);
   const [thumbnailUrl, setThumbnailUrl] = useState<string | null>(null);
   const [isLoadingPreview, setIsLoadingPreview] = useState(false);
-  const [addMode, setAddMode] = useState(false);
-  const [selectTextMode, setSelectTextMode] = useState(false);
   const [previewZoom, setPreviewZoom] = useState(1);
   const [edits, setEdits] = useState<TextEditDraft[]>([]);
-  const [history, setHistory] = useState<TextEditDraft[][]>([[]]);
-  const [historyIndex, setHistoryIndex] = useState(0);
   const [selectedEditId, setSelectedEditId] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'preview' | 'details'>('preview');
   const [textLayerSpans, setTextLayerSpans] = useState<TextLayerSpan[]>([]);
   const [stageHeight, setStageHeight] = useState(0);
 
@@ -224,10 +187,6 @@ export default function PdfEditorConfig({
   const hasResult = currentStep === 'result' && outputCount > 0;
   const loadingPercent = Math.max(0, Math.min(100, Math.round(progress)));
 
-  const selectedEdit = useMemo(
-    () => edits.find((edit) => edit.id === selectedEditId) ?? null,
-    [edits, selectedEditId],
-  );
   const renderStageHeight = stageHeight > 0 ? stageHeight : 842;
 
   const pageEdits = useMemo(
@@ -235,36 +194,9 @@ export default function PdfEditorConfig({
     [currentPage, edits],
   );
 
-  const syncSelected = useCallback((next: TextEditDraft[]) => {
-    if (selectedEditId && !next.some((item) => item.id === selectedEditId)) {
-      setSelectedEditId(next[0]?.id ?? null);
-    }
-  }, [selectedEditId]);
-
-  const saveToHistory = useCallback((elements: TextEditDraft[]) => {
-    setHistory((prev) => {
-      const next = prev.slice(0, historyIndex + 1);
-      next.push([...elements]);
-      return next;
-    });
-    setHistoryIndex((prev) => prev + 1);
-  }, [historyIndex]);
-
-  const undo = useCallback(() => {
-    if (historyIndex > 0) {
-      const newIndex = historyIndex - 1;
-      setHistoryIndex(newIndex);
-      setEdits([...history[newIndex]]);
-    }
-  }, [history, historyIndex]);
-
-  const redo = useCallback(() => {
-    if (historyIndex < history.length - 1) {
-      const newIndex = historyIndex + 1;
-      setHistoryIndex(newIndex);
-      setEdits([...history[newIndex]]);
-    }
-  }, [history, historyIndex]);
+  const saveToHistory = useCallback((_elements: TextEditDraft[]) => {
+    // History snapshots are intentionally disabled until undo/redo UI is wired.
+  }, []);
 
   useEffect(() => {
     if (inputFiles.length === 0) {
@@ -344,117 +276,6 @@ export default function PdfEditorConfig({
     };
   }, [currentPage, fileId, runtime.vfs]);
 
-  const detectTextAt = useCallback(async (pdfBytes: Uint8Array, pageNumber: number, xPercent: number, yPercent: number) => {
-    const pdfjsBase = await loadPdfJs();
-    if (!pdfjsBase) return null;
-
-    try {
-      const loadingTask = pdfjsBase.getDocument({ data: pdfBytes, disableWorker: true });
-      const pdf = await loadingTask.promise;
-      const page = await pdf.getPage(pageNumber);
-      const textContent = await (page as any).getTextContent({ includeStyles: true });
-      const viewport = page.getViewport({ scale: 1.0 });
-
-      const targetX = (xPercent / 100) * viewport.width;
-      const targetY = (yPercent / 100) * viewport.height;
-
-      let targetItem: any = null;
-      let minDistance = Infinity;
-
-      for (const item of textContent.items) {
-        if (!('str' in item)) continue;
-
-        const transform = item.transform;
-        const fontSize = Math.sqrt(transform[0] * transform[0] + transform[1] * transform[1]);
-        const itemX = transform[4];
-        const itemY = viewport.height - transform[5] - (item.height || fontSize);
-        const itemW = (item as any).width || ((item as any).str.length * fontSize * 0.5);
-        const itemH = (item as any).height || fontSize;
-
-        const centerX = itemX + itemW / 2;
-        const centerY = itemY + itemH / 2;
-        const dist = Math.sqrt(Math.pow(targetX - centerX, 2) + Math.pow(targetY - centerY, 2));
-
-        if (dist < minDistance && dist < 50) {
-          minDistance = dist;
-          targetItem = { item, fontSize, centerY };
-        }
-      }
-
-      if (!targetItem) return null;
-
-      const Y_TOLERANCE = targetItem.fontSize * 0.5;
-      const lineItems = textContent.items.filter((item: any) => {
-        if (!('str' in item)) return false;
-        const itemY = viewport.height - item.transform[5] - (item.height || targetItem.fontSize);
-        const itemFontSize = Math.sqrt(item.transform[0] * item.transform[0] + item.transform[1] * item.transform[1]);
-        const itemCenterY = itemY + (item.height || itemFontSize) / 2;
-        return Math.abs(itemCenterY - targetItem.centerY) < Y_TOLERANCE;
-      }).sort((a: any, b: any) => a.transform[4] - b.transform[4]);
-
-      if (lineItems.length === 0) return null;
-
-      const firstItem = lineItems[0] as any;
-      const lastItem = lineItems[lineItems.length - 1] as any;
-
-      const firstX = firstItem.transform[4];
-      const lastX = lastItem.transform[4];
-      const lastW = (lastItem as any).width || (lastItem.str.length * targetItem.fontSize * 0.5);
-
-      const totalWidth = (lastX + lastW) - firstX;
-      const itemStyle = textContent.styles[targetItem.item.fontName];
-      let fontFamily = 'Roboto';
-      let bold = false;
-      let italic = false;
-      const scaleX = Math.sqrt(targetItem.item.transform[0] * targetItem.item.transform[0] + targetItem.item.transform[1] * targetItem.item.transform[1]);
-      const scaleY = Math.sqrt(targetItem.item.transform[2] * targetItem.item.transform[2] + targetItem.item.transform[3] * targetItem.item.transform[3]);
-      const fontSize = Math.round(Math.max(scaleX, scaleY) * 100) / 100;
-
-      if (itemStyle) {
-        const rawFontName = itemStyle.fontFamily || '';
-        const fontName = (rawFontName.includes('+') ? rawFontName.split('+')[1] : rawFontName).toLowerCase();
-        bold = fontName.includes('bold') || fontName.includes('heavy') || fontName.includes('black') || fontName.includes('medium') || fontName.includes('demi');
-        italic = fontName.includes('italic') || fontName.includes('oblique') || fontName.includes('slanted');
-
-        if (fontName.includes('roboto')) fontFamily = 'Roboto';
-        else if (fontName.includes('arial') || fontName.includes('helvetica') || fontName.includes('sans')) fontFamily = 'Arial';
-        else if (fontName.includes('times') || fontName.includes('serif')) fontFamily = 'Times New Roman';
-        else if (fontName.includes('courier') || fontName.includes('mono')) fontFamily = 'Courier New';
-      }
-
-      let mergedText = "";
-      for (let i = 0; i < lineItems.length; i++) {
-        const item = lineItems[i] as any;
-        if (i > 0) {
-          const prevItem = lineItems[i - 1] as any;
-          const prevX = prevItem.transform[4];
-          const prevW = (prevItem as any).width || (prevItem.str.length * targetItem.fontSize * 0.5);
-          const gap = item.transform[4] - (prevX + prevW);
-          if (gap > targetItem.fontSize * 0.1 && !mergedText.endsWith(' ') && !item.str.startsWith(' ')) {
-            mergedText += " ";
-          }
-        }
-        mergedText += item.str;
-      }
-      mergedText = mergedText.replace(/\s+/g, ' ').trim();
-
-      return {
-        text: mergedText,
-        xRatio: ((firstX + totalWidth / 2) / viewport.width) * 100,
-        yRatio: (targetItem.centerY / viewport.height) * 100,
-        widthRatio: (totalWidth / viewport.width) * 100,
-        heightRatio: (fontSize * 1.1 / viewport.height) * 100,
-        fontSize: fontSize,
-        fontFamily,
-        bold,
-        italic
-      };
-    } catch (error) {
-      console.error('Error detecting text line:', error);
-      return null;
-    }
-  }, []);
-
   const appendEditFromBounds = useCallback((params: {
     text: string;
     xRatio: number;
@@ -503,60 +324,7 @@ export default function PdfEditorConfig({
       return next;
     });
     setSelectedEditId(nextEdit.id);
-    setActiveTab('preview');
   }, [currentPage, fileId, saveToHistory]);
-
-  const handleSmartDetect = useCallback(async (x: number, y: number) => {
-    if (!fileId) return;
-
-    const entry = await runtime.vfs.read(fileId);
-    const blob = await entry.getBlob();
-    const bytes = new Uint8Array(await blob.arrayBuffer());
-
-    const detected = await detectTextAt(bytes, currentPage, x, y);
-    if (detected) {
-      const normalizedHeight = Math.max(1.6, detected.heightRatio);
-      const leftX = detected.xRatio - detected.widthRatio / 2;
-      const topY = detected.yRatio - normalizedHeight / 2;
-      const existing = edits.find((edit) => (
-        edit.pageIndex === currentPage - 1 &&
-        edit.originalRect &&
-        Math.abs(edit.originalRect.x - leftX) < 0.6 &&
-        Math.abs(edit.originalRect.y - topY) < 0.6 &&
-        Math.abs(edit.originalRect.w - detected.widthRatio) < 0.6 &&
-        Math.abs(edit.originalRect.h - normalizedHeight) < 0.6
-      ));
-      if (existing) {
-        const derivedFontSize = normalizedHeight * 8.42 * 0.86;
-        if (existing.fontSize < derivedFontSize) {
-          setEdits((current) => current.map((item) => (
-            item.id === existing.id ? { ...item, fontSize: derivedFontSize } : item
-          )));
-        }
-        setSelectedEditId(existing.id);
-        return;
-      }
-
-      appendEditFromBounds({
-        text: detected.text,
-        xRatio: leftX,
-        yRatio: topY,
-        widthRatio: detected.widthRatio,
-        heightRatio: normalizedHeight,
-        fontSize: detected.fontSize,
-        fontFamily: 'Roboto', // Force Roboto for best support
-        bold: detected.bold,
-        italic: detected.italic,
-        textAlign: 'left',
-        originalRect: {
-          x: leftX,
-          y: topY,
-          w: detected.widthRatio,
-          h: normalizedHeight
-        }
-      });
-    }
-  }, [appendEditFromBounds, currentPage, detectTextAt, edits, fileId, runtime.vfs]);
 
   const handleFileInput = async (event: ChangeEvent<HTMLInputElement>): Promise<void> => {
     const files = event.target.files ? Array.from(event.target.files) : [];
@@ -566,37 +334,6 @@ export default function PdfEditorConfig({
     }
     await onPickFiles(files);
   };
-
-  const handleAddAtPoint = useCallback((event: React.MouseEvent<HTMLDivElement>) => {
-    const hostOrNull = previewRef.current;
-    if (!hostOrNull) return;
-    const stage = hostOrNull.querySelector('.pdf-editor-preview-stage');
-    if (!stage) return;
-
-    const bounds = stage.getBoundingClientRect(); // Use stage bounds!
-    if (bounds.width <= 0 || bounds.height <= 0) {
-      return;
-    }
-
-    const nextX = clamp(((event.clientX - bounds.left) / bounds.width) * 100, 0, 100);
-    const nextY = clamp(((event.clientY - bounds.top) / bounds.height) * 100, 0, 100);
-
-    if (selectTextMode) {
-      void handleSmartDetect(nextX, nextY);
-      return;
-    }
-
-    if (!addMode) {
-      return;
-    }
-
-    const next = [...edits, makeDraft(currentPage - 1, nextX, nextY)];
-    setEdits(next);
-    saveToHistory(next);
-    setSelectedEditId(next[next.length - 1].id);
-    setAddMode(false);
-    setActiveTab('preview');
-  }, [addMode, currentPage, edits, selectTextMode, saveToHistory, handleSmartDetect]);
 
   const updateSelectedEdit = useCallback((updates: Partial<TextEditDraft>) => {
     if (!selectedEditId) {
@@ -621,19 +358,6 @@ export default function PdfEditorConfig({
       return next;
     });
   }, [selectedEditId, saveToHistory]);
-
-  const removeSelected = useCallback(() => {
-    if (!selectedEditId) {
-      return;
-    }
-
-    setEdits((current) => {
-      const next = current.filter((item) => item.id !== selectedEditId);
-      saveToHistory(next);
-      syncSelected(next);
-      return next;
-    });
-  }, [selectedEditId, syncSelected, saveToHistory]);
 
   const createEditFromSpan = useCallback((span: TextLayerSpan) => {
     const lineThreshold = Math.max(0.0025, span.heightRatio * 0.55);
@@ -704,65 +428,6 @@ export default function PdfEditorConfig({
       originalRect: rect,
     });
   }, [appendEditFromBounds, currentPage, edits, textLayerSpans]);
-
-  const createEditFromSelection = useCallback(() => {
-    if (!selectTextMode || !fileId) {
-      return;
-    }
-
-    const host = previewRef.current;
-    if (!host) {
-      return;
-    }
-
-    const selection = window.getSelection();
-    if (!selection || selection.rangeCount === 0) {
-      return;
-    }
-
-    const text = selection.toString().trim();
-    if (text.length === 0 || selection.type !== 'Range') {
-      return;
-    }
-
-    const stage = host.querySelector('.pdf-editor-preview-stage');
-    if (!stage) return;
-
-    const range = selection.getRangeAt(0);
-    const rect = range.getBoundingClientRect();
-    const bounds = stage.getBoundingClientRect(); // Use stage bounds!
-    if (rect.width <= 0 || rect.height <= 0 || bounds.width <= 0 || bounds.height <= 0) {
-      return;
-    }
-
-    const coverX = rect.width / bounds.width;
-    const coverY = rect.height / bounds.height;
-    if (coverX > 0.95 || coverY > 0.95) {
-      return;
-    }
-
-    // Use normalized coordinates relative to current rendered stage.
-    const rawX = (rect.left - bounds.left) / bounds.width;
-    const rawY = (rect.top - bounds.top) / bounds.height;
-    const rawW = rect.width / bounds.width;
-    const rawH = rect.height / bounds.height;
-
-    appendEditFromBounds({
-      text,
-      xRatio: rawX * 100,
-      yRatio: rawY * 100,
-      widthRatio: rawW * 100,
-      heightRatio: rawH * 100,
-      fontSize: (rawH * 842) * 0.9,
-      originalRect: {
-        x: rawX * 100,
-        y: rawY * 100,
-        w: rawW * 100,
-        h: rawH * 100,
-      },
-    });
-    selection.removeAllRanges();
-  }, [appendEditFromBounds, fileId, selectTextMode]);
 
   useEffect(() => {
     if (!thumbnailUrl) return;

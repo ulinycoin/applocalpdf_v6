@@ -268,40 +268,6 @@ function scaleProfile(profile: QualityProfile, scale: number): QualityProfile {
   };
 }
 
-function estimateDocumentHeight(
-  blocks: RenderBlock[],
-  profile: QualityProfile,
-  pageWidth: number,
-  selectFont: (text: string) => { widthOfTextAtSize: (text: string, size: number) => number },
-): number {
-  let total = 0;
-  const maxLineLength = Math.max(120, pageWidth - profile.leftRightMargin * 2);
-
-  for (const block of blocks) {
-    const blockSize = getFontSizeByBlock(block.kind, profile.defaultFontSize);
-    const lineHeight = Math.max(9, Math.round(blockSize * profile.lineHeight));
-
-    if (block.kind === 'blank') {
-      total += getParagraphGap(block.kind, profile);
-      continue;
-    }
-
-    if (block.kind === 'image') {
-      const imageHeightBase = profile.defaultFontSize >= 12 ? 180 : (profile.defaultFontSize <= 10 ? 100 : 140);
-      const imageHeight = Math.max(68, Math.round(imageHeightBase * (profile.defaultFontSize / 11)));
-      total += imageHeight + getParagraphGap(block.kind, profile);
-      continue;
-    }
-
-    const lines = needsRasterFallback(block.text)
-      ? wrapTextByCanvas(block.text, maxLineLength, blockSize)
-      : wrapText(block.text, selectFont(block.text), blockSize, maxLineLength);
-    total += lines.length * lineHeight + getParagraphGap(block.kind, profile);
-  }
-
-  return total;
-}
-
 function getFontSizeByBlock(kind: BlockKind, baseSize: number): number {
   if (kind === 'heading1') {
     return Math.round(baseSize * 1.7);

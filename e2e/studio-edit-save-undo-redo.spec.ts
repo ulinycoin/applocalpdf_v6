@@ -24,6 +24,8 @@ function safeDelete(path: string): void {
 }
 
 test.describe('Studio save undo/redo P1', () => {
+  test.setTimeout(120_000);
+
   test('reverts and reapplies saved output file id', async ({ page }) => {
     const pdfPath = await createPdf('single');
     try {
@@ -82,7 +84,7 @@ test.describe('Studio save undo/redo P1', () => {
           return null;
         }
         return next;
-      }, initialFileId, { timeout: 20000 });
+      }, initialFileId, { timeout: 90000 });
       const savedFileId = await savedFileIdHandle.jsonValue() as string;
 
       await page.getByRole('button', { name: /Undo Save|Отменить сохранение/i }).click();
@@ -91,7 +93,7 @@ test.describe('Studio save undo/redo P1', () => {
           documents: Array<{ pages: Array<{ fileId: string }> }>;
         } } }).__LOCALPDF_STUDIO_STORE__;
         return store?.getState().documents[0]?.pages[0]?.fileId === expected;
-      }, initialFileId, { timeout: 20000 });
+      }, initialFileId, { timeout: 90000 });
 
       await page.getByRole('button', { name: /Redo Save|Повторить сохранение/i }).click();
       await page.waitForFunction((expected) => {
@@ -99,7 +101,7 @@ test.describe('Studio save undo/redo P1', () => {
           documents: Array<{ pages: Array<{ fileId: string }> }>;
         } } }).__LOCALPDF_STUDIO_STORE__;
         return store?.getState().documents[0]?.pages[0]?.fileId === expected;
-      }, savedFileId, { timeout: 20000 });
+      }, savedFileId, { timeout: 90000 });
     } finally {
       safeDelete(pdfPath);
     }

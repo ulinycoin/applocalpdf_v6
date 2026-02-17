@@ -217,6 +217,7 @@ test('executeWorkerCommand applies studio text edits and returns output id', asy
     assert.equal(event.payload.payload.fileId, 'pdf-edit-source');
     assert.equal(event.payload.payload.pageIndex, 0);
     assert.ok(event.payload.payload.outputId.length > 0);
+    assert.equal(typeof event.payload.payload.trueReplaceApplied, 'boolean');
     const outputEntry = await fs.read(event.payload.payload.outputId);
     const outputBlob = await outputEntry.getBlob();
     assert.equal(outputBlob.type, 'application/pdf');

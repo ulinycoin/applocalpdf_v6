@@ -157,7 +157,17 @@ export type WorkerEventPayload =
   | { type: 'RESULT'; payload: { outputIds: string[] } }
   | { type: 'PAGE_COUNT_RESULT'; payload: { fileId: string; pageCount: number } }
   | { type: 'TEXT_LAYER_RESULT'; payload: { fileId: string; pageNumber: number; spans: WorkerPdfTextLayerSpan[] } }
-  | { type: 'STUDIO_TEXT_EDITS_APPLIED'; payload: { fileId: string; pageIndex: number; outputId: string; overflowDetected: boolean } }
+  | {
+    type: 'STUDIO_TEXT_EDITS_APPLIED';
+    payload: {
+      fileId: string;
+      pageIndex: number;
+      outputId: string;
+      overflowDetected: boolean;
+      trueReplaceApplied: boolean;
+      trueReplaceFallbackReason?: string;
+    };
+  }
   | { type: 'ERROR'; payload: { message: string; code?: string } };
 
 export interface IWorkerEvent {

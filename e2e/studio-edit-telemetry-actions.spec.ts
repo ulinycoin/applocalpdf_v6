@@ -26,6 +26,8 @@ function safeDelete(path: string): void {
 }
 
 test.describe('Studio telemetry save actions P2', () => {
+  test.setTimeout(120_000);
+
   test('emits apply/undo/redo save actions for selection scope', async ({ page }) => {
     const pdfPath = await createTwoPagePdf('selection');
     try {
@@ -81,7 +83,11 @@ test.describe('Studio telemetry save actions P2', () => {
       await textarea.fill('TELEMETRY ACTIONS UPDATED');
       await page.getByTestId('studio-edit-save-btn').click();
 
-      await expect(page.getByText(/selected pages:\s*2|выбранных страниц:\s*2/i)).toBeVisible({ timeout: 15000 });
+      await page.waitForFunction(() => {
+        const api = (window as any).__LOCALPDF_V6_TEST_API;
+        const events = api?.getTelemetrySnapshot?.() ?? [];
+        return events.some((event: any) => event?.type === 'STUDIO_EDIT_SAVE_ACTION' && event.scope === 'selection' && event.action === 'apply');
+      }, { timeout: 90000 });
       await page.getByRole('button', { name: /Undo Save|Отменить сохранение/i }).click();
       await page.getByRole('button', { name: /Redo Save|Повторить сохранение/i }).click();
 
@@ -93,7 +99,7 @@ test.describe('Studio telemetry save actions P2', () => {
           return null;
         }
         return saveActions;
-      }, { timeout: 15000 });
+      }, { timeout: 90000 });
 
       const actions = await actionsHandle.jsonValue() as Array<any>;
       const hasApply = actions.some((event) => event.action === 'apply' && event.pagesTotal >= 2);

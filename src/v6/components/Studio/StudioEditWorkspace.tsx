@@ -1269,13 +1269,30 @@ export function StudioEditWorkspace() {
           if (finalEvent.payload.payload.overflowDetected) {
             overflowCount += 1;
           }
-          const previewData = await defaultFilePreviewService.getPdfPagePreview(
+          if (!finalEvent.payload.payload.trueReplaceApplied && finalEvent.payload.payload.trueReplaceFallbackReason) {
+            runtime.telemetry.track({
+              type: 'STUDIO_EDIT_GUARDRAIL',
+              runId,
+              toolId: 'studio.edit.text',
+              fileId: target.page.fileId,
+              pageIndex: target.page.pageIndex,
+              code: `STUDIO_TRUE_REPLACE_FALLBACK_${finalEvent.payload.payload.trueReplaceFallbackReason}`,
+              message: 'True replace fallback path used',
+            });
+          }
+          const previewPromise = defaultFilePreviewService.getPdfPagePreview(
             runtime,
             finalEvent.payload.payload.outputId,
             target.page.pageIndex + 1,
             { scale: 2 },
           );
-          const nextThumbnailUrl = previewData.thumbnailUrl ?? target.page.thumbnailUrl;
+          const previewData = await Promise.race([
+            previewPromise,
+            new Promise<null>((resolve) => {
+              setTimeout(() => resolve(null), 8000);
+            }),
+          ]);
+          const nextThumbnailUrl = previewData?.thumbnailUrl ?? target.page.thumbnailUrl;
           updatePage(target.docId, target.page.id, {
             fileId: finalEvent.payload.payload.outputId,
             pageIndex: target.page.pageIndex,

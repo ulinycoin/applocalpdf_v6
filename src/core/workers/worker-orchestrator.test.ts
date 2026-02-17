@@ -152,7 +152,14 @@ test('WebWorkerOrchestrator resolves on STUDIO_TEXT_EDITS_APPLIED final event', 
             type: 'EVENT',
             payload: {
               type: 'STUDIO_TEXT_EDITS_APPLIED',
-              payload: { fileId: 'f1', pageIndex: 0, outputId: 'out-1', overflowDetected: false },
+              payload: {
+                fileId: 'f1',
+                pageIndex: 0,
+                outputId: 'out-1',
+                overflowDetected: false,
+                trueReplaceApplied: false,
+                trueReplaceFallbackReason: 'INELIGIBLE_EDIT_PAYLOAD',
+              },
             },
           },
         });

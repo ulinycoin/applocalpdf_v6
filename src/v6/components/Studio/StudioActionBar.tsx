@@ -20,7 +20,6 @@ export function StudioActionBar() {
     const activeDocumentId = useStudioStore((s: StudioState) => s.activeDocumentId);
     const markWorkspaceExported = useStudioStore((s: StudioState) => s.markWorkspaceExported);
     const documents = useStudioStore((s: StudioState) => s.documents);
-    const exportableDocuments = documents.filter((doc) => doc.includeInExport !== false);
     const activeDocument = documents.find((doc) => doc.id === activeDocumentId) ?? null;
     const hasDocuments = documents.length > 0;
     const hasActivePages = (activeDocument?.pages.length ?? 0) > 0;

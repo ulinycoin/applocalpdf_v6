@@ -4,7 +4,7 @@ import { InMemoryFileSystem } from '../../test-utils/in-memory-fs';
 import { run } from './index';
 
 // We need to mock the rasterizer for Node environment
-test('pdf-to-jpg logic works with mock rasterizer', async (t) => {
+test('pdf-to-jpg logic works with mock rasterizer', async () => {
     const fs = new InMemoryFileSystem();
     fs.seed('f1', new Blob(['fake pdf'], { type: 'application/pdf' }));
 

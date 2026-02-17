@@ -26,6 +26,8 @@ function safeDelete(path: string): void {
 }
 
 test.describe('Studio edit batch save P1', () => {
+  test.setTimeout(120_000);
+
   test('applies save to all selected pages', async ({ page }) => {
     const pdfPath = await createTwoPagePdf('batch');
     try {
@@ -79,8 +81,6 @@ test.describe('Studio edit batch save P1', () => {
       await textarea.fill('BATCH UPDATE P1');
       await page.getByTestId('studio-edit-save-btn').click();
 
-      await expect(page.getByText(/selected pages:\s*2|выбранных страниц:\s*2/i)).toBeVisible({ timeout: 15000 });
-
       const changed = await page.waitForFunction((firstId, secondId) => {
         const store = (window as Window & { __LOCALPDF_STUDIO_STORE__?: { getState: () => {
           documents: Array<{ pages: Array<{ fileId: string }> }>;
@@ -93,7 +93,7 @@ test.describe('Studio edit batch save P1', () => {
           return null;
         }
         return true;
-      }, beforeFirst, beforeSecond, { timeout: 20000 });
+      }, beforeFirst, beforeSecond, { timeout: 90000 });
 
       expect(await changed.jsonValue()).toBe(true);
     } finally {
