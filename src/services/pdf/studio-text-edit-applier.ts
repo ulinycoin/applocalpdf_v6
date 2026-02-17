@@ -21,20 +21,21 @@ function fitTextToWidth(
   text: string,
   targetWidth: number,
   preferredFontSize: number,
+  preferredTracking: number,
   minFontSize = 8,
 ): { fontSize: number; tracking: number; overflow: boolean } {
   const safeText = text || ' ';
   let fontSize = preferredFontSize;
-  let tracking = 0;
+  let tracking = preferredTracking;
 
   const fitAtSize = (size: number) => {
-    const baseWidth = font.widthOfTextAtSize(safeText, size);
+    const baseWidth = measureTextWidthWithTracking(font, safeText, size, preferredTracking);
     if (baseWidth <= targetWidth || safeText.length <= 1) {
-      return { size, tracking: 0, width: baseWidth };
+      return { size, tracking: preferredTracking, width: baseWidth };
     }
     const minTracking = -0.08 * size;
     const neededTracking = (targetWidth - baseWidth) / (safeText.length - 1);
-    const nextTracking = clamp(neededTracking, minTracking, 0);
+    const nextTracking = preferredTracking + clamp(neededTracking, minTracking, 0);
     const width = measureTextWidthWithTracking(font, safeText, size, nextTracking);
     return { size, tracking: nextTracking, width };
   };
@@ -144,7 +145,7 @@ export async function applyStudioTextEditsToPdfBytes(params: {
       const { r, g, b } = hexToRgb(element.color);
       const line = sanitizeInlineText(element.text || ' ');
       const blockWidth = element.w * pageWidth;
-      const fit = fitTextToWidth(font, line, blockWidth, element.fontSize, 8);
+      const fit = fitTextToWidth(font, line, blockWidth, element.fontSize, element.letterSpacing ?? 0, 8);
       overflowDetected ||= fit.overflow;
 
       const lineWidth = font.widthOfTextAtSize(line, fit.fontSize) + fit.tracking * Math.max(0, line.length - 1);
@@ -156,7 +157,7 @@ export async function applyStudioTextEditsToPdfBytes(params: {
         x += Math.max(0, blockWidth - lineWidth);
       }
       const yTop = element.y * pageHeight;
-      const y = pageHeight - yTop - fit.fontSize;
+      const y = pageHeight - yTop - (fit.fontSize * (element.lineHeight ?? 1.2));
 
       if (fit.tracking === 0 || line.length <= 1) {
         page.drawText(line, {

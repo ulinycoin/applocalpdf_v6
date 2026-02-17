@@ -106,6 +106,8 @@ export interface WorkerStudioTextEditElement {
   fontWeight: 'normal' | 'bold';
   fontStyle: 'normal' | 'italic';
   textAlign: WorkerStudioTextAlign;
+  lineHeight?: number;
+  letterSpacing?: number;
   opacity: number;
 }
 

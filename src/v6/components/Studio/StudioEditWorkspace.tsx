@@ -44,6 +44,8 @@ interface TextElement {
   fontWeight: 'normal' | 'bold';
   fontStyle: 'normal' | 'italic';
   textAlign: TextAlignId;
+  lineHeight: number;
+  letterSpacing: number;
   opacity: number;
 }
 
@@ -415,6 +417,26 @@ function StudioFloatingMenu({ element, onUpdate, onDelete, onDuplicate }: Studio
           min={8}
           max={96}
           onChange={(e) => onUpdate({ fontSize: clamp(Number(e.target.value) || 16, 8, 96) })}
+        />
+        <input
+          type="number"
+          className="studio-floating-input font-size"
+          value={textElem.lineHeight}
+          min={0.8}
+          max={3}
+          step={0.05}
+          title="Line height"
+          onChange={(e) => onUpdate({ lineHeight: clamp(Number(e.target.value) || 1.2, 0.8, 3) })}
+        />
+        <input
+          type="number"
+          className="studio-floating-input font-size"
+          value={textElem.letterSpacing}
+          min={-2}
+          max={20}
+          step={0.2}
+          title="Letter spacing"
+          onChange={(e) => onUpdate({ letterSpacing: clamp(Number(e.target.value) || 0, -2, 20) })}
         />
       </div>
 
@@ -901,6 +923,8 @@ export function StudioEditWorkspace() {
           fontWeight: 'normal',
           fontStyle: 'normal',
           textAlign: 'left',
+          lineHeight: 1.2,
+          letterSpacing: 0,
           opacity: 1,
         };
 
@@ -925,6 +949,8 @@ export function StudioEditWorkspace() {
         fontWeight: 'normal',
         fontStyle: 'normal',
         textAlign: 'left',
+        lineHeight: 1.2,
+        letterSpacing: 0,
         opacity: 1,
       };
       applyElements([...elements, next]);
@@ -1543,6 +1569,8 @@ export function StudioEditWorkspace() {
                     fontWeight: text.fontWeight,
                     fontStyle: text.fontStyle,
                     textAlign: text.textAlign,
+                    lineHeight: text.lineHeight,
+                    letterSpacing: `${text.letterSpacing}px`,
                     opacity: text.opacity,
                   }}
                   onPointerDown={(event) => handleTextPointerDown(event, text)}

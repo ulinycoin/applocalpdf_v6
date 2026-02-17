@@ -88,6 +88,8 @@ function normalizeTextElement(input: WorkerStudioTextEditElement): WorkerStudioT
     fontWeight: input.fontWeight === 'bold' ? 'bold' : 'normal',
     fontStyle: input.fontStyle === 'italic' ? 'italic' : 'normal',
     textAlign: normalizeTextAlign(input.textAlign),
+    lineHeight: clamp(toFiniteNumber(input.lineHeight ?? 1.2, 'text.lineHeight'), 0.8, 3),
+    letterSpacing: clamp(toFiniteNumber(input.letterSpacing ?? 0, 'text.letterSpacing'), -2, 20),
     opacity: normalizeOpacity(input.opacity),
   };
 }
