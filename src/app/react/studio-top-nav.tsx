@@ -49,6 +49,7 @@ export function StudioTopNav({ onToggleTelemetry, telemetryOpen }: StudioTopNavP
   const setSelection = useStudioStore((s: StudioState) => s.setSelection);
   const requestInlineTool = useStudioStore((s: StudioState) => s.requestInlineTool);
   const markWorkspaceExported = useStudioStore((s: StudioState) => s.markWorkspaceExported);
+  const startEditSession = useStudioStore((s: StudioState) => s.startEditSession);
 
   const activeDocument = useMemo(
     () => documents.find((doc: StudioDocument) => doc.id === activeDocumentId) ?? null,
@@ -87,12 +88,13 @@ export function StudioTopNav({ onToggleTelemetry, telemetryOpen }: StudioTopNavP
   const visibleActions = STUDIO_ACTIONS.filter((action) => action.mode === interactionMode);
   const hasActivePages = (activeDocument?.pages.length ?? 0) > 0;
   const hasTargetSelection = selectedPages.length > 0;
+  const hasEditTarget = hasTargetSelection || hasActivePages;
 
   useEffect(() => {
-    if (!hasTargetSelection && interactionMode !== null) {
+    if (!hasEditTarget && interactionMode !== null) {
       setInteractionMode(null);
     }
-  }, [hasTargetSelection, interactionMode, setInteractionMode]);
+  }, [hasEditTarget, interactionMode, setInteractionMode]);
 
   const exportDocument = async (doc: StudioDocument): Promise<void> => {
     const sequence = doc.pages.map((page: PageItem) => ({
@@ -208,16 +210,41 @@ export function StudioTopNav({ onToggleTelemetry, telemetryOpen }: StudioTopNavP
         <div className="studio-segmented" role="tablist" aria-label="Mode">
           <button
             type="button"
-            className={`studio-segment-btn ${hasTargetSelection && interactionMode === 'edit' ? 'active' : ''}`}
+            className={`studio-segment-btn ${hasEditTarget && interactionMode === 'edit' ? 'active' : ''}`}
             onClick={() => {
-              if (!hasTargetSelection) {
+              if (!hasEditTarget) {
                 return;
+              }
+              let targetDocId: string | null = null;
+              let targetPage: PageItem | null = null;
+              if (hasTargetSelection) {
+                const selected = selectedPages[0];
+                const doc = selected ? documents.find((candidate) => candidate.id === selected.docId) : null;
+                const page = selected ? doc?.pages.find((candidate) => candidate.id === selected.pageId) : null;
+                if (doc && page) {
+                  targetDocId = doc.id;
+                  targetPage = page;
+                }
+              }
+              if (!targetPage && activeDocument?.pages[0]) {
+                targetDocId = activeDocument.id;
+                targetPage = activeDocument.pages[0];
+                setSelection([{ docId: activeDocument.id, pageId: activeDocument.pages[0].id }]);
+              }
+              if (targetDocId && targetPage) {
+                startEditSession({
+                  docId: targetDocId,
+                  pageId: targetPage.id,
+                  pageIndex: targetPage.pageIndex,
+                  fileId: targetPage.fileId,
+                  initialTool: 'text',
+                });
               }
               setInteractionMode('edit');
               navigate('/studio/edit');
             }}
-            disabled={!hasTargetSelection}
-            title={!hasTargetSelection ? 'Select page or area first' : 'Edit mode'}
+            disabled={!hasEditTarget}
+            title={!hasEditTarget ? 'Select a document or page first' : 'Edit mode'}
           >
             Edit
           </button>

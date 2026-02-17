@@ -5,7 +5,7 @@ import type { IWorkerCommand, WorkerPdfTextLayerSpan, WorkerStudioEditElement } 
 import { extractEmbeddedPdfText } from '../../../services/pdf/pdf-text-extractor';
 import { extractPdfTextLayerSpans } from '../../../services/pdf/pdf-text-layer-extractor';
 import { defaultFilePreviewService } from '../../preview/preview-service';
-import { useStudioStore, type PageItem, type StudioDocument, type StudioState } from './studio-store';
+import { useStudioStore, type PageItem, type StudioDocument, type StudioEditToolId, type StudioState } from './studio-store';
 import { LinearIcon } from '../icons/linear-icon';
 import {
   clamp,
@@ -504,12 +504,15 @@ export function StudioEditWorkspace() {
   const selection = useStudioStore((s: StudioState) => s.selection);
   const activeDocumentId = useStudioStore((s: StudioState) => s.activeDocumentId);
   const updatePage = useStudioStore((s: StudioState) => s.updatePage);
+  const editSession = useStudioStore((s: StudioState) => s.editSession);
+  const updateEditSessionTool = useStudioStore((s: StudioState) => s.updateEditSessionTool);
+  const syncEditSessionTarget = useStudioStore((s: StudioState) => s.syncEditSessionTarget);
 
   const canvasRef = useRef<HTMLDivElement | null>(null);
   const imageRef = useRef<HTMLImageElement | null>(null);
   const dragSessionRef = useRef<DragSession | null>(null);
 
-  const [tool, setTool] = useState<EditorToolId>('text');
+  const [tool, setTool] = useState<EditorToolId>(editSession?.activeTool ?? 'text');
   const [elements, setElements] = useState<EditElement[]>([]);
   const [history, setHistory] = useState<EditElement[][]>([[]]);
   const [historyIndex, setHistoryIndex] = useState(0);
@@ -537,15 +540,57 @@ export function StudioEditWorkspace() {
     [activeDocumentId, documents],
   );
 
-  const preview = selectedPages[0] ?? (activeDocument && activeDocument.pages[0]
-    ? {
-      docId: activeDocument.id,
-      docName: activeDocument.name,
-      page: activeDocument.pages[0],
-      indexInDoc: 0,
+  const preview = useMemo(() => {
+    if (editSession) {
+      const sessionDoc = documents.find((doc) => doc.id === editSession.docId);
+      const sessionPage = sessionDoc?.pages.find((page) => page.id === editSession.pageId);
+      const sessionIndexInDoc = sessionPage ? sessionDoc?.pages.findIndex((page) => page.id === sessionPage.id) ?? -1 : -1;
+      if (sessionDoc && sessionPage && sessionIndexInDoc >= 0) {
+        return {
+          docId: sessionDoc.id,
+          docName: sessionDoc.name,
+          page: sessionPage,
+          indexInDoc: sessionIndexInDoc,
+        };
+      }
     }
-    : null);
+    if (selectedPages[0]) {
+      return selectedPages[0];
+    }
+    if (activeDocument && activeDocument.pages[0]) {
+      return {
+        docId: activeDocument.id,
+        docName: activeDocument.name,
+        page: activeDocument.pages[0],
+        indexInDoc: 0,
+      };
+    }
+    return null;
+  }, [activeDocument, documents, editSession, selectedPages]);
   const canApplyToSelection = selectedPages.length > 1;
+
+  useEffect(() => {
+    if (editSession?.activeTool && editSession.activeTool !== tool) {
+      setTool(editSession.activeTool);
+    }
+  }, [editSession?.activeTool, tool]);
+
+  useEffect(() => {
+    if (!preview) {
+      return;
+    }
+    syncEditSessionTarget({
+      docId: preview.docId,
+      pageId: preview.page.id,
+      pageIndex: preview.page.pageIndex,
+      workingFileId: preview.page.fileId,
+    });
+  }, [preview?.docId, preview?.page.fileId, preview?.page.id, preview?.page.pageIndex, syncEditSessionTarget]);
+
+  const selectTool = useCallback((nextTool: StudioEditToolId) => {
+    setTool(nextTool);
+    updateEditSessionTool(nextTool);
+  }, [updateEditSessionTool]);
 
   useEffect(() => {
     if (!canApplyToSelection && applyToSelection) {
@@ -1486,7 +1531,7 @@ export function StudioEditWorkspace() {
           type="button"
           className={`studio-edit-tool-btn ${tool === 'text' ? 'active' : ''} ${isSelectMode ? 'select-mode' : ''}`}
           onClick={() => {
-            setTool('text');
+            selectTool('text');
             if (tool === 'text') {
               const next = !isSelectMode;
               setIsSelectMode(next);
@@ -1523,14 +1568,14 @@ export function StudioEditWorkspace() {
         <button type="button" className="studio-edit-tool-btn" title="Coming soon">
           <LinearIcon name="lock" className="linear-icon" /><span>{ui.sign}</span>
         </button>
-        <button type="button" className={`studio-edit-tool-btn ${tool === 'whiteout' ? 'active' : ''}`} onClick={() => { setTool('whiteout'); setIsSelectMode(false); }}>
-          <LinearIcon name="delete-pages" className="linear-icon" /><span>{ui.whiteout}</span>
-        </button>
-        <button type="button" className={`studio-edit-tool-btn ${tool === 'annotate' ? 'active' : ''}`} onClick={() => { setTool('annotate'); setIsSelectMode(false); }}>
+        <button type="button" className={`studio-edit-tool-btn ${tool === 'annotate' ? 'active' : ''}`} onClick={() => { selectTool('annotate'); setIsSelectMode(false); }}>
           <LinearIcon name="tool" className="linear-icon" /><span>{ui.annotate}</span>
         </button>
-        <button type="button" className={`studio-edit-tool-btn ${tool === 'shapes' ? 'active' : ''}`} onClick={() => { setTool('shapes'); setIsSelectMode(false); }}>
+        <button type="button" className={`studio-edit-tool-btn ${tool === 'shapes' ? 'active' : ''}`} onClick={() => { selectTool('shapes'); setIsSelectMode(false); }}>
           <LinearIcon name="rotate" className="linear-icon" /><span>{ui.shapes}</span>
+        </button>
+        <button type="button" className={`studio-edit-tool-btn ${tool === 'whiteout' ? 'active' : ''}`} onClick={() => { selectTool('whiteout'); setIsSelectMode(false); }}>
+          <LinearIcon name="delete-pages" className="linear-icon" /><span>{ui.whiteout}</span>
         </button>
         <button type="button" className="studio-edit-tool-btn" onClick={undo} disabled={historyIndex <= 0}>
           <LinearIcon name="chevron-left" className="linear-icon" /><span>{ui.undo}</span>

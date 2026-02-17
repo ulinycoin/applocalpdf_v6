@@ -26,6 +26,17 @@ export interface StudioDocument {
 
 export type StudioInteractionMode = 'edit' | 'convert' | null;
 export type StudioOperationScope = 'selection' | 'document';
+export type StudioEditToolId = 'text' | 'annotate' | 'whiteout' | 'shapes';
+
+export interface StudioEditSession {
+    docId: string;
+    pageId: string;
+    pageIndex: number;
+    sourceFileId: string;
+    workingFileId: string;
+    activeTool: StudioEditToolId;
+    startedAt: number;
+}
 
 export interface StudioState {
     documents: StudioDocument[];
@@ -36,6 +47,7 @@ export interface StudioState {
     activeDocumentId: string | null;
     interactionMode: StudioInteractionMode;
     operationScope: StudioOperationScope;
+    editSession: StudioEditSession | null;
     workspaceVersion: number;
     lastExportedVersion: number;
 
@@ -46,6 +58,16 @@ export interface StudioState {
     setActiveDocument: (id: string | null) => void;
     setInteractionMode: (mode: StudioInteractionMode) => void;
     setOperationScope: (scope: StudioOperationScope) => void;
+    startEditSession: (session: {
+        docId: string;
+        pageId: string;
+        pageIndex: number;
+        fileId: string;
+        initialTool?: StudioEditToolId;
+    }) => void;
+    updateEditSessionTool: (tool: StudioEditToolId) => void;
+    syncEditSessionTarget: (target: { docId: string; pageId: string; pageIndex: number; workingFileId: string }) => void;
+    clearEditSession: () => void;
 
     movePage: (sourceDocId: string, pageId: string, targetDocId: string, index?: number) => void;
     detachPage: (docId: string, pageId: string, x: number, y: number) => void;
@@ -62,7 +84,7 @@ export interface StudioState {
     clear: () => void;
 }
 
-function normalizeWorkspaceState(state: StudioState): Pick<StudioState, 'documents' | 'activeDocumentId' | 'selection'> {
+function normalizeWorkspaceState(state: StudioState): Pick<StudioState, 'documents' | 'activeDocumentId' | 'selection' | 'editSession'> {
     const documents = state.documents.filter((doc) => doc.pages.length > 0 || doc.allowEmpty);
     const activeDocumentId = documents.some((doc) => doc.id === state.activeDocumentId)
         ? state.activeDocumentId
@@ -70,11 +92,15 @@ function normalizeWorkspaceState(state: StudioState): Pick<StudioState, 'documen
 
     const existingPageIds = new Set(documents.flatMap((doc) => doc.pages.map((page) => page.id)));
     const selection = state.selection.filter((item) => existingPageIds.has(item.pageId));
+    const editSession = state.editSession && existingPageIds.has(state.editSession.pageId)
+        ? state.editSession
+        : null;
 
     return {
         documents,
         activeDocumentId,
         selection,
+        editSession,
     };
 }
 
@@ -96,6 +122,7 @@ export const useStudioStore = create<StudioState>((set) => ({
     activeDocumentId: null,
     interactionMode: null,
     operationScope: 'selection',
+    editSession: null,
     workspaceVersion: 0,
     lastExportedVersion: 0,
 
@@ -136,6 +163,43 @@ export const useStudioStore = create<StudioState>((set) => ({
     setActiveDocument: (id) => set({ activeDocumentId: id }),
     setInteractionMode: (mode) => set({ interactionMode: mode }),
     setOperationScope: (scope) => set({ operationScope: scope }),
+    startEditSession: ({ docId, pageId, pageIndex, fileId, initialTool = 'text' }) => set({
+        editSession: {
+            docId,
+            pageId,
+            pageIndex,
+            sourceFileId: fileId,
+            workingFileId: fileId,
+            activeTool: initialTool,
+            startedAt: Date.now(),
+        },
+    }),
+    updateEditSessionTool: (tool) => set((state) => {
+        if (!state.editSession) {
+            return state;
+        }
+        return {
+            editSession: {
+                ...state.editSession,
+                activeTool: tool,
+            },
+        };
+    }),
+    syncEditSessionTarget: (target) => set((state) => {
+        if (!state.editSession) {
+            return state;
+        }
+        return {
+            editSession: {
+                ...state.editSession,
+                docId: target.docId,
+                pageId: target.pageId,
+                pageIndex: target.pageIndex,
+                workingFileId: target.workingFileId,
+            },
+        };
+    }),
+    clearEditSession: () => set({ editSession: null }),
 
     updatePage: (docId, pageId, updates) => set((state) => {
         const nextState: StudioState = {
@@ -294,6 +358,7 @@ export const useStudioStore = create<StudioState>((set) => ({
         activeDocumentId: null,
         interactionMode: null,
         operationScope: 'selection',
+        editSession: null,
         workspaceVersion: 0,
         lastExportedVersion: 0
     }),
