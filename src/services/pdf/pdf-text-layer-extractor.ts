@@ -52,6 +52,23 @@ async function loadPdfJs(): Promise<PdfJsLike | null> {
         try {
           const mod = (await load()) as PdfJsLike;
           if (mod && typeof mod.getDocument === 'function') {
+            if (mod.GlobalWorkerOptions && !mod.GlobalWorkerOptions.workerSrc) {
+              const workerLoaders: Array<() => Promise<{ default?: string }>> = [
+                () => import('pdfjs-dist/legacy/build/pdf.worker.min.mjs?url'),
+                () => import('pdfjs-dist/build/pdf.worker.min.mjs?url'),
+              ];
+              for (const loadWorkerSrc of workerLoaders) {
+                try {
+                  const workerSrcMod = await loadWorkerSrc();
+                  if (workerSrcMod.default) {
+                    mod.GlobalWorkerOptions.workerSrc = workerSrcMod.default;
+                    break;
+                  }
+                } catch {
+                  // Try next worker bundle candidate.
+                }
+              }
+            }
             return mod;
           }
         } catch {

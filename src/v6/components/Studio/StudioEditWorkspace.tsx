@@ -798,6 +798,74 @@ export function StudioEditWorkspace() {
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [deleteSelected, redo, textEditor, undo]);
 
+  const selectTextSpanForEditing = useCallback((clickedSpan: TextLayerSpan) => {
+    const mergedLine = mergeTextLine(textLayerSpans, clickedSpan);
+    if (!mergedLine) {
+      setInlineUiState('idle');
+      return;
+    }
+
+    const { left, top, width, height } = mergedLine;
+    const existing = elements.find((el) => (
+      el.type === 'text'
+      && Math.abs(el.x - left) < 0.005
+      && Math.abs(el.y - top) < 0.005
+    ));
+
+    if (existing) {
+      setSelectedElementId(existing.id);
+      setInlineUiState('selected');
+      startEditingText(existing as TextElement);
+      return;
+    }
+
+    const leftPad = Math.max(0.0015, width * 0.01);
+    const topPad = Math.max(0.002, height * 0.18);
+    const bottomPad = Math.max(0.004, height * 0.38);
+    const whiteoutLeft = clamp01(left - leftPad);
+    const whiteoutTop = clamp01(top - topPad);
+    const whiteoutRight = clamp01(left + width + leftPad);
+    const whiteoutBottom = clamp01(top + height + bottomPad);
+
+    const whiteout: RectElement = {
+      id: crypto.randomUUID(),
+      type: 'rect',
+      x: whiteoutLeft,
+      y: whiteoutTop,
+      w: Math.max(0.001, whiteoutRight - whiteoutLeft),
+      h: Math.max(0.001, whiteoutBottom - whiteoutTop),
+      fill: '#ffffff',
+      stroke: 'transparent',
+      strokeWidth: 0,
+      opacity: 1,
+    };
+
+    const fontFamily = resolveFontFamily(mergedLine.fontName, mergedLine.fontFamilyHint);
+    const next: TextElement = {
+      id: crypto.randomUUID(),
+      type: 'text',
+      x: left,
+      y: top - 0.0005,
+      w: width + 0.02,
+      h: height + 0.005,
+      text: mergedLine.text,
+      color: '#000000',
+      fontSize: estimateInlineFontSizePt(mergedLine.fontSizeRatio, mergedLine.pageHeightPt ?? 842),
+      fontFamily,
+      fontWeight: 'normal',
+      fontStyle: 'normal',
+      textAlign: 'left',
+      lineHeight: 1.2,
+      letterSpacing: 0,
+      opacity: 1,
+    };
+
+    applyElements([...elements, whiteout, next]);
+    setSelectedElementId(next.id);
+    setInlineUiState('selected');
+    startEditingText(next);
+  }, [applyElements, elements, textLayerSpans]);
+
   useEffect(() => {
     const onPointerMove = (event: PointerEvent) => {
       const session = dragSessionRef.current;
@@ -939,71 +1007,7 @@ export function StudioEditWorkspace() {
           return;
         }
 
-        const mergedLine = mergeTextLine(textLayerSpans, clickedSpan);
-        if (!mergedLine) {
-          setInlineUiState('idle');
-          return;
-        }
-
-        const { left, top, width, height } = mergedLine;
-        const existing = elements.find((el) => (
-          el.type === 'text'
-          && Math.abs(el.x - left) < 0.005
-          && Math.abs(el.y - top) < 0.005
-        ));
-
-        if (existing) {
-          setSelectedElementId(existing.id);
-          setInlineUiState('selected');
-          startEditingText(existing as TextElement);
-          return;
-        }
-
-        const leftPad = Math.max(0.0015, width * 0.01);
-        const topPad = Math.max(0.002, height * 0.18);
-        const bottomPad = Math.max(0.004, height * 0.38);
-        const whiteoutLeft = clamp01(left - leftPad);
-        const whiteoutTop = clamp01(top - topPad);
-        const whiteoutRight = clamp01(left + width + leftPad);
-        const whiteoutBottom = clamp01(top + height + bottomPad);
-
-        const whiteout: RectElement = {
-          id: crypto.randomUUID(),
-          type: 'rect',
-          x: whiteoutLeft,
-          y: whiteoutTop,
-          w: Math.max(0.001, whiteoutRight - whiteoutLeft),
-          h: Math.max(0.001, whiteoutBottom - whiteoutTop),
-          fill: '#ffffff',
-          stroke: 'transparent',
-          strokeWidth: 0,
-          opacity: 1,
-        };
-
-        const fontFamily = resolveFontFamily(mergedLine.fontName, mergedLine.fontFamilyHint);
-        const next: TextElement = {
-          id: crypto.randomUUID(),
-          type: 'text',
-          x: left,
-          y: top - 0.0005,
-          w: width + 0.02,
-          h: height + 0.005,
-          text: mergedLine.text,
-          color: '#000000',
-          fontSize: estimateInlineFontSizePt(mergedLine.fontSizeRatio, mergedLine.pageHeightPt ?? 842),
-          fontFamily,
-          fontWeight: 'normal',
-          fontStyle: 'normal',
-          textAlign: 'left',
-          lineHeight: 1.2,
-          letterSpacing: 0,
-          opacity: 1,
-        };
-
-        applyElements([...elements, whiteout, next]);
-        setSelectedElementId(next.id);
-        setInlineUiState('selected');
-        startEditingText(next);
+        selectTextSpanForEditing(clickedSpan);
         return;
       }
 
@@ -1697,6 +1701,14 @@ export function StudioEditWorkspace() {
                     } else if (!textEditor) {
                       setInlineUiState('idle');
                     }
+                  }}
+                  onPointerDown={(event) => {
+                    event.stopPropagation();
+                    setMessage(null);
+                    if (tool !== 'text' || !isSelectMode) {
+                      return;
+                    }
+                    selectTextSpanForEditing(span);
                   }}
                 />
               ))}

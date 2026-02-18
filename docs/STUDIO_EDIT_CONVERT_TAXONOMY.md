@@ -17,7 +17,7 @@ Status: Ready for implementation
 - `compress-pdf`
 - `unlock-pdf`
 - `encrypt-pdf`
-- `pdf-editor` (if/when enabled)
+- `pdf-editor`
 
 ### Convert
 - `word-to-pdf`

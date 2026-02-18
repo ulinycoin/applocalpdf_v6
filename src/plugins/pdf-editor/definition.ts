@@ -8,6 +8,7 @@ export const pdfEditorDefinition: IToolDefinition = {
   limits: {
     featureTier: 'pro',
     maxFileSize: { free: 50 * 1024 * 1024, pro: 500 * 1024 * 1024 },
+    maxPagesPerFile: { free: 300, pro: 3000 },
   },
   uiLoader: () => import('./ui'),
   logicLoader: () => import('./logic'),
