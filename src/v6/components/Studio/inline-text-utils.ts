@@ -13,6 +13,7 @@ export interface TextLayerSpanLike {
   fontName?: string;
   fontFamilyHint?: string;
   pageHeightPt?: number;
+  ascentRatio?: number;
 }
 
 export interface PointRatio {
@@ -30,6 +31,7 @@ export interface MergedTextLine {
   fontName?: string;
   fontFamilyHint?: string;
   pageHeightPt?: number;
+  ascentRatio?: number;
 }
 
 const FONT_EXACT_MAP: Record<string, FontFamilyId> = {
@@ -81,7 +83,8 @@ export function resolveFontFamily(fontName?: string, fontFamilyHint?: string): F
 }
 
 export function sanitizeInlineText(value: string): string {
-  return value.replace(/[\r\n]+/gu, ' ');
+  // Remove null characters and other problematic controls, normalize newlines to spaces
+  return value.replace(/\0/g, '').replace(/[\r\n]+/gu, ' ');
 }
 
 function distanceToRect(point: PointRatio, span: TextLayerSpanLike): number {
@@ -166,11 +169,13 @@ export function mergeTextLine(spans: TextLayerSpanLike[], anchor: TextLayerSpanL
     fontName: anchor.fontName,
     fontFamilyHint: anchor.fontFamilyHint,
     pageHeightPt: anchor.pageHeightPt,
+    ascentRatio: anchor.ascentRatio,
   };
 }
 
 export function estimateInlineFontSizePt(fontSizeRatio: number, pageHeightPt: number): number {
-  return Math.round(clamp(fontSizeRatio * pageHeightPt, 8, 96));
+  const size = fontSizeRatio * pageHeightPt;
+  return Number(clamp(size, 8, 96).toFixed(2));
 }
 
 function measureTextWidthWithTracking(font: PDFFont, text: string, fontSize: number, tracking: number): number {

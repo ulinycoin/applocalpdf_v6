@@ -15,6 +15,7 @@ export interface PdfTextLayerSpan {
   fontName?: string;
   fontFamilyHint?: string;
   pageHeightPt?: number;
+  ascentRatio?: number;
 }
 
 let pdfJsPromise: Promise<PdfJsLike | null> | null = null;
@@ -139,6 +140,7 @@ export async function extractPdfTextLayerSpans(
       fontName: item.fontName,
       fontFamilyHint: style?.fontFamily,
       pageHeightPt: pageViewport.height,
+      ascentRatio: clamp01(fontAscent / viewport.height),
     });
   }
 

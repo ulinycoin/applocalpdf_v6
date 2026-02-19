@@ -21,10 +21,22 @@ type LinearIconName =
   | 'lock'
   | 'rotate'
   | 'excel'
-  | 'tool';
+  | 'tool'
+  | 'cursor'
+  | 'text'
+  | 'edit'
+  | 'shape'
+  | 'eraser'
+  | 'check'
+  | 'bold'
+  | 'italic'
+  | 'align-left'
+  | 'align-center'
+  | 'align-right';
 
 interface LinearIconProps extends Omit<SVGProps<SVGSVGElement>, 'children'> {
   name: LinearIconName;
+  size?: number | string;
 }
 
 type ToolIconName =
@@ -162,8 +174,10 @@ function renderToolGlyph(name: ToolIconName): JSX.Element {
   }
 }
 
-export function LinearIcon({ name, ...props }: LinearIconProps): JSX.Element {
+export function LinearIcon({ name, size, ...props }: LinearIconProps): JSX.Element {
   const isToolIcon = isToolIconName(name);
+  const width = size ?? props.width ?? 24;
+  const height = size ?? props.height ?? 24;
 
   return (
     <svg
@@ -175,6 +189,8 @@ export function LinearIcon({ name, ...props }: LinearIconProps): JSX.Element {
       strokeLinejoin="round"
       aria-hidden="true"
       {...props}
+      width={width}
+      height={height}
     >
       {isToolIcon && (
         <>
@@ -212,6 +228,68 @@ export function LinearIcon({ name, ...props }: LinearIconProps): JSX.Element {
         <>
           <path d="M18 6 6 18" />
           <path d="m6 6 12 12" />
+        </>
+      )}
+      {name === 'cursor' && (
+        <path d="m4 4 7.07 16.97 2.51-7.39 7.39-2.51L4 4ZM13.5 13.5l4.5 4.5" />
+      )}
+      {name === 'text' && (
+        <>
+          <path d="M4 7V4h16v3" />
+          <path d="M12 4v16" />
+          <path d="M9 20h6" />
+        </>
+      )}
+      {name === 'edit' && (
+        <>
+          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+          <path d="M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4 9.5-9.5Z" />
+        </>
+      )}
+      {name === 'shape' && (
+        <>
+          <rect x="3" y="3" width="10" height="10" rx="2" />
+          <circle cx="15" cy="15" r="6" />
+        </>
+      )}
+      {name === 'eraser' && (
+        <>
+          <path d="m7 21-4.3-4.3c-1-1-1-2.5 0-3.4l9.6-9.6c1-1 2.5-1 3.4 0l5.6 5.6c1 1 1 2.5 0 3.4L13 21" />
+          <path d="M22 21H7" />
+          <path d="m5 11 9 9" />
+        </>
+      )}
+      {name === 'check' && (
+        <path d="M20 6 9 17l-5-5" />
+      )}
+      {name === 'bold' && (
+        <path d="M6 4h8a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z M6 12h9a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z" />
+      )}
+      {name === 'italic' && (
+        <path d="M19 4h-9M14 20H5M15 4L9 20" />
+      )}
+      {name === 'align-left' && (
+        <>
+          <path d="M17 10H3" />
+          <path d="M21 6H3" />
+          <path d="M21 14H3" />
+          <path d="M17 18H3" />
+        </>
+      )}
+      {name === 'align-center' && (
+        <>
+          <path d="M18 10H6" />
+          <path d="M21 6H3" />
+          <path d="M21 14H3" />
+          <path d="M18 18H6" />
+        </>
+      )}
+      {name === 'align-right' && (
+        <>
+          <path d="M21 10H7" />
+          <path d="M21 6H3" />
+          <path d="M21 14H3" />
+          <path d="M21 18H7" />
         </>
       )}
     </svg>

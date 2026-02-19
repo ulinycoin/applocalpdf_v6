@@ -175,6 +175,35 @@ export function StudioFloatingMenu() {
         }
     };
 
+    const startEdit = () => {
+        if (selection.length !== 1) return;
+        const item = selection[0];
+        const doc = documents.find(d => d.id === item.docId);
+        const page = doc?.pages.find(p => p.id === item.pageId);
+        if (!doc || !page) return;
+
+        const sessionPayload = {
+            docId: doc.id,
+            pageId: page.id,
+            pageIndex: page.pageIndex,
+            fileId: page.fileId,
+            initialTool: 'text' as const
+        };
+
+        const params = new URLSearchParams(window.location.search);
+        const useInplace = params.get('inplace_edit') === '1';
+
+        if (useInplace) {
+            useStudioStore.getState().startEditSession(sessionPayload);
+            useStudioStore.getState().setActiveEditPageId(page.id);
+            useStudioStore.getState().setSelection([]);
+        } else {
+            useStudioStore.getState().startEditSession(sessionPayload);
+            useStudioStore.getState().setInteractionMode('edit');
+            window.location.hash = '#/studio/edit'; // Or use navigate if available
+        }
+    };
+
     if (selection.length === 0 && !isCompressMode) return null;
 
     return (
@@ -191,6 +220,16 @@ export function StudioFloatingMenu() {
                 <>
                     <div className="studio-menu-divider" />
                     <div className="studio-menu-actions">
+                        {selection.length === 1 && (
+                            <button
+                                className="menu-btn"
+                                title="Edit page content"
+                                onClick={startEdit}
+                            >
+                                <LinearIcon name="word" className="linear-icon" />
+                                <span style={{ fontSize: '10px', fontWeight: 'bold' }}>EDIT</span>
+                            </button>
+                        )}
                         <button
                             className={`menu-btn ${isCompressMode ? 'active' : ''}`}
                             title="Compress selected file"

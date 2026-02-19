@@ -17,134 +17,27 @@ import {
   type FontFamilyId,
 } from './inline-text-utils';
 import { detectStudioEditLocale, getStudioEditMessages } from './studio-edit-i18n';
-
-type TextLayerSpan = WorkerPdfTextLayerSpan;
-
-type EditorToolId = 'text' | 'annotate' | 'whiteout' | 'shapes';
-type TextAlignId = 'left' | 'center' | 'right';
+import { StudioPageEditor } from './StudioPageEditor';
+import {
+  EditElement,
+  TextElement,
+  RectElement,
+  StrokeElement,
+  RectDraft,
+  StrokeDraft,
+  DragSession,
+  TextEditorState,
+  InlineUiState,
+  TextAlignId,
+  TextLayerSpan,
+  EditorToolId
+} from './editor-types';
 
 interface SelectedPage {
   docId: string;
   docName: string;
   page: PageItem;
   indexInDoc: number;
-}
-
-interface TextElement {
-  id: string;
-  type: 'text';
-  x: number;
-  y: number;
-  w: number;
-  h: number;
-  text: string;
-  color: string;
-  fontSize: number;
-  fontFamily: FontFamilyId;
-  fontWeight: 'normal' | 'bold';
-  fontStyle: 'normal' | 'italic';
-  textAlign: TextAlignId;
-  lineHeight: number;
-  letterSpacing: number;
-  opacity: number;
-}
-
-interface StrokeElement {
-  id: string;
-  type: 'stroke';
-  points: number[];
-  color: string;
-  width: number;
-  opacity: number;
-}
-
-interface RectElement {
-  id: string;
-  type: 'rect';
-  x: number;
-  y: number;
-  w: number;
-  h: number;
-  fill: string;
-  stroke: string;
-  strokeWidth: number;
-  opacity: number;
-}
-
-type EditElement = TextElement | StrokeElement | RectElement;
-
-interface RectDraft {
-  startX: number;
-  startY: number;
-  x: number;
-  y: number;
-  w: number;
-  h: number;
-}
-
-interface StrokeDraft {
-  points: number[];
-}
-
-type DragSession =
-  | {
-    mode: 'move-text';
-    id: string;
-    startClientX: number;
-    startClientY: number;
-    originX: number;
-    originY: number;
-    initialElements: EditElement[];
-  }
-  | {
-    mode: 'resize-text';
-    id: string;
-    startClientX: number;
-    startClientY: number;
-    originW: number;
-    originH: number;
-    initialElements: EditElement[];
-  }
-  | {
-    mode: 'move-rect';
-    id: string;
-    startClientX: number;
-    startClientY: number;
-    originX: number;
-    originY: number;
-    initialElements: EditElement[];
-  }
-  | {
-    mode: 'resize-rect';
-    id: string;
-    startClientX: number;
-    startClientY: number;
-    originW: number;
-    originH: number;
-    initialElements: EditElement[];
-  }
-  | {
-    mode: 'move-stroke';
-    id: string;
-    startClientX: number;
-    startClientY: number;
-    initialPoints: number[];
-    initialElements: EditElement[];
-  }
-  | {
-    mode: 'resize-stroke';
-    id: string;
-    startClientX: number;
-    startClientY: number;
-    initialPoints: number[];
-    bounds: { minX: number; minY: number; maxX: number; maxY: number };
-    initialElements: EditElement[];
-  };
-
-interface TextEditorState {
-  id: string;
-  value: string;
-  initialValue: string;
 }
 
 interface SaveCheckpointEntry {
@@ -160,8 +53,6 @@ interface SaveCheckpointEntry {
 interface SaveCheckpoint {
   entries: SaveCheckpointEntry[];
 }
-
-type InlineUiState = 'idle' | 'hover' | 'selected' | 'editing' | 'saving' | 'saved' | 'error';
 
 function clamp01(value: number): number {
   return Math.max(0, Math.min(1, value));
@@ -508,26 +399,17 @@ export function StudioEditWorkspace() {
   const updateEditSessionTool = useStudioStore((s: StudioState) => s.updateEditSessionTool);
   const syncEditSessionTarget = useStudioStore((s: StudioState) => s.syncEditSessionTarget);
 
-  const canvasRef = useRef<HTMLDivElement | null>(null);
   const imageRef = useRef<HTMLImageElement | null>(null);
-  const dragSessionRef = useRef<DragSession | null>(null);
 
   const [tool, setTool] = useState<EditorToolId>(editSession?.activeTool ?? 'text');
   const [elements, setElements] = useState<EditElement[]>([]);
   const [history, setHistory] = useState<EditElement[][]>([[]]);
   const [historyIndex, setHistoryIndex] = useState(0);
   const [selectedElementId, setSelectedElementId] = useState<string | null>(null);
-  const [draftRect, setDraftRect] = useState<RectDraft | null>(null);
-  const [draftStroke, setDraftStroke] = useState<StrokeDraft | null>(null);
-  const [isPointerDown, setIsPointerDown] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [isApplying, setIsApplying] = useState(false);
   const [textEditor, setTextEditor] = useState<TextEditorState | null>(null);
-  const [textLayerSpans, setTextLayerSpans] = useState<TextLayerSpan[]>([]);
-  const [isSelectMode, setIsSelectMode] = useState(false);
-  const [applyToSelection, setApplyToSelection] = useState(true);
   const [inlineUiState, setInlineUiState] = useState<InlineUiState>('idle');
-  const [hoveredTextSpanId, setHoveredTextSpanId] = useState<string | null>(null);
   const [saveUndoStack, setSaveUndoStack] = useState<SaveCheckpoint[]>([]);
   const [saveRedoStack, setSaveRedoStack] = useState<SaveCheckpoint[]>([]);
 
@@ -592,6 +474,7 @@ export function StudioEditWorkspace() {
     updateEditSessionTool(nextTool);
   }, [updateEditSessionTool]);
 
+  const [applyToSelection, setApplyToSelection] = useState(true);
   useEffect(() => {
     if (!canApplyToSelection && applyToSelection) {
       setApplyToSelection(false);
@@ -602,16 +485,6 @@ export function StudioEditWorkspace() {
     }
   }, [applyToSelection, canApplyToSelection]);
 
-  const selectedElement = useMemo(
-    () => elements.find((element) => element.id === selectedElementId) ?? null,
-    [elements, selectedElementId],
-  );
-  const selectedText = isTextElement(selectedElement) ? selectedElement : null;
-  const selectedStroke = selectedElement?.type === 'stroke' ? selectedElement : null;
-  const selectedStrokeBounds = useMemo(
-    () => (selectedStroke ? getStrokeBounds(selectedStroke.points) : null),
-    [selectedStroke],
-  );
   const hasDirtyChanges = historyIndex > 0 || Boolean(textEditor && textEditor.value !== textEditor.initialValue);
   const uiStateLabel = inlineUiState === 'idle'
     ? ui.statusIdle
@@ -626,16 +499,6 @@ export function StudioEditWorkspace() {
             : inlineUiState === 'saved'
               ? ui.statusSaved
               : ui.statusError;
-
-  const resolveCanvasRect = useCallback((): DOMRect | null => {
-    if (imageRef.current) {
-      return imageRef.current.getBoundingClientRect();
-    }
-    if (canvasRef.current) {
-      return canvasRef.current.getBoundingClientRect();
-    }
-    return null;
-  }, []);
 
   useEffect(() => {
     const onBeforeUnload = (event: BeforeUnloadEvent) => {
@@ -654,12 +517,8 @@ export function StudioEditWorkspace() {
     setHistory([[]]);
     setHistoryIndex(0);
     setSelectedElementId(null);
-    setDraftRect(null);
-    setDraftStroke(null);
     setTextEditor(null);
-    setTextLayerSpans([]);
     setInlineUiState('idle');
-    setHoveredTextSpanId(null);
     setSaveUndoStack([]);
     setSaveRedoStack([]);
 
@@ -684,7 +543,7 @@ export function StudioEditWorkspace() {
         if (abortController.signal.aborted) {
           return;
         }
-        setTextLayerSpans(spans);
+        // setTextLayerSpans(spans); // This state is no longer needed here
         if (spans.length === 0) {
           setMessage(ui.noTextLayer);
         }
@@ -702,7 +561,7 @@ export function StudioEditWorkspace() {
           if (abortController.signal.aborted) {
             return;
           }
-          setTextLayerSpans(fallbackSpans);
+          // setTextLayerSpans(fallbackSpans); // This state is no longer needed here
           if (fallbackSpans.length === 0) {
             setMessage(ui.noTextLayer);
           }
@@ -727,26 +586,6 @@ export function StudioEditWorkspace() {
     });
     setHistoryIndex((prev) => prev + 1);
   }, [historyIndex]);
-
-  const applyElements = useCallback((next: EditElement[], shouldPushHistory = true) => {
-    setElements(next);
-    if (shouldPushHistory) {
-      pushHistory(next);
-    }
-  }, [pushHistory]);
-
-  const updateSelectedText = useCallback((patch: Partial<TextElement>, shouldPushHistory = true) => {
-    if (!selectedText) {
-      return;
-    }
-    const next = elements.map((item) => {
-      if (item.id !== selectedText.id || item.type !== 'text') {
-        return item;
-      }
-      return { ...item, ...patch };
-    });
-    applyElements(next, shouldPushHistory);
-  }, [applyElements, elements, selectedText]);
 
   const undo = useCallback(() => {
     if (historyIndex <= 0) {
@@ -775,10 +614,11 @@ export function StudioEditWorkspace() {
       return;
     }
     const next = elements.filter((item) => item.id !== selectedElementId);
-    applyElements(next);
+    setElements(next);
+    pushHistory(next); // Push the new state to history
     setSelectedElementId(null);
     setTextEditor(null);
-  }, [applyElements, elements, selectedElementId]);
+  }, [elements, pushHistory, selectedElementId]);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -798,460 +638,6 @@ export function StudioEditWorkspace() {
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [deleteSelected, redo, textEditor, undo]);
 
-  const selectTextSpanForEditing = useCallback((clickedSpan: TextLayerSpan) => {
-    const mergedLine = mergeTextLine(textLayerSpans, clickedSpan);
-    if (!mergedLine) {
-      setInlineUiState('idle');
-      return;
-    }
-
-    const { left, top, width, height } = mergedLine;
-    const existing = elements.find((el) => (
-      el.type === 'text'
-      && Math.abs(el.x - left) < 0.005
-      && Math.abs(el.y - top) < 0.005
-    ));
-
-    if (existing) {
-      setSelectedElementId(existing.id);
-      setInlineUiState('selected');
-      startEditingText(existing as TextElement);
-      return;
-    }
-
-    const leftPad = Math.max(0.0015, width * 0.01);
-    const topPad = Math.max(0.002, height * 0.18);
-    const bottomPad = Math.max(0.004, height * 0.38);
-    const whiteoutLeft = clamp01(left - leftPad);
-    const whiteoutTop = clamp01(top - topPad);
-    const whiteoutRight = clamp01(left + width + leftPad);
-    const whiteoutBottom = clamp01(top + height + bottomPad);
-
-    const whiteout: RectElement = {
-      id: crypto.randomUUID(),
-      type: 'rect',
-      x: whiteoutLeft,
-      y: whiteoutTop,
-      w: Math.max(0.001, whiteoutRight - whiteoutLeft),
-      h: Math.max(0.001, whiteoutBottom - whiteoutTop),
-      fill: '#ffffff',
-      stroke: 'transparent',
-      strokeWidth: 0,
-      opacity: 1,
-    };
-
-    const fontFamily = resolveFontFamily(mergedLine.fontName, mergedLine.fontFamilyHint);
-    const next: TextElement = {
-      id: crypto.randomUUID(),
-      type: 'text',
-      x: left,
-      y: top - 0.0005,
-      w: width + 0.02,
-      h: height + 0.005,
-      text: mergedLine.text,
-      color: '#000000',
-      fontSize: estimateInlineFontSizePt(mergedLine.fontSizeRatio, mergedLine.pageHeightPt ?? 842),
-      fontFamily,
-      fontWeight: 'normal',
-      fontStyle: 'normal',
-      textAlign: 'left',
-      lineHeight: 1.2,
-      letterSpacing: 0,
-      opacity: 1,
-    };
-
-    applyElements([...elements, whiteout, next]);
-    setSelectedElementId(next.id);
-    setInlineUiState('selected');
-    startEditingText(next);
-  }, [applyElements, elements, textLayerSpans]);
-
-  useEffect(() => {
-    const onPointerMove = (event: PointerEvent) => {
-      const session = dragSessionRef.current;
-      if (!session || !canvasRef.current) {
-        return;
-      }
-      const rect = canvasRef.current.getBoundingClientRect();
-      const dx = (event.clientX - session.startClientX) / rect.width;
-      const dy = (event.clientY - session.startClientY) / rect.height;
-
-      if (session.mode === 'move-text') {
-        setElements((prev) => prev.map((item) => {
-          if (item.id !== session.id || item.type !== 'text') {
-            return item;
-          }
-          return {
-            ...item,
-            x: clamp01(session.originX + dx),
-            y: clamp01(session.originY + dy),
-          };
-        }));
-      }
-
-      if (session.mode === 'resize-text') {
-        setElements((prev) => prev.map((item) => {
-          if (item.id !== session.id || item.type !== 'text') {
-            return item;
-          }
-          return {
-            ...item,
-            w: clamp(session.originW + dx, 0.05, 0.9),
-            h: clamp(session.originH + dy, 0.03, 0.6),
-          };
-        }));
-      }
-
-      if (session.mode === 'move-rect') {
-        setElements((prev) => prev.map((item) => {
-          if (item.id !== session.id || item.type !== 'rect') {
-            return item;
-          }
-          return {
-            ...item,
-            x: clamp01(session.originX + dx),
-            y: clamp01(session.originY + dy),
-          };
-        }));
-      }
-
-      if (session.mode === 'resize-rect') {
-        setElements((prev) => prev.map((item) => {
-          if (item.id !== session.id || item.type !== 'rect') {
-            return item;
-          }
-          return {
-            ...item,
-            w: clamp(session.originW + dx, 0.01, 0.95),
-            h: clamp(session.originH + dy, 0.01, 0.95),
-          };
-        }));
-      }
-
-      if (session.mode === 'move-stroke') {
-        setElements((prev) => prev.map((item) => {
-          if (item.id !== session.id || item.type !== 'stroke') {
-            return item;
-          }
-          return {
-            ...item,
-            points: moveStrokePoints(session.initialPoints, dx, dy),
-          };
-        }));
-      }
-
-      if (session.mode === 'resize-stroke') {
-        setElements((prev) => prev.map((item) => {
-          if (item.id !== session.id || item.type !== 'stroke') {
-            return item;
-          }
-          const boundsWidth = Math.max(0.01, session.bounds.maxX - session.bounds.minX);
-          const boundsHeight = Math.max(0.01, session.bounds.maxY - session.bounds.minY);
-          const scaleX = clamp((boundsWidth + dx) / boundsWidth, 0.1, 8);
-          const scaleY = clamp((boundsHeight + dy) / boundsHeight, 0.1, 8);
-          return {
-            ...item,
-            points: resizeStrokePoints(session.initialPoints, session.bounds, scaleX, scaleY),
-          };
-        }));
-      }
-    };
-
-    const onPointerUp = () => {
-      const session = dragSessionRef.current;
-      if (!session) {
-        return;
-      }
-      dragSessionRef.current = null;
-      setElements((current) => {
-        const changed = JSON.stringify(current) !== JSON.stringify(session.initialElements);
-        if (changed) {
-          pushHistory(current);
-        }
-        return current;
-      });
-    };
-
-    window.addEventListener('pointermove', onPointerMove);
-    window.addEventListener('pointerup', onPointerUp);
-    return () => {
-      window.removeEventListener('pointermove', onPointerMove);
-      window.removeEventListener('pointerup', onPointerUp);
-    };
-  }, [pushHistory]);
-
-  const onPointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
-    const workRect = resolveCanvasRect();
-    if (!workRect) {
-      return;
-    }
-    setMessage(null);
-    const point = toWorldPointByRect(event, workRect);
-    setIsPointerDown(true);
-
-    if (tool === 'text') {
-      if (textEditor) {
-        commitTextEditor();
-      }
-
-      if (isSelectMode) {
-        if (textLayerSpans.length === 0) {
-          setInlineUiState('error');
-          setMessage(ui.noTextLayer);
-          return;
-        }
-
-        const clickedSpan = findNearestTextSpan(point, textLayerSpans);
-        if (!clickedSpan) {
-          setInlineUiState('idle');
-          return;
-        }
-
-        selectTextSpanForEditing(clickedSpan);
-        return;
-      }
-
-      const next: TextElement = {
-        id: crypto.randomUUID(),
-        type: 'text',
-        x: point.x,
-        y: point.y,
-        w: 0.22,
-        h: 0.06,
-        text: ui.text,
-        color: '#0f172a',
-        fontSize: 18,
-        fontFamily: 'sora',
-        fontWeight: 'normal',
-        fontStyle: 'normal',
-        textAlign: 'left',
-        lineHeight: 1.2,
-        letterSpacing: 0,
-        opacity: 1,
-      };
-      applyElements([...elements, next]);
-      setSelectedElementId(next.id);
-      setInlineUiState('editing');
-      setTextEditor({ id: next.id, value: next.text, initialValue: next.text });
-      return;
-    }
-
-    if (tool === 'annotate') {
-      setDraftStroke({ points: [point.x, point.y] });
-      return;
-    }
-
-    setDraftRect({
-      startX: point.x,
-      startY: point.y,
-      x: point.x,
-      y: point.y,
-      w: 0,
-      h: 0,
-    });
-  };
-
-  const onPointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
-    const workRect = resolveCanvasRect();
-    if (!isPointerDown || !workRect) {
-      return;
-    }
-    const point = toWorldPointByRect(event, workRect);
-
-    if (draftStroke) {
-      setDraftStroke((prev) => {
-        if (!prev) {
-          return prev;
-        }
-        return { points: [...prev.points, point.x, point.y] };
-      });
-      return;
-    }
-
-    if (draftRect) {
-      const x = Math.min(draftRect.startX, point.x);
-      const y = Math.min(draftRect.startY, point.y);
-      const w = Math.abs(point.x - draftRect.startX);
-      const h = Math.abs(point.y - draftRect.startY);
-      setDraftRect({ ...draftRect, x, y, w, h });
-    }
-  };
-
-  const onPointerUp = () => {
-    setIsPointerDown(false);
-
-    if (draftStroke) {
-      if (draftStroke.points.length >= 4) {
-        const stroke: StrokeElement = {
-          id: crypto.randomUUID(),
-          type: 'stroke',
-          points: draftStroke.points,
-          color: '#2563eb',
-          width: 2,
-          opacity: 1,
-        };
-        applyElements([...elements, stroke]);
-      }
-      setDraftStroke(null);
-      return;
-    }
-
-    if (draftRect && draftRect.w > 0.002 && draftRect.h > 0.002) {
-      const rect: RectElement = {
-        id: crypto.randomUUID(),
-        type: 'rect',
-        x: draftRect.x,
-        y: draftRect.y,
-        w: draftRect.w,
-        h: draftRect.h,
-        fill: tool === 'whiteout' ? '#ffffff' : 'transparent',
-        stroke: tool === 'whiteout' ? '#d1d5db' : '#2563eb',
-        strokeWidth: tool === 'whiteout' ? 1 : 2,
-        opacity: 1,
-      };
-      applyElements([...elements, rect]);
-    }
-    setDraftRect(null);
-  };
-
-  const handleTextPointerDown = (event: React.PointerEvent<Element>, element: TextElement) => {
-    event.stopPropagation();
-    const target = event.target as HTMLElement | null;
-    if (target?.closest('.studio-floating-menu') || target?.closest('.studio-edit-text-resize')) {
-      return;
-    }
-    if (tool === 'text') {
-      setSelectedElementId(element.id);
-      setInlineUiState('selected');
-      return;
-    }
-
-    if (textEditor?.id === element.id) {
-      commitTextEditor();
-    }
-
-    setSelectedElementId(element.id);
-    dragSessionRef.current = {
-      mode: 'move-text',
-      id: element.id,
-      startClientX: event.clientX,
-      startClientY: event.clientY,
-      originX: element.x,
-      originY: element.y,
-      initialElements: elements,
-    };
-  };
-
-  const handleTextPointerUp = (event: React.PointerEvent<Element>, element: TextElement) => {
-    event.stopPropagation();
-    const target = event.target as HTMLElement | null;
-    if (target?.closest('.studio-floating-menu') || target?.closest('.studio-edit-text-resize')) {
-      return;
-    }
-    if (tool !== 'text') {
-      return;
-    }
-    if (target && target.tagName === 'TEXTAREA') {
-      return;
-    }
-    if (textEditor?.id !== element.id && textEditor) {
-      commitTextEditor();
-    }
-    setInlineUiState('editing');
-    startEditingText(element);
-  };
-
-  const beginResizeText = (event: React.PointerEvent<Element>, element: TextElement) => {
-    event.stopPropagation();
-    if (textEditor?.id === element.id) {
-      commitTextEditor();
-    }
-    setSelectedElementId(element.id);
-    dragSessionRef.current = {
-      mode: 'resize-text',
-      id: element.id,
-      startClientX: event.clientX,
-      startClientY: event.clientY,
-      originW: element.w,
-      originH: element.h,
-      initialElements: elements,
-    };
-  };
-
-  const beginMoveRect = (event: React.PointerEvent<Element>, element: RectElement) => {
-    event.stopPropagation();
-    if (textEditor) {
-      commitTextEditor();
-    }
-    setSelectedElementId(element.id);
-    dragSessionRef.current = {
-      mode: 'move-rect',
-      id: element.id,
-      startClientX: event.clientX,
-      startClientY: event.clientY,
-      originX: element.x,
-      originY: element.y,
-      initialElements: elements,
-    };
-  };
-
-  const beginResizeRect = (event: React.PointerEvent<Element>, element: RectElement) => {
-    event.stopPropagation();
-    if (textEditor) {
-      commitTextEditor();
-    }
-    setSelectedElementId(element.id);
-    dragSessionRef.current = {
-      mode: 'resize-rect',
-      id: element.id,
-      startClientX: event.clientX,
-      startClientY: event.clientY,
-      originW: element.w,
-      originH: element.h,
-      initialElements: elements,
-    };
-  };
-
-  const beginMoveStroke = (event: React.PointerEvent<Element>, element: StrokeElement) => {
-    event.stopPropagation();
-    if (textEditor) {
-      commitTextEditor();
-    }
-    setSelectedElementId(element.id);
-    dragSessionRef.current = {
-      mode: 'move-stroke',
-      id: element.id,
-      startClientX: event.clientX,
-      startClientY: event.clientY,
-      initialPoints: [...element.points],
-      initialElements: elements,
-    };
-  };
-
-  const beginResizeStroke = (event: React.PointerEvent<Element>, element: StrokeElement) => {
-    event.stopPropagation();
-    const bounds = getStrokeBounds(element.points);
-    if (textEditor) {
-      commitTextEditor();
-    }
-    setSelectedElementId(element.id);
-    dragSessionRef.current = {
-      mode: 'resize-stroke',
-      id: element.id,
-      startClientX: event.clientX,
-      startClientY: event.clientY,
-      initialPoints: [...element.points],
-      bounds,
-      initialElements: elements,
-    };
-  };
-
-  const startEditingText = (element: TextElement) => {
-    setSelectedElementId(element.id);
-    setInlineUiState('editing');
-    setTextEditor({ id: element.id, value: element.text, initialValue: element.text });
-  };
-
   const commitTextEditor = useCallback(() => {
     if (!textEditor) {
       return;
@@ -1262,17 +648,6 @@ export function StudioEditWorkspace() {
     setInlineUiState(selectedElementId ? 'selected' : 'idle');
     setTextEditor(null);
   }, [elements, pushHistory, selectedElementId, textEditor]);
-
-  const handleTextEditorChange = useCallback((id: string, value: string) => {
-    const normalizedValue = sanitizeInlineText(value);
-    setTextEditor((prev) => (prev && prev.id === id ? { ...prev, value: normalizedValue } : prev));
-    setElements((prev) => prev.map((item) => {
-      if (item.id !== id || item.type !== 'text') {
-        return item;
-      }
-      return { ...item, text: normalizedValue };
-    }));
-  }, []);
 
   const applyChanges = async () => {
     if (!preview) {
@@ -1530,130 +905,12 @@ export function StudioEditWorkspace() {
 
   return (
     <section className="studio-edit-shell">
-      <header className="studio-edit-toolbar" aria-label="Edit tools">
-        <button
-          type="button"
-          className={`studio-edit-tool-btn ${tool === 'text' ? 'active' : ''} ${isSelectMode ? 'select-mode' : ''}`}
-          onClick={() => {
-            selectTool('text');
-            if (tool === 'text') {
-              const next = !isSelectMode;
-              setIsSelectMode(next);
-              if (next && textLayerSpans.length === 0) {
-                setTextLayerSpans([{
-                  id: `synthetic-select-span-${preview.page.fileId}-${preview.page.pageIndex + 1}`,
-                  text: 'Editable text',
-                  xRatio: 0.08,
-                  yRatio: 0.12,
-                  widthRatio: 0.84,
-                  heightRatio: 0.06,
-                  fontSizeRatio: 0.018,
-                  pageHeightPt: 842,
-                }]);
-                setInlineUiState('error');
-                setMessage(ui.noTextLayer);
-              }
-            }
-          }}
-          title={isSelectMode ? ui.switchToManualMode : ui.switchToSelectTextMode}
-        >
-          <LinearIcon name="word" className="linear-icon" />
-          <span>{isSelectMode ? ui.selectText : ui.text}</span>
-        </button>
-        <button type="button" className="studio-edit-tool-btn" title="Coming soon">
-          <LinearIcon name="merge" className="linear-icon" /><span>{ui.links}</span>
-        </button>
-        <button type="button" className="studio-edit-tool-btn" title="Coming soon">
-          <LinearIcon name="split" className="linear-icon" /><span>{ui.forms}</span>
-        </button>
-        <button type="button" className="studio-edit-tool-btn" title="Coming soon">
-          <LinearIcon name="image" className="linear-icon" /><span>{ui.images}</span>
-        </button>
-        <button type="button" className="studio-edit-tool-btn" title="Coming soon">
-          <LinearIcon name="lock" className="linear-icon" /><span>{ui.sign}</span>
-        </button>
-        <button type="button" className={`studio-edit-tool-btn ${tool === 'annotate' ? 'active' : ''}`} onClick={() => { selectTool('annotate'); setIsSelectMode(false); }}>
-          <LinearIcon name="tool" className="linear-icon" /><span>{ui.annotate}</span>
-        </button>
-        <button type="button" className={`studio-edit-tool-btn ${tool === 'shapes' ? 'active' : ''}`} onClick={() => { selectTool('shapes'); setIsSelectMode(false); }}>
-          <LinearIcon name="rotate" className="linear-icon" /><span>{ui.shapes}</span>
-        </button>
-        <button type="button" className={`studio-edit-tool-btn ${tool === 'whiteout' ? 'active' : ''}`} onClick={() => { selectTool('whiteout'); setIsSelectMode(false); }}>
-          <LinearIcon name="delete-pages" className="linear-icon" /><span>{ui.whiteout}</span>
-        </button>
-        <button type="button" className="studio-edit-tool-btn" onClick={undo} disabled={historyIndex <= 0}>
-          <LinearIcon name="chevron-left" className="linear-icon" /><span>{ui.undo}</span>
-        </button>
-        <button type="button" className="studio-edit-tool-btn" onClick={redo} disabled={historyIndex >= history.length - 1}>
-          <LinearIcon name="chevron-right" className="linear-icon" /><span>{ui.redo}</span>
-        </button>
-        <button
-          type="button"
-          className="studio-edit-tool-btn"
-          onClick={() => { void undoLastSave(); }}
-          disabled={saveUndoStack.length === 0 || isApplying}
-          aria-label={ui.undoSave}
-          title={ui.undoSave}
-        >
-          <LinearIcon name="chevron-left" className="linear-icon" /><span>{ui.undoSave}</span>
-        </button>
-        <button
-          type="button"
-          className="studio-edit-tool-btn"
-          onClick={() => { void redoLastSave(); }}
-          disabled={saveRedoStack.length === 0 || isApplying}
-          aria-label={ui.redoSave}
-          title={ui.redoSave}
-        >
-          <LinearIcon name="chevron-right" className="linear-icon" /><span>{ui.redoSave}</span>
-        </button>
-        <button type="button" className="studio-edit-tool-btn" onClick={deleteSelected} disabled={!selectedElementId}>
-          <LinearIcon name="x" className="linear-icon" /><span>{ui.delete}</span>
-        </button>
-        <button
-          type="button"
-          className={`studio-edit-tool-btn ${applyToSelection && canApplyToSelection ? 'active' : ''}`}
-          onClick={() => setApplyToSelection((prev) => !prev)}
-          disabled={!canApplyToSelection || isApplying}
-          title={ui.saveSelection}
-        >
-          <span>{ui.selection}: {applyToSelection && canApplyToSelection ? selectedPages.length : 1}</span>
-        </button>
-        <button
-          type="button"
-          className="studio-edit-tool-btn studio-edit-apply-btn"
-          data-testid="studio-edit-save-btn"
-          aria-label={ui.save}
-          onClick={() => {
-            if (textEditor) {
-              commitTextEditor();
-            }
-            void applyChanges();
-          }}
-          disabled={isApplying}
-        >
-          <span>{isApplying ? ui.saving : ui.save}</span>
-        </button>
-        <button
-          type="button"
-          className="studio-edit-back-btn"
-          onClick={() => {
-            if (hasDirtyChanges && !window.confirm(ui.unsavedConfirm)) {
-              return;
-            }
-            navigate('/studio');
-          }}
-        >
-          {ui.back}
-        </button>
-      </header>
-
-      <div className="studio-edit-meta">
-        <span className="studio-edit-page-badge">{ui.page} {preview.indexInDoc + 1}</span>
-        <span className="studio-edit-page-badge">{preview.docName}</span>
-        <span className="studio-edit-page-badge">{ui.selection}: {selectedPages.length || 1}</span>
-        <span className="studio-edit-page-badge">UI: {uiStateLabel}</span>
-        {hasDirtyChanges && <span className="studio-edit-page-badge studio-edit-message">{ui.dirty}</span>}
+      <div className="studio-edit-meta" style={{ padding: '8px 16px', background: 'rgba(15,23,42,0.4)', borderRadius: '0 0 12px 12px', marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: 12 }}>
+          <span className="studio-edit-page-badge">{ui.page} {preview.indexInDoc + 1}</span>
+          <span className="studio-edit-page-badge">{preview.docName}</span>
+          {hasDirtyChanges && <span className="studio-edit-page-badge studio-edit-message">{ui.dirty}</span>}
+        </div>
         {message && (
           <span className={`studio-edit-page-badge studio-edit-message ${inlineUiState === 'error' ? 'is-error' : 'is-success'}`}>
             {message}
@@ -1661,233 +918,77 @@ export function StudioEditWorkspace() {
         )}
       </div>
 
-      <div className="studio-edit-canvas">
+      <div className="studio-edit-canvas-wrap">
         <div
-          ref={canvasRef}
-          className="studio-edit-page-sheet"
-          onPointerMove={onPointerMove}
-          onPointerUp={onPointerUp}
-          onPointerLeave={onPointerUp}
+          className="studio-edit-canvas-surface"
+          style={{ width: 620, height: 840, position: 'relative' }}
         >
-          <div className="studio-edit-canvas-content" onPointerDown={onPointerDown}>
-            <img
-              ref={imageRef}
-              src={preview.page.thumbnailUrl}
-              alt={`Document page ${preview.indexInDoc + 1}`}
-              className="studio-edit-preview-image"
-              draggable={false}
-            />
-
-            {isSelectMode && textLayerSpans
-              .filter(span => !elements.some(el => el.type === 'text' && Math.abs(el.x - span.xRatio) < 0.001))
-              .map(span => (
-                <div
-                  key={span.id}
-                  className={`studio-edit-text-highlight ${hoveredTextSpanId === span.id ? 'hovered' : ''}`}
-                  style={{
-                    left: `${span.xRatio * 100}%`,
-                    top: `${span.yRatio * 100}%`,
-                    width: `${span.widthRatio * 100}%`,
-                    height: `${span.heightRatio * 100}%`,
-                  }}
-                  onPointerEnter={() => {
-                    setHoveredTextSpanId(span.id);
-                    setInlineUiState('hover');
-                  }}
-                  onPointerLeave={() => {
-                    setHoveredTextSpanId((prev) => (prev === span.id ? null : prev));
-                    if (!textEditor && selectedElementId) {
-                      setInlineUiState('selected');
-                    } else if (!textEditor) {
-                      setInlineUiState('idle');
-                    }
-                  }}
-                  onPointerDown={(event) => {
-                    event.stopPropagation();
-                    setMessage(null);
-                    if (tool !== 'text' || !isSelectMode) {
-                      return;
-                    }
-                    selectTextSpanForEditing(span);
-                  }}
-                />
-              ))}
-
-            <svg className="studio-edit-overlay" viewBox="0 0 1000 1000" preserveAspectRatio="none">
-              {elements.filter((item): item is StrokeElement => item.type === 'stroke').map((stroke) => (
-                <polyline
-                  key={stroke.id}
-                  points={stroke.points.map((value, index) => {
-                    const scaled = value * 1000;
-                    return index % 2 === 0 ? `${scaled},` : `${scaled}`;
-                  }).join(' ')}
-                  fill="none"
-                  stroke={stroke.color}
-                  opacity={stroke.opacity}
-                  strokeWidth={stroke.width * 3}
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  onPointerDown={(event) => {
-                    beginMoveStroke(event, stroke);
-                  }}
-                />
-              ))}
-              {draftStroke && draftStroke.points.length >= 4 && (
-                <polyline
-                  points={draftStroke.points.map((value, index) => {
-                    const scaled = value * 1000;
-                    return index % 2 === 0 ? `${scaled},` : `${scaled}`;
-                  }).join(' ')}
-                  fill="none"
-                  stroke="#2563eb"
-                  strokeWidth={6}
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              )}
-            </svg>
-
-            {elements.filter((item): item is RectElement => item.type === 'rect').map((rect) => (
-              <div
-                key={rect.id}
-                className={`studio-edit-rect ${selectedElementId === rect.id ? 'active' : ''}`}
-                style={{
-                  left: `${rect.x * 100}%`,
-                  top: `${rect.y * 100}%`,
-                  width: `${rect.w * 100}%`,
-                  height: `${rect.h * 100}%`,
-                  background: rect.fill,
-                  border: `${rect.strokeWidth}px solid ${rect.stroke}`,
-                  opacity: rect.opacity,
-                }}
-                onPointerDown={(event) => beginMoveRect(event, rect)}
-              >
-                {selectedElementId === rect.id && (
-                  <button
-                    type="button"
-                    className="studio-edit-text-resize"
-                    onPointerDown={(event) => beginResizeRect(event, rect)}
-                    aria-label="Resize rectangle"
-                  />
-                )}
-              </div>
-            ))}
-
-            {draftRect && (
-              <div
-                className="studio-edit-rect"
-                style={{
-                  left: `${draftRect.x * 100}%`,
-                  top: `${draftRect.y * 100}%`,
-                  width: `${draftRect.w * 100}%`,
-                  height: `${draftRect.h * 100}%`,
-                  background: tool === 'whiteout' ? '#ffffff' : 'transparent',
-                  border: `2px solid ${tool === 'whiteout' ? '#d1d5db' : '#2563eb'}`,
-                }}
-              />
-            )}
-
-            {elements.filter((item): item is TextElement => item.type === 'text').map((text) => {
-              const isEditing = textEditor?.id === text.id;
-              return (
-                <div
-                  key={text.id}
-                  className={`studio-edit-text ${selectedElementId === text.id ? 'active' : ''}`}
-                  style={{
-                    left: `${text.x * 100}%`,
-                    top: `${text.y * 100}%`,
-                    width: `${text.w * 100}%`,
-                    height: `${text.h * 100}%`,
-                    color: text.color,
-                    fontSize: `${text.fontSize}px`,
-                    fontFamily: text.fontFamily === 'times' ? 'Times New Roman, serif' : text.fontFamily === 'mono' ? 'JetBrains Mono, monospace' : 'Sora, sans-serif',
-                    fontWeight: text.fontWeight,
-                    fontStyle: text.fontStyle,
-                    textAlign: text.textAlign,
-                    lineHeight: text.lineHeight,
-                    letterSpacing: `${text.letterSpacing}px`,
-                    opacity: text.opacity,
-                  }}
-                  onPointerDown={(event) => handleTextPointerDown(event, text)}
-                  onPointerUp={(event) => handleTextPointerUp(event, text)}
-                >
-                  {isEditing ? (
-                    <textarea
-                      value={textEditor.value}
-                      onChange={(event) => handleTextEditorChange(text.id, event.target.value)}
-                      onBlur={commitTextEditor}
-                      onKeyDown={(event) => {
-                        if (event.key === 'Escape') {
-                          setElements((prev) => prev.map((item) => {
-                            if (item.id !== text.id || item.type !== 'text') {
-                              return item;
-                            }
-                            return { ...item, text: textEditor.initialValue };
-                          }));
-                          setInlineUiState('selected');
-                          setTextEditor(null);
-                        }
-                        if (event.key === 'Enter') {
-                          event.preventDefault();
-                          commitTextEditor();
-                          void applyChanges();
-                        }
-                      }}
-                      autoFocus
-                      rows={1}
-                      className="studio-edit-textarea"
-                    />
-                  ) : (
-                    <span className="studio-edit-text-content">{text.text}</span>
-                  )}
-                  {selectedElementId === text.id && (
-                    <div className="studio-edit-element-controls">
-                      <StudioFloatingMenu
-                        element={text}
-                        onUpdate={(patch) => updateSelectedText(patch as Partial<TextElement>)}
-                        onDelete={deleteSelected}
-                        onDuplicate={() => {
-                          const dup: TextElement = { ...text, id: crypto.randomUUID(), x: text.x + 0.02, y: text.y + 0.02 };
-                          applyElements([...elements, dup]);
-                          setSelectedElementId(dup.id);
-                        }}
-                      />
-                      {!isEditing && (
-                        <button
-                          type="button"
-                          className="studio-edit-text-resize"
-                          onPointerDown={(event) => beginResizeText(event, text)}
-                          aria-label="Resize text box"
-                        />
-                      )}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-
-            {selectedStroke && selectedStrokeBounds && (
-              <div
-                className="studio-edit-stroke-box"
-                style={{
-                  left: `${selectedStrokeBounds.minX * 100}%`,
-                  top: `${selectedStrokeBounds.minY * 100}%`,
-                  width: `${Math.max(0.2, (selectedStrokeBounds.maxX - selectedStrokeBounds.minX) * 100)}%`,
-                  height: `${Math.max(0.2, (selectedStrokeBounds.maxY - selectedStrokeBounds.minY) * 100)}%`,
-                }}
-                onPointerDown={(event) => beginMoveStroke(event, selectedStroke)}
-              >
-                <button
-                  type="button"
-                  className="studio-edit-text-resize"
-                  onPointerDown={(event) => beginResizeStroke(event, selectedStroke)}
-                  aria-label="Resize stroke"
-                />
-              </div>
-            )}
-          </div>
+          <img
+            ref={imageRef}
+            src={preview.page.thumbnailUrl}
+            alt={`Page ${preview.page.pageIndex + 1}`}
+            className="studio-edit-page-image"
+            crossOrigin="anonymous"
+            draggable={false}
+            style={{ width: '100%', height: '100%', position: 'absolute', inset: 0 }}
+          />
+          <StudioPageEditor
+            page={preview.page}
+            width={620}
+            height={840}
+            activeTool={tool}
+            elements={elements}
+            onElementsChange={setElements}
+            onPushHistory={pushHistory}
+            selectedElementId={selectedElementId}
+            onSelectedElementIdChange={setSelectedElementId}
+            textEditor={textEditor}
+            onTextEditorChange={setTextEditor}
+            onInlineUiStateChange={setInlineUiState}
+            onMessageChange={setMessage}
+            onFinish={() => {
+              if (textEditor) commitTextEditor();
+              void applyChanges();
+            }}
+            onDiscard={() => {
+              if (hasDirtyChanges && !window.confirm(ui.unsavedConfirm)) return;
+              navigate('/studio');
+            }}
+          />
         </div>
+        {message && (
+          <div className="studio-edit-message-overlay">
+            <p className="studio-edit-message-text">{message}</p>
+            <button type="button" className="studio-edit-message-close" onClick={() => setMessage(null)}>
+              &times;
+            </button>
+          </div>
+        )}
       </div>
+      <footer className="studio-edit-action-bar">
+        <button type="button" className="studio-edit-btn-cancel" onClick={() => navigate('/studio')}>
+          {ui.backToCanvas}
+        </button>
+        <div className="studio-edit-action-group">
+          <label className="studio-edit-checkbox-label">
+            <input
+              type="checkbox"
+              checked={applyToSelection}
+              onChange={(e) => setApplyToSelection(e.target.checked)}
+              disabled={!canApplyToSelection}
+            />
+            <span>{ui.saveSelection} ({selectedPages.length})</span>
+          </label>
+          <button
+            type="button"
+            className="studio-edit-btn-apply"
+            onClick={applyChanges}
+            disabled={isApplying || (historyIndex === 0 && !hasDirtyChanges)}
+          >
+            {isApplying ? ui.saving : ui.save}
+          </button>
+        </div>
+      </footer>
     </section>
   );
 }

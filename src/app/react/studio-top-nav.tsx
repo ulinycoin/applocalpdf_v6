@@ -232,16 +232,29 @@ export function StudioTopNav({ onToggleTelemetry, telemetryOpen }: StudioTopNavP
                 setSelection([{ docId: activeDocument.id, pageId: activeDocument.pages[0].id }]);
               }
               if (targetDocId && targetPage) {
-                startEditSession({
+                const sessionPayload = {
                   docId: targetDocId,
                   pageId: targetPage.id,
                   pageIndex: targetPage.pageIndex,
                   fileId: targetPage.fileId,
-                  initialTool: 'text',
-                });
+                  initialTool: 'text' as const,
+                };
+
+                const params = new URLSearchParams(window.location.search);
+                const useInplace = params.get('inplace_edit') === '1';
+
+                if (useInplace) {
+                  startEditSession(sessionPayload);
+                  useStudioStore.getState().setActiveEditPageId(targetPage.id);
+                  setSelection([]);
+                } else {
+                  startEditSession(sessionPayload);
+                  setInteractionMode('edit');
+                  navigate('/studio/edit');
+                }
+              } else {
+                setInteractionMode('edit');
               }
-              setInteractionMode('edit');
-              navigate('/studio/edit');
             }}
             disabled={!hasEditTarget}
             title={!hasEditTarget ? 'Select a document or page first' : 'Edit mode'}
@@ -326,6 +339,6 @@ export function StudioTopNav({ onToggleTelemetry, telemetryOpen }: StudioTopNavP
           <span>Telemetry</span>
         </button>
       </div>
-    </header>
+    </header >
   );
 }

@@ -87,6 +87,7 @@ export interface WorkerPdfTextLayerSpan {
   fontName?: string;
   fontFamilyHint?: string;
   pageHeightPt?: number;
+  ascentRatio?: number;
 }
 
 export type WorkerStudioFontFamilyId = 'sora' | 'times' | 'mono';
@@ -109,6 +110,7 @@ export interface WorkerStudioTextEditElement {
   lineHeight?: number;
   letterSpacing?: number;
   opacity: number;
+  ascent?: number;
 }
 
 export interface WorkerStudioStrokeEditElement {

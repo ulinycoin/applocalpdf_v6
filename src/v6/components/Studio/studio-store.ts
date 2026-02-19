@@ -46,6 +46,7 @@ export interface StudioState {
     isDraggingFile: boolean;
     activeDocumentId: string | null;
     interactionMode: StudioInteractionMode;
+    activeEditPageId: string | null;
     operationScope: StudioOperationScope;
     editSession: StudioEditSession | null;
     workspaceVersion: number;
@@ -57,6 +58,7 @@ export interface StudioState {
     setDocuments: (docs: StudioDocument[]) => void;
     setActiveDocument: (id: string | null) => void;
     setInteractionMode: (mode: StudioInteractionMode) => void;
+    setActiveEditPageId: (id: string | null) => void;
     setOperationScope: (scope: StudioOperationScope) => void;
     startEditSession: (session: {
         docId: string;
@@ -121,6 +123,7 @@ export const useStudioStore = create<StudioState>((set) => ({
     isDraggingFile: false,
     activeDocumentId: null,
     interactionMode: null,
+    activeEditPageId: null,
     operationScope: 'selection',
     editSession: null,
     workspaceVersion: 0,
@@ -162,6 +165,7 @@ export const useStudioStore = create<StudioState>((set) => ({
     }),
     setActiveDocument: (id) => set({ activeDocumentId: id }),
     setInteractionMode: (mode) => set({ interactionMode: mode }),
+    setActiveEditPageId: (id) => set({ activeEditPageId: id }),
     setOperationScope: (scope) => set({ operationScope: scope }),
     startEditSession: ({ docId, pageId, pageIndex, fileId, initialTool = 'text' }) => set({
         editSession: {

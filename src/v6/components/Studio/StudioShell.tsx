@@ -11,6 +11,7 @@ import { StudioFloatingMenu } from './StudioFloatingMenu';
 import { ThumbnailService } from '../../studio/thumbnail/thumbnail-service';
 import type { StudioToolRouteState } from '../../studio/navigation/studio-tool-context';
 import * as pdfjs from 'pdfjs-dist';
+import { StudioInPlaceEditor } from './StudioInPlaceEditor';
 
 export interface StudioShellProps {
     onFilesDropped?: (files: File[]) => void;
@@ -504,12 +505,12 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
                 </button>
                 {hasFiles && (
                     <>
-                    <button className="studio-viewport-btn" onClick={zoomOut} title="Zoom out">-</button>
-                    <button className="studio-viewport-btn" onClick={zoomIn} title="Zoom in">+</button>
-                    <button className="studio-viewport-btn studio-viewport-btn-fit" onClick={() => fitToDocuments(documents)} title="Fit all documents">
-                        Fit
-                    </button>
-                    <span className="studio-viewport-scale">{Math.round(viewScale * 100)}%</span>
+                        <button className="studio-viewport-btn" onClick={zoomOut} title="Zoom out">-</button>
+                        <button className="studio-viewport-btn" onClick={zoomIn} title="Zoom in">+</button>
+                        <button className="studio-viewport-btn studio-viewport-btn-fit" onClick={() => fitToDocuments(documents)} title="Fit all documents">
+                            Fit
+                        </button>
+                        <span className="studio-viewport-scale">{Math.round(viewScale * 100)}%</span>
                     </>
                 )}
             </div>
@@ -521,7 +522,8 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
                 className="hidden"
                 onChange={handleUploadInputChange}
             />
-            <StudioFloatingMenu />
+            {!useStudioStore.getState().activeEditPageId && <StudioFloatingMenu />}
+            <StudioInPlaceEditor stageRef={stageRef} />
         </div>
     );
 }

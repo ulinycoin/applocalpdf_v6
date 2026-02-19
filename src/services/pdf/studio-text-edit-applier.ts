@@ -9,7 +9,7 @@ function clamp(value: number, min: number, max: number): number {
 }
 
 function sanitizeInlineText(value: string): string {
-  return value.replace(/[\r\n]+/gu, ' ');
+  return value.replace(/\0/g, '').replace(/[\r\n]+/gu, ' ');
 }
 
 function measureTextWidthWithTracking(font: PDFFont, text: string, fontSize: number, tracking: number): number {
@@ -483,30 +483,10 @@ export async function applyStudioTextEditsToPdfBytes(params: {
   const textElements = params.elements.filter((element) => element.type === 'text');
   const consumedTextIds = new Set<string>();
   let trueReplaceApplied = false;
-  let trueReplaceFallbackReason: string | undefined;
-  if (params.elements.length === 1 && textElements.length === 1) {
-    const target = textElements[0];
-    const trueReplace = await tryApplyTrueReplaceSingleTextOperator({
-      pdf,
-      pageIndex: params.pageIndex,
-      text: sanitizeInlineText(target.text || ' '),
-      targetXRatio: target.x,
-      targetYRatio: target.y,
-      targetWidthRatio: target.w,
-      targetHeightRatio: target.h,
-      targetTextAlign: target.textAlign,
-      pageWidth,
-      pageHeight,
-    });
-    if (trueReplace.applied) {
-      trueReplaceApplied = true;
-      consumedTextIds.add(target.id);
-    } else {
-      trueReplaceFallbackReason = trueReplace.reason;
-    }
-  } else {
-    trueReplaceFallbackReason = 'INELIGIBLE_EDIT_PAYLOAD';
-  }
+  let trueReplaceFallbackReason: string | undefined = 'TRUE_REPLACE_DISABLED_FOR_STABILITY';
+
+  // Skip True Replace optimization as it can lead to stream corruption in complex PDFs.
+  // We prefer the fallback path which appends clean content streams.
 
   for (const element of params.elements) {
     if (element.type === 'text') {
@@ -529,9 +509,12 @@ export async function applyStudioTextEditsToPdfBytes(params: {
         x += Math.max(0, blockWidth - lineWidth);
       }
       const yTop = element.y * pageHeight;
-      const y = pageHeight - yTop - (fit.fontSize * (element.lineHeight ?? 1.2));
+      // If we have the exact ascent from extraction, use it. Otherwise use 0.82 heuristic.
+      const ascent = element.ascent ?? (fit.fontSize * 0.82);
+      const y = pageHeight - yTop - ascent;
 
-      if (fit.tracking === 0 || line.length <= 1) {
+      // Use a small tolerance for tracking to avoid manual loop for floating point noise
+      if (Math.abs(fit.tracking) < 0.001 || line.length <= 1) {
         page.drawText(line, {
           x,
           y,
