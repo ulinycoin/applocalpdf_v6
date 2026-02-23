@@ -35,7 +35,9 @@ type LinearIconName =
   | 'align-right'
   | 'plus'
   | 'minus'
-  | 'menu';
+  | 'menu'
+  | 'maximize'
+  | 'move-horizontal';
 
 interface LinearIconProps extends Omit<SVGProps<SVGSVGElement>, 'children'> {
   name: LinearIconName;
@@ -303,6 +305,12 @@ export function LinearIcon({ name, size, ...props }: LinearIconProps): JSX.Eleme
       )}
       {name === 'menu' && (
         <path d="M4 6h16M4 12h16M4 18h16" />
+      )}
+      {name === 'maximize' && (
+        <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3" />
+      )}
+      {name === 'move-horizontal' && (
+        <path d="m18 8 4 4-4 4M6 8l-4 4 4 4M2 12h20" />
       )}
     </svg>
   );

@@ -88,7 +88,6 @@ export function useStudioEditController(ui: any) {
     const [textEditor, setTextEditor] = useState<TextEditorState | null>(null);
     const [inlineUiState, setInlineUiState] = useState<InlineUiState>('idle');
     const [textLayerSpans, setTextLayerSpans] = useState<TextLayerSpan[]>([]);
-    const [zoomLevel, setZoomLevel] = useState(1);
     const [isSelectMode, setIsSelectMode] = useState(false);
     const [textSelectionMode, setTextSelectionMode] = useState<'line' | 'word'>('line');
     const [applyToSelection, setApplyToSelection] = useState(true);
@@ -136,10 +135,13 @@ export function useStudioEditController(ui: any) {
         if (canApplyToSelection && !applyToSelection) setApplyToSelection(true);
     }, [applyToSelection, canApplyToSelection]);
 
-    const selectTool = useCallback((nextTool: StudioEditToolId) => {
+    const [sessionRunId] = useState(() => crypto.randomUUID());
+
+    const selectTool = useCallback((nextTool: StudioEditToolId, method: 'ui' | 'shortcut' = 'ui') => {
         setTool(nextTool);
         updateEditSessionTool(nextTool);
-    }, [updateEditSessionTool]);
+        runtime.telemetry.track({ type: 'STUDIO_EDIT_TOOL_SELECTED', runId: sessionRunId, toolId: 'studio.edit', tool: nextTool, method });
+    }, [updateEditSessionTool, runtime, sessionRunId]);
 
     const hasDirtyChanges = historyIndex > 0 || Boolean(textEditor && textEditor.value !== textEditor.initialValue);
 
@@ -225,19 +227,10 @@ export function useStudioEditController(ui: any) {
         setTextEditor(null);
     }, [elements, pushHistory, selectedElementId]);
 
-    useEffect(() => {
-        const onKeyDown = (event: KeyboardEvent) => {
-            if ((event.key === 'Delete' || event.key === 'Backspace') && !textEditor) deleteSelected();
-            if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'z') {
-                event.preventDefault();
-                event.shiftKey ? redo() : undo();
-            }
-        };
-        window.addEventListener('keydown', onKeyDown);
-        return () => window.removeEventListener('keydown', onKeyDown);
-    }, [deleteSelected, redo, textEditor, undo]);
+
 
     const handleElementAction = useCallback((id: string, action: 'delete' | 'duplicate' | 'update', patch?: any) => {
+        let changeType: string | undefined;
         if (action === 'delete') {
             const next = elements.filter(el => el.id !== id);
             setElements(next);
@@ -254,8 +247,10 @@ export function useStudioEditController(ui: any) {
             }
         } else if (action === 'update' && patch) {
             setElements(elements.map(el => el.id === id ? { ...el, ...patch } : el));
+            changeType = Object.keys(patch)[0];
         }
-    }, [elements, pushHistory]);
+        runtime.telemetry.track({ type: 'STUDIO_EDIT_FLOATING_MENU_ACTION', runId: sessionRunId, toolId: 'studio.edit', action, changeType });
+    }, [elements, pushHistory, runtime.telemetry, sessionRunId]);
 
     const commitTextEditor = useCallback(() => {
         if (!textEditor) return;
@@ -430,7 +425,42 @@ export function useStudioEditController(ui: any) {
         }
     }, [popCommandRedo, pushCommandUndo, popSaveRedo, pushSaveUndo, runtime, ui.changesApplied, ui.changesAppliedSelection, updatePage]);
 
+    useEffect(() => {
+        const onKeyDown = (event: KeyboardEvent) => {
+            const target = event.target as HTMLElement | null;
+            const isTyping = target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable);
+            if (isTyping) return;
+
+            const key = event.key.toLowerCase();
+
+            if ((event.key === 'Delete' || event.key === 'Backspace') && !textEditor) {
+                deleteSelected();
+            } else if ((event.ctrlKey || event.metaKey) && key === 'z') {
+                event.preventDefault();
+                event.shiftKey ? redo() : undo();
+            } else if ((event.ctrlKey || event.metaKey) && key === 's') {
+                event.preventDefault();
+                if (!isApplying && (historyIndex > 0 || hasDirtyChanges)) {
+                    void applyChanges();
+                }
+            } else if (!event.ctrlKey && !event.metaKey && !event.shiftKey) {
+                if (key === 'v') {
+                    selectTool('text');
+                    setIsSelectMode(true);
+                } else if (key === 't') {
+                    selectTool('text');
+                    setIsSelectMode(false);
+                } else if (key === 'a') {
+                    selectTool('annotate');
+                }
+            }
+        };
+        window.addEventListener('keydown', onKeyDown);
+        return () => window.removeEventListener('keydown', onKeyDown);
+    }, [deleteSelected, redo, undo, applyChanges, isApplying, historyIndex, hasDirtyChanges, textEditor, selectTool]);
+
     return {
+        runId: sessionRunId,
         navigate,
         tool, setTool: selectTool,
         elements, setElements,
@@ -442,7 +472,6 @@ export function useStudioEditController(ui: any) {
         textEditor, setTextEditor, commitTextEditor,
         inlineUiState, setInlineUiState,
         textLayerSpans,
-        zoomLevel, setZoomLevel,
         isSelectMode, setIsSelectMode,
         textSelectionMode, setTextSelectionMode,
         applyToSelection, setApplyToSelection,

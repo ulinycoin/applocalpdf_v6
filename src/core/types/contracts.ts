@@ -218,4 +218,7 @@ export type RunnerTelemetryEvent =
     pagesFailed: number;
     overflowCount?: number;
     message?: string;
-  };
+  }
+  | { type: 'STUDIO_EDIT_TOOL_SELECTED'; runId: string; toolId: string; tool: string; method: 'ui' | 'shortcut' }
+  | { type: 'STUDIO_EDIT_ZOOM_CHANGED'; runId: string; toolId: string; source: 'wheel' | 'button' | 'preset'; preset?: 'fitPage' | 'fitWidth' | '100'; scaleLevel: number }
+  | { type: 'STUDIO_EDIT_FLOATING_MENU_ACTION'; runId: string; toolId: string; action: 'duplicate' | 'delete' | 'update'; changeType?: string };

@@ -12,11 +12,9 @@ interface StudioEditToolbarProps {
 
 export function StudioEditToolbar({ ui, tool, isSelectMode, onSelectTool, onSetIsSelectMode }: StudioEditToolbarProps) {
     return (
-        <div className="studio-editor-top-toolbar" style={{
-            display: 'flex', gap: 6, padding: '4px 6px',
-            background: 'rgba(15, 23, 42, 0.9)', border: '1px solid rgba(255,255,255,0.1)',
-            borderRadius: 12, backdropFilter: 'blur(8px)', pointerEvents: 'auto',
-            boxShadow: '0 8px 32px rgba(0,0,0,0.3)'
+        <div className="studio-editor-left-toolbar" style={{
+            display: 'flex', flexDirection: 'column', gap: 12, padding: '12px 6px',
+            pointerEvents: 'auto'
         }}>
             <button
                 className={`studio-edit-tool-btn ${tool === 'text' && isSelectMode ? 'active' : ''}`}
@@ -32,7 +30,7 @@ export function StudioEditToolbar({ ui, tool, isSelectMode, onSelectTool, onSetI
             >
                 <LinearIcon name="text" size={18} />
             </button>
-            <div style={{ width: 1, height: 20, background: 'rgba(255,255,255,0.1)', margin: '0 4px' }} />
+            <div style={{ width: 24, height: 1, background: 'rgba(255,255,255,0.1)', margin: '4px auto' }} />
             <button
                 className={`studio-edit-tool-btn ${tool === 'annotate' ? 'active' : ''}`}
                 onClick={() => onSelectTool('annotate')}

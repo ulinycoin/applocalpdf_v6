@@ -65,7 +65,7 @@ test.describe('Studio Edit Precision', () => {
             await expect(page.locator('.studio-edit-shell')).toBeVisible({ timeout: 20000 });
 
             // Enable Select Text mode
-            const selectTextBtn = page.locator('.studio-editor-top-toolbar .studio-edit-tool-btn').first();
+            const selectTextBtn = page.locator('.studio-editor-left-toolbar .studio-edit-tool-btn').first();
             await selectTextBtn.click();
             await expect(selectTextBtn).toHaveClass(/active/);
 
@@ -135,7 +135,7 @@ test.describe('Studio Edit Precision', () => {
             await page.getByRole('button', { name: 'Edit', exact: true }).first().click();
             await expect(page.locator('.studio-edit-shell')).toBeVisible({ timeout: 20000 });
 
-            const selectTextBtn = page.locator('.studio-editor-top-toolbar .studio-edit-tool-btn').first();
+            const selectTextBtn = page.locator('.studio-editor-left-toolbar .studio-edit-tool-btn').first();
             await selectTextBtn.click();
             await page.waitForTimeout(3000);
 
