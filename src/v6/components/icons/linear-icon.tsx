@@ -32,7 +32,10 @@ type LinearIconName =
   | 'italic'
   | 'align-left'
   | 'align-center'
-  | 'align-right';
+  | 'align-right'
+  | 'plus'
+  | 'minus'
+  | 'menu';
 
 interface LinearIconProps extends Omit<SVGProps<SVGSVGElement>, 'children'> {
   name: LinearIconName;
@@ -291,6 +294,15 @@ export function LinearIcon({ name, size, ...props }: LinearIconProps): JSX.Eleme
           <path d="M21 14H3" />
           <path d="M21 18H7" />
         </>
+      )}
+      {name === 'plus' && (
+        <path d="M12 5v14M5 12h14" />
+      )}
+      {name === 'minus' && (
+        <path d="M5 12h14" />
+      )}
+      {name === 'menu' && (
+        <path d="M4 6h16M4 12h16M4 18h16" />
       )}
     </svg>
   );

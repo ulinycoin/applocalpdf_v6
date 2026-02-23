@@ -31,11 +31,15 @@ test.describe('Studio advanced formatting P2', () => {
       await page.locator('.studio-shell-container input[type="file"]').first().setInputFiles(pdfPath);
 
       await page.waitForFunction(() => {
-        const store = (window as Window & { __LOCALPDF_STUDIO_STORE__?: { getState: () => {
-          documents: Array<{ id: string; pages: Array<{ id: string }> }>;
-          setActiveDocument: (id: string | null) => void;
-          setSelection: (selection: Array<{ docId: string; pageId: string }>) => void;
-        } } }).__LOCALPDF_STUDIO_STORE__;
+        const store = (window as Window & {
+          __LOCALPDF_STUDIO_STORE__?: {
+            getState: () => {
+              documents: Array<{ id: string; pages: Array<{ id: string }> }>;
+              setActiveDocument: (id: string | null) => void;
+              setSelection: (selection: Array<{ docId: string; pageId: string }>) => void;
+            }
+          }
+        }).__LOCALPDF_STUDIO_STORE__;
         if (!store) {
           return false;
         }
@@ -50,7 +54,7 @@ test.describe('Studio advanced formatting P2', () => {
         return true;
       }, { timeout: 20000 });
 
-      await page.getByRole('button', { name: 'Edit' }).click();
+      await page.getByRole('button', { name: 'Edit', exact: true }).click();
       await expect(page.locator('.studio-edit-shell')).toBeVisible({ timeout: 20000 });
 
       const sheet = page.locator('.studio-edit-canvas-content').first();
@@ -59,12 +63,21 @@ test.describe('Studio advanced formatting P2', () => {
       if (!bounds) {
         throw new Error('Missing edit sheet bounds');
       }
+      console.log('Bounds:', bounds);
+      console.log('Click Pos:', {
+        x: Math.max(12, Math.floor(bounds.width * 0.15)),
+        y: Math.max(12, Math.floor(bounds.height * 0.12))
+      });
       await sheet.click({
+        force: true,
         position: {
-          x: Math.max(12, Math.floor(bounds.width * 0.42)),
-          y: Math.max(12, Math.floor(bounds.height * 0.45)),
+          x: Math.max(12, Math.floor(bounds.width * 0.15)),
+          y: Math.max(12, Math.floor(bounds.height * 0.12)),
         },
       });
+
+      await page.waitForTimeout(1000);
+      await page.screenshot({ path: 'test-results/studio-canvas.png' });
 
       const textBox = page.locator('.studio-edit-text').first();
       await expect(textBox).toBeVisible({ timeout: 10000 });
@@ -81,7 +94,7 @@ test.describe('Studio advanced formatting P2', () => {
       expect(Number.parseFloat(letterSpacing)).toBeGreaterThan(2);
 
       await page.getByTestId('studio-edit-save-btn').click();
-      await expect(page.getByText(/Changes applied|Изменения сохранены/i)).toBeVisible({ timeout: 15000 });
+      await expect(page.getByText(/Changes applied|Изменения сохранены/i).first()).toBeVisible({ timeout: 15000 });
     } finally {
       safeDelete(pdfPath);
     }

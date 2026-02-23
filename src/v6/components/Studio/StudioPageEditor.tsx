@@ -12,6 +12,7 @@ import {
     type FontFamilyId,
 } from './inline-text-utils';
 import { detectStudioEditLocale, getStudioEditMessages } from './studio-edit-i18n';
+import { clamp01, getStrokeBounds, moveStrokePoints, resizeStrokePoints } from '../../utils/studio-edit-math';
 import {
     EditElement,
     TextElement,
@@ -25,66 +26,12 @@ import {
     TextAlignId,
     TextLayerSpan
 } from './editor-types';
-import { StudioFloatingMenu } from './StudioFloatingEditorMenu';
+import { TOOLS, ToolContext } from './tools';
+
 import { LinearIcon } from '../icons/linear-icon';
 
-function clamp01(value: number): number {
-    return Math.max(0, Math.min(1, value));
-}
 
-function getStrokeBounds(points: number[]): { minX: number; minY: number; maxX: number; maxY: number } {
-    let minX = 1, minY = 1, maxX = 0, maxY = 0;
-    for (let i = 0; i < points.length; i += 2) {
-        minX = Math.min(minX, points[i]!);
-        minY = Math.min(minY, points[i + 1]!);
-        maxX = Math.max(maxX, points[i]!);
-        maxY = Math.max(maxY, points[i + 1]!);
-    }
-    return { minX, minY, maxX, maxY };
-}
 
-function moveStrokePoints(points: number[], dx: number, dy: number): number[] {
-    const out = [...points];
-    for (let i = 0; i < out.length; i += 2) {
-        out[i] = clamp01((out[i] ?? 0) + dx);
-        out[i + 1] = clamp01((out[i + 1] ?? 0) + dy);
-    }
-    return out;
-}
-
-function resizeStrokePoints(points: number[], bounds: { minX: number; minY: number; maxX: number; maxY: number }, scaleX: number, scaleY: number): number[] {
-    const width = Math.max(0.0001, bounds.maxX - bounds.minX);
-    const height = Math.max(0.0001, bounds.maxY - bounds.minY);
-    const out = [...points];
-    for (let i = 0; i < out.length; i += 2) {
-        const x = out[i] ?? 0;
-        const y = out[i + 1] ?? 0;
-        out[i] = clamp01(bounds.minX + ((x - bounds.minX) / width) * (width * scaleX));
-        out[i + 1] = clamp01(bounds.minY + ((y - bounds.minY) / height) * (height * scaleY));
-    }
-    return out;
-}
-
-async function requestTextLayerSpans(
-    runtime: ReturnType<typeof usePlatform>['runtime'],
-    fileId: string,
-    pageNumber: number,
-    signal?: AbortSignal,
-): Promise<TextLayerSpan[]> {
-    const command: IWorkerCommand = {
-        id: crypto.randomUUID(),
-        type: 'COMMAND',
-        payload: {
-            type: 'GET_PDF_TEXT_LAYER',
-            payload: { fileId, pageNumber },
-        },
-    };
-    const finalEvent = await runtime.workerOrchestrator.dispatch(command, undefined, signal);
-    if (finalEvent.payload.type === 'TEXT_LAYER_RESULT') {
-        return finalEvent.payload.payload.spans;
-    }
-    throw new Error('Unexpected worker response');
-}
 
 export interface StudioPageEditorProps {
     page: PageItem;
@@ -102,6 +49,12 @@ export interface StudioPageEditorProps {
     onTextEditorChange?: (state: TextEditorState | null) => void;
     onInlineUiStateChange?: (state: InlineUiState) => void;
     onMessageChange?: (msg: string | null) => void;
+    onActiveToolChange?: (tool: StudioEditToolId) => void;
+    isSelectMode: boolean;
+    setIsSelectMode: (val: boolean) => void;
+    textSelectionMode?: 'line' | 'word';
+    onTextSelectionModeChange?: (mode: 'line' | 'word') => void;
+    textLayerSpans: TextLayerSpan[];
     onFinish?: () => void;
     onDiscard?: () => void;
 }
@@ -120,6 +73,12 @@ export function StudioPageEditor({
     onTextEditorChange,
     onInlineUiStateChange,
     onMessageChange,
+    onActiveToolChange,
+    isSelectMode,
+    setIsSelectMode,
+    textSelectionMode: externalTextSelectionMode,
+    onTextSelectionModeChange,
+    textLayerSpans,
     onFinish,
     onDiscard
 }: StudioPageEditorProps) {
@@ -143,7 +102,6 @@ export function StudioPageEditor({
         else setInternalTextEditor(resolved);
     }, [onTextEditorChange, textEditor]);
 
-    const [textLayerSpans, setTextLayerSpans] = useState<TextLayerSpan[]>([]);
     const [inlineUiState, setInlineUiState] = useState<InlineUiState>('idle');
 
     useEffect(() => {
@@ -153,31 +111,24 @@ export function StudioPageEditor({
     const [isPointerDown, setIsPointerDown] = useState(false);
     const [draftRect, setDraftRect] = useState<RectDraft | null>(null);
     const [draftStroke, setDraftStroke] = useState<StrokeDraft | null>(null);
-    const [isSelectMode, setIsSelectMode] = useState(true); // Default to select mode for better UX
-    const [activeTool, setActiveTool] = useState<StudioEditToolId>(externalActiveTool);
 
-    useEffect(() => {
-        setActiveTool(externalActiveTool);
-    }, [externalActiveTool]);
+    const [internalTextSelectionMode, setInternalTextSelectionMode] = useState<'line' | 'word'>('line');
+    const textSelectionMode = externalTextSelectionMode !== undefined ? externalTextSelectionMode : internalTextSelectionMode;
+    const setTextSelectionMode = (mode: 'line' | 'word') => {
+        if (onTextSelectionModeChange) onTextSelectionModeChange(mode);
+        else setInternalTextSelectionMode(mode);
+    };
+
+    const [internalActiveTool, setInternalActiveTool] = useState<StudioEditToolId>(externalActiveTool);
+    const activeTool = externalActiveTool !== undefined ? externalActiveTool : internalActiveTool;
+    const setActiveTool = (tool: StudioEditToolId) => {
+        if (onActiveToolChange) onActiveToolChange(tool);
+        else setInternalActiveTool(tool);
+    };
 
     const locale = useMemo(() => detectStudioEditLocale(), []);
     const ui = useMemo(() => getStudioEditMessages(locale), [locale]);
 
-    const selectedElement = useMemo(() => elements.find(el => el.id === selectedElementId), [elements, selectedElementId]);
-
-    // Load Text Layer
-    useEffect(() => {
-        const abortController = new AbortController();
-        void (async () => {
-            try {
-                const spans = await requestTextLayerSpans(runtime, page.fileId, page.pageIndex + 1, abortController.signal);
-                setTextLayerSpans(spans);
-            } catch (e) {
-                // Fallback or error handled silently
-            }
-        })();
-        return () => abortController.abort();
-    }, [page.fileId, page.pageIndex, runtime]);
 
     const applyElements = useCallback((next: EditElement[], shouldPushHistory = true) => {
         onElementsChange(next);
@@ -207,118 +158,55 @@ export function StudioPageEditor({
         applyElements(elements.map(item => (item.id === id && item.type === 'text') ? { ...item, text: normalizedValue } : item), false);
     }, [applyElements, elements]);
 
-    // Selection Logic for Text Layer
-    const selectTextSpanForEditing = useCallback((clickedSpan: TextLayerSpan) => {
-        const mergedLine = mergeTextLine(textLayerSpans, clickedSpan);
-        if (!mergedLine) {
-            setInlineUiState('idle');
-            return;
-        }
-
-        const { left, top, width: w, height: h } = mergedLine;
-        const existing = elements.find(el =>
-            el.type === 'text' && Math.abs(el.x - left) < 0.005 && Math.abs(el.y - top) < 0.005
-        );
-
-        if (existing) {
-            setSelectedElementId(existing.id);
-            setInlineUiState('selected');
-            startEditingText(existing as TextElement);
-            return;
-        }
-
-        const whiteout: RectElement = {
-            id: crypto.randomUUID(),
-            type: 'rect',
-            x: clamp01(left - 0.005), y: clamp01(top - 0.005),
-            w: w + 0.01, h: h + 0.01,
-            fill: '#ffffff', stroke: 'transparent', strokeWidth: 0, opacity: 1
-        };
-
-        const next: TextElement = {
-            id: crypto.randomUUID(), type: 'text', x: left, y: top, w: w + 0.02, h: h + 0.005,
-            text: mergedLine.text, color: '#000000',
-            fontSize: estimateInlineFontSizePt(mergedLine.fontSizeRatio, mergedLine.pageHeightPt ?? 842),
-            fontFamily: resolveFontFamily(mergedLine.fontName, mergedLine.fontFamilyHint),
-            fontWeight: 'normal', fontStyle: 'normal', textAlign: 'left', lineHeight: 1.2, letterSpacing: 0, opacity: 1,
-            ascent: mergedLine.ascentRatio ? mergedLine.ascentRatio * (mergedLine.pageHeightPt ?? 842) : undefined
-        };
-
-        applyElements([...elements, whiteout, next]);
-        setSelectedElementId(next.id);
-        startEditingText(next);
-    }, [applyElements, elements, startEditingText, textLayerSpans]);
+    const buildToolContext = (): ToolContext => ({
+        elements,
+        applyElements,
+        textLayerSpans,
+        isSelectMode,
+        textSelectionMode,
+        textEditor,
+        commitTextEditor,
+        startEditingText,
+        setSelectedElementId,
+        setInlineUiState,
+        uiMessages: ui,
+        draftRect,
+        setDraftRect,
+        draftStroke,
+        setDraftStroke,
+        isPointerDown,
+        setIsPointerDown
+    });
 
     // Pointer Handlers
     const onCanvasPointerDown = (event: React.PointerEvent) => {
-        if (textEditor) commitTextEditor();
         const rect = canvasRef.current!.getBoundingClientRect();
-        const x = clamp01((event.clientX - rect.left) / rect.width);
-        const y = clamp01((event.clientY - rect.top) / rect.height);
-        setIsPointerDown(true);
-
-        if (activeTool === 'text') {
-            const clickedSpan = findNearestTextSpan({ x, y }, textLayerSpans);
-            if (clickedSpan) {
-                // If we found a span, we ALWAYS select it if in select mode,
-                // or if we are in add mode but clicked close enough to an existing span (smart selection)
-                selectTextSpanForEditing(clickedSpan);
-            } else if (!isSelectMode) {
-                // Only add new text if explicitly in ADD mode and clicked empty space
-                const next: TextElement = {
-                    id: crypto.randomUUID(), type: 'text', x, y, w: 0.5, h: 0.06,
-                    text: ui.text, color: '#0f172a', fontSize: 18, fontFamily: 'sora',
-                    fontWeight: 'normal', fontStyle: 'normal', textAlign: 'left',
-                    lineHeight: 1.2, letterSpacing: 0, opacity: 1
-                };
-                applyElements([...elements, next]);
-                setSelectedElementId(next.id);
-                startEditingText(next);
-            }
-        } else if (activeTool === 'annotate') {
-            setDraftStroke({ points: [x, y] });
-        } else if (activeTool === 'shapes' || activeTool === 'whiteout') {
-            setDraftRect({ startX: x, startY: y, x, y, w: 0, h: 0 });
-        }
+        const worldPos = {
+            x: clamp01((event.clientX - rect.left) / rect.width),
+            y: clamp01((event.clientY - rect.top) / rect.height)
+        };
+        const tool = TOOLS[activeTool] ?? TOOLS['text'];
+        tool.onPointerDown(buildToolContext(), event, worldPos);
     };
 
     const onCanvasPointerMove = (event: React.PointerEvent) => {
-        if (!isPointerDown) return;
         const rect = canvasRef.current!.getBoundingClientRect();
-        const x = clamp01((event.clientX - rect.left) / rect.width);
-        const y = clamp01((event.clientY - rect.top) / rect.height);
-
-        if (draftStroke) {
-            setDraftStroke(prev => prev ? { points: [...prev.points, x, y] } : null);
-        } else if (draftRect) {
-            setDraftRect(prev => prev ? {
-                ...prev,
-                x: Math.min(prev.startX, x),
-                y: Math.min(prev.startY, y),
-                w: Math.abs(x - prev.startX),
-                h: Math.abs(y - prev.startY)
-            } : null);
-        }
+        const worldPos = {
+            x: clamp01((event.clientX - rect.left) / rect.width),
+            y: clamp01((event.clientY - rect.top) / rect.height)
+        };
+        const tool = TOOLS[activeTool] ?? TOOLS['text'];
+        tool.onPointerMove(buildToolContext(), event, worldPos);
     };
 
-    const onCanvasPointerUp = () => {
-        setIsPointerDown(false);
-        if (draftStroke && draftStroke.points.length >= 4) {
-            applyElements([...elements, {
-                id: crypto.randomUUID(), type: 'stroke', points: draftStroke.points,
-                color: '#2563eb', width: 2, opacity: 1
-            }]);
-        } else if (draftRect && draftRect.w > 0.002) {
-            applyElements([...elements, {
-                id: crypto.randomUUID(), type: 'rect', x: draftRect.x, y: draftRect.y,
-                w: draftRect.w, h: draftRect.h,
-                fill: activeTool === 'whiteout' ? '#ffffff' : 'transparent',
-                stroke: activeTool === 'whiteout' ? '#d1d5db' : '#2563eb',
-                strokeWidth: activeTool === 'whiteout' ? 1 : 2, opacity: 1
-            }]);
-        }
-        setDraftStroke(null);
-        setDraftRect(null);
+    const onCanvasPointerUp = (event: React.PointerEvent) => {
+        const rect = canvasRef.current!.getBoundingClientRect();
+        const worldPos = {
+            x: clamp01((event.clientX - rect.left) / rect.width),
+            y: clamp01((event.clientY - rect.top) / rect.height)
+        };
+        const tool = TOOLS[activeTool] ?? TOOLS['text'];
+        tool.onPointerUp(buildToolContext(), event, worldPos);
     };
 
     const handleElementAction = (id: string, action: 'delete' | 'duplicate' | 'update', patch?: any) => {
@@ -340,90 +228,19 @@ export function StudioPageEditor({
     return (
         <div
             ref={canvasRef}
-            className="studio-page-editor-container"
+            className="studio-page-editor-container studio-edit-canvas-content"
             style={{ width, height, position: 'relative' }}
             onPointerDown={onCanvasPointerDown}
             onPointerMove={onCanvasPointerMove}
             onPointerUp={onCanvasPointerUp}
+            data-is-select-mode={isSelectMode}
+            data-text-layer-len={textLayerSpans.length}
         >
-            {/* Built-in Toolbar */}
-            <div className="studio-page-editor-toolbar" style={{
-                position: 'absolute', top: 12, left: '50%', transform: 'translateX(-50%)',
-                zIndex: 100, display: 'flex', gap: 6, padding: '4px 6px',
-                background: 'rgba(15, 23, 42, 0.9)', border: '1px solid rgba(255,255,255,0.1)',
-                borderRadius: 12, backdropFilter: 'blur(8px)', pointerEvents: 'auto',
-                boxShadow: '0 8px 32px rgba(0,0,0,0.3)'
-            }}>
-                <button
-                    className={`studio-page-tool-btn ${activeTool === 'text' && isSelectMode ? 'active' : ''}`}
-                    onClick={(e) => { e.stopPropagation(); setActiveTool('text'); setIsSelectMode(true); }}
-                    style={toolBtnStyle(activeTool === 'text' && isSelectMode)}
-                    title={ui.selectText}
-                >
-                    <LinearIcon name="cursor" size={18} />
-                </button>
-                <button
-                    className={`studio-page-tool-btn ${activeTool === 'text' && !isSelectMode ? 'active' : ''}`}
-                    onClick={(e) => { e.stopPropagation(); setActiveTool('text'); setIsSelectMode(false); }}
-                    style={toolBtnStyle(activeTool === 'text' && !isSelectMode)}
-                    title={ui.text}
-                >
-                    <LinearIcon name="text" size={18} />
-                </button>
-                <div style={{ width: 1, height: 20, background: 'rgba(255,255,255,0.1)', margin: '0 4px' }} />
-                <button
-                    className={`studio-page-tool-btn ${activeTool === 'annotate' ? 'active' : ''}`}
-                    onClick={(e) => { e.stopPropagation(); setActiveTool('annotate'); }}
-                    style={toolBtnStyle(activeTool === 'annotate')}
-                    title={ui.annotate}
-                >
-                    <LinearIcon name="edit" size={18} />
-                </button>
-                <button
-                    className={`studio-page-tool-btn ${activeTool === 'shapes' ? 'active' : ''}`}
-                    onClick={(e) => { e.stopPropagation(); setActiveTool('shapes'); }}
-                    style={toolBtnStyle(activeTool === 'shapes')}
-                    title={ui.shapes}
-                >
-                    <LinearIcon name="shape" size={18} />
-                </button>
-                <button
-                    className={`studio-page-tool-btn ${activeTool === 'whiteout' ? 'active' : ''}`}
-                    onClick={(e) => { e.stopPropagation(); setActiveTool('whiteout'); }}
-                    style={toolBtnStyle(activeTool === 'whiteout')}
-                    title={ui.whiteout}
-                >
-                    <LinearIcon name="eraser" size={18} />
-                </button>
-                {(onFinish || onDiscard) && (
-                    <>
-                        <div style={{ width: 1, height: 20, background: 'rgba(255,255,255,0.1)', margin: '0 4px' }} />
-                        {onFinish && (
-                            <button
-                                className="studio-page-tool-btn is-success"
-                                onClick={(e) => { e.stopPropagation(); onFinish(); }}
-                                style={toolBtnStyle(false)}
-                                title="Finish and Save"
-                            >
-                                <LinearIcon name="check" size={18} />
-                            </button>
-                        )}
-                        {onDiscard && (
-                            <button
-                                className="studio-page-tool-btn is-danger"
-                                onClick={(e) => { e.stopPropagation(); onDiscard(); }}
-                                style={toolBtnStyle(false)}
-                                title="Cancel"
-                            >
-                                <LinearIcon name="x" size={18} />
-                            </button>
-                        )}
-                    </>
-                )}
-            </div>
 
-            {/* Transparent background layer for catching events */}
-            <div style={{ position: 'absolute', inset: 0, pointerEvents: 'auto' }} />
+            {/* Built-in Toolbar (Moved to StudioEditWorkspace) */}
+
+
+
 
             {/* Render Elements */}
             {elements.map(el => (
@@ -444,7 +261,7 @@ export function StudioPageEditor({
                     onPointerDown={(e) => { e.stopPropagation(); setSelectedElementId(el.id); }}
                 >
                     {el.type === 'text' && (
-                        <div style={{
+                        <div className="studio-edit-text" style={{
                             fontSize: el.fontSize, color: el.color, fontFamily: el.fontFamily,
                             fontWeight: el.fontWeight, fontStyle: el.fontStyle, textAlign: el.textAlign,
                             lineHeight: el.lineHeight, letterSpacing: el.letterSpacing,
@@ -462,6 +279,7 @@ export function StudioPageEditor({
                                     </span>
                                     <textarea
                                         autoFocus
+                                        className="studio-edit-textarea"
                                         value={textEditor.value}
                                         onChange={(e) => handleTextEditorChange(el.id, e.target.value)}
                                         style={{
@@ -482,15 +300,6 @@ export function StudioPageEditor({
                             border: `${el.strokeWidth}px solid ${el.stroke}`, opacity: el.opacity
                         }} />
                     )}
-                    {/* Floating Menu for selected element */}
-                    {selectedElementId === el.id && (
-                        <StudioFloatingMenu
-                            element={el}
-                            onUpdate={(patch) => handleElementAction(el.id, 'update', patch)}
-                            onDelete={() => handleElementAction(el.id, 'delete')}
-                            onDuplicate={() => handleElementAction(el.id, 'duplicate')}
-                        />
-                    )}
                 </div>
             ))}
 
@@ -502,6 +311,28 @@ export function StudioPageEditor({
                     border: '1px dashed #2563eb'
                 }} />
             )}
+
+            {/* Text Layer Highlights (always in DOM for test stability, opacity controlled) */}
+            {textLayerSpans.map((span, idx) => (
+                <div
+                    key={`span-${idx}`}
+                    className="studio-edit-text-highlight"
+                    data-testid="studio-edit-text-highlight"
+                    style={{
+                        position: 'absolute',
+                        left: `${span.xRatio * 100}%`,
+                        top: `${span.yRatio * 100}%`,
+                        width: `${span.widthRatio * 100}%`,
+                        height: `${span.heightRatio * 100}%`,
+                        border: isSelectMode ? '1px solid rgba(59, 130, 246, 0.4)' : '1px solid transparent',
+                        backgroundColor: isSelectMode ? 'rgba(59, 130, 246, 0.1)' : 'transparent',
+                        pointerEvents: isSelectMode ? 'auto' : 'none',
+                        zIndex: 100,
+                        visibility: (isSelectMode || textLayerSpans.length > 0) ? 'visible' : 'hidden',
+                        opacity: isSelectMode ? 1 : 0.01 // Minimal opacity for "visibility" but hidden to users
+                    }}
+                />
+            ))}
         </div>
     );
 }

@@ -90,7 +90,7 @@ export interface WorkerPdfTextLayerSpan {
   ascentRatio?: number;
 }
 
-export type WorkerStudioFontFamilyId = 'sora' | 'times' | 'mono';
+export type WorkerStudioFontFamilyId = 'sora' | 'times' | 'mono' | 'roboto';
 export type WorkerStudioTextAlign = 'left' | 'center' | 'right';
 
 export interface WorkerStudioTextEditElement {

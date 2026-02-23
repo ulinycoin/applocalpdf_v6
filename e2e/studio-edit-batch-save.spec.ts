@@ -60,7 +60,7 @@ test.describe('Studio edit batch save P1', () => {
 
       const [beforeFirst, beforeSecond] = await initialIds.jsonValue() as [string, string];
 
-      await page.getByRole('button', { name: 'Edit' }).click();
+      await page.getByRole('button', { name: 'Edit', exact: true }).click();
       await expect(page.locator('.studio-edit-shell')).toBeVisible({ timeout: 20000 });
 
       const sheet = page.locator('.studio-edit-canvas-content').first();
@@ -71,8 +71,8 @@ test.describe('Studio edit batch save P1', () => {
       }
       await sheet.click({
         position: {
-          x: Math.max(12, Math.floor(bounds.width * 0.42)),
-          y: Math.max(12, Math.floor(bounds.height * 0.45)),
+          x: Math.max(12, Math.floor(bounds.width * 0.15)),
+          y: Math.max(12, Math.floor(bounds.height * 0.12)),
         },
       });
 

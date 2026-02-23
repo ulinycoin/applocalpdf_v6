@@ -56,7 +56,7 @@ test.describe('Studio Edit Text', () => {
         return true;
       }, { timeout: 20000 });
 
-      const editButton = page.getByRole('button', { name: 'Edit' });
+      const editButton = page.getByRole('button', { name: 'Edit', exact: true });
       await expect(editButton).toBeEnabled({ timeout: 10000 });
       await editButton.click();
 

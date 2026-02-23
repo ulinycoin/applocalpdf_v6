@@ -1,6 +1,6 @@
 import type { PDFFont } from 'pdf-lib';
 
-export type FontFamilyId = 'sora' | 'times' | 'mono';
+export type FontFamilyId = 'sora' | 'times' | 'mono' | 'roboto';
 
 export interface TextLayerSpanLike {
   id: string;
@@ -39,6 +39,7 @@ const FONT_EXACT_MAP: Record<string, FontFamilyId> = {
   arial: 'sora',
   sans: 'sora',
   freesans: 'sora',
+  roboto: 'roboto', // Added
   timesroman: 'times',
   timesnewroman: 'times',
   times: 'times',
@@ -67,6 +68,9 @@ export function resolveFontFamily(fontName?: string, fontFamilyHint?: string): F
   for (const candidate of candidates) {
     if (FONT_EXACT_MAP[candidate]) {
       return FONT_EXACT_MAP[candidate];
+    }
+    if (candidate.includes('roboto')) { // Added
+      return 'roboto';
     }
     if (candidate.includes('courier') || candidate.includes('mono') || candidate.includes('code')) {
       return 'mono';
@@ -122,12 +126,19 @@ export function findNearestTextSpan(
 }
 
 export function mergeTextLine(spans: TextLayerSpanLike[], anchor: TextLayerSpanLike): MergedTextLine | null {
-  const lineThreshold = Math.max(0.0025, anchor.heightRatio * 0.55);
+  const lineThreshold = Math.max(0.0025, anchor.heightRatio * 0.4);
+  const anchorBaseline = anchor.yRatio + (anchor.ascentRatio ?? anchor.heightRatio * 0.8);
+
   const lineSpans = spans
-    .filter((candidate) => (
-      Math.abs(candidate.yRatio - anchor.yRatio) <= lineThreshold
-      || Math.abs((candidate.yRatio + candidate.heightRatio) - (anchor.yRatio + anchor.heightRatio)) <= lineThreshold
-    ))
+    .filter((candidate) => {
+      const candidateBaseline = candidate.yRatio + (candidate.ascentRatio ?? candidate.heightRatio * 0.8);
+      // Group by baseline if both have it, otherwise fallback to top/bottom match
+      const baselineMatch = Math.abs(candidateBaseline - anchorBaseline) <= lineThreshold;
+      const topMatch = Math.abs(candidate.yRatio - anchor.yRatio) <= lineThreshold;
+      const bottomMatch = Math.abs((candidate.yRatio + candidate.heightRatio) - (anchor.yRatio + anchor.heightRatio)) <= lineThreshold;
+
+      return baselineMatch || (topMatch && bottomMatch);
+    })
     .sort((a, b) => a.xRatio - b.xRatio);
 
   if (lineSpans.length === 0) {
@@ -145,8 +156,13 @@ export function mergeTextLine(spans: TextLayerSpanLike[], anchor: TextLayerSpanL
     if (i > 0) {
       const prev = lineSpans[i - 1];
       const gap = current.xRatio - (prev.xRatio + prev.widthRatio);
-      if (gap > Math.max(0.0015, current.heightRatio * 0.2) && !mergedText.endsWith(' ') && !current.text.startsWith(' ')) {
-        mergedText += ' ';
+      // Improved gap detection: if the gap is significantly larger than typical space
+      if (gap > Math.max(0.0015, current.heightRatio * 0.15)) {
+        if (!mergedText.endsWith(' ') && !current.text.startsWith(' ')) {
+          // If gap is very large (e.g. 2+ character widths), maybe we should add more spaces?
+          // For now, at least ensure one space is there.
+          mergedText += ' ';
+        }
       }
     }
     mergedText += current.text;
@@ -204,18 +220,24 @@ export function fitTextToWidth(
 
   const fitAtSize = (size: number) => {
     const baseWidth = font.widthOfTextAtSize(safeText, size);
-    if (baseWidth <= targetWidth || safeText.length <= 1) {
+    // Add a small 2% tolerance to targetWidth to prevent aggressive compression
+    // when the browser's rendered width slightly exceeds the PDF-computed width.
+    const effectiveTargetWidth = targetWidth * 1.02;
+
+    if (baseWidth <= effectiveTargetWidth || safeText.length <= 1) {
       return { size, tracking: 0, width: baseWidth };
     }
-    const minTracking = -0.08 * size;
-    const neededTracking = (targetWidth - baseWidth) / (safeText.length - 1);
+    const minTracking = -0.05 * size; // Less aggressive negative tracking limit
+    const neededTracking = (effectiveTargetWidth - baseWidth) / (safeText.length - 1);
     const nextTracking = clamp(neededTracking, minTracking, 0);
     const width = measureTextWidthWithTracking(font, safeText, size, nextTracking);
     return { size, tracking: nextTracking, width };
   };
 
   let fitted = fitAtSize(fontSize);
-  while (fitted.width > targetWidth && fontSize > minFontSize) {
+  // Compare against effective target width for overflow loop too
+  const effectiveTargetWidth = targetWidth * 1.02;
+  while (fitted.width > effectiveTargetWidth && fontSize > minFontSize) {
     fontSize = Math.max(minFontSize, fontSize - 0.5);
     fitted = fitAtSize(fontSize);
   }

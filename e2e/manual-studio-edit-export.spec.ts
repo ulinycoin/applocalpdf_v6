@@ -41,7 +41,7 @@ test('manual export: save original and edited pdf in project root', async ({ pag
 
   const beforeFileId = await initialFileId.jsonValue() as string;
 
-  await page.getByRole('button', { name: 'Edit' }).click();
+  await page.getByRole('button', { name: 'Edit', exact: true }).click();
   await expect(page.locator('.studio-edit-shell')).toBeVisible({ timeout: 20000 });
 
   const selectTextBtn = page.locator('.studio-edit-toolbar .studio-edit-tool-btn').first();

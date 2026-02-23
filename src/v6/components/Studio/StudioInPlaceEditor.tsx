@@ -2,7 +2,8 @@ import { useEffect, useRef, useState, useMemo } from 'react';
 import type Konva from 'konva';
 import { useStudioStore, StudioState, PageItem } from './studio-store';
 import { StudioPageEditor } from './StudioPageEditor';
-import { EditElement, InlineUiState, TextEditorState } from './editor-types';
+import { DraggableFloatingMenu } from './StudioDraggableFloatingMenu';
+import { EditElement, InlineUiState, TextEditorState, TextLayerSpan } from './editor-types';
 import { usePlatform } from '../../../app/react/platform-context';
 import type { IWorkerCommand, WorkerStudioEditElement } from '../../../core/public/contracts';
 import { defaultFilePreviewService } from '../../preview/preview-service';
@@ -25,6 +26,9 @@ export function StudioInPlaceEditor({ stageRef }: StudioInPlaceEditorProps) {
     const [overlayRect, setOverlayRect] = useState<{ x: number, y: number, w: number, h: number, scale: number } | null>(null);
     const [isSaving, setIsSaving] = useState(false);
     const [message, setMessage] = useState<string | null>(null);
+    const [textLayerSpans, setTextLayerSpans] = useState<TextLayerSpan[]>([]);
+    const [isSelectMode, setIsSelectMode] = useState(false);
+    const [selectedElementId, setSelectedElementId] = useState<string | null>(null);
 
     const locale = useMemo(() => detectStudioEditLocale(), []);
     const ui = useMemo(() => getStudioEditMessages(locale), [locale]);
@@ -66,6 +70,31 @@ export function StudioInPlaceEditor({ stageRef }: StudioInPlaceEditorProps) {
         rafId = requestAnimationFrame(sync);
         return () => cancelAnimationFrame(rafId);
     }, [activeEditPageId, stageRef]);
+
+    // Fetch text layer spans for in-place editor
+    useEffect(() => {
+        if (!activePage) return;
+        const abortController = new AbortController();
+        void (async () => {
+            try {
+                const command: IWorkerCommand = {
+                    id: crypto.randomUUID(),
+                    type: 'COMMAND',
+                    payload: {
+                        type: 'GET_PDF_TEXT_LAYER',
+                        payload: { fileId: activePage.fileId, pageNumber: activePage.pageIndex + 1 },
+                    },
+                };
+                const finalEvent = await runtime.workerOrchestrator.dispatch(command, undefined, abortController.signal);
+                if (finalEvent.payload.type === 'TEXT_LAYER_RESULT') {
+                    setTextLayerSpans(finalEvent.payload.payload.spans);
+                }
+            } catch (e) {
+                // Silent catch
+            }
+        })();
+        return () => abortController.abort();
+    }, [activePage, runtime]);
 
     const handleSave = async () => {
         if (!activePage || isSaving) return;
@@ -130,11 +159,42 @@ export function StudioInPlaceEditor({ stageRef }: StudioInPlaceEditorProps) {
                     width={overlayRect.w}
                     height={overlayRect.h}
                     activeTool={editSession?.activeTool ?? 'text'}
+                    onActiveToolChange={(newTool) => {
+                        // Optionally sync back to session if needed
+                    }}
+                    isSelectMode={isSelectMode}
+                    setIsSelectMode={setIsSelectMode}
+                    textLayerSpans={textLayerSpans}
                     elements={elements}
                     onElementsChange={setElements}
+                    selectedElementId={selectedElementId}
+                    onSelectedElementIdChange={setSelectedElementId}
                     onFinish={handleSave}
                     onDiscard={handleCancel}
                 />
+
+                {selectedElementId && elements.find(e => e.id === selectedElementId) && (
+                    <DraggableFloatingMenu
+                        element={elements.find(e => e.id === selectedElementId)!}
+                        onUpdate={(patch) => {
+                            setElements(els => els.map(el => el.id === selectedElementId ? { ...el, ...patch } as any : el));
+                        }}
+                        onDelete={() => {
+                            setElements(els => els.filter(el => el.id !== selectedElementId));
+                            setSelectedElementId(null);
+                        }}
+                        onDuplicate={() => {
+                            const original = elements.find(e => e.id === selectedElementId);
+                            if (!original) return;
+                            const newId = crypto.randomUUID();
+                            const x = 'x' in original ? original.x + 0.05 : 0.05;
+                            const y = 'y' in original ? original.y + 0.05 : 0.05;
+                            setElements(els => [...els, { ...original, id: newId, x, y } as any]);
+                            setSelectedElementId(newId);
+                        }}
+                        onDeselect={() => setSelectedElementId(null)}
+                    />
+                )}
 
                 {message && <div className="studio-inplace-error">{message}</div>}
             </div>

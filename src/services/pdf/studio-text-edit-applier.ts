@@ -1,4 +1,5 @@
 import { PDFDocument, StandardFonts, rgb, type PDFFont } from 'pdf-lib';
+import fontkit from '@pdf-lib/fontkit';
 import type { WorkerStudioEditElement, WorkerStudioFontFamilyId } from '../../core/types/contracts';
 import { parsePdfTextOperators } from './pdf-content-stream-parser';
 
@@ -33,18 +34,21 @@ function fitTextToWidth(
 
   const fitAtSize = (size: number) => {
     const baseWidth = measureTextWidthWithTracking(font, safeText, size, preferredTracking);
-    if (baseWidth <= targetWidth || safeText.length <= 1) {
+    // Use 2% tolerance to match client-side calculation
+    const effectiveTargetWidth = targetWidth * 1.02;
+    if (baseWidth <= effectiveTargetWidth || safeText.length <= 1) {
       return { size, tracking: preferredTracking, width: baseWidth };
     }
-    const minTracking = -0.08 * size;
-    const neededTracking = (targetWidth - baseWidth) / (safeText.length - 1);
+    const minTracking = -0.05 * size;
+    const neededTracking = (effectiveTargetWidth - baseWidth) / (safeText.length - 1);
     const nextTracking = preferredTracking + clamp(neededTracking, minTracking, 0);
     const width = measureTextWidthWithTracking(font, safeText, size, nextTracking);
     return { size, tracking: nextTracking, width };
   };
 
   let fitted = fitAtSize(fontSize);
-  while (fitted.width > targetWidth && fontSize > minFontSize) {
+  const effectiveTargetWidth = targetWidth * 1.02;
+  while (fitted.width > effectiveTargetWidth && fontSize > minFontSize) {
     fontSize = Math.max(minFontSize, fontSize - 0.5);
     fitted = fitAtSize(fontSize);
   }
@@ -130,6 +134,10 @@ function canEncodeAsLatin1(input: string): boolean {
     }
   }
   return true;
+}
+
+function containsNonLatin1(input: string): boolean {
+  return !canEncodeAsLatin1(input);
 }
 
 function encodeLatin1(input: string): Uint8Array {
@@ -466,8 +474,29 @@ export async function applyStudioTextEditsToPdfBytes(params: {
   const pageWidth = page.getWidth();
   const pageHeight = page.getHeight();
 
+  pdf.registerFontkit(fontkit);
+
   const fontCache = new Map<string, PDFFont>();
   const getFont = async (family: WorkerStudioFontFamilyId, weight: 'normal' | 'bold', style: 'normal' | 'italic') => {
+    if (family === 'roboto') {
+      const key = `roboto-${weight}-${style}`;
+      const cached = fontCache.get(key);
+      if (cached) return cached;
+
+      try {
+        const url = new URL('/fonts/Roboto-Regular.ttf', typeof location !== 'undefined' ? location.origin : 'http://localhost:4173').href;
+        const fontBytes = await fetch(url).then(res => res.arrayBuffer());
+        const embedded = await pdf.embedFont(fontBytes);
+        fontCache.set(key, embedded);
+        return embedded;
+      } catch (err) {
+        console.warn('Failed to load Roboto TTF, falling back to Helvetica', err);
+        const fallback = await pdf.embedFont(StandardFonts.Helvetica);
+        fontCache.set(key, fallback);
+        return fallback;
+      }
+    }
+
     const fontName = getPdfFontName(family, weight, style);
     const key = String(fontName);
     const cached = fontCache.get(key);
@@ -493,9 +522,17 @@ export async function applyStudioTextEditsToPdfBytes(params: {
       if (consumedTextIds.has(element.id)) {
         continue;
       }
-      const font = await getFont(element.fontFamily, element.fontWeight, element.fontStyle);
-      const { r, g, b } = hexToRgb(element.color);
       const line = sanitizeInlineText(element.text || ' ');
+      const needsMultiLanguage = containsNonLatin1(line);
+
+      let finalFamily = element.fontFamily;
+      if (needsMultiLanguage && finalFamily !== 'roboto') {
+        console.info(`Cyrillic detected in element ${element.id}, forcing Roboto fallback for encoding compatibility.`);
+        finalFamily = 'roboto';
+      }
+
+      const font = await getFont(finalFamily, element.fontWeight, element.fontStyle);
+      const { r, g, b } = hexToRgb(element.color);
       const blockWidth = element.w * pageWidth;
       const fit = fitTextToWidth(font, line, blockWidth, element.fontSize, element.letterSpacing ?? 0, 8);
       overflowDetected ||= fit.overflow;
@@ -525,7 +562,8 @@ export async function applyStudioTextEditsToPdfBytes(params: {
         });
       } else {
         let cursor = x;
-        for (const char of line) {
+        for (let i = 0; i < line.length; i += 1) {
+          const char = line[i]!;
           page.drawText(char, {
             x: cursor,
             y,
@@ -534,7 +572,7 @@ export async function applyStudioTextEditsToPdfBytes(params: {
             color: rgb(r, g, b),
             opacity: element.opacity,
           });
-          cursor += font.widthOfTextAtSize(char, fit.fontSize) + fit.tracking;
+          cursor += font.widthOfTextAtSize(char, fit.fontSize) + (i < line.length - 1 ? fit.tracking : 0);
         }
       }
       continue;

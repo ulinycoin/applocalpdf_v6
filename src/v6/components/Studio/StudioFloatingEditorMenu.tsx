@@ -1,3 +1,4 @@
+import { useState, useEffect, useRef } from 'react';
 import { LinearIcon } from '../icons/linear-icon';
 import { clamp, type FontFamilyId } from './inline-text-utils';
 import { EditElement, TextElement, TextAlignId } from './editor-types';
@@ -25,8 +26,52 @@ export function StudioFloatingMenu({ element, onUpdate, onDelete, onDuplicate }:
 
     const textElem = element as TextElement;
 
+    const [offset, setOffset] = useState({ x: 0, y: 0 });
+    const isDraggingRef = useRef(false);
+    const startPosRef = useRef({ x: 0, y: 0 });
+
+    useEffect(() => {
+        const onPointerMove = (e: PointerEvent) => {
+            if (!isDraggingRef.current) return;
+            setOffset(prev => ({
+                x: prev.x + (e.clientX - startPosRef.current.x),
+                y: prev.y + (e.clientY - startPosRef.current.y)
+            }));
+            startPosRef.current = { x: e.clientX, y: e.clientY };
+        };
+        const onPointerUp = () => {
+            isDraggingRef.current = false;
+        };
+        window.addEventListener('pointermove', onPointerMove);
+        window.addEventListener('pointerup', onPointerUp);
+        return () => {
+            window.removeEventListener('pointermove', onPointerMove);
+            window.removeEventListener('pointerup', onPointerUp);
+        };
+    }, []);
+
+    const handleDragStart = (e: React.PointerEvent) => {
+        e.stopPropagation();
+        isDraggingRef.current = true;
+        startPosRef.current = { x: e.clientX, y: e.clientY };
+        (e.target as HTMLElement).setPointerCapture(e.pointerId);
+    };
+
     return (
-        <div className="studio-floating-menu">
+        <div
+            className="studio-floating-menu"
+            onPointerDown={(e) => e.stopPropagation()}
+            style={{ transform: `translate(${offset.x}px, ${offset.y}px)` }}
+        >
+            <div
+                className="studio-floating-drag-handle"
+                onPointerDown={handleDragStart}
+                title="Drag menu"
+            >
+                <LinearIcon name="menu" size={16} />
+            </div>
+            <div className="studio-floating-divider" />
+
             <div className="studio-floating-group">
                 <button
                     type="button"
@@ -56,9 +101,10 @@ export function StudioFloatingMenu({ element, onUpdate, onDelete, onDuplicate }:
                     value={textElem.fontFamily}
                     onChange={(e) => onUpdate({ fontFamily: e.target.value as FontFamilyId })}
                 >
-                    <option value="sora">Sora</option>
-                    <option value="times">Times</option>
-                    <option value="mono">Mono</option>
+                    <option value="roboto" style={{ fontWeight: 600 }}>Roboto (Кириллица+)</option>
+                    <option value="sora">Helvetica</option>
+                    <option value="times">Times New Roman</option>
+                    <option value="mono">Courier</option>
                 </select>
                 <div className="studio-floating-input-wrap" title="Font size">
                     <input
@@ -74,6 +120,7 @@ export function StudioFloatingMenu({ element, onUpdate, onDelete, onDuplicate }:
                 <div className="studio-floating-input-wrap" title="Line height">
                     <input
                         type="number"
+                        data-testid="studio-floating-line-height"
                         className="studio-floating-input"
                         value={textElem.lineHeight}
                         min={0.8}
@@ -85,6 +132,7 @@ export function StudioFloatingMenu({ element, onUpdate, onDelete, onDuplicate }:
                 <div className="studio-floating-input-wrap" title="Letter spacing">
                     <input
                         type="number"
+                        data-testid="studio-floating-letter-spacing"
                         className="studio-floating-input"
                         value={textElem.letterSpacing}
                         min={-2}

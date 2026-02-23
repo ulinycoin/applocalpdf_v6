@@ -60,7 +60,7 @@ test.describe('Studio inline text edit', () => {
         return true;
       }, { timeout: 20000 });
 
-      await page.getByRole('button', { name: 'Edit' }).click();
+      await page.getByRole('button', { name: 'Edit', exact: true }).click();
       await expect(page.locator('.studio-edit-shell')).toBeVisible({ timeout: 20000 });
 
       const selectTextBtn = page.locator('.studio-edit-toolbar .studio-edit-tool-btn').first();
@@ -119,7 +119,7 @@ test.describe('Studio inline text edit', () => {
         return true;
       }, { timeout: 20000 });
 
-      await page.getByRole('button', { name: 'Edit' }).click();
+      await page.getByRole('button', { name: 'Edit', exact: true }).click();
       await expect(page.locator('.studio-edit-shell')).toBeVisible({ timeout: 20000 });
 
       const selectTextBtn = page.locator('.studio-edit-toolbar .studio-edit-tool-btn').first();
