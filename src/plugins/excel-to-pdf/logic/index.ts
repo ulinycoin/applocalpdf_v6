@@ -428,21 +428,15 @@ async function loadFontBytes(url: string): Promise<Uint8Array> {
     if (!match) {
       throw new Error('Unsupported data URL font payload');
     }
-    if (typeof atob === 'function') {
-      const binary = atob(match[1]);
-      const bytes = new Uint8Array(binary.length);
-      for (let i = 0; i < binary.length; i += 1) {
-        bytes[i] = binary.charCodeAt(i);
-      }
-      return bytes;
+    if (typeof atob !== 'function') {
+      throw new Error('Base64 decoder is unavailable in current runtime');
     }
-    const { Buffer } = await import('node:buffer');
-    return new Uint8Array(Buffer.from(match[1], 'base64'));
-  }
-  if (/^(\/|file:)/i.test(url)) {
-    const { readFile } = await import('node:fs/promises');
-    const normalizedPath = url.startsWith('file:') ? new URL(url) : url;
-    return new Uint8Array(await readFile(normalizedPath));
+    const binary = atob(match[1]);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i += 1) {
+      bytes[i] = binary.charCodeAt(i);
+    }
+    return bytes;
   }
   const response = await fetch(url);
   if (!response.ok) {
@@ -473,21 +467,6 @@ async function resolveNotoFontBytes(): Promise<{ latinBytes: Uint8Array; cyrilli
     return {
       latinBytes: await loadFontBytes(latinUrl.default),
       cyrillicBytes: await loadFontBytes(cyrillicUrl.default),
-    };
-  } catch {
-    // Try Node resolution below.
-  }
-
-  try {
-    const { createRequire } = await import('node:module');
-    const require = createRequire(import.meta.url);
-    const [latinPath, cyrillicPath] = await Promise.all([
-      require.resolve('@fontsource/noto-sans/files/noto-sans-latin-400-normal.woff'),
-      require.resolve('@fontsource/noto-sans/files/noto-sans-cyrillic-400-normal.woff'),
-    ]);
-    return {
-      latinBytes: await loadFontBytes(latinPath),
-      cyrillicBytes: await loadFontBytes(cyrillicPath),
     };
   } catch {
     return null;

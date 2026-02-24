@@ -3064,6 +3064,7 @@ textarea:focus-visible {
   grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   align-items: center;
   gap: 0.72rem;
+  isolation: isolate;
 }
 
 .studio-top-nav-left,
@@ -3241,6 +3242,8 @@ textarea:focus-visible {
   box-shadow: var(--shadow-md);
   padding: 1rem;
   overflow: auto;
+  isolation: isolate;
+  contain: paint;
 }
 
 @media (max-width: 980px) {
@@ -3335,6 +3338,12 @@ textarea:focus-visible {
   box-shadow: 0 16px 28px rgba(6, 12, 18, 0.26);
 }
 
+.studio-edit-canvas-surface {
+  isolation: isolate;
+  contain: paint;
+  backface-visibility: hidden;
+}
+
 .studio-edit-preview-image {
   width: 100%;
   height: auto;
@@ -3366,6 +3375,35 @@ textarea:focus-visible {
 .studio-edit-tool-btn:disabled {
   opacity: 0.45;
   cursor: not-allowed;
+}
+
+.studio-edit-btn-cancel,
+.studio-edit-btn-apply {
+  border-radius: 8px;
+  border: 1px solid rgba(148, 163, 184, 0.38);
+  background: rgba(15, 23, 42, 0.62);
+  color: rgba(226, 232, 240, 0.96);
+  font-weight: 600;
+  transition: border-color 140ms ease, background-color 140ms ease, color 140ms ease;
+}
+
+.studio-edit-btn-cancel:hover:not(:disabled) {
+  border-color: rgba(148, 163, 184, 0.56);
+  background: rgba(30, 41, 59, 0.78);
+}
+
+.studio-edit-btn-apply:hover:not(:disabled) {
+  border-color: rgba(34, 197, 94, 0.95);
+  filter: brightness(1.04);
+}
+
+.studio-edit-btn-cancel:disabled,
+.studio-edit-btn-apply:disabled {
+  background: rgba(15, 23, 42, 0.42);
+  border-color: rgba(100, 116, 139, 0.35);
+  color: rgba(148, 163, 184, 0.72);
+  cursor: not-allowed;
+  filter: none;
 }
 
 .studio-edit-apply-btn {
@@ -3479,6 +3517,46 @@ textarea:focus-visible {
   opacity: 1;
 }
 
+.studio-edit-bottom-save-wrap {
+  position: fixed;
+  left: 50%;
+  bottom: 0;
+  transform: translateX(-50%);
+  z-index: 400;
+  pointer-events: none;
+  padding: 0 0 10px;
+  padding-bottom: max(10px, env(safe-area-inset-bottom, 0px));
+}
+
+.studio-edit-fixed-save-btn {
+  pointer-events: auto;
+  min-width: 180px;
+  padding: 10px 28px;
+  font-size: 0.95rem;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #22c55e, #16a34a);
+  border: 1px solid #4ade80;
+  color: #ecfdf5;
+  box-shadow: 0 12px 28px rgba(5, 46, 22, 0.45), 0 0 0 1px rgba(74, 222, 128, 0.26);
+}
+
+.studio-edit-fixed-save-btn:hover:not(:disabled) {
+  background: linear-gradient(135deg, #34d399, #16a34a);
+  border-color: #86efac;
+}
+
+.studio-edit-fixed-save-btn:focus-visible {
+  outline: 2px solid #86efac;
+  outline-offset: 2px;
+}
+
+.studio-edit-fixed-save-btn:disabled {
+  background: rgba(15, 23, 42, 0.42);
+  border-color: rgba(100, 116, 139, 0.35);
+  color: rgba(148, 163, 184, 0.72);
+  box-shadow: none;
+}
+
 @keyframes slideInRight {
   from {
     opacity: 0;
@@ -3488,6 +3566,14 @@ textarea:focus-visible {
   to {
     opacity: 1;
     transform: translateX(0);
+  }
+}
+
+@media (max-width: 760px) {
+  .studio-edit-fixed-save-btn {
+    min-width: 148px;
+    padding: 9px 22px;
+    font-size: 0.9rem;
   }
 }
 

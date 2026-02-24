@@ -5,27 +5,18 @@ import type { EditorToolId } from '../editor-types';
 interface StudioEditToolbarProps {
     ui: any;
     tool: EditorToolId;
-    isSelectMode: boolean;
     onSelectTool: (tool: EditorToolId) => void;
-    onSetIsSelectMode: (val: boolean) => void;
 }
 
-export function StudioEditToolbar({ ui, tool, isSelectMode, onSelectTool, onSetIsSelectMode }: StudioEditToolbarProps) {
+export function StudioEditToolbar({ ui, tool, onSelectTool }: StudioEditToolbarProps) {
     return (
         <div className="studio-editor-left-toolbar" style={{
             display: 'flex', flexDirection: 'column', gap: 12, padding: '12px 6px',
             pointerEvents: 'auto'
         }}>
             <button
-                className={`studio-edit-tool-btn ${tool === 'text' && isSelectMode ? 'active' : ''}`}
-                onClick={() => { onSelectTool('text'); onSetIsSelectMode(true); }}
-                title={ui.selectText}
-            >
-                <LinearIcon name="cursor" size={18} />
-            </button>
-            <button
-                className={`studio-edit-tool-btn ${tool === 'text' && !isSelectMode ? 'active' : ''}`}
-                onClick={() => { onSelectTool('text'); onSetIsSelectMode(false); }}
+                className={`studio-edit-tool-btn ${tool === 'text' ? 'active' : ''}`}
+                onClick={() => { onSelectTool('text'); }}
                 title={ui.text}
             >
                 <LinearIcon name="text" size={18} />

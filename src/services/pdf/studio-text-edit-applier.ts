@@ -136,8 +136,43 @@ function canEncodeAsLatin1(input: string): boolean {
   return true;
 }
 
-function containsNonLatin1(input: string): boolean {
-  return !canEncodeAsLatin1(input);
+function containsArabic(input: string): boolean {
+  return /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF]/u.test(input);
+}
+
+function containsCjk(input: string): boolean {
+  return /[\u3040-\u30FF\u3400-\u4DBF\u4E00-\u9FFF\uF900-\uFAFF\uAC00-\uD7AF]/u.test(input);
+}
+
+function containsDevanagari(input: string): boolean {
+  return /[\u0900-\u097F]/u.test(input);
+}
+
+function replaceUnsupportedChars(input: string): string {
+  return input.replace(/[^\u0000-\u00FF]/gu, '?');
+}
+
+function canFontEncodeText(font: PDFFont, text: string): boolean {
+  try {
+    font.encodeText(text || ' ');
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function isAutoWhiteoutRect(element: WorkerStudioEditElement): boolean {
+  if (element.type !== 'rect') {
+    return false;
+  }
+  const fill = String(element.fill || '').trim().toLowerCase();
+  const stroke = String(element.stroke || '').trim().toLowerCase();
+  return (
+    (fill === '#ffffff' || fill === '#fff')
+    && (stroke === 'transparent' || stroke === '#000000' || stroke === '#ffffff' || stroke === '#fff')
+    && (element.strokeWidth ?? 0) <= 0.001
+    && (element.opacity ?? 1) >= 0.99
+  );
 }
 
 function encodeLatin1(input: string): Uint8Array {
@@ -393,14 +428,17 @@ async function tryApplyTrueReplaceSingleTextOperator(params: {
   const decodedByStream: Array<{ index: number; content: string; operators: ReturnType<typeof parsePdfTextOperators> }> = [];
   for (const entry of streamEntries) {
     const decodedContent = await decodePageStreamToLatin1(entry.stream);
-    if (!decodedContent) {
-      return { applied: false, reason: 'STREAM_DECODE_FAILED' };
+    if (decodedContent === null) {
+      continue;
     }
     decodedByStream.push({
       index: entry.index,
       content: decodedContent,
       operators: parsePdfTextOperators(decodedContent),
     });
+  }
+  if (decodedByStream.length === 0) {
+    return { applied: false, reason: 'STREAM_DECODE_FAILED' };
   }
 
   const candidates = decodedByStream.flatMap((entry) => entry.operators.map((operator) => ({
@@ -477,26 +515,30 @@ export async function applyStudioTextEditsToPdfBytes(params: {
   pdf.registerFontkit(fontkit);
 
   const fontCache = new Map<string, PDFFont>();
-  const getFont = async (family: WorkerStudioFontFamilyId, weight: 'normal' | 'bold', style: 'normal' | 'italic') => {
-    if (family === 'roboto') {
-      const key = `roboto-${weight}-${style}`;
-      const cached = fontCache.get(key);
-      if (cached) return cached;
-
+  const fontBytesCache = new Map<string, ArrayBuffer | null>();
+  const toAbsoluteUrl = (path: string) => new URL(path, typeof location !== 'undefined' ? location.origin : 'http://localhost:4173').href;
+  const fetchFontBytes = async (key: string, candidates: string[]) => {
+    if (fontBytesCache.has(key)) {
+      return fontBytesCache.get(key) ?? null;
+    }
+    for (const candidate of candidates) {
       try {
-        const url = new URL('/fonts/Roboto-Regular.ttf', typeof location !== 'undefined' ? location.origin : 'http://localhost:4173').href;
-        const fontBytes = await fetch(url).then(res => res.arrayBuffer());
-        const embedded = await pdf.embedFont(fontBytes);
-        fontCache.set(key, embedded);
-        return embedded;
-      } catch (err) {
-        console.warn('Failed to load Roboto TTF, falling back to Helvetica', err);
-        const fallback = await pdf.embedFont(StandardFonts.Helvetica);
-        fontCache.set(key, fallback);
-        return fallback;
+        const response = await fetch(toAbsoluteUrl(candidate));
+        if (!response.ok) {
+          continue;
+        }
+        const bytes = await response.arrayBuffer();
+        fontBytesCache.set(key, bytes);
+        return bytes;
+      } catch {
+        // Try next candidate.
       }
     }
+    fontBytesCache.set(key, null);
+    return null;
+  };
 
+  const getStandardFont = async (family: WorkerStudioFontFamilyId, weight: 'normal' | 'bold', style: 'normal' | 'italic') => {
     const fontName = getPdfFontName(family, weight, style);
     const key = String(fontName);
     const cached = fontCache.get(key);
@@ -508,14 +550,184 @@ export async function applyStudioTextEditsToPdfBytes(params: {
     return embedded;
   };
 
+  const getEmbeddedFontFromFile = async (key: string, candidates: string[]): Promise<PDFFont | null> => {
+    const cachedFont = fontCache.get(key);
+    if (cachedFont) {
+      return cachedFont;
+    }
+    const fontBytes = await fetchFontBytes(key, candidates);
+    if (!fontBytes) {
+      return null;
+    }
+    try {
+      const embedded = await pdf.embedFont(fontBytes, { subset: true });
+      fontCache.set(key, embedded);
+      return embedded;
+    } catch {
+      return null;
+    }
+  };
+
+  const getNotoSansDevanagariFont = async (): Promise<PDFFont | null> => {
+    const key = 'noto-sans-devanagari-400';
+    const cached = fontCache.get(key);
+    if (cached) {
+      return cached;
+    }
+    try {
+      const module = await import('@fontsource/noto-sans/files/noto-sans-devanagari-400-normal.woff?url') as { default: string };
+      const response = await fetch(module.default);
+      if (!response.ok) {
+        return null;
+      }
+      const bytes = await response.arrayBuffer();
+      const embedded = await pdf.embedFont(bytes, { subset: true });
+      fontCache.set(key, embedded);
+      return embedded;
+    } catch {
+      return null;
+    }
+  };
+
+  const getNotoSansLatinFont = async (): Promise<PDFFont | null> => {
+    const key = 'noto-sans-latin-400';
+    const cached = fontCache.get(key);
+    if (cached) {
+      return cached;
+    }
+    try {
+      const module = await import('@fontsource/noto-sans/files/noto-sans-latin-400-normal.woff?url') as { default: string };
+      const response = await fetch(module.default);
+      if (!response.ok) {
+        return null;
+      }
+      const bytes = await response.arrayBuffer();
+      const embedded = await pdf.embedFont(bytes, { subset: true });
+      fontCache.set(key, embedded);
+      return embedded;
+    } catch {
+      return null;
+    }
+  };
+
+  const getPreferredFontCandidates = async (
+    family: WorkerStudioFontFamilyId,
+    weight: 'normal' | 'bold',
+    style: 'normal' | 'italic',
+    text: string,
+  ): Promise<PDFFont[]> => {
+    const candidates: PDFFont[] = [];
+    const addUnique = (font: PDFFont | null) => {
+      if (font && !candidates.includes(font)) {
+        candidates.push(font);
+      }
+    };
+
+    if (family === 'roboto') {
+      addUnique(await getEmbeddedFontFromFile('roboto-regular', ['/fonts/Roboto-Regular.ttf']));
+    } else if (family === 'noto') {
+      addUnique(await getNotoSansLatinFont());
+    } else if (family === 'noto-arabic') {
+      addUnique(await getEmbeddedFontFromFile('noto-arabic-regular', [
+        '/fonts/NotoSansArabic-Regular.ttf',
+        '/fonts/NotoNaskhArabic-Regular.ttf',
+      ]));
+    } else if (family === 'noto-cjk') {
+      addUnique(await getEmbeddedFontFromFile('noto-cjk-regular', [
+        '/fonts/NotoSansSC-Regular.otf',
+        '/fonts/NotoSansSC-Regular.ttf',
+        '/fonts/NotoSansJP-Regular.otf',
+        '/fonts/NotoSansJP-Regular.ttf',
+        '/fonts/NotoSansKR-Regular.otf',
+        '/fonts/NotoSansKR-Regular.ttf',
+      ]));
+    } else if (family === 'noto-devanagari') {
+      addUnique(await getNotoSansDevanagariFont());
+    } else {
+      addUnique(await getStandardFont(family, weight, style));
+    }
+    addUnique(await getNotoSansLatinFont());
+    addUnique(await getEmbeddedFontFromFile('roboto-regular', ['/fonts/Roboto-Regular.ttf']));
+
+    if (containsArabic(text) || family === 'noto-arabic') {
+      addUnique(await getEmbeddedFontFromFile('noto-arabic-regular', [
+        '/fonts/NotoSansArabic-Regular.ttf',
+        '/fonts/NotoNaskhArabic-Regular.ttf',
+      ]));
+    }
+    if (containsCjk(text) || family === 'noto-cjk') {
+      addUnique(await getEmbeddedFontFromFile('noto-cjk-regular', [
+        '/fonts/NotoSansSC-Regular.otf',
+        '/fonts/NotoSansSC-Regular.ttf',
+        '/fonts/NotoSansJP-Regular.otf',
+        '/fonts/NotoSansJP-Regular.ttf',
+        '/fonts/NotoSansKR-Regular.otf',
+        '/fonts/NotoSansKR-Regular.ttf',
+      ]));
+    }
+    if (containsDevanagari(text) || family === 'noto-devanagari') {
+      addUnique(await getNotoSansDevanagariFont());
+    }
+
+    addUnique(await getStandardFont('sora', 'normal', 'normal'));
+    return candidates;
+  };
+
+  const resolveRenderableText = async (params: {
+    family: WorkerStudioFontFamilyId;
+    weight: 'normal' | 'bold';
+    style: 'normal' | 'italic';
+    text: string;
+  }): Promise<{ font: PDFFont; text: string }> => {
+    const candidates = await getPreferredFontCandidates(params.family, params.weight, params.style, params.text);
+    for (const candidate of candidates) {
+      if (canFontEncodeText(candidate, params.text)) {
+        return { font: candidate, text: params.text };
+      }
+    }
+
+    const latinSafeText = replaceUnsupportedChars(params.text) || ' ';
+    for (const candidate of candidates) {
+      if (canFontEncodeText(candidate, latinSafeText)) {
+        return { font: candidate, text: latinSafeText };
+      }
+    }
+
+    const fallback = await getStandardFont('sora', 'normal', 'normal');
+    return { font: fallback, text: latinSafeText };
+  };
+
   let overflowDetected = false;
   const textElements = params.elements.filter((element) => element.type === 'text');
   const consumedTextIds = new Set<string>();
   let trueReplaceApplied = false;
-  let trueReplaceFallbackReason: string | undefined = 'TRUE_REPLACE_DISABLED_FOR_STABILITY';
+  let trueReplaceFallbackReason: string | undefined = 'INELIGIBLE_EDIT_PAYLOAD';
 
-  // Skip True Replace optimization as it can lead to stream corruption in complex PDFs.
-  // We prefer the fallback path which appends clean content streams.
+  const canAttemptSafeTrueReplace = textElements.length === 1
+    && params.elements.every((element) => element.type === 'text' || isAutoWhiteoutRect(element));
+  if (canAttemptSafeTrueReplace) {
+    const target = textElements[0];
+    const sanitizedText = sanitizeInlineText(target.text || ' ');
+    const trueReplaceResult = await tryApplyTrueReplaceSingleTextOperator({
+      pdf,
+      pageIndex: params.pageIndex,
+      text: sanitizedText,
+      targetXRatio: target.x,
+      targetYRatio: target.y,
+      targetWidthRatio: target.w,
+      targetHeightRatio: target.h,
+      targetTextAlign: target.textAlign,
+      pageWidth,
+      pageHeight,
+    });
+    trueReplaceApplied = trueReplaceResult.applied;
+    if (trueReplaceResult.applied) {
+      consumedTextIds.add(target.id);
+      trueReplaceFallbackReason = undefined;
+    } else {
+      trueReplaceFallbackReason = trueReplaceResult.reason ?? 'TRUE_REPLACE_FAILED';
+    }
+  }
 
   for (const element of params.elements) {
     if (element.type === 'text') {
@@ -523,21 +735,29 @@ export async function applyStudioTextEditsToPdfBytes(params: {
         continue;
       }
       const line = sanitizeInlineText(element.text || ' ');
-      const needsMultiLanguage = containsNonLatin1(line);
-
-      let finalFamily = element.fontFamily;
-      if (needsMultiLanguage && finalFamily !== 'roboto') {
-        console.info(`Cyrillic detected in element ${element.id}, forcing Roboto fallback for encoding compatibility.`);
-        finalFamily = 'roboto';
-      }
-
-      const font = await getFont(finalFamily, element.fontWeight, element.fontStyle);
+      const rendered = await resolveRenderableText({
+        family: element.fontFamily,
+        weight: element.fontWeight,
+        style: element.fontStyle,
+        text: line,
+      });
+      const font = rendered.font;
+      const textToDraw = rendered.text || ' ';
       const { r, g, b } = hexToRgb(element.color);
       const blockWidth = element.w * pageWidth;
-      const fit = fitTextToWidth(font, line, blockWidth, element.fontSize, element.letterSpacing ?? 0, 8);
+      const sourceDerivedFontSize = typeof element.sourceFontSizeRatio === 'number'
+        ? clamp(element.sourceFontSizeRatio * pageHeight, 4, 144)
+        : null;
+      const hasExplicitFontSizeChange = sourceDerivedFontSize === null
+        ? true
+        : Math.abs(element.fontSize - sourceDerivedFontSize) > 0.35;
+      const preferredFontSize = hasExplicitFontSizeChange
+        ? element.fontSize
+        : (sourceDerivedFontSize ?? element.fontSize);
+      const fit = fitTextToWidth(font, textToDraw, blockWidth, preferredFontSize, element.letterSpacing ?? 0, 8);
       overflowDetected ||= fit.overflow;
 
-      const lineWidth = font.widthOfTextAtSize(line, fit.fontSize) + fit.tracking * Math.max(0, line.length - 1);
+      const lineWidth = font.widthOfTextAtSize(textToDraw, fit.fontSize) + fit.tracking * Math.max(0, textToDraw.length - 1);
       let x = element.x * pageWidth;
       if (element.textAlign === 'center') {
         x += Math.max(0, (blockWidth - lineWidth) / 2);
@@ -551,8 +771,8 @@ export async function applyStudioTextEditsToPdfBytes(params: {
       const y = pageHeight - yTop - ascent;
 
       // Use a small tolerance for tracking to avoid manual loop for floating point noise
-      if (Math.abs(fit.tracking) < 0.001 || line.length <= 1) {
-        page.drawText(line, {
+      if (Math.abs(fit.tracking) < 0.001 || textToDraw.length <= 1) {
+        page.drawText(textToDraw, {
           x,
           y,
           size: fit.fontSize,
@@ -562,8 +782,8 @@ export async function applyStudioTextEditsToPdfBytes(params: {
         });
       } else {
         let cursor = x;
-        for (let i = 0; i < line.length; i += 1) {
-          const char = line[i]!;
+        for (let i = 0; i < textToDraw.length; i += 1) {
+          const char = textToDraw[i]!;
           page.drawText(char, {
             x: cursor,
             y,
@@ -572,7 +792,7 @@ export async function applyStudioTextEditsToPdfBytes(params: {
             color: rgb(r, g, b),
             opacity: element.opacity,
           });
-          cursor += font.widthOfTextAtSize(char, fit.fontSize) + (i < line.length - 1 ? fit.tracking : 0);
+          cursor += font.widthOfTextAtSize(char, fit.fontSize) + (i < textToDraw.length - 1 ? fit.tracking : 0);
         }
       }
       continue;
@@ -599,6 +819,9 @@ export async function applyStudioTextEditsToPdfBytes(params: {
       continue;
     }
 
+    if (trueReplaceApplied && isAutoWhiteoutRect(element)) {
+      continue;
+    }
     const sx = element.x * pageWidth;
     const sy = pageHeight - ((element.y + element.h) * pageHeight);
     const sw = element.w * pageWidth;

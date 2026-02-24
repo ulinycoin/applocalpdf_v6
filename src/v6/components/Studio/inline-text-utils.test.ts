@@ -18,6 +18,9 @@ test('normalizeFontName strips subset prefix and punctuation', () => {
 test('resolveFontFamily uses exact and heuristic fallback mapping', () => {
   assert.equal(resolveFontFamily('ABCDEE+Times-Roman'), 'times');
   assert.equal(resolveFontFamily('CourierNewPSMT'), 'mono');
+  assert.equal(resolveFontFamily('NotoSansArabic-Regular'), 'noto-arabic');
+  assert.equal(resolveFontFamily('NotoSansSC-Regular'), 'noto-cjk');
+  assert.equal(resolveFontFamily('NotoSansDevanagari-Regular'), 'noto-devanagari');
   assert.equal(resolveFontFamily('UnknownFont', 'sans-serif'), 'sora');
   assert.equal(resolveFontFamily(undefined, undefined), 'sora');
 });
@@ -50,6 +53,66 @@ test('mergeTextLine joins spans and keeps spaces for gaps', () => {
   const merged = mergeTextLine(spans, spans[0]);
   assert.ok(merged);
   assert.equal(merged?.text, 'Hello World');
+});
+
+test('mergeTextLine avoids concatenating distant duplicate run on same baseline', () => {
+  const spans = [
+    { id: 'a1', text: 'LocalPDF', xRatio: 0.1, yRatio: 0.2, widthRatio: 0.12, heightRatio: 0.03, fontSizeRatio: 0.02 },
+    { id: 'a2', text: 'Browser', xRatio: 0.23, yRatio: 0.2, widthRatio: 0.11, heightRatio: 0.03, fontSizeRatio: 0.02 },
+    { id: 'a3', text: 'Extension', xRatio: 0.35, yRatio: 0.2, widthRatio: 0.13, heightRatio: 0.03, fontSizeRatio: 0.02 },
+    // Simulate repeated run on same baseline after a previous save.
+    { id: 'b1', text: 'LocalPDF', xRatio: 0.62, yRatio: 0.2, widthRatio: 0.12, heightRatio: 0.03, fontSizeRatio: 0.02 },
+    { id: 'b2', text: 'Browser', xRatio: 0.75, yRatio: 0.2, widthRatio: 0.11, heightRatio: 0.03, fontSizeRatio: 0.02 },
+  ];
+
+  const merged = mergeTextLine(spans, spans[0]);
+  assert.ok(merged);
+  assert.equal(merged?.text, 'LocalPDF Browser Extension');
+});
+
+test('mergeTextLine stops on shifted restart of the same line token', () => {
+  const spans = [
+    { id: 'a1', text: 'Privacy-First', xRatio: 0.1, yRatio: 0.2, widthRatio: 0.14, heightRatio: 0.03, fontSizeRatio: 0.02 },
+    { id: 'a2', text: 'PDF', xRatio: 0.245, yRatio: 0.2, widthRatio: 0.05, heightRatio: 0.03, fontSizeRatio: 0.02 },
+    { id: 'a3', text: 'Processing', xRatio: 0.3, yRatio: 0.2, widthRatio: 0.12, heightRatio: 0.03, fontSizeRatio: 0.02 },
+    // Shifted duplicate run starts with same first token, but gap is still below cluster split threshold.
+    { id: 'b1', text: 'Privacy-First', xRatio: 0.45, yRatio: 0.2, widthRatio: 0.14, heightRatio: 0.03, fontSizeRatio: 0.02 },
+    { id: 'b2', text: 'PDF', xRatio: 0.595, yRatio: 0.2, widthRatio: 0.05, heightRatio: 0.03, fontSizeRatio: 0.02 },
+  ];
+
+  const merged = mergeTextLine(spans, spans[0]);
+  assert.ok(merged);
+  assert.equal(merged?.text, 'Privacy-First PDF Processing');
+});
+
+test('mergeTextLine stops on shifted restart with repeated non-first token', () => {
+  const spans = [
+    { id: 'a1', text: 'Теперь', xRatio: 0.1, yRatio: 0.2, widthRatio: 0.08, heightRatio: 0.03, fontSizeRatio: 0.02 },
+    { id: 'a2', text: 'текст', xRatio: 0.185, yRatio: 0.2, widthRatio: 0.06, heightRatio: 0.03, fontSizeRatio: 0.02 },
+    { id: 'a3', text: 'применяется', xRatio: 0.25, yRatio: 0.2, widthRatio: 0.11, heightRatio: 0.03, fontSizeRatio: 0.02 },
+    // Duplicate run starts from the second token after several edit/save passes.
+    { id: 'b1', text: 'текст', xRatio: 0.43, yRatio: 0.2, widthRatio: 0.06, heightRatio: 0.03, fontSizeRatio: 0.02 },
+    { id: 'b2', text: 'применяется', xRatio: 0.495, yRatio: 0.2, widthRatio: 0.11, heightRatio: 0.03, fontSizeRatio: 0.02 },
+  ];
+
+  const merged = mergeTextLine(spans, spans[0]);
+  assert.ok(merged);
+  assert.equal(merged?.text, 'Теперь текст применяется');
+});
+
+test('mergeTextLine splits medium-gap shifted duplicate run after repeated saves', () => {
+  const spans = [
+    { id: 'a1', text: 'LocalPDF', xRatio: 0.1, yRatio: 0.2, widthRatio: 0.11, heightRatio: 0.03, fontSizeRatio: 0.02 },
+    { id: 'a2', text: 'Browser', xRatio: 0.215, yRatio: 0.2, widthRatio: 0.1, heightRatio: 0.03, fontSizeRatio: 0.02 },
+    { id: 'a3', text: 'Extension', xRatio: 0.32, yRatio: 0.2, widthRatio: 0.11, heightRatio: 0.03, fontSizeRatio: 0.02 },
+    // Third-cycle shifted duplicate starts after medium gap (~0.026).
+    { id: 'b1', text: 'LocalPDF', xRatio: 0.456, yRatio: 0.2, widthRatio: 0.11, heightRatio: 0.03, fontSizeRatio: 0.02 },
+    { id: 'b2', text: 'Browser', xRatio: 0.571, yRatio: 0.2, widthRatio: 0.1, heightRatio: 0.03, fontSizeRatio: 0.02 },
+  ];
+
+  const merged = mergeTextLine(spans, spans[0]);
+  assert.ok(merged);
+  assert.equal(merged?.text, 'LocalPDF Browser Extension');
 });
 
 test('fitTextToWidth reduces font size/tracking for long text', async () => {

@@ -1,4 +1,5 @@
-import { useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useStudioEditController } from './edit/use-studio-edit-controller';
 import { StudioEditToolbar } from './edit/StudioEditToolbar';
 import { LinearIcon } from '../icons/linear-icon';
@@ -14,6 +15,18 @@ export function StudioEditWorkspace() {
     const ctrl = useStudioEditController(ui);
     const zoom = useStudioEditZoom(ctrl.runId || 'unknown', 1);
     const imageRef = useRef<HTMLImageElement | null>(null);
+
+    useEffect(() => {
+        if (!ctrl.message) {
+            return;
+        }
+        const timeoutId = window.setTimeout(() => {
+            ctrl.setMessage(null);
+        }, 5000);
+        return () => {
+            window.clearTimeout(timeoutId);
+        };
+    }, [ctrl.message, ctrl.setMessage]);
 
     const handleWheel = (e: React.WheelEvent) => {
         if (e.ctrlKey || e.metaKey) {
@@ -57,9 +70,7 @@ export function StudioEditWorkspace() {
                         </button>
                     </div>
 
-                    <span className="studio-edit-page-badge">{ui.page} {ctrl.preview.indexInDoc + 1}</span>
                     <span className="studio-edit-page-badge">{ctrl.preview.docName}</span>
-                    {ctrl.hasDirtyChanges && <span className="studio-edit-page-badge studio-edit-message">{ui.dirty}</span>}
                 </div>
 
                 <div style={{ flex: 1, display: 'flex', justifyContent: 'flex-end', gap: '12px', alignItems: 'center' }}>
@@ -85,24 +96,16 @@ export function StudioEditWorkspace() {
                     <div style={{ width: 1, height: 24, background: 'rgba(255,255,255,0.1)' }} />
 
                     {ctrl.saveUndoStack.length > 0 && (
-                        <button type="button" className="studio-edit-btn-cancel" onClick={ctrl.undoLastSave} disabled={ctrl.isApplying} title={ui.undoSave} style={{ padding: '6px 12px' }}>
+                        <button type="button" className="studio-edit-btn-cancel" onClick={ctrl.undoLastSave} disabled={ctrl.isApplying} aria-label={ui.undoSave} style={{ padding: '6px 12px' }}>
                             {ui.undoSave}
                         </button>
                     )}
                     {ctrl.saveRedoStack.length > 0 && (
-                        <button type="button" className="studio-edit-btn-cancel" onClick={ctrl.redoLastSave} disabled={ctrl.isApplying} title={ui.redoSave} style={{ padding: '6px 12px' }}>
+                        <button type="button" className="studio-edit-btn-cancel" onClick={ctrl.redoLastSave} disabled={ctrl.isApplying} aria-label={ui.redoSave} style={{ padding: '6px 12px' }}>
                             {ui.redoSave}
                         </button>
                     )}
 
-                    <label className="studio-edit-checkbox-label" style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#94a3b8', background: 'rgba(0,0,0,0.2)', padding: '6px 10px', borderRadius: 6, cursor: 'pointer' }}>
-                        <input type="checkbox" checked={ctrl.applyToSelection} onChange={(e) => ctrl.setApplyToSelection(e.target.checked)} disabled={!ctrl.canApplyToSelection} style={{ margin: 0, cursor: 'pointer' }} />
-                        <span>{ui.saveSelection} ({ctrl.selectedPages.length})</span>
-                    </label>
-
-                    <button type="button" data-testid="studio-edit-save-btn" className="studio-edit-btn-apply" onClick={ctrl.applyChanges} disabled={ctrl.isApplying || (ctrl.historyIndex === 0 && !ctrl.hasDirtyChanges)} style={{ padding: '6px 16px' }}>
-                        {ctrl.isApplying ? ui.saving : ui.save}
-                    </button>
                 </div>
             </div>
 
@@ -112,9 +115,7 @@ export function StudioEditWorkspace() {
                     <StudioEditToolbar
                         ui={ui}
                         tool={ctrl.tool}
-                        isSelectMode={ctrl.isSelectMode}
                         onSelectTool={ctrl.setTool}
-                        onSetIsSelectMode={ctrl.setIsSelectMode}
                     />
                 </div>
 
@@ -185,12 +186,17 @@ export function StudioEditWorkspace() {
                                 }}
                             />
 
-                            {ctrl.selectedElementId && ctrl.elements.find(e => e.id === ctrl.selectedElementId) && (
+                            {ctrl.selectedElementId && ctrl.textEditor?.id === ctrl.selectedElementId && ctrl.elements.find(e => e.id === ctrl.selectedElementId)?.type === 'text' && (
                                 <DraggableFloatingMenu
                                     element={ctrl.elements.find(e => e.id === ctrl.selectedElementId)!}
                                     onUpdate={(patch) => ctrl.handleElementAction(ctrl.selectedElementId!, 'update', patch)}
                                     onDelete={() => ctrl.handleElementAction(ctrl.selectedElementId!, 'delete')}
                                     onDuplicate={() => ctrl.handleElementAction(ctrl.selectedElementId!, 'duplicate')}
+                                    onActivateMove={() => {
+                                        if (ctrl.textEditor) {
+                                            ctrl.commitTextEditor();
+                                        }
+                                    }}
                                     onDeselect={() => {
                                         if (ctrl.textEditor) ctrl.commitTextEditor();
                                         ctrl.setSelectedElementId(null);
@@ -211,6 +217,21 @@ export function StudioEditWorkspace() {
                     </div>
                 )}
             </div>
+
+            {typeof document !== 'undefined' && createPortal(
+                <div className="studio-edit-bottom-save-wrap">
+                    <button
+                        type="button"
+                        data-testid="studio-edit-save-btn"
+                        className="studio-edit-btn-apply studio-edit-fixed-save-btn"
+                        onClick={ctrl.applyChanges}
+                        disabled={ctrl.isApplying || (ctrl.historyIndex === 0 && !ctrl.hasDirtyChanges)}
+                    >
+                        {ctrl.isApplying ? ui.saving : ui.save}
+                    </button>
+                </div>,
+                document.body
+            )}
         </section>
     );
 }

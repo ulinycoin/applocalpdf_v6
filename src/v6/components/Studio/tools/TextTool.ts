@@ -18,7 +18,7 @@ export const TextTool: IEditorTool = {
         const clickedSpan = findNearestTextSpan({ x, y }, ctx.textLayerSpans);
         if (clickedSpan) {
             selectTextSpanForEditing(ctx, clickedSpan);
-        } else if (!ctx.isSelectMode) {
+        } else {
             const next: TextElement = {
                 id: crypto.randomUUID(), type: 'text', x, y, w: 0.5, h: 0.06,
                 text: ctx.uiMessages.text || 'Add text', color: '#0f172a', fontSize: 18, fontFamily: 'sora',
@@ -37,6 +37,13 @@ export const TextTool: IEditorTool = {
         ctx.setIsPointerDown(false);
     }
 };
+
+function inferFontStyle(fontName?: string): { fontWeight: 'normal' | 'bold'; fontStyle: 'normal' | 'italic' } {
+    const raw = (fontName ?? '').toLowerCase();
+    const fontWeight = /bold|black|heavy|semibold|demibold/u.test(raw) ? 'bold' : 'normal';
+    const fontStyle = /italic|oblique/u.test(raw) ? 'italic' : 'normal';
+    return { fontWeight, fontStyle };
+}
 
 function selectTextSpanForEditing(ctx: ToolContext, clickedSpan: TextLayerSpan) {
     let mergedLine = null;
@@ -87,8 +94,12 @@ function selectTextSpanForEditing(ctx: ToolContext, clickedSpan: TextLayerSpan) 
         text: mergedLine.text, color: '#000000',
         fontSize: estimateInlineFontSizePt(mergedLine.fontSizeRatio, mergedLine.pageHeightPt ?? 842),
         fontFamily: resolveFontFamily(mergedLine.fontName, mergedLine.fontFamilyHint),
-        fontWeight: 'normal', fontStyle: 'normal', textAlign: 'left', lineHeight: 1.2, letterSpacing: 0, opacity: 1,
-        ascent: mergedLine.ascentRatio ? mergedLine.ascentRatio * (mergedLine.pageHeightPt ?? 842) : undefined
+        ...inferFontStyle(mergedLine.fontName ?? mergedLine.fontFamilyHint),
+        textAlign: 'left', lineHeight: 1.2, letterSpacing: 0, opacity: 1,
+        ascent: mergedLine.ascentRatio ? mergedLine.ascentRatio * (mergedLine.pageHeightPt ?? 842) : undefined,
+        sourceFontName: mergedLine.fontName,
+        sourceFontFamilyHint: mergedLine.fontFamilyHint,
+        sourceFontSizeRatio: mergedLine.fontSizeRatio,
     };
 
     ctx.applyElements([...ctx.elements, whiteout, next]);

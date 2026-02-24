@@ -98,7 +98,11 @@ export function StudioFloatingMenu({ element, onUpdate, onDelete, onDuplicate }:
                     value={textElem.fontFamily}
                     onChange={(e) => onUpdate({ fontFamily: e.target.value as FontFamilyId })}
                 >
-                    <option value="roboto" style={{ fontWeight: 600 }}>Roboto (Кириллица+)</option>
+                    <option value="roboto" style={{ fontWeight: 600 }}>Roboto (Latin/Cyrillic)</option>
+                    <option value="noto">Noto Sans (International)</option>
+                    <option value="noto-arabic">Noto Sans Arabic</option>
+                    <option value="noto-cjk">Noto Sans CJK</option>
+                    <option value="noto-devanagari">Noto Sans Devanagari</option>
                     <option value="sora">Helvetica</option>
                     <option value="times">Times New Roman</option>
                     <option value="mono">Courier</option>

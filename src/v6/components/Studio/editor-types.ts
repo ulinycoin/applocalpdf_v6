@@ -24,6 +24,9 @@ export interface TextElement {
     letterSpacing: number;
     opacity: number;
     ascent?: number;
+    sourceFontName?: string;
+    sourceFontFamilyHint?: string;
+    sourceFontSizeRatio?: number;
 }
 
 export interface StrokeElement {

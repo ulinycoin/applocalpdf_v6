@@ -76,6 +76,21 @@ function normalizeFontFamily(value: unknown): WorkerStudioFontFamilyId {
     return 'sora';
   }
   const normalized = value.trim().toLowerCase();
+  if (normalized.includes('arabic')) {
+    return 'noto-arabic';
+  }
+  if (normalized.includes('cjk') || normalized.includes('han') || normalized.includes('kana') || normalized.includes('hangul')) {
+    return 'noto-cjk';
+  }
+  if (normalized.includes('devanagari') || normalized.includes('hindi')) {
+    return 'noto-devanagari';
+  }
+  if (normalized.includes('noto')) {
+    return 'noto';
+  }
+  if (normalized.includes('roboto')) {
+    return 'roboto';
+  }
   if (normalized.includes('times') || normalized.includes('serif')) {
     return 'times';
   }

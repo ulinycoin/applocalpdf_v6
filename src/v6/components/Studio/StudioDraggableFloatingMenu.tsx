@@ -7,18 +7,48 @@ import { EditElement, TextElement, TextAlignId } from './editor-types';
 export interface StudioFloatingMenuProps {
     element: EditElement;
     onUpdate: (patch: Partial<EditElement>) => void;
-    onDelete: () => void;
+    onDelete?: () => void;
     onDuplicate: () => void;
     onDeselect?: () => void;
+    onActivateMove?: () => void;
 }
 
-export function DraggableFloatingMenu({ element, onUpdate, onDelete, onDuplicate, onDeselect }: StudioFloatingMenuProps) {
+export function DraggableFloatingMenu({ element, onUpdate, onDelete, onDuplicate, onDeselect, onActivateMove }: StudioFloatingMenuProps) {
+    const menuRef = useRef<HTMLDivElement | null>(null);
+    const isAnchoredToText = element.type === 'text';
     const [position, setPosition] = useState(() => ({
         x: Math.max(20, window.innerWidth / 2 - 200),
         y: Math.max(20, window.innerHeight - 120)
     }));
     const isDraggingRef = useRef(false);
     const startPosRef = useRef({ x: 0, y: 0 });
+
+    useEffect(() => {
+        if (!isAnchoredToText) {
+            return;
+        }
+        let frame = 0;
+        const updateAnchoredPosition = () => {
+            const selector = `[data-editor-element-id="${element.id}"]`;
+            const anchor = document.querySelector(selector) as HTMLElement | null;
+            const menuNode = menuRef.current;
+            if (anchor && menuNode) {
+                const anchorRect = anchor.getBoundingClientRect();
+                const menuRect = menuNode.getBoundingClientRect();
+                const nextX = Math.min(
+                    Math.max(12, anchorRect.left + anchorRect.width / 2 - menuRect.width / 2),
+                    Math.max(12, window.innerWidth - menuRect.width - 12),
+                );
+                const nextY = Math.max(12, anchorRect.top - menuRect.height - 10);
+                setPosition({ x: nextX, y: nextY });
+            }
+            frame = window.requestAnimationFrame(updateAnchoredPosition);
+        };
+        frame = window.requestAnimationFrame(updateAnchoredPosition);
+        return () => {
+            window.cancelAnimationFrame(frame);
+        };
+    }, [element.id, isAnchoredToText]);
 
     useEffect(() => {
         const onPointerMove = (e: PointerEvent) => {
@@ -39,6 +69,9 @@ export function DraggableFloatingMenu({ element, onUpdate, onDelete, onDuplicate
     }, []);
 
     const handleDragStart = (e: React.PointerEvent) => {
+        if (isAnchoredToText) {
+            return;
+        }
         if ((e.target as HTMLElement).closest('button, input, select')) return;
         e.stopPropagation();
         isDraggingRef.current = true;
@@ -52,13 +85,16 @@ export function DraggableFloatingMenu({ element, onUpdate, onDelete, onDuplicate
         if (element.type !== 'text') {
             return (
                 <div
+                    ref={menuRef}
                     className="studio-floating-properties-panel"
                     style={{ left: position.x, top: position.y, cursor: 'grab' }}
                     onPointerDown={handleDragStart}
                 >
-                    <button type="button" className="studio-floating-btn delete" onClick={onDelete} title="Delete">
-                        <LinearIcon name="x" />
-                    </button>
+                    {onDelete && (
+                        <button type="button" className="studio-floating-btn delete" onClick={onDelete} title="Delete">
+                            <LinearIcon name="x" />
+                        </button>
+                    )}
                 </div>
             );
         }
@@ -67,8 +103,9 @@ export function DraggableFloatingMenu({ element, onUpdate, onDelete, onDuplicate
 
         return (
             <div
+                ref={menuRef}
                 className="studio-floating-properties-panel"
-                style={{ left: position.x, top: position.y, cursor: 'grab' }}
+                style={{ left: position.x, top: position.y, cursor: isAnchoredToText ? 'default' : 'grab' }}
                 onPointerDown={handleDragStart}
             >
 
@@ -101,7 +138,11 @@ export function DraggableFloatingMenu({ element, onUpdate, onDelete, onDuplicate
                         value={textElem.fontFamily}
                         onChange={(e) => onUpdate({ fontFamily: e.target.value as FontFamilyId })}
                     >
-                        <option value="roboto" style={{ fontWeight: 600 }}>Roboto (Кириллица+)</option>
+                        <option value="roboto" style={{ fontWeight: 600 }}>Roboto (Latin/Cyrillic)</option>
+                        <option value="noto">Noto Sans (International)</option>
+                        <option value="noto-arabic">Noto Sans Arabic</option>
+                        <option value="noto-cjk">Noto Sans CJK</option>
+                        <option value="noto-devanagari">Noto Sans Devanagari</option>
                         <option value="sora">Helvetica</option>
                         <option value="times">Times New Roman</option>
                         <option value="mono">Courier</option>
@@ -164,21 +205,22 @@ export function DraggableFloatingMenu({ element, onUpdate, onDelete, onDuplicate
                 </div>
 
                 <div className="studio-floating-divider" />
-
                 <div className="studio-floating-group">
-                    <button type="button" className="studio-floating-btn delete" onClick={onDelete} title="Delete">
-                        <LinearIcon name="x" />
+                    <button
+                        type="button"
+                        className="studio-floating-btn"
+                        onClick={() => {
+                            if (onActivateMove) {
+                                onActivateMove();
+                                return;
+                            }
+                            onDeselect?.();
+                        }}
+                        title="Move text"
+                    >
+                        <LinearIcon name="move-horizontal" size={18} />
                     </button>
                 </div>
-
-                {onDeselect && (
-                    <>
-                        <div className="studio-floating-divider" />
-                        <button type="button" className="studio-floating-btn" onClick={onDeselect} title="Done">
-                            <LinearIcon name="check" size={18} />
-                        </button>
-                    </>
-                )}
             </div>
         );
     };

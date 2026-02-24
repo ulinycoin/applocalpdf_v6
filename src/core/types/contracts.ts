@@ -90,7 +90,15 @@ export interface WorkerPdfTextLayerSpan {
   ascentRatio?: number;
 }
 
-export type WorkerStudioFontFamilyId = 'sora' | 'times' | 'mono' | 'roboto';
+export type WorkerStudioFontFamilyId =
+  | 'sora'
+  | 'times'
+  | 'mono'
+  | 'roboto'
+  | 'noto'
+  | 'noto-arabic'
+  | 'noto-cjk'
+  | 'noto-devanagari';
 export type WorkerStudioTextAlign = 'left' | 'center' | 'right';
 
 export interface WorkerStudioTextEditElement {
@@ -111,6 +119,9 @@ export interface WorkerStudioTextEditElement {
   letterSpacing?: number;
   opacity: number;
   ascent?: number;
+  sourceFontName?: string;
+  sourceFontFamilyHint?: string;
+  sourceFontSizeRatio?: number;
 }
 
 export interface WorkerStudioStrokeEditElement {

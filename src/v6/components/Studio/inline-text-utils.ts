@@ -1,6 +1,14 @@
 import type { PDFFont } from 'pdf-lib';
 
-export type FontFamilyId = 'sora' | 'times' | 'mono' | 'roboto';
+export type FontFamilyId =
+  | 'sora'
+  | 'times'
+  | 'mono'
+  | 'roboto'
+  | 'noto'
+  | 'noto-arabic'
+  | 'noto-cjk'
+  | 'noto-devanagari';
 
 export interface TextLayerSpanLike {
   id: string;
@@ -40,6 +48,10 @@ const FONT_EXACT_MAP: Record<string, FontFamilyId> = {
   sans: 'sora',
   freesans: 'sora',
   roboto: 'roboto', // Added
+  notosans: 'noto',
+  notosansarabic: 'noto-arabic',
+  notosanscjk: 'noto-cjk',
+  notosansdevanagari: 'noto-devanagari',
   timesroman: 'times',
   timesnewroman: 'times',
   times: 'times',
@@ -71,6 +83,26 @@ export function resolveFontFamily(fontName?: string, fontFamilyHint?: string): F
     }
     if (candidate.includes('roboto')) { // Added
       return 'roboto';
+    }
+    if (candidate.includes('arabic')) {
+      return 'noto-arabic';
+    }
+    if (
+      candidate.includes('cjk')
+      || candidate.includes('han')
+      || candidate.includes('kana')
+      || candidate.includes('hangul')
+      || candidate.includes('notosanssc')
+      || candidate.includes('notosansjp')
+      || candidate.includes('notosanskr')
+    ) {
+      return 'noto-cjk';
+    }
+    if (candidate.includes('devanagari') || candidate.includes('hindi')) {
+      return 'noto-devanagari';
+    }
+    if (candidate.includes('noto')) {
+      return 'noto';
     }
     if (candidate.includes('courier') || candidate.includes('mono') || candidate.includes('code')) {
       return 'mono';
@@ -145,16 +177,92 @@ export function mergeTextLine(spans: TextLayerSpanLike[], anchor: TextLayerSpanL
     return null;
   }
 
-  const left = Math.min(...lineSpans.map((item) => item.xRatio));
-  const top = Math.min(...lineSpans.map((item) => item.yRatio));
-  const right = Math.max(...lineSpans.map((item) => item.xRatio + item.widthRatio));
-  const bottom = Math.max(...lineSpans.map((item) => item.yRatio + item.heightRatio));
+  // Keep only the contiguous cluster around the clicked anchor span.
+  // This avoids accidental horizontal duplication when the same baseline
+  // contains old/new text runs after previous saves.
+  const anchorIndexById = lineSpans.findIndex((item) => item.id === anchor.id);
+  let anchorIndex = anchorIndexById;
+  if (anchorIndex < 0) {
+    let bestDistance = Number.POSITIVE_INFINITY;
+    for (let i = 0; i < lineSpans.length; i += 1) {
+      const item = lineSpans[i];
+      const dx = (item.xRatio + item.widthRatio / 2) - (anchor.xRatio + anchor.widthRatio / 2);
+      const dy = (item.yRatio + item.heightRatio / 2) - (anchor.yRatio + anchor.heightRatio / 2);
+      const distance = Math.hypot(dx, dy);
+      if (distance < bestDistance) {
+        bestDistance = distance;
+        anchorIndex = i;
+      }
+    }
+  }
+  if (anchorIndex < 0) {
+    return null;
+  }
+
+  // Keep cluster join threshold conservative: duplicated shifted text runs
+  // after repeated save cycles often start after a moderate horizontal gap.
+  const clusterGapThreshold = Math.max(0.012, anchor.heightRatio * 0.9);
+  let start = anchorIndex;
+  let end = anchorIndex;
+
+  while (start > 0) {
+    const prev = lineSpans[start - 1];
+    const curr = lineSpans[start];
+    const gap = curr.xRatio - (prev.xRatio + prev.widthRatio);
+    if (gap > clusterGapThreshold) {
+      break;
+    }
+    start -= 1;
+  }
+
+  while (end < lineSpans.length - 1) {
+    const curr = lineSpans[end];
+    const next = lineSpans[end + 1];
+    const gap = next.xRatio - (curr.xRatio + curr.widthRatio);
+    if (gap > clusterGapThreshold) {
+      break;
+    }
+    end += 1;
+  }
+
+  const mergedCluster = lineSpans.slice(start, end + 1);
+
+  const left = Math.min(...mergedCluster.map((item) => item.xRatio));
+  const top = Math.min(...mergedCluster.map((item) => item.yRatio));
+  const right = Math.max(...mergedCluster.map((item) => item.xRatio + item.widthRatio));
+  const bottom = Math.max(...mergedCluster.map((item) => item.yRatio + item.heightRatio));
 
   let mergedText = '';
-  for (let i = 0; i < lineSpans.length; i += 1) {
-    const current = lineSpans[i];
+  const escapeRegex = (value: string): string => value.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&');
+  const firstTokenOf = (value: string): string => {
+    const token = value.trim().split(/\s+/u)[0] ?? '';
+    return token.toLowerCase().replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, '');
+  };
+  let firstMergedToken = '';
+  for (let i = 0; i < mergedCluster.length; i += 1) {
+    const current = mergedCluster[i];
     if (i > 0) {
-      const prev = lineSpans[i - 1];
+      const prev = mergedCluster[i - 1];
+      const restartGapThreshold = Math.max(0.01, current.heightRatio * 0.55);
+      const gap = current.xRatio - (prev.xRatio + prev.widthRatio);
+      const currentToken = firstTokenOf(current.text);
+      // Some PDFs keep an old line and append a shifted duplicate line after save.
+      // If we detect a clear restart of the line after a noticeable gap, stop at first run.
+      if (gap > restartGapThreshold && firstMergedToken && currentToken && currentToken === firstMergedToken) {
+        break;
+      }
+      // Additional protection for repeated shifted runs after multiple edit/save cycles:
+      // if the next chunk starts with a token already present in the merged text,
+      // treat it as a restarted duplicate line.
+      if (gap > restartGapThreshold && currentToken.length >= 3 && mergedText.trim().length >= 8) {
+        const tokenRegex = new RegExp(`(^|\\s)${escapeRegex(currentToken)}(\\s|$)`, 'iu');
+        if (tokenRegex.test(mergedText.toLowerCase())) {
+          break;
+        }
+      }
+    }
+    if (i > 0) {
+      const prev = mergedCluster[i - 1];
       const gap = current.xRatio - (prev.xRatio + prev.widthRatio);
       // Improved gap detection: if the gap is significantly larger than typical space
       if (gap > Math.max(0.0015, current.heightRatio * 0.15)) {
@@ -166,6 +274,9 @@ export function mergeTextLine(spans: TextLayerSpanLike[], anchor: TextLayerSpanL
       }
     }
     mergedText += current.text;
+    if (!firstMergedToken) {
+      firstMergedToken = firstTokenOf(mergedText);
+    }
   }
 
   const text = mergedText.replace(/\s+/gu, ' ').trim();
@@ -173,7 +284,7 @@ export function mergeTextLine(spans: TextLayerSpanLike[], anchor: TextLayerSpanL
     return null;
   }
 
-  const fontSizeRatio = lineSpans.reduce((acc, current) => Math.max(acc, current.fontSizeRatio), anchor.fontSizeRatio);
+  const fontSizeRatio = mergedCluster.reduce((acc, current) => Math.max(acc, current.fontSizeRatio), anchor.fontSizeRatio);
 
   return {
     left,

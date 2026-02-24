@@ -66,7 +66,15 @@ function normalizeTextAlign(value: unknown): WorkerStudioTextAlign {
 }
 
 function normalizeFontFamily(value: unknown): WorkerStudioFontFamilyId {
-  return value === 'times' || value === 'mono' ? value : 'sora';
+  return value === 'times'
+    || value === 'mono'
+    || value === 'roboto'
+    || value === 'noto'
+    || value === 'noto-arabic'
+    || value === 'noto-cjk'
+    || value === 'noto-devanagari'
+    ? value
+    : 'sora';
 }
 
 function normalizeTextElement(input: WorkerStudioTextEditElement): WorkerStudioTextEditElement {
@@ -91,6 +99,18 @@ function normalizeTextElement(input: WorkerStudioTextEditElement): WorkerStudioT
     lineHeight: clamp(toFiniteNumber(input.lineHeight ?? 1.2, 'text.lineHeight'), 0.8, 3),
     letterSpacing: clamp(toFiniteNumber(input.letterSpacing ?? 0, 'text.letterSpacing'), -2, 20),
     opacity: normalizeOpacity(input.opacity),
+    ascent: typeof input.ascent === 'number' && Number.isFinite(input.ascent)
+      ? clamp(input.ascent, 0, 512)
+      : undefined,
+    sourceFontName: typeof input.sourceFontName === 'string' && input.sourceFontName.trim().length > 0
+      ? input.sourceFontName.trim().slice(0, 128)
+      : undefined,
+    sourceFontFamilyHint: typeof input.sourceFontFamilyHint === 'string' && input.sourceFontFamilyHint.trim().length > 0
+      ? input.sourceFontFamilyHint.trim().slice(0, 128)
+      : undefined,
+    sourceFontSizeRatio: typeof input.sourceFontSizeRatio === 'number' && Number.isFinite(input.sourceFontSizeRatio)
+      ? clamp(input.sourceFontSizeRatio, 0.004, 0.25)
+      : undefined,
   };
 }
 

@@ -32,7 +32,6 @@ import { LinearIcon } from '../icons/linear-icon';
 
 
 
-
 export interface StudioPageEditorProps {
     page: PageItem;
     width: number;
@@ -248,6 +247,17 @@ export function StudioPageEditor({
         ));
     }, [textLayerSpans, isSelectMode]);
 
+    const toCssFontFamily = (fontFamily: FontFamilyId): string => {
+        if (fontFamily === 'times') return '"Times New Roman", Times, serif';
+        if (fontFamily === 'mono') return '"Courier New", Courier, monospace';
+        if (fontFamily === 'roboto') return 'Roboto, "Noto Sans", Arial, sans-serif';
+        if (fontFamily === 'noto') return '"Noto Sans", Roboto, Arial, sans-serif';
+        if (fontFamily === 'noto-arabic') return '"Noto Sans Arabic", "Noto Naskh Arabic", "Noto Sans", serif';
+        if (fontFamily === 'noto-cjk') return '"Noto Sans CJK SC", "Noto Sans SC", "Noto Sans JP", "Noto Sans KR", "Noto Sans", sans-serif';
+        if (fontFamily === 'noto-devanagari') return '"Noto Sans Devanagari", "Noto Sans", sans-serif';
+        return 'Helvetica, Arial, sans-serif';
+    };
+
     return (
         <div
             ref={canvasRef}
@@ -269,6 +279,7 @@ export function StudioPageEditor({
             {elements.map(el => (
                 <div
                     key={el.id}
+                    data-editor-element-id={el.id}
                     className={`studio-editor-element ${selectedElementId === el.id ? 'selected' : ''}`}
                     style={{
                         position: 'absolute',
@@ -299,14 +310,23 @@ export function StudioPageEditor({
                             } catch (err) { }
                         }
                     }}
+                    onDoubleClick={(e) => {
+                        if (el.type !== 'text') {
+                            return;
+                        }
+                        e.stopPropagation();
+                        startEditingText(el as TextElement);
+                    }}
                     onPointerMove={(e) => {
                         const sess = dragSessionRef.current as any;
                         if (sess && sess.id === el.id && sess.mode.startsWith('move-')) {
                             const dx = (e.clientX - sess.startClientX) / width;
                             const dy = (e.clientY - sess.startClientY) / height;
+                            const nextX = clamp01(sess.originX + dx);
+                            const nextY = clamp01(sess.originY + dy);
                             handleElementAction(el.id, 'update', {
-                                x: sess.originX + dx,
-                                y: sess.originY + dy
+                                x: nextX,
+                                y: nextY
                             });
                         }
                     }}
@@ -329,7 +349,7 @@ export function StudioPageEditor({
                 >
                     {el.type === 'text' && (
                         <div className="studio-edit-text" style={{
-                            fontSize: el.fontSize, color: el.color, fontFamily: el.fontFamily,
+                            fontSize: el.fontSize, color: el.color, fontFamily: toCssFontFamily(el.fontFamily),
                             fontWeight: el.fontWeight, fontStyle: el.fontStyle, textAlign: el.textAlign,
                             lineHeight: el.lineHeight, letterSpacing: el.letterSpacing,
                             whiteSpace: 'nowrap', position: 'relative', display: 'grid'

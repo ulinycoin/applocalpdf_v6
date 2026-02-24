@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { usePlatform } from '../../../../app/react/platform-context';
 import type { IWorkerCommand, WorkerStudioEditElement } from '../../../../core/public/contracts';
@@ -80,6 +80,7 @@ export function useStudioEditController(ui: any) {
     // Local State
     const [tool, setTool] = useState<EditorToolId>(editSession?.activeTool ?? 'text');
     const [elements, setElements] = useState<EditElement[]>([]);
+    const elementsRef = useRef<EditElement[]>([]);
     const [history, setHistory] = useState<EditElement[][]>([[]]);
     const [historyIndex, setHistoryIndex] = useState(0);
     const [selectedElementId, setSelectedElementId] = useState<string | null>(null);
@@ -90,7 +91,7 @@ export function useStudioEditController(ui: any) {
     const [textLayerSpans, setTextLayerSpans] = useState<TextLayerSpan[]>([]);
     const [isSelectMode, setIsSelectMode] = useState(false);
     const [textSelectionMode, setTextSelectionMode] = useState<'line' | 'word'>('line');
-    const [applyToSelection, setApplyToSelection] = useState(true);
+    const [applyToSelection, setApplyToSelection] = useState(false);
 
     const selectedPages = useMemo(() => buildSelectedPages(documents, selection), [documents, selection]);
     const activeDocument = useMemo(() => documents.find((doc) => doc.id === activeDocumentId) ?? null, [activeDocumentId, documents]);
@@ -130,9 +131,7 @@ export function useStudioEditController(ui: any) {
     useEffect(() => {
         if (!canApplyToSelection && applyToSelection) {
             setApplyToSelection(false);
-            return;
         }
-        if (canApplyToSelection && !applyToSelection) setApplyToSelection(true);
     }, [applyToSelection, canApplyToSelection]);
 
     const [sessionRunId] = useState(() => crypto.randomUUID());
@@ -143,7 +142,19 @@ export function useStudioEditController(ui: any) {
         runtime.telemetry.track({ type: 'STUDIO_EDIT_TOOL_SELECTED', runId: sessionRunId, toolId: 'studio.edit', tool: nextTool, method });
     }, [updateEditSessionTool, runtime, sessionRunId]);
 
-    const hasDirtyChanges = historyIndex > 0 || Boolean(textEditor && textEditor.value !== textEditor.initialValue);
+    const hasDirtyChanges = elements.length > 0 || historyIndex > 0 || Boolean(textEditor && textEditor.value !== textEditor.initialValue);
+
+    const setElementsSafe = useCallback((next: EditElement[] | ((prev: EditElement[]) => EditElement[])) => {
+        setElements((prev) => {
+            const resolved = typeof next === 'function' ? next(prev) : next;
+            elementsRef.current = resolved;
+            return resolved;
+        });
+    }, []);
+
+    useEffect(() => {
+        elementsRef.current = elements;
+    }, [elements]);
 
     useEffect(() => {
         const onBeforeUnload = (event: BeforeUnloadEvent) => {
@@ -156,14 +167,14 @@ export function useStudioEditController(ui: any) {
     }, [hasDirtyChanges]);
 
     useEffect(() => {
-        setElements([]);
+        setElementsSafe([]);
         setHistory([[]]);
         setHistoryIndex(0);
         setSelectedElementId(null);
         setTextEditor(null);
         setInlineUiState('idle');
         clearSaveStacks();
-    }, [preview?.page.id, preview?.page.pageIndex, clearSaveStacks]);
+    }, [preview?.page.id, preview?.page.pageIndex, clearSaveStacks, setElementsSafe]);
 
     useEffect(() => {
         if (!preview) return;
@@ -204,28 +215,28 @@ export function useStudioEditController(ui: any) {
         if (historyIndex <= 0) return;
         const nextIndex = historyIndex - 1;
         setHistoryIndex(nextIndex);
-        setElements(history[nextIndex] ?? []);
+        setElementsSafe(history[nextIndex] ?? []);
         setSelectedElementId(null);
         setTextEditor(null);
-    }, [history, historyIndex]);
+    }, [history, historyIndex, setElementsSafe]);
 
     const redo = useCallback(() => {
         if (historyIndex >= history.length - 1) return;
         const nextIndex = historyIndex + 1;
         setHistoryIndex(nextIndex);
-        setElements(history[nextIndex] ?? []);
+        setElementsSafe(history[nextIndex] ?? []);
         setSelectedElementId(null);
         setTextEditor(null);
-    }, [history, historyIndex]);
+    }, [history, historyIndex, setElementsSafe]);
 
     const deleteSelected = useCallback(() => {
         if (!selectedElementId) return;
         const next = elements.filter((item) => item.id !== selectedElementId);
-        setElements(next);
+        setElementsSafe(next);
         pushHistory(next);
         setSelectedElementId(null);
         setTextEditor(null);
-    }, [elements, pushHistory, selectedElementId]);
+    }, [elements, pushHistory, selectedElementId, setElementsSafe]);
 
 
 
@@ -233,7 +244,7 @@ export function useStudioEditController(ui: any) {
         let changeType: string | undefined;
         if (action === 'delete') {
             const next = elements.filter(el => el.id !== id);
-            setElements(next);
+            setElementsSafe(next);
             pushHistory(next);
             setSelectedElementId(null);
         } else if (action === 'duplicate') {
@@ -242,15 +253,15 @@ export function useStudioEditController(ui: any) {
                 const nextX = ('x' in el) ? el.x + 0.02 : 0;
                 const nextY = ('y' in el) ? el.y + 0.02 : 0;
                 const next = [...elements, { ...el, id: crypto.randomUUID(), ...(('x' in el) ? { x: nextX, y: nextY } : {}) } as EditElement];
-                setElements(next);
+                setElementsSafe(next);
                 pushHistory(next);
             }
         } else if (action === 'update' && patch) {
-            setElements(elements.map(el => el.id === id ? { ...el, ...patch } : el));
+            setElementsSafe((prev) => prev.map(el => el.id === id ? { ...el, ...patch } : el));
             changeType = Object.keys(patch)[0];
         }
         runtime.telemetry.track({ type: 'STUDIO_EDIT_FLOATING_MENU_ACTION', runId: sessionRunId, toolId: 'studio.edit', action, changeType });
-    }, [elements, pushHistory, runtime.telemetry, sessionRunId]);
+    }, [elements, pushHistory, runtime.telemetry, sessionRunId, setElementsSafe]);
 
     const commitTextEditor = useCallback(() => {
         if (!textEditor) return;
@@ -261,6 +272,7 @@ export function useStudioEditController(ui: any) {
 
     const applyChanges = async () => {
         if (!preview) return;
+        const elementsToApply = elementsRef.current;
         const targets = applyToSelection && canApplyToSelection ? selectedPages : [preview];
         let overflowCount = 0;
         let failureCount = 0;
@@ -281,7 +293,7 @@ export function useStudioEditController(ui: any) {
                         type: 'COMMAND',
                         payload: {
                             type: 'APPLY_STUDIO_TEXT_EDITS',
-                            payload: { fileId: target.page.fileId, pageIndex: target.page.pageIndex, elements: elements as WorkerStudioEditElement[] },
+                            payload: { fileId: target.page.fileId, pageIndex: target.page.pageIndex, elements: elementsToApply as WorkerStudioEditElement[] },
                         },
                     };
                     const finalEvent = await runtime.workerOrchestrator.dispatch(command);
@@ -319,7 +331,8 @@ export function useStudioEditController(ui: any) {
             setInlineUiState(failureCount > 0 ? 'error' : 'saved');
             setTextEditor(null);
             setSelectedElementId(null);
-            setHistory([elements]);
+            setElementsSafe([]);
+            setHistory([[]]);
             setHistoryIndex(0);
             if (checkpointEntries.length > 0) {
                 if (USE_COMMAND_PATTERN_FOR_SAVES) {
@@ -446,10 +459,8 @@ export function useStudioEditController(ui: any) {
             } else if (!event.ctrlKey && !event.metaKey && !event.shiftKey) {
                 if (key === 'v') {
                     selectTool('text');
-                    setIsSelectMode(true);
                 } else if (key === 't') {
                     selectTool('text');
-                    setIsSelectMode(false);
                 } else if (key === 'a') {
                     selectTool('annotate');
                 }
@@ -463,7 +474,7 @@ export function useStudioEditController(ui: any) {
         runId: sessionRunId,
         navigate,
         tool, setTool: selectTool,
-        elements, setElements,
+        elements, setElements: setElementsSafe,
         pushHistory, undo, redo,
         history, historyIndex,
         selectedElementId, setSelectedElementId, handleElementAction,

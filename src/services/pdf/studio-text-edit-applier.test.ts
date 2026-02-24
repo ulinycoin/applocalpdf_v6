@@ -168,6 +168,35 @@ test('applyStudioTextEditsToPdfBytes supports advanced formatting fields', async
   assert.equal(result.trueReplaceApplied, false);
 });
 
+test('applyStudioTextEditsToPdfBytes does not crash on Arabic/CJK text without optional font files', async () => {
+  const sourceBytes = await createBlankPdfBytes();
+  const result = await applyStudioTextEditsToPdfBytes({
+    sourceBytes,
+    pageIndex: 0,
+    elements: [{
+      id: 'txt-intl-safe',
+      type: 'text',
+      x: 0.1,
+      y: 0.2,
+      w: 0.7,
+      h: 0.1,
+      text: 'مرحبا 世界',
+      color: '#000000',
+      fontSize: 20,
+      fontFamily: 'sora',
+      fontWeight: 'normal',
+      fontStyle: 'normal',
+      textAlign: 'left',
+      lineHeight: 1.2,
+      letterSpacing: 0,
+      opacity: 1,
+    }],
+  });
+
+  assert.ok(result.outputBytes.byteLength > 0);
+  assert.equal(result.trueReplaceApplied, false);
+});
+
 test('applyStudioTextEditsToPdfBytes reports overflow for constrained width content', async () => {
   const sourceBytes = await createBlankPdfBytes();
   const result = await applyStudioTextEditsToPdfBytes({
