@@ -56,12 +56,24 @@ export function StudioInPlaceEditor({ stageRef }: StudioInPlaceEditorProps) {
             const box = pageNode.getClientRect();
             const stageScale = stage.scaleX();
 
-            setOverlayRect({
-                x: box.x,
-                y: box.y,
-                w: box.width,
-                h: box.height,
-                scale: stageScale // We might use this for high-quality text rendering
+            setOverlayRect((prev) => {
+                if (
+                    prev &&
+                    Math.abs(prev.x - box.x) < 0.5 &&
+                    Math.abs(prev.y - box.y) < 0.5 &&
+                    Math.abs(prev.w - box.width) < 0.5 &&
+                    Math.abs(prev.h - box.height) < 0.5 &&
+                    Math.abs(prev.scale - stageScale) < 0.005
+                ) {
+                    return prev;
+                }
+                return {
+                    x: box.x,
+                    y: box.y,
+                    w: box.width,
+                    h: box.height,
+                    scale: stageScale // We might use this for high-quality text rendering
+                };
             });
 
             rafId = requestAnimationFrame(sync);

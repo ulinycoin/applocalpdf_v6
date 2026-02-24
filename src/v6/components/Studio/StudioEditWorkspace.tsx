@@ -40,7 +40,7 @@ export function StudioEditWorkspace() {
     const scaledHeight = 840 * zoom.zoomLevel;
 
     return (
-        <section className="studio-edit-shell" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+        <section className="studio-edit-shell" translate="no" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
             {/* Header Area */}
             <div className="studio-edit-meta" style={{ padding: '8px 16px', background: 'rgba(15,23,42,0.4)', borderRadius: '0 0 12px 12px', marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div style={{ display: 'flex', gap: 12, flex: 1, alignItems: 'center' }}>

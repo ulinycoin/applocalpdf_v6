@@ -225,6 +225,29 @@ export function StudioPageEditor({
         }
     };
 
+    const textLayerNodes = useMemo(() => {
+        return textLayerSpans.map((span, idx) => (
+            <div
+                key={`span-${idx}`}
+                className="studio-edit-text-highlight"
+                data-testid="studio-edit-text-highlight"
+                style={{
+                    position: 'absolute',
+                    left: `${span.xRatio * 100}%`,
+                    top: `${span.yRatio * 100}%`,
+                    width: `${span.widthRatio * 100}%`,
+                    height: `${span.heightRatio * 100}%`,
+                    border: isSelectMode ? '1px solid rgba(59, 130, 246, 0.4)' : '1px solid transparent',
+                    backgroundColor: isSelectMode ? 'rgba(59, 130, 246, 0.1)' : 'transparent',
+                    pointerEvents: isSelectMode ? 'auto' : 'none',
+                    zIndex: 100,
+                    visibility: (isSelectMode || textLayerSpans.length > 0) ? 'visible' : 'hidden',
+                    opacity: isSelectMode ? 1 : 0.01 // Minimal opacity for "visibility" but hidden to users
+                }}
+            />
+        ));
+    }, [textLayerSpans, isSelectMode]);
+
     return (
         <div
             ref={canvasRef}
@@ -258,7 +281,51 @@ export function StudioPageEditor({
                         pointerEvents: 'auto',
                         zIndex: selectedElementId === el.id ? 1001 : 1,
                     }}
-                    onPointerDown={(e) => { e.stopPropagation(); setSelectedElementId(el.id); }}
+                    onPointerDown={(e) => {
+                        e.stopPropagation();
+                        setSelectedElementId(el.id);
+                        if (!textEditor || textEditor.id !== el.id) {
+                            dragSessionRef.current = {
+                                mode: el.type === 'text' ? 'move-text' : (el.type === 'rect' ? 'move-rect' : 'move-stroke') as any,
+                                id: el.id,
+                                startClientX: e.clientX,
+                                startClientY: e.clientY,
+                                originX: ('x' in el) ? el.x : 0,
+                                originY: ('y' in el) ? el.y : 0,
+                                initialElements: elements
+                            };
+                            try {
+                                (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+                            } catch (err) { }
+                        }
+                    }}
+                    onPointerMove={(e) => {
+                        const sess = dragSessionRef.current as any;
+                        if (sess && sess.id === el.id && sess.mode.startsWith('move-')) {
+                            const dx = (e.clientX - sess.startClientX) / width;
+                            const dy = (e.clientY - sess.startClientY) / height;
+                            handleElementAction(el.id, 'update', {
+                                x: sess.originX + dx,
+                                y: sess.originY + dy
+                            });
+                        }
+                    }}
+                    onPointerUp={(e) => {
+                        if (dragSessionRef.current && dragSessionRef.current.id === el.id) {
+                            dragSessionRef.current = null;
+                            try {
+                                (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
+                            } catch (err) { }
+                        }
+                    }}
+                    onPointerCancel={(e) => {
+                        if (dragSessionRef.current && dragSessionRef.current.id === el.id) {
+                            dragSessionRef.current = null;
+                            try {
+                                (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
+                            } catch (err) { }
+                        }
+                    }}
                 >
                     {el.type === 'text' && (
                         <div className="studio-edit-text" style={{
@@ -312,27 +379,7 @@ export function StudioPageEditor({
                 }} />
             )}
 
-            {/* Text Layer Highlights (always in DOM for test stability, opacity controlled) */}
-            {textLayerSpans.map((span, idx) => (
-                <div
-                    key={`span-${idx}`}
-                    className="studio-edit-text-highlight"
-                    data-testid="studio-edit-text-highlight"
-                    style={{
-                        position: 'absolute',
-                        left: `${span.xRatio * 100}%`,
-                        top: `${span.yRatio * 100}%`,
-                        width: `${span.widthRatio * 100}%`,
-                        height: `${span.heightRatio * 100}%`,
-                        border: isSelectMode ? '1px solid rgba(59, 130, 246, 0.4)' : '1px solid transparent',
-                        backgroundColor: isSelectMode ? 'rgba(59, 130, 246, 0.1)' : 'transparent',
-                        pointerEvents: isSelectMode ? 'auto' : 'none',
-                        zIndex: 100,
-                        visibility: (isSelectMode || textLayerSpans.length > 0) ? 'visible' : 'hidden',
-                        opacity: isSelectMode ? 1 : 0.01 // Minimal opacity for "visibility" but hidden to users
-                    }}
-                />
-            ))}
+            {textLayerNodes}
         </div>
     );
 }

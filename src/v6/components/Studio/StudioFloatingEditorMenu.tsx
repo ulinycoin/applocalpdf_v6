@@ -11,21 +11,6 @@ interface StudioFloatingMenuProps {
 }
 
 export function StudioFloatingMenu({ element, onUpdate, onDelete, onDuplicate }: StudioFloatingMenuProps) {
-    if (element.type !== 'text') {
-        return (
-            <div className="studio-floating-menu non-text">
-                <button type="button" className="studio-floating-btn" onClick={onDuplicate} title="Duplicate">
-                    <LinearIcon name="word" />
-                </button>
-                <button type="button" className="studio-floating-btn delete" onClick={onDelete} title="Delete">
-                    <LinearIcon name="x" />
-                </button>
-            </div>
-        );
-    }
-
-    const textElem = element as TextElement;
-
     const [offset, setOffset] = useState({ x: 0, y: 0 });
     const isDraggingRef = useRef(false);
     const startPosRef = useRef({ x: 0, y: 0 });
@@ -51,26 +36,38 @@ export function StudioFloatingMenu({ element, onUpdate, onDelete, onDuplicate }:
     }, []);
 
     const handleDragStart = (e: React.PointerEvent) => {
+        if ((e.target as HTMLElement).closest('button, input, select')) return;
         e.stopPropagation();
         isDraggingRef.current = true;
         startPosRef.current = { x: e.clientX, y: e.clientY };
-        (e.target as HTMLElement).setPointerCapture(e.pointerId);
+        try {
+            (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+        } catch (err) { }
     };
+
+    if (element.type !== 'text') {
+        return (
+            <div
+                className="studio-floating-menu non-text"
+                onPointerDown={handleDragStart}
+                style={{ cursor: 'grab', transform: `translate(${offset.x}px, ${offset.y}px)` }}
+            >
+                <button type="button" className="studio-floating-btn delete" onClick={onDelete} title="Delete">
+                    <LinearIcon name="x" />
+                </button>
+            </div>
+        );
+    }
+
+    const textElem = element as TextElement;
 
     return (
         <div
             className="studio-floating-menu"
-            onPointerDown={(e) => e.stopPropagation()}
-            style={{ transform: `translate(${offset.x}px, ${offset.y}px)` }}
+            onPointerDown={handleDragStart}
+            style={{ cursor: 'grab', transform: `translate(${offset.x}px, ${offset.y}px)` }}
         >
-            <div
-                className="studio-floating-drag-handle"
-                onPointerDown={handleDragStart}
-                title="Drag menu"
-            >
-                <LinearIcon name="menu" size={16} />
-            </div>
-            <div className="studio-floating-divider" />
+
 
             <div className="studio-floating-group">
                 <button
@@ -154,27 +151,11 @@ export function StudioFloatingMenu({ element, onUpdate, onDelete, onDuplicate }:
                         onChange={(e) => onUpdate({ color: e.target.value })}
                     />
                 </div>
-                <div className="studio-floating-group is-segmented">
-                    {(['left', 'center', 'right'] as TextAlignId[]).map(align => (
-                        <button
-                            key={align}
-                            type="button"
-                            className={`studio-floating-btn ${textElem.textAlign === align ? 'active' : ''}`}
-                            onClick={() => onUpdate({ textAlign: align })}
-                            title={`Align ${align}`}
-                        >
-                            <LinearIcon name={`align-${align}` as any} size={16} />
-                        </button>
-                    ))}
-                </div>
             </div>
 
             <div className="studio-floating-divider" />
 
             <div className="studio-floating-group">
-                <button type="button" className="studio-floating-btn" onClick={onDuplicate} title="Duplicate">
-                    <LinearIcon name="word" size={18} />
-                </button>
                 <button type="button" className="studio-floating-btn delete" onClick={onDelete} title="Delete">
                     <LinearIcon name="x" size={18} />
                 </button>

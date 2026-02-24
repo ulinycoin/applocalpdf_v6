@@ -3405,7 +3405,7 @@ textarea:focus-visible {
   transform: none;
   padding: 0.08rem 0.18rem;
   border-radius: 4px;
-  background: rgba(255, 255, 255, 0.5);
+  background: transparent;
   cursor: move;
   white-space: pre-wrap;
 }
@@ -3446,9 +3446,8 @@ textarea:focus-visible {
   padding: 1rem 2.5rem 1rem 1rem;
   border-radius: 12px;
   border: 1px solid var(--stroke);
-  background: rgba(15, 23, 42, 0.7);
-  backdrop-filter: blur(12px);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  background: rgba(15, 23, 42, 0.95);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
   animation: slideInRight 0.3s ease;
 }
 
@@ -3584,8 +3583,7 @@ textarea:focus-visible {
   display: flex;
   align-items: center;
   gap: 0.4rem;
-  background: rgba(15, 23, 42, 0.9);
-  backdrop-filter: blur(12px) saturate(180%);
+  background: rgba(15, 23, 42, 0.95);
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 14px;
   padding: 0.5rem 0.6rem;
@@ -4096,6 +4094,7 @@ textarea:focus-visible {
     background: none;
   }
 }
+
 /* Unified Editor Toolbar V6 Glassmorphism */
 .studio-editor-top-toolbar {
   display: flex;
@@ -4141,8 +4140,7 @@ textarea:focus-visible {
   display: flex;
   align-items: center;
   gap: 0.4rem;
-  background: rgba(15, 23, 42, 0.9);
-  backdrop-filter: blur(12px) saturate(180%);
+  background: rgba(15, 23, 42, 0.95);
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 14px;
   padding: 0.5rem 0.6rem;
