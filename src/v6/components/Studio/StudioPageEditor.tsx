@@ -15,6 +15,7 @@ import { detectStudioEditLocale, getStudioEditMessages } from './studio-edit-i18
 import { clamp01, getStrokeBounds, moveStrokePoints, resizeStrokePoints } from '../../utils/studio-edit-math';
 import {
     EditElement,
+    ImageElement,
     TextElement,
     RectElement,
     StrokeElement,
@@ -297,7 +298,9 @@ export function StudioPageEditor({
                         setSelectedElementId(el.id);
                         if (!textEditor || textEditor.id !== el.id) {
                             dragSessionRef.current = {
-                                mode: el.type === 'text' ? 'move-text' : (el.type === 'rect' ? 'move-rect' : 'move-stroke') as any,
+                                mode: el.type === 'text'
+                                    ? 'move-text'
+                                    : (el.type === 'rect' || el.type === 'image' ? 'move-rect' : 'move-stroke') as any,
                                 id: el.id,
                                 startClientX: e.clientX,
                                 startClientY: e.clientY,
@@ -327,6 +330,42 @@ export function StudioPageEditor({
                             handleElementAction(el.id, 'update', {
                                 x: nextX,
                                 y: nextY
+                            });
+                        } else if (sess && sess.id === el.id && sess.mode === 'resize-image') {
+                            const dx = (e.clientX - sess.startClientX) / width;
+                            const minW = 0.04;
+                            const minH = 0.02;
+                            const aspect = Math.max(0.05, sess.originW / Math.max(0.01, sess.originH));
+                            const maxW = Math.max(minW, 1 - sess.originX);
+                            const maxH = Math.max(minH, 1 - sess.originY);
+
+                            let nextW = clamp(sess.originW + dx, minW, maxW);
+                            let nextH = nextW / aspect;
+                            if (nextH > maxH) {
+                                nextH = maxH;
+                                nextW = nextH * aspect;
+                            }
+                            if (nextH < minH) {
+                                nextH = minH;
+                                nextW = nextH * aspect;
+                            }
+                            if (nextW > maxW) {
+                                nextW = maxW;
+                                nextH = nextW / aspect;
+                            }
+                            handleElementAction(el.id, 'update', { w: nextW, h: nextH });
+                        } else if (sess && sess.id === el.id && sess.mode === 'resize-text') {
+                            const dx = (e.clientX - sess.startClientX) / width;
+                            const dy = (e.clientY - sess.startClientY) / height;
+                            const delta = Math.max(dx, dy);
+                            const scale = clamp(1 + delta * 1.6, 0.45, 4);
+                            const nextW = clamp(sess.originW * scale, 0.05, 0.95);
+                            const nextH = clamp(sess.originH * scale, 0.02, 0.6);
+                            const nextFontSize = clamp(sess.originFontSize * scale, 8, 144);
+                            handleElementAction(el.id, 'update', {
+                                w: nextW,
+                                h: nextH,
+                                fontSize: nextFontSize,
                             });
                         }
                     }}
@@ -386,6 +425,63 @@ export function StudioPageEditor({
                             width: '100%', height: '100%', backgroundColor: el.fill,
                             border: `${el.strokeWidth}px solid ${el.stroke}`, opacity: el.opacity
                         }} />
+                    )}
+                    {el.type === 'image' && (
+                        <img
+                            src={el.dataUrl}
+                            alt="Signature"
+                            draggable={false}
+                            style={{ width: '100%', height: '100%', objectFit: 'fill', opacity: el.opacity, pointerEvents: 'none', userSelect: 'none' }}
+                        />
+                    )}
+                    {selectedElementId === el.id && el.type === 'image' && (
+                        <button
+                            type="button"
+                            className="studio-edit-text-resize"
+                            title="Resize"
+                            onPointerDown={(event) => {
+                                event.stopPropagation();
+                                const image = el as ImageElement;
+                                dragSessionRef.current = {
+                                    mode: 'resize-image',
+                                    id: image.id,
+                                    startClientX: event.clientX,
+                                    startClientY: event.clientY,
+                                    originW: image.w,
+                                    originH: image.h,
+                                    originX: image.x,
+                                    originY: image.y,
+                                    initialElements: elements,
+                                };
+                                try {
+                                    (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
+                                } catch (err) { }
+                            }}
+                        />
+                    )}
+                    {selectedElementId === el.id && el.type === 'text' && textEditor?.id !== el.id && (
+                        <button
+                            type="button"
+                            className="studio-edit-text-resize"
+                            title="Resize text"
+                            onPointerDown={(event) => {
+                                event.stopPropagation();
+                                const textEl = el as TextElement;
+                                dragSessionRef.current = {
+                                    mode: 'resize-text',
+                                    id: textEl.id,
+                                    startClientX: event.clientX,
+                                    startClientY: event.clientY,
+                                    originW: textEl.w,
+                                    originH: textEl.h,
+                                    originFontSize: textEl.fontSize,
+                                    initialElements: elements,
+                                };
+                                try {
+                                    (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
+                                } catch (err) { }
+                            }}
+                        />
                     )}
                 </div>
             ))}

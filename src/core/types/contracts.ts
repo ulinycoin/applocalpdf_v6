@@ -146,10 +146,22 @@ export interface WorkerStudioRectEditElement {
   opacity: number;
 }
 
+export interface WorkerStudioImageEditElement {
+  id: string;
+  type: 'image';
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  opacity: number;
+  dataUrl: string;
+}
+
 export type WorkerStudioEditElement =
   | WorkerStudioTextEditElement
   | WorkerStudioStrokeEditElement
-  | WorkerStudioRectEditElement;
+  | WorkerStudioRectEditElement
+  | WorkerStudioImageEditElement;
 
 export type WorkerCommandPayload =
   | { type: 'PROCESS_TOOL'; payload: { toolId: string; inputIds: string[]; options?: Record<string, unknown> } }

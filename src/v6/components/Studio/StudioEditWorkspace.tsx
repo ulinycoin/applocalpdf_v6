@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useStudioEditController } from './edit/use-studio-edit-controller';
 import { StudioEditToolbar } from './edit/StudioEditToolbar';
+import { StudioSignComposerModal } from './edit/StudioSignComposerModal';
 import { LinearIcon } from '../icons/linear-icon';
 import { detectStudioEditLocale, getStudioEditMessages } from './studio-edit-i18n';
 import { StudioPageEditor } from './StudioPageEditor';
@@ -232,6 +233,14 @@ export function StudioEditWorkspace() {
                 </div>,
                 document.body
             )}
+
+            <StudioSignComposerModal
+                open={ctrl.isSignComposerOpen}
+                ui={ui}
+                onClose={() => ctrl.setSignComposerOpen(false)}
+                onInsertText={ctrl.addTypedSignature}
+                onInsertImage={ctrl.addImageSignature}
+            />
         </section>
     );
 }

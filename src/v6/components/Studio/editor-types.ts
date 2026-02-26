@@ -2,7 +2,7 @@ import { WorkerPdfTextLayerSpan } from '../../../core/public/contracts';
 import { FontFamilyId } from './inline-text-utils';
 
 export type TextLayerSpan = WorkerPdfTextLayerSpan;
-export type EditorToolId = 'text' | 'annotate' | 'whiteout' | 'shapes';
+export type EditorToolId = 'text' | 'sign' | 'annotate' | 'whiteout' | 'shapes';
 export type TextAlignId = 'left' | 'center' | 'right';
 export type InlineUiState = 'idle' | 'hover' | 'selected' | 'editing' | 'saving' | 'saved' | 'error';
 
@@ -51,7 +51,18 @@ export interface RectElement {
     opacity: number;
 }
 
-export type EditElement = TextElement | StrokeElement | RectElement;
+export interface ImageElement {
+    id: string;
+    type: 'image';
+    x: number;
+    y: number;
+    w: number;
+    h: number;
+    opacity: number;
+    dataUrl: string;
+}
+
+export type EditElement = TextElement | StrokeElement | RectElement | ImageElement;
 
 export interface RectDraft {
     startX: number;
@@ -68,9 +79,10 @@ export interface StrokeDraft {
 
 export type DragSession =
     | { mode: 'move-text'; id: string; startClientX: number; startClientY: number; originX: number; originY: number; initialElements: EditElement[]; }
-    | { mode: 'resize-text'; id: string; startClientX: number; startClientY: number; originW: number; originH: number; initialElements: EditElement[]; }
+    | { mode: 'resize-text'; id: string; startClientX: number; startClientY: number; originW: number; originH: number; originFontSize: number; initialElements: EditElement[]; }
     | { mode: 'move-rect'; id: string; startClientX: number; startClientY: number; originX: number; originY: number; initialElements: EditElement[]; }
     | { mode: 'resize-rect'; id: string; startClientX: number; startClientY: number; originW: number; originH: number; initialElements: EditElement[]; }
+    | { mode: 'resize-image'; id: string; startClientX: number; startClientY: number; originW: number; originH: number; originX: number; originY: number; initialElements: EditElement[]; }
     | { mode: 'move-stroke'; id: string; startClientX: number; startClientY: number; initialPoints: number[]; initialElements: EditElement[]; }
     | { mode: 'resize-stroke'; id: string; startClientX: number; startClientY: number; initialPoints: number[]; bounds: { minX: number; minY: number; maxX: number; maxY: number }; initialElements: EditElement[]; };
 

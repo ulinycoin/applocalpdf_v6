@@ -1,6 +1,7 @@
 import type {
   WorkerStudioEditElement,
   WorkerStudioFontFamilyId,
+  WorkerStudioImageEditElement,
   WorkerStudioRectEditElement,
   WorkerStudioStrokeEditElement,
   WorkerStudioTextAlign,
@@ -147,6 +148,29 @@ function normalizeRectElement(input: WorkerStudioRectEditElement): WorkerStudioR
   };
 }
 
+function normalizeImageElement(input: WorkerStudioImageEditElement): WorkerStudioImageEditElement {
+  if (typeof input.dataUrl !== 'string') {
+    fail('Invalid image payload: dataUrl must be a string', 'STUDIO_EDIT_INVALID_PAYLOAD');
+  }
+  const normalizedDataUrl = input.dataUrl.trim();
+  if (!/^data:image\/(png|jpeg|jpg);base64,[a-z0-9+/=]+$/iu.test(normalizedDataUrl)) {
+    fail('Unsupported image payload format', 'STUDIO_EDIT_INVALID_PAYLOAD');
+  }
+  if (normalizedDataUrl.length > 6_000_000) {
+    fail('Image payload is too large', 'STUDIO_EDIT_TOO_LARGE');
+  }
+  return {
+    id: typeof input.id === 'string' && input.id.trim().length > 0 ? input.id : crypto.randomUUID(),
+    type: 'image',
+    x: toSafeRatio(input.x, 'image.x'),
+    y: toSafeRatio(input.y, 'image.y'),
+    w: clamp(toFiniteNumber(input.w, 'image.w'), 0.001, 1),
+    h: clamp(toFiniteNumber(input.h, 'image.h'), 0.001, 1),
+    opacity: normalizeOpacity(input.opacity),
+    dataUrl: normalizedDataUrl,
+  };
+}
+
 export function normalizeAndValidateStudioEditRequest(payload: {
   pageIndex: unknown;
   elements: unknown;
@@ -176,6 +200,10 @@ export function normalizeAndValidateStudioEditRequest(payload: {
     }
     if (typed.type === 'rect') {
       normalized.push(normalizeRectElement(typed));
+      continue;
+    }
+    if (typed.type === 'image') {
+      normalized.push(normalizeImageElement(typed));
       continue;
     }
     fail(`Unsupported edit element type: ${(typed as { type: unknown }).type as string}`, 'STUDIO_EDIT_UNSUPPORTED_ELEMENT');

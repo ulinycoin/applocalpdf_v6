@@ -183,6 +183,25 @@ function encodeLatin1(input: string): Uint8Array {
   return bytes;
 }
 
+function dataUrlToBytes(dataUrl: string): { mimeType: string; bytes: Uint8Array } | null {
+  const match = /^data:(image\/(?:png|jpeg|jpg));base64,([a-z0-9+/=]+)$/iu.exec(dataUrl.trim());
+  if (!match) {
+    return null;
+  }
+  const mimeType = match[1]!.toLowerCase() === 'image/jpg' ? 'image/jpeg' : match[1]!.toLowerCase();
+  const base64 = match[2]!;
+  try {
+    const decoded = atob(base64);
+    const bytes = new Uint8Array(decoded.length);
+    for (let i = 0; i < decoded.length; i += 1) {
+      bytes[i] = decoded.charCodeAt(i);
+    }
+    return { mimeType, bytes };
+  } catch {
+    return null;
+  }
+}
+
 async function decodePageStreamToLatin1(contentStream: unknown): Promise<string | null> {
   if (
     !contentStream
@@ -515,6 +534,7 @@ export async function applyStudioTextEditsToPdfBytes(params: {
   pdf.registerFontkit(fontkit);
 
   const fontCache = new Map<string, PDFFont>();
+  const imageCache = new Map<string, Awaited<ReturnType<typeof pdf.embedPng>>>();
   const fontBytesCache = new Map<string, ArrayBuffer | null>();
   const toAbsoluteUrl = (path: string) => new URL(path, typeof location !== 'undefined' ? location.origin : 'http://localhost:4173').href;
   const fetchFontBytes = async (key: string, candidates: string[]) => {
@@ -820,6 +840,33 @@ export async function applyStudioTextEditsToPdfBytes(params: {
     }
 
     if (trueReplaceApplied && isAutoWhiteoutRect(element)) {
+      continue;
+    }
+    if (element.type === 'image') {
+      const decoded = dataUrlToBytes(element.dataUrl);
+      if (!decoded) {
+        continue;
+      }
+      const cacheKey = `${decoded.mimeType}:${element.dataUrl.length}:${element.dataUrl.slice(0, 64)}`;
+      let embedded = imageCache.get(cacheKey);
+      if (!embedded) {
+        embedded = decoded.mimeType === 'image/png'
+          ? await pdf.embedPng(decoded.bytes)
+          : await pdf.embedJpg(decoded.bytes);
+        imageCache.set(cacheKey, embedded);
+      }
+
+      const sx = element.x * pageWidth;
+      const sy = pageHeight - ((element.y + element.h) * pageHeight);
+      const sw = element.w * pageWidth;
+      const sh = element.h * pageHeight;
+      page.drawImage(embedded, {
+        x: sx,
+        y: sy,
+        width: sw,
+        height: sh,
+        opacity: element.opacity,
+      });
       continue;
     }
     const sx = element.x * pageWidth;

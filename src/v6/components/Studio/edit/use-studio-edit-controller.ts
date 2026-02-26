@@ -15,6 +15,8 @@ import { CommandExecutor, type AnyCommand } from '../store/command-manager';
 const USE_COMMAND_PATTERN_FOR_SAVES = true;
 import {
     EditElement,
+    ImageElement,
+    TextElement,
     TextEditorState,
     InlineUiState,
     TextLayerSpan,
@@ -92,6 +94,7 @@ export function useStudioEditController(ui: any) {
     const [isSelectMode, setIsSelectMode] = useState(false);
     const [textSelectionMode, setTextSelectionMode] = useState<'line' | 'word'>('line');
     const [applyToSelection, setApplyToSelection] = useState(false);
+    const [isSignComposerOpen, setSignComposerOpen] = useState(false);
 
     const selectedPages = useMemo(() => buildSelectedPages(documents, selection), [documents, selection]);
     const activeDocument = useMemo(() => documents.find((doc) => doc.id === activeDocumentId) ?? null, [activeDocumentId, documents]);
@@ -139,6 +142,9 @@ export function useStudioEditController(ui: any) {
     const selectTool = useCallback((nextTool: StudioEditToolId, method: 'ui' | 'shortcut' = 'ui') => {
         setTool(nextTool);
         updateEditSessionTool(nextTool);
+        if (nextTool === 'sign') {
+            setSignComposerOpen(true);
+        }
         runtime.telemetry.track({ type: 'STUDIO_EDIT_TOOL_SELECTED', runId: sessionRunId, toolId: 'studio.edit', tool: nextTool, method });
     }, [updateEditSessionTool, runtime, sessionRunId]);
 
@@ -210,6 +216,56 @@ export function useStudioEditController(ui: any) {
         });
         setHistoryIndex((prev) => prev + 1);
     }, [historyIndex]);
+
+    const addElement = useCallback((element: EditElement) => {
+        const next = [...elementsRef.current, element];
+        setElementsSafe(next);
+        pushHistory(next);
+        setSelectedElementId(element.id);
+        setTextEditor(null);
+    }, [pushHistory, setElementsSafe]);
+
+    const addTypedSignature = useCallback((payload: { value: string; fontSize: number }) => {
+        const safe = (payload.value || ui.sign || 'Signature').trim() || 'Signature';
+        const next: TextElement = {
+            id: crypto.randomUUID(),
+            type: 'text',
+            x: 0.33,
+            y: 0.78,
+            w: 0.3,
+            h: 0.08,
+            text: safe,
+            color: '#0f172a',
+            fontSize: Math.max(12, Math.min(96, Math.round(payload.fontSize || 30))),
+            fontFamily: 'times',
+            fontWeight: 'normal',
+            fontStyle: 'italic',
+            textAlign: 'left',
+            lineHeight: 1.1,
+            letterSpacing: 0,
+            opacity: 1,
+        };
+        addElement(next);
+        setTool('sign');
+    }, [addElement, ui.sign]);
+
+    const addImageSignature = useCallback((payload: { dataUrl: string; width: number; height: number }) => {
+        const ratio = payload.width > 0 && payload.height > 0 ? payload.width / payload.height : 3;
+        const initialW = 0.28;
+        const initialH = initialW / Math.max(0.2, ratio);
+        const next: ImageElement = {
+            id: crypto.randomUUID(),
+            type: 'image',
+            x: 0.36,
+            y: 0.72,
+            w: Math.min(0.5, Math.max(0.08, initialW)),
+            h: Math.min(0.35, Math.max(0.04, initialH)),
+            opacity: 1,
+            dataUrl: payload.dataUrl,
+        };
+        addElement(next);
+        setTool('sign');
+    }, [addElement]);
 
     const undo = useCallback(() => {
         if (historyIndex <= 0) return;
@@ -488,6 +544,10 @@ export function useStudioEditController(ui: any) {
         applyToSelection, setApplyToSelection,
         hasDirtyChanges, canApplyToSelection,
         applyChanges, undoLastSave, redoLastSave,
+        isSignComposerOpen,
+        setSignComposerOpen,
+        addTypedSignature,
+        addImageSignature,
         clearEditSession,
         preview, selectedPages, activeDocument,
         saveUndoStack: USE_COMMAND_PATTERN_FOR_SAVES ? commandUndoStack : saveUndoStack,

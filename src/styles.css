@@ -3718,6 +3718,162 @@ textarea:focus-visible {
   cursor: grabbing;
 }
 
+.studio-sign-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(2, 6, 23, 0.72);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  z-index: 1200;
+  padding: 108px 20px 20px;
+}
+
+.studio-sign-modal {
+  width: min(860px, 100%);
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--stroke);
+  background: var(--surface-strong);
+  color: var(--text-main);
+  box-shadow: var(--shadow-lg);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+.studio-sign-modal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  border-bottom: 1px solid rgba(183, 202, 219, 0.2);
+}
+
+.studio-sign-modal-head h3 {
+  margin: 0;
+  font-size: 1.08rem;
+  color: #eef6ff;
+}
+
+.studio-sign-close {
+  border: 0;
+  background: transparent;
+  color: rgba(226, 232, 240, 0.88);
+  font-size: 2rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.studio-sign-head-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.studio-sign-undo-btn {
+  min-height: 2rem;
+  padding: 0.36rem 0.7rem;
+}
+
+.studio-sign-undo-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.studio-sign-tabs {
+  margin: 0 18px;
+  padding: 0.6rem 0.2rem 0;
+}
+
+.studio-sign-content {
+  border-top: 1px solid rgba(183, 202, 219, 0.2);
+  margin: 0 18px;
+  padding: 16px 0;
+}
+
+.studio-sign-type-pane,
+.studio-sign-upload-pane {
+  display: grid;
+  gap: 10px;
+}
+
+.studio-sign-type-pane label {
+  color: #d9e7f4;
+  font-size: 0.84rem;
+  font-weight: 600;
+}
+
+.studio-sign-type-pane .tool-config-input {
+  font-size: 1rem;
+}
+
+.studio-sign-type-size {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.studio-sign-type-size input[type='range'] {
+  flex: 1;
+  accent-color: #3b82f6;
+}
+
+.studio-sign-type-size input[type='number'] {
+  width: 84px;
+  padding: 0.46rem 0.55rem;
+}
+
+.studio-sign-draw-pane {
+  display: grid;
+  gap: 10px;
+}
+
+.studio-sign-draw-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.studio-sign-draw-actions input[type='color'] {
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  border-radius: 8px;
+  border: 1px solid rgba(183, 202, 219, 0.32);
+  background: rgba(14, 23, 32, 0.92);
+}
+
+.studio-sign-canvas {
+  width: 100%;
+  height: 240px;
+  border: 1px dashed rgba(148, 163, 184, 0.62);
+  border-radius: 12px;
+  background: #ffffff;
+  touch-action: none;
+}
+
+.studio-sign-upload-preview {
+  max-height: 180px;
+  width: auto;
+  border: 1px solid rgba(183, 202, 219, 0.3);
+  border-radius: 10px;
+  padding: 8px;
+  background: rgba(14, 23, 32, 0.82);
+}
+
+.studio-sign-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 0 18px 18px;
+  border-top: 1px solid rgba(183, 202, 219, 0.2);
+}
+
+.studio-sign-footer .btn-secondary,
+.studio-sign-footer .btn-primary {
+  min-width: 92px;
+}
+
 .studio-floating-group {
   display: flex;
   align-items: center;
