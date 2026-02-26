@@ -2,7 +2,7 @@ import { WorkerPdfTextLayerSpan } from '../../../core/public/contracts';
 import { FontFamilyId } from './inline-text-utils';
 
 export type TextLayerSpan = WorkerPdfTextLayerSpan;
-export type EditorToolId = 'text' | 'sign' | 'annotate' | 'whiteout' | 'shapes';
+export type EditorToolId = 'text' | 'sign' | 'annotate' | 'whiteout' | 'shapes' | 'forms';
 export type TextAlignId = 'left' | 'center' | 'right';
 export type InlineUiState = 'idle' | 'hover' | 'selected' | 'editing' | 'saving' | 'saved' | 'error';
 
@@ -62,7 +62,21 @@ export interface ImageElement {
     dataUrl: string;
 }
 
-export type EditElement = TextElement | StrokeElement | RectElement | ImageElement;
+export interface FormFieldElement {
+    id: string;
+    type: 'form-field';
+    formType: 'text' | 'checkbox' | 'radio';
+    x: number;
+    y: number;
+    w: number;
+    h: number;
+    defaultValue: string;
+    required: boolean;
+    fontSize: number;
+    opacity: number;
+}
+
+export type EditElement = TextElement | StrokeElement | RectElement | ImageElement | FormFieldElement;
 
 export interface RectDraft {
     startX: number;

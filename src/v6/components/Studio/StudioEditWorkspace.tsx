@@ -118,6 +118,8 @@ export function StudioEditWorkspace() {
                         ui={ui}
                         tool={ctrl.tool}
                         onSelectTool={ctrl.setTool}
+                        formType={ctrl.formType}
+                        setFormType={ctrl.setFormType}
                     />
                     {ctrl.tool === 'annotate' && (
                         <StudioAnnotateSettingsPanel

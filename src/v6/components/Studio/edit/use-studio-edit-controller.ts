@@ -96,6 +96,7 @@ export function useStudioEditController(ui: any) {
     const [applyToSelection, setApplyToSelection] = useState(false);
     const [isSignComposerOpen, setSignComposerOpen] = useState(false);
     const [annotateColor, setAnnotateColor] = useState('#fff176');
+    const [formType, setFormType] = useState<'text' | 'checkbox' | 'radio'>('text');
 
     const selectedPages = useMemo(() => buildSelectedPages(documents, selection), [documents, selection]);
     const activeDocument = useMemo(() => documents.find((doc) => doc.id === activeDocumentId) ?? null, [activeDocumentId, documents]);
@@ -543,6 +544,7 @@ export function useStudioEditController(ui: any) {
         isSelectMode, setIsSelectMode,
         textSelectionMode, setTextSelectionMode,
         annotateColor, setAnnotateColor,
+        formType, setFormType,
         applyToSelection, setApplyToSelection,
         hasDirtyChanges, canApplyToSelection,
         applyChanges, undoLastSave, redoLastSave,

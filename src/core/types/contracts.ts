@@ -157,11 +157,26 @@ export interface WorkerStudioImageEditElement {
   dataUrl: string;
 }
 
+export interface WorkerStudioFormFieldEditElement {
+  id: string;
+  type: 'form-field';
+  formType: 'text' | 'checkbox' | 'radio';
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  defaultValue: string;
+  required: boolean;
+  fontSize: number;
+  opacity: number;
+}
+
 export type WorkerStudioEditElement =
   | WorkerStudioTextEditElement
   | WorkerStudioStrokeEditElement
   | WorkerStudioRectEditElement
-  | WorkerStudioImageEditElement;
+  | WorkerStudioImageEditElement
+  | WorkerStudioFormFieldEditElement;
 
 export type WorkerCommandPayload =
   | { type: 'PROCESS_TOOL'; payload: { toolId: string; inputIds: string[]; options?: Record<string, unknown> } }

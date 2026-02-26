@@ -451,6 +451,18 @@ export function StudioPageEditor({
                                 border: `${el.strokeWidth}px solid ${el.stroke}`, opacity: el.opacity
                             }} />
                         )}
+                        {el.type === 'form-field' && (
+                            <div style={{
+                                width: '100%', height: '100%',
+                                backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                                border: '1px dashed #3b82f6', opacity: el.opacity,
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                fontFamily: 'sans-serif', fontSize: 12, color: '#3b82f6',
+                                overflow: 'hidden'
+                            }}>
+                                {el.formType === 'text' ? 'Text Field' : el.formType === 'checkbox' ? 'Checkbox' : 'Radio'}
+                            </div>
+                        )}
                         {el.type === 'image' && (
                             <img
                                 src={el.dataUrl}

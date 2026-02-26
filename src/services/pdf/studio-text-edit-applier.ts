@@ -818,6 +818,51 @@ export async function applyStudioTextEditsToPdfBytes(params: {
       continue;
     }
 
+    if (element.type === 'form-field') {
+      const form = pdf.getForm();
+      const sx = element.x * pageWidth;
+      const sh = element.h * pageHeight;
+      const sy = pageHeight - (element.y * pageHeight) - sh;
+      const sw = element.w * pageWidth;
+
+      try {
+        if (element.formType === 'text') {
+          const field = form.createTextField(element.id);
+          field.addToPage(page, { x: sx, y: sy, width: sw, height: sh });
+          if (element.defaultValue) {
+            field.setText(element.defaultValue);
+          }
+          if (element.required) field.enableRequired();
+        } else if (element.formType === 'checkbox') {
+          const cb = form.createCheckBox(element.id);
+          cb.addToPage(page, { x: sx, y: sy, width: sw, height: sh });
+          if (element.defaultValue && element.defaultValue.toLowerCase() !== 'off') cb.check();
+          if (element.required) cb.enableRequired();
+        } else if (element.formType === 'radio') {
+          // Fallback to a single-option radio group if ID represents a radio button
+          try {
+            const existing = form.getRadioGroup(element.id);
+            if (existing) {
+              existing.addOptionToPage(`Opt_${crypto.randomUUID().slice(0, 4)}`, page, { x: sx, y: sy, width: sw, height: sh });
+            } else {
+              const rg = form.createRadioGroup(element.id);
+              rg.addOptionToPage('Choice1', page, { x: sx, y: sy, width: sw, height: sh });
+              if (element.defaultValue && element.defaultValue.toLowerCase() !== 'off') rg.select('Choice1');
+              if (element.required) rg.enableRequired();
+            }
+          } catch {
+            const rg = form.createRadioGroup(element.id);
+            rg.addOptionToPage('Choice1', page, { x: sx, y: sy, width: sw, height: sh });
+            if (element.defaultValue && element.defaultValue.toLowerCase() !== 'off') rg.select('Choice1');
+            if (element.required) rg.enableRequired();
+          }
+        }
+      } catch (err) {
+        // Silently ignore form creation failures for individual elements
+      }
+      continue;
+    }
+
     if (element.type === 'stroke') {
       if (element.points.length < 4) {
         continue;
