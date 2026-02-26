@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { useStudioEditController } from './edit/use-studio-edit-controller';
 import { StudioEditToolbar } from './edit/StudioEditToolbar';
 import { StudioSignComposerModal } from './edit/StudioSignComposerModal';
+import { StudioAnnotateSettingsPanel } from './edit/StudioAnnotateSettingsPanel';
 import { LinearIcon } from '../icons/linear-icon';
 import { detectStudioEditLocale, getStudioEditMessages } from './studio-edit-i18n';
 import { StudioPageEditor } from './StudioPageEditor';
@@ -118,6 +119,14 @@ export function StudioEditWorkspace() {
                         tool={ctrl.tool}
                         onSelectTool={ctrl.setTool}
                     />
+                    {ctrl.tool === 'annotate' && (
+                        <StudioAnnotateSettingsPanel
+                            title={ui.annotate}
+                            highlightLabel={ui.annotateHighlight}
+                            color={ctrl.annotateColor}
+                            onColorChange={ctrl.setAnnotateColor}
+                        />
+                    )}
                 </div>
 
                 <div
@@ -168,6 +177,7 @@ export function StudioEditWorkspace() {
                                 setIsSelectMode={ctrl.setIsSelectMode}
                                 textSelectionMode={ctrl.textSelectionMode}
                                 onTextSelectionModeChange={ctrl.setTextSelectionMode}
+                                annotateColor={ctrl.annotateColor}
                                 elements={ctrl.elements}
                                 onElementsChange={ctrl.setElements}
                                 onPushHistory={ctrl.pushHistory}

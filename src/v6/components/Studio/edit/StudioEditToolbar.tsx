@@ -28,6 +28,13 @@ export function StudioEditToolbar({ ui, tool, onSelectTool }: StudioEditToolbarP
             >
                 <LinearIcon name="edit" size={18} />
             </button>
+            <button
+                className={`studio-edit-tool-btn ${tool === 'annotate' ? 'active' : ''}`}
+                onClick={() => { onSelectTool('annotate'); }}
+                title={ui.annotate}
+            >
+                <LinearIcon name="tool" size={18} />
+            </button>
             <div style={{ width: 24, height: 1, background: 'rgba(255,255,255,0.1)', margin: '4px auto' }} />
             <button
                 className={`studio-edit-tool-btn ${tool === 'shapes' ? 'active' : ''}`}

@@ -95,6 +95,7 @@ export function useStudioEditController(ui: any) {
     const [textSelectionMode, setTextSelectionMode] = useState<'line' | 'word'>('line');
     const [applyToSelection, setApplyToSelection] = useState(false);
     const [isSignComposerOpen, setSignComposerOpen] = useState(false);
+    const [annotateColor, setAnnotateColor] = useState('#fff176');
 
     const selectedPages = useMemo(() => buildSelectedPages(documents, selection), [documents, selection]);
     const activeDocument = useMemo(() => documents.find((doc) => doc.id === activeDocumentId) ?? null, [activeDocumentId, documents]);
@@ -541,6 +542,7 @@ export function useStudioEditController(ui: any) {
         textLayerSpans,
         isSelectMode, setIsSelectMode,
         textSelectionMode, setTextSelectionMode,
+        annotateColor, setAnnotateColor,
         applyToSelection, setApplyToSelection,
         hasDirtyChanges, canApplyToSelection,
         applyChanges, undoLastSave, redoLastSave,

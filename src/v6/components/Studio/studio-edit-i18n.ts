@@ -13,6 +13,8 @@ export interface StudioEditMessages {
   sign: string;
   whiteout: string;
   annotate: string;
+  annotateUnderline: string;
+  annotateHighlight: string;
   shapes: string;
   undo: string;
   redo: string;
@@ -56,6 +58,8 @@ const EN_MESSAGES: StudioEditMessages = {
   sign: 'Sign',
   whiteout: 'Whiteout',
   annotate: 'Annotate',
+  annotateUnderline: 'Underline',
+  annotateHighlight: 'Highlight',
   shapes: 'Shapes',
   undo: 'Undo',
   redo: 'Redo',
@@ -100,6 +104,8 @@ const RU_MESSAGES: StudioEditMessages = {
   sign: 'Подпись',
   whiteout: 'Скрытие',
   annotate: 'Аннотация',
+  annotateUnderline: 'Подчеркивание',
+  annotateHighlight: 'Закрашивание',
   shapes: 'Фигуры',
   undo: 'Отменить',
   redo: 'Повторить',

@@ -26,6 +26,7 @@ export interface ToolContext {
 
     isPointerDown: boolean;
     setIsPointerDown: (val: boolean) => void;
+    annotateColor: string;
 }
 
 export interface IEditorTool {

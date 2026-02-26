@@ -12,7 +12,7 @@ import {
     type FontFamilyId,
 } from './inline-text-utils';
 import { detectStudioEditLocale, getStudioEditMessages } from './studio-edit-i18n';
-import { clamp01, getStrokeBounds, moveStrokePoints, resizeStrokePoints } from '../../utils/studio-edit-math';
+import { clamp01, getStrokeBounds, moveStrokePoints } from '../../utils/studio-edit-math';
 import {
     EditElement,
     ImageElement,
@@ -54,6 +54,7 @@ export interface StudioPageEditorProps {
     setIsSelectMode: (val: boolean) => void;
     textSelectionMode?: 'line' | 'word';
     onTextSelectionModeChange?: (mode: 'line' | 'word') => void;
+    annotateColor?: string;
     textLayerSpans: TextLayerSpan[];
     onFinish?: () => void;
     onDiscard?: () => void;
@@ -78,6 +79,7 @@ export function StudioPageEditor({
     setIsSelectMode,
     textSelectionMode: externalTextSelectionMode,
     onTextSelectionModeChange,
+    annotateColor = '#fff176',
     textLayerSpans,
     onFinish,
     onDiscard
@@ -175,7 +177,8 @@ export function StudioPageEditor({
         draftStroke,
         setDraftStroke,
         isPointerDown,
-        setIsPointerDown
+        setIsPointerDown,
+        annotateColor,
     });
 
     // Pointer Handlers
@@ -277,214 +280,262 @@ export function StudioPageEditor({
 
 
             {/* Render Elements */}
-            {elements.map(el => (
-                <div
-                    key={el.id}
-                    data-editor-element-id={el.id}
-                    className={`studio-editor-element ${selectedElementId === el.id ? 'selected' : ''}`}
-                    style={{
-                        position: 'absolute',
-                        left: ('x' in el) ? `${el.x * 100}%` : '0',
-                        top: ('y' in el) ? `${el.y * 100}%` : '0',
-                        width: (textEditor?.id === el.id) ? 'auto' : (('w' in el) ? `${el.w * 100}%` : 'auto'),
-                        minWidth: (textEditor?.id === el.id && 'w' in el) ? `${el.w * 100}%` : 'auto',
-                        maxWidth: (textEditor?.id === el.id) ? '90%' : 'none',
-                        height: ('h' in el) ? `${el.h * 100}%` : 'auto',
-                        pointerEvents: 'auto',
-                        zIndex: selectedElementId === el.id ? 1001 : 1,
-                    }}
-                    onPointerDown={(e) => {
-                        e.stopPropagation();
-                        setSelectedElementId(el.id);
-                        if (!textEditor || textEditor.id !== el.id) {
-                            dragSessionRef.current = {
-                                mode: el.type === 'text'
-                                    ? 'move-text'
-                                    : (el.type === 'rect' || el.type === 'image' ? 'move-rect' : 'move-stroke') as any,
-                                id: el.id,
-                                startClientX: e.clientX,
-                                startClientY: e.clientY,
-                                originX: ('x' in el) ? el.x : 0,
-                                originY: ('y' in el) ? el.y : 0,
-                                initialElements: elements
-                            };
-                            try {
-                                (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
-                            } catch (err) { }
-                        }
-                    }}
-                    onDoubleClick={(e) => {
-                        if (el.type !== 'text') {
-                            return;
-                        }
-                        e.stopPropagation();
-                        startEditingText(el as TextElement);
-                    }}
-                    onPointerMove={(e) => {
-                        const sess = dragSessionRef.current as any;
-                        if (sess && sess.id === el.id && sess.mode.startsWith('move-')) {
-                            const dx = (e.clientX - sess.startClientX) / width;
-                            const dy = (e.clientY - sess.startClientY) / height;
-                            const nextX = clamp01(sess.originX + dx);
-                            const nextY = clamp01(sess.originY + dy);
-                            handleElementAction(el.id, 'update', {
-                                x: nextX,
-                                y: nextY
-                            });
-                        } else if (sess && sess.id === el.id && sess.mode === 'resize-image') {
-                            const dx = (e.clientX - sess.startClientX) / width;
-                            const minW = 0.04;
-                            const minH = 0.02;
-                            const aspect = Math.max(0.05, sess.originW / Math.max(0.01, sess.originH));
-                            const maxW = Math.max(minW, 1 - sess.originX);
-                            const maxH = Math.max(minH, 1 - sess.originY);
+            {elements.map((el) => {
+                const strokeBounds = el.type === 'stroke' ? getStrokeBounds(el.points) : null;
+                // Add padding to ensure stroke width fits inside the SVG viewBox and it never collapses to 0 height
+                const paddingLimit = el.type === 'stroke' ? ((el.width ?? 0) / Math.max(width, height)) * 1.5 : 0;
+                const strokeWidth = strokeBounds ? Math.max(paddingLimit, strokeBounds.maxX - strokeBounds.minX + paddingLimit * 2) : 0;
+                const strokeHeight = strokeBounds ? Math.max(paddingLimit, strokeBounds.maxY - strokeBounds.minY + paddingLimit * 2) : 0;
 
-                            let nextW = clamp(sess.originW + dx, minW, maxW);
-                            let nextH = nextW / aspect;
-                            if (nextH > maxH) {
-                                nextH = maxH;
-                                nextW = nextH * aspect;
-                            }
-                            if (nextH < minH) {
-                                nextH = minH;
-                                nextW = nextH * aspect;
-                            }
-                            if (nextW > maxW) {
-                                nextW = maxW;
-                                nextH = nextW / aspect;
-                            }
-                            handleElementAction(el.id, 'update', { w: nextW, h: nextH });
-                        } else if (sess && sess.id === el.id && sess.mode === 'resize-text') {
-                            const dx = (e.clientX - sess.startClientX) / width;
-                            const dy = (e.clientY - sess.startClientY) / height;
-                            const delta = Math.max(dx, dy);
-                            const scale = clamp(1 + delta * 1.6, 0.45, 4);
-                            const nextW = clamp(sess.originW * scale, 0.05, 0.95);
-                            const nextH = clamp(sess.originH * scale, 0.02, 0.6);
-                            const nextFontSize = clamp(sess.originFontSize * scale, 8, 144);
-                            handleElementAction(el.id, 'update', {
-                                w: nextW,
-                                h: nextH,
-                                fontSize: nextFontSize,
-                            });
-                        }
-                    }}
-                    onPointerUp={(e) => {
-                        if (dragSessionRef.current && dragSessionRef.current.id === el.id) {
-                            dragSessionRef.current = null;
-                            try {
-                                (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
-                            } catch (err) { }
-                        }
-                    }}
-                    onPointerCancel={(e) => {
-                        if (dragSessionRef.current && dragSessionRef.current.id === el.id) {
-                            dragSessionRef.current = null;
-                            try {
-                                (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
-                            } catch (err) { }
-                        }
-                    }}
-                >
-                    {el.type === 'text' && (
-                        <div className="studio-edit-text" style={{
-                            fontSize: el.fontSize, color: el.color, fontFamily: toCssFontFamily(el.fontFamily),
-                            fontWeight: el.fontWeight, fontStyle: el.fontStyle, textAlign: el.textAlign,
-                            lineHeight: el.lineHeight, letterSpacing: el.letterSpacing,
-                            whiteSpace: 'nowrap', position: 'relative', display: 'grid'
-                        }}>
-                            {textEditor?.id === el.id ? (
-                                <>
-                                    {/* Mirror span for auto-growth */}
-                                    <span style={{
-                                        gridArea: '1/1', visibility: 'hidden', whiteSpace: 'nowrap',
-                                        padding: 0, border: 'none', font: 'inherit', letterSpacing: 'inherit',
-                                        minWidth: '50px' // Ensure some clickable area
-                                    }}>
-                                        {textEditor.value || ' '}
-                                    </span>
-                                    <textarea
-                                        autoFocus
-                                        className="studio-edit-textarea"
-                                        value={textEditor.value}
-                                        onChange={(e) => handleTextEditorChange(el.id, e.target.value)}
-                                        style={{
-                                            gridArea: '1/1', width: '100%', height: '100%',
-                                            background: 'none', border: 'none', resize: 'none', outline: 'none',
-                                            padding: 0, margin: 0, font: 'inherit', color: 'inherit',
-                                            lineHeight: 'inherit', letterSpacing: 'inherit',
-                                            whiteSpace: 'nowrap', overflow: 'hidden'
-                                        }}
-                                    />
-                                </>
-                            ) : el.text}
-                        </div>
-                    )}
-                    {el.type === 'rect' && (
-                        <div style={{
-                            width: '100%', height: '100%', backgroundColor: el.fill,
-                            border: `${el.strokeWidth}px solid ${el.stroke}`, opacity: el.opacity
-                        }} />
-                    )}
-                    {el.type === 'image' && (
-                        <img
-                            src={el.dataUrl}
-                            alt="Signature"
-                            draggable={false}
-                            style={{ width: '100%', height: '100%', objectFit: 'fill', opacity: el.opacity, pointerEvents: 'none', userSelect: 'none' }}
-                        />
-                    )}
-                    {selectedElementId === el.id && el.type === 'image' && (
-                        <button
-                            type="button"
-                            className="studio-edit-text-resize"
-                            title="Resize"
-                            onPointerDown={(event) => {
-                                event.stopPropagation();
-                                const image = el as ImageElement;
+                return (
+                    <div
+                        key={el.id}
+                        data-editor-element-id={el.id}
+                        className={`studio-editor-element ${selectedElementId === el.id ? 'selected' : ''}`}
+                        style={{
+                            position: 'absolute',
+                            left: el.type === 'stroke'
+                                ? `${((strokeBounds?.minX ?? 0) - paddingLimit) * 100}%`
+                                : (('x' in el) ? `${el.x * 100}%` : '0'),
+                            top: el.type === 'stroke'
+                                ? `${((strokeBounds?.minY ?? 0) - paddingLimit) * 100}%`
+                                : (('y' in el) ? `${el.y * 100}%` : '0'),
+                            width: el.type === 'stroke'
+                                ? `${strokeWidth * 100}%`
+                                : ((textEditor?.id === el.id) ? 'auto' : (('w' in el) ? `${el.w * 100}%` : 'auto')),
+                            minWidth: (textEditor?.id === el.id && 'w' in el) ? `${el.w * 100}%` : 'auto',
+                            maxWidth: (textEditor?.id === el.id) ? '90%' : 'none',
+                            height: el.type === 'stroke'
+                                ? `${strokeHeight * 100}%`
+                                : (('h' in el) ? `${el.h * 100}%` : 'auto'),
+                            pointerEvents: 'auto',
+                            zIndex: selectedElementId === el.id ? 1001 : 1,
+                        }}
+                        onPointerDown={(e) => {
+                            e.stopPropagation();
+                            setSelectedElementId(el.id);
+                            if (!textEditor || textEditor.id !== el.id) {
                                 dragSessionRef.current = {
-                                    mode: 'resize-image',
-                                    id: image.id,
-                                    startClientX: event.clientX,
-                                    startClientY: event.clientY,
-                                    originW: image.w,
-                                    originH: image.h,
-                                    originX: image.x,
-                                    originY: image.y,
-                                    initialElements: elements,
+                                    mode: el.type === 'text'
+                                        ? 'move-text'
+                                        : (el.type === 'rect' || el.type === 'image' ? 'move-rect' : 'move-stroke') as any,
+                                    id: el.id,
+                                    startClientX: e.clientX,
+                                    startClientY: e.clientY,
+                                    originX: ('x' in el) ? el.x : 0,
+                                    originY: ('y' in el) ? el.y : 0,
+                                    ...(el.type === 'stroke' ? { initialPoints: el.points } : {}),
+                                    initialElements: elements
                                 };
                                 try {
-                                    (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
+                                    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
                                 } catch (err) { }
-                            }}
-                        />
-                    )}
-                    {selectedElementId === el.id && el.type === 'text' && textEditor?.id !== el.id && (
-                        <button
-                            type="button"
-                            className="studio-edit-text-resize"
-                            title="Resize text"
-                            onPointerDown={(event) => {
-                                event.stopPropagation();
-                                const textEl = el as TextElement;
-                                dragSessionRef.current = {
-                                    mode: 'resize-text',
-                                    id: textEl.id,
-                                    startClientX: event.clientX,
-                                    startClientY: event.clientY,
-                                    originW: textEl.w,
-                                    originH: textEl.h,
-                                    originFontSize: textEl.fontSize,
-                                    initialElements: elements,
-                                };
+                            }
+                        }}
+                        onDoubleClick={(e) => {
+                            if (el.type !== 'text') {
+                                return;
+                            }
+                            e.stopPropagation();
+                            startEditingText(el as TextElement);
+                        }}
+                        onPointerMove={(e) => {
+                            const sess = dragSessionRef.current as any;
+                            if (sess && sess.id === el.id && sess.mode === 'move-stroke' && el.type === 'stroke') {
+                                const dx = (e.clientX - sess.startClientX) / width;
+                                const dy = (e.clientY - sess.startClientY) / height;
+                                handleElementAction(el.id, 'update', {
+                                    points: moveStrokePoints(sess.initialPoints ?? el.points, dx, dy),
+                                });
+                            } else if (sess && sess.id === el.id && sess.mode.startsWith('move-')) {
+                                const dx = (e.clientX - sess.startClientX) / width;
+                                const dy = (e.clientY - sess.startClientY) / height;
+                                const nextX = clamp01(sess.originX + dx);
+                                const nextY = clamp01(sess.originY + dy);
+                                handleElementAction(el.id, 'update', {
+                                    x: nextX,
+                                    y: nextY
+                                });
+                            } else if (sess && sess.id === el.id && sess.mode === 'resize-image') {
+                                const dx = (e.clientX - sess.startClientX) / width;
+                                const minW = 0.04;
+                                const minH = 0.02;
+                                const aspect = Math.max(0.05, sess.originW / Math.max(0.01, sess.originH));
+                                const maxW = Math.max(minW, 1 - sess.originX);
+                                const maxH = Math.max(minH, 1 - sess.originY);
+
+                                let nextW = clamp(sess.originW + dx, minW, maxW);
+                                let nextH = nextW / aspect;
+                                if (nextH > maxH) {
+                                    nextH = maxH;
+                                    nextW = nextH * aspect;
+                                }
+                                if (nextH < minH) {
+                                    nextH = minH;
+                                    nextW = nextH * aspect;
+                                }
+                                if (nextW > maxW) {
+                                    nextW = maxW;
+                                    nextH = nextW / aspect;
+                                }
+                                handleElementAction(el.id, 'update', { w: nextW, h: nextH });
+                            } else if (sess && sess.id === el.id && sess.mode === 'resize-text') {
+                                const dx = (e.clientX - sess.startClientX) / width;
+                                const dy = (e.clientY - sess.startClientY) / height;
+                                const delta = Math.max(dx, dy);
+                                const scale = clamp(1 + delta * 1.6, 0.45, 4);
+                                const nextW = clamp(sess.originW * scale, 0.05, 0.95);
+                                const nextH = clamp(sess.originH * scale, 0.02, 0.6);
+                                const nextFontSize = clamp(sess.originFontSize * scale, 8, 144);
+                                handleElementAction(el.id, 'update', {
+                                    w: nextW,
+                                    h: nextH,
+                                    fontSize: nextFontSize,
+                                });
+                            }
+                        }}
+                        onPointerUp={(e) => {
+                            if (dragSessionRef.current && dragSessionRef.current.id === el.id) {
+                                dragSessionRef.current = null;
                                 try {
-                                    (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
+                                    (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
                                 } catch (err) { }
-                            }}
-                        />
-                    )}
-                </div>
-            ))}
+                            }
+                        }}
+                        onPointerCancel={(e) => {
+                            if (dragSessionRef.current && dragSessionRef.current.id === el.id) {
+                                dragSessionRef.current = null;
+                                try {
+                                    (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
+                                } catch (err) { }
+                            }
+                        }}
+                    >
+                        {el.type === 'text' && (
+                            <div className="studio-edit-text" style={{
+                                fontSize: el.fontSize, color: el.color, fontFamily: toCssFontFamily(el.fontFamily),
+                                fontWeight: el.fontWeight, fontStyle: el.fontStyle, textAlign: el.textAlign,
+                                lineHeight: el.lineHeight, letterSpacing: el.letterSpacing,
+                                whiteSpace: 'nowrap', position: 'relative', display: 'grid'
+                            }}>
+                                {textEditor?.id === el.id ? (
+                                    <>
+                                        {/* Mirror span for auto-growth */}
+                                        <span style={{
+                                            gridArea: '1/1', visibility: 'hidden', whiteSpace: 'nowrap',
+                                            padding: 0, border: 'none', font: 'inherit', letterSpacing: 'inherit',
+                                            minWidth: '50px' // Ensure some clickable area
+                                        }}>
+                                            {textEditor.value || ' '}
+                                        </span>
+                                        <textarea
+                                            autoFocus
+                                            className="studio-edit-textarea"
+                                            value={textEditor.value}
+                                            onChange={(e) => handleTextEditorChange(el.id, e.target.value)}
+                                            style={{
+                                                gridArea: '1/1', width: '100%', height: '100%',
+                                                background: 'none', border: 'none', resize: 'none', outline: 'none',
+                                                padding: 0, margin: 0, font: 'inherit', color: 'inherit',
+                                                lineHeight: 'inherit', letterSpacing: 'inherit',
+                                                whiteSpace: 'nowrap', overflow: 'hidden'
+                                            }}
+                                        />
+                                    </>
+                                ) : el.text}
+                            </div>
+                        )}
+                        {el.type === 'rect' && (
+                            <div style={{
+                                width: '100%', height: '100%', backgroundColor: el.fill,
+                                border: `${el.strokeWidth}px solid ${el.stroke}`, opacity: el.opacity
+                            }} />
+                        )}
+                        {el.type === 'image' && (
+                            <img
+                                src={el.dataUrl}
+                                alt="Signature"
+                                draggable={false}
+                                style={{ width: '100%', height: '100%', objectFit: 'fill', opacity: el.opacity, pointerEvents: 'none', userSelect: 'none' }}
+                            />
+                        )}
+                        {el.type === 'stroke' && strokeBounds && (
+                            <svg
+                                width="100%"
+                                height="100%"
+                                viewBox={`0 0 ${strokeWidth * width} ${strokeHeight * height}`}
+                                style={{ overflow: 'visible', pointerEvents: 'none' }}
+                            >
+                                <polyline
+                                    points={el.points.reduce((acc, value, idx) => {
+                                        if (idx % 2 === 0) {
+                                            const px = ((value - strokeBounds.minX + paddingLimit) / strokeWidth) * (strokeWidth * width);
+                                            return `${acc}${px},`;
+                                        }
+                                        const py = ((value - strokeBounds.minY + paddingLimit) / strokeHeight) * (strokeHeight * height);
+                                        return `${acc}${py} `;
+                                    }, '').trim()}
+                                    fill="none"
+                                    stroke={el.color}
+                                    strokeWidth={el.width}
+                                    strokeOpacity={el.opacity}
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                />
+                            </svg>
+                        )}
+                        {selectedElementId === el.id && el.type === 'image' && (
+                            <button
+                                type="button"
+                                className="studio-edit-text-resize"
+                                title="Resize"
+                                onPointerDown={(event) => {
+                                    event.stopPropagation();
+                                    const image = el as ImageElement;
+                                    dragSessionRef.current = {
+                                        mode: 'resize-image',
+                                        id: image.id,
+                                        startClientX: event.clientX,
+                                        startClientY: event.clientY,
+                                        originW: image.w,
+                                        originH: image.h,
+                                        originX: image.x,
+                                        originY: image.y,
+                                        initialElements: elements,
+                                    };
+                                    try {
+                                        (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
+                                    } catch (err) { }
+                                }}
+                            />
+                        )}
+                        {selectedElementId === el.id && el.type === 'text' && textEditor?.id !== el.id && (
+                            <button
+                                type="button"
+                                className="studio-edit-text-resize"
+                                title="Resize text"
+                                onPointerDown={(event) => {
+                                    event.stopPropagation();
+                                    const textEl = el as TextElement;
+                                    dragSessionRef.current = {
+                                        mode: 'resize-text',
+                                        id: textEl.id,
+                                        startClientX: event.clientX,
+                                        startClientY: event.clientY,
+                                        originW: textEl.w,
+                                        originH: textEl.h,
+                                        originFontSize: textEl.fontSize,
+                                        initialElements: elements,
+                                    };
+                                    try {
+                                        (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
+                                    } catch (err) { }
+                                }}
+                            />
+                        )}
+                    </div>
+                );
+            })}
 
             {/* Draw Drafts */}
             {draftRect && (
@@ -493,6 +544,27 @@ export function StudioPageEditor({
                     width: `${draftRect.w * 100}%`, height: `${draftRect.h * 100}%`,
                     border: '1px dashed #2563eb'
                 }} />
+            )}
+            {draftStroke && draftStroke.points.length >= 4 && (
+                <svg
+                    style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}
+                    width={width}
+                    height={height}
+                    viewBox={`0 0 ${width} ${height}`}
+                >
+                    <polyline
+                        points={draftStroke.points.reduce((acc, value, idx) => {
+                            const mapped = idx % 2 === 0 ? value * width : value * height;
+                            return `${acc}${mapped}${idx % 2 === 0 ? ',' : ' '}`;
+                        }, '').trim()}
+                        fill="none"
+                        stroke={annotateColor}
+                        strokeWidth={12}
+                        strokeOpacity={0.45}
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                    />
+                </svg>
             )}
 
             {textLayerNodes}
