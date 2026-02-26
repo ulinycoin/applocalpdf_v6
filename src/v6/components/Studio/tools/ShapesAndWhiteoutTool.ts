@@ -27,8 +27,8 @@ export const createRectTool = (id: EditorToolId): IEditorTool => ({
                 id: crypto.randomUUID(), type: 'rect', x: draft.x, y: draft.y,
                 w: draft.w, h: draft.h,
                 fill: id === 'whiteout' ? '#ffffff' : 'transparent',
-                stroke: id === 'whiteout' ? '#d1d5db' : '#2563eb',
-                strokeWidth: id === 'whiteout' ? 1 : 2, opacity: 1
+                stroke: id === 'whiteout' ? 'transparent' : '#2563eb',
+                strokeWidth: id === 'whiteout' ? 0 : 2, opacity: 1
             }]);
         }
         ctx.setDraftRect(null);

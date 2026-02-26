@@ -19,21 +19,21 @@ export function StudioEditToolbar({ ui, tool, onSelectTool }: StudioEditToolbarP
                 onClick={() => { onSelectTool('text'); }}
                 title={ui.text}
             >
-                <LinearIcon name="text" size={18} />
+                <LinearIcon name="text" size={22} />
             </button>
             <button
                 className={`studio-edit-tool-btn ${tool === 'sign' ? 'active' : ''}`}
                 onClick={() => { onSelectTool('sign'); }}
                 title={ui.sign}
             >
-                <LinearIcon name="edit" size={18} />
+                <LinearIcon name="signature" size={22} />
             </button>
             <button
                 className={`studio-edit-tool-btn ${tool === 'annotate' ? 'active' : ''}`}
                 onClick={() => { onSelectTool('annotate'); }}
                 title={ui.annotate}
             >
-                <LinearIcon name="tool" size={18} />
+                <LinearIcon name="highlighter" size={22} />
             </button>
             <div style={{ width: 24, height: 1, background: 'rgba(255,255,255,0.1)', margin: '4px auto' }} />
             <button
@@ -41,14 +41,14 @@ export function StudioEditToolbar({ ui, tool, onSelectTool }: StudioEditToolbarP
                 onClick={() => onSelectTool('shapes')}
                 title={ui.shapes}
             >
-                <LinearIcon name="shape" size={18} />
+                <LinearIcon name="shape" size={22} />
             </button>
             <button
                 className={`studio-edit-tool-btn ${tool === 'whiteout' ? 'active' : ''}`}
                 onClick={() => onSelectTool('whiteout')}
                 title={ui.whiteout}
             >
-                <LinearIcon name="eraser" size={18} />
+                <LinearIcon name="eraser" size={22} />
             </button>
         </div>
     );

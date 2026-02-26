@@ -37,7 +37,9 @@ type LinearIconName =
   | 'minus'
   | 'menu'
   | 'maximize'
-  | 'move-horizontal';
+  | 'move-horizontal'
+  | 'signature'
+  | 'highlighter';
 
 interface LinearIconProps extends Omit<SVGProps<SVGSVGElement>, 'children'> {
   name: LinearIconName;
@@ -262,6 +264,18 @@ export function LinearIcon({ name, size, ...props }: LinearIconProps): JSX.Eleme
           <path d="m7 21-4.3-4.3c-1-1-1-2.5 0-3.4l9.6-9.6c1-1 2.5-1 3.4 0l5.6 5.6c1 1 1 2.5 0 3.4L13 21" />
           <path d="M22 21H7" />
           <path d="m5 11 9 9" />
+        </>
+      )}
+      {name === 'signature' && (
+        <>
+          <path d="M22 21h-7" />
+          <path d="M19.5 4.5a2.121 2.121 0 1 1 3 3L11 19l-4 1 1-4 11.5-11.5Z" />
+        </>
+      )}
+      {name === 'highlighter' && (
+        <>
+          <path d="m9 11-6 6v3h9l3-3" />
+          <path d="m22 12-4.6 4.6a2 2 0 0 1-2.8 0l-5.2-5.2a2 2 0 0 1 0-2.8L14 4" />
         </>
       )}
       {name === 'check' && (
