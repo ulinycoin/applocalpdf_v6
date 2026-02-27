@@ -1,6 +1,7 @@
 import type {
   WorkerStudioEditElement,
   WorkerStudioFontFamilyId,
+  WorkerStudioFormFieldEditElement,
   WorkerStudioImageEditElement,
   WorkerStudioRectEditElement,
   WorkerStudioStrokeEditElement,
@@ -171,6 +172,40 @@ function normalizeImageElement(input: WorkerStudioImageEditElement): WorkerStudi
   };
 }
 
+function normalizeFormFieldElement(input: WorkerStudioFormFieldEditElement): WorkerStudioFormFieldEditElement {
+  const formType = input.formType === 'checkbox'
+    || input.formType === 'radio'
+    || input.formType === 'multiline'
+    || input.formType === 'dropdown'
+    ? input.formType
+    : 'text';
+  const rawDefaultValue = typeof input.defaultValue === 'string' ? input.defaultValue : '';
+  const normalizedOptions = formType === 'dropdown'
+    ? (Array.isArray(input.options) ? input.options : [])
+      .filter((item): item is string => typeof item === 'string')
+      .map((item) => item.trim())
+      .filter((item) => item.length > 0)
+      .slice(0, 50)
+    : undefined;
+  return {
+    id: typeof input.id === 'string' && input.id.trim().length > 0 ? input.id : crypto.randomUUID(),
+    type: 'form-field',
+    formType,
+    name: typeof input.name === 'string' && input.name.trim().length > 0
+      ? input.name.trim().slice(0, 120)
+      : undefined,
+    x: toSafeRatio(input.x, 'formField.x'),
+    y: toSafeRatio(input.y, 'formField.y'),
+    w: clamp(toFiniteNumber(input.w, 'formField.w'), 0.001, 1),
+    h: clamp(toFiniteNumber(input.h, 'formField.h'), 0.001, 1),
+    defaultValue: rawDefaultValue.slice(0, MAX_TEXT_LENGTH),
+    options: normalizedOptions,
+    required: Boolean(input.required),
+    fontSize: clamp(toFiniteNumber(input.fontSize, 'formField.fontSize'), 4, 144),
+    opacity: normalizeOpacity(input.opacity),
+  };
+}
+
 export function normalizeAndValidateStudioEditRequest(payload: {
   pageIndex: unknown;
   elements: unknown;
@@ -204,6 +239,10 @@ export function normalizeAndValidateStudioEditRequest(payload: {
     }
     if (typed.type === 'image') {
       normalized.push(normalizeImageElement(typed));
+      continue;
+    }
+    if (typed.type === 'form-field') {
+      normalized.push(normalizeFormFieldElement(typed));
       continue;
     }
     fail(`Unsupported edit element type: ${(typed as { type: unknown }).type as string}`, 'STUDIO_EDIT_UNSUPPORTED_ELEMENT');

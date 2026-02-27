@@ -720,6 +720,8 @@ export async function applyStudioTextEditsToPdfBytes(params: {
   let overflowDetected = false;
   const textElements = params.elements.filter((element) => element.type === 'text');
   const consumedTextIds = new Set<string>();
+  const usedFormFieldNames = new Set<string>();
+  let formAppearanceFont: PDFFont | null = null;
   let trueReplaceApplied = false;
   let trueReplaceFallbackReason: string | undefined = 'INELIGIBLE_EDIT_PAYLOAD';
 
@@ -824,38 +826,77 @@ export async function applyStudioTextEditsToPdfBytes(params: {
       const sh = element.h * pageHeight;
       const sy = pageHeight - (element.y * pageHeight) - sh;
       const sw = element.w * pageWidth;
+      const preferredName = (element.name || element.id).trim().slice(0, 120) || element.id;
+      let fieldName = preferredName;
+      if (usedFormFieldNames.has(fieldName)) {
+        fieldName = `${preferredName}_${element.id.slice(0, 8)}`;
+      }
+      usedFormFieldNames.add(fieldName);
 
       try {
+        const ensureFormAppearanceFont = async (): Promise<PDFFont> => {
+          if (formAppearanceFont) {
+            return formAppearanceFont;
+          }
+          formAppearanceFont = await pdf.embedFont(StandardFonts.Helvetica);
+          return formAppearanceFont;
+        };
+
         if (element.formType === 'text') {
-          const field = form.createTextField(element.id);
+          const field = form.createTextField(fieldName);
           field.addToPage(page, { x: sx, y: sy, width: sw, height: sh });
+          field.setFontSize(clamp(element.fontSize || 12, 6, 72));
+          field.defaultUpdateAppearances(await ensureFormAppearanceFont());
+          if (element.defaultValue) {
+            field.setText(element.defaultValue);
+          }
+          if (element.required) field.enableRequired();
+        } else if (element.formType === 'multiline') {
+          const field = form.createTextField(fieldName);
+          field.addToPage(page, { x: sx, y: sy, width: sw, height: sh });
+          field.enableMultiline();
+          field.setFontSize(clamp(element.fontSize || 12, 6, 72));
+          field.defaultUpdateAppearances(await ensureFormAppearanceFont());
           if (element.defaultValue) {
             field.setText(element.defaultValue);
           }
           if (element.required) field.enableRequired();
         } else if (element.formType === 'checkbox') {
-          const cb = form.createCheckBox(element.id);
+          const cb = form.createCheckBox(fieldName);
           cb.addToPage(page, { x: sx, y: sy, width: sw, height: sh });
           if (element.defaultValue && element.defaultValue.toLowerCase() !== 'off') cb.check();
           if (element.required) cb.enableRequired();
         } else if (element.formType === 'radio') {
           // Fallback to a single-option radio group if ID represents a radio button
           try {
-            const existing = form.getRadioGroup(element.id);
+            const existing = form.getRadioGroup(fieldName);
             if (existing) {
               existing.addOptionToPage(`Opt_${crypto.randomUUID().slice(0, 4)}`, page, { x: sx, y: sy, width: sw, height: sh });
             } else {
-              const rg = form.createRadioGroup(element.id);
+              const rg = form.createRadioGroup(fieldName);
               rg.addOptionToPage('Choice1', page, { x: sx, y: sy, width: sw, height: sh });
               if (element.defaultValue && element.defaultValue.toLowerCase() !== 'off') rg.select('Choice1');
               if (element.required) rg.enableRequired();
             }
           } catch {
-            const rg = form.createRadioGroup(element.id);
+            const rg = form.createRadioGroup(fieldName);
             rg.addOptionToPage('Choice1', page, { x: sx, y: sy, width: sw, height: sh });
             if (element.defaultValue && element.defaultValue.toLowerCase() !== 'off') rg.select('Choice1');
             if (element.required) rg.enableRequired();
           }
+        } else if (element.formType === 'dropdown') {
+          const dropdown = form.createDropdown(fieldName);
+          dropdown.addToPage(page, { x: sx, y: sy, width: sw, height: sh });
+          const options = Array.isArray(element.options) && element.options.length > 0
+            ? element.options
+            : ['Option 1', 'Option 2', 'Option 3'];
+          dropdown.addOptions(options);
+          if (element.defaultValue && options.includes(element.defaultValue)) {
+            dropdown.select(element.defaultValue);
+          } else if (options.length > 0) {
+            dropdown.select(options[0]!);
+          }
+          if (element.required) dropdown.enableRequired();
         }
       } catch (err) {
         // Silently ignore form creation failures for individual elements

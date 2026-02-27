@@ -23,6 +23,7 @@ export type {
   WorkerStudioEditElement,
   WorkerStudioFontFamilyId,
   WorkerStudioRectEditElement,
+  WorkerStudioFormFieldEditElement,
   WorkerStudioImageEditElement,
   WorkerStudioStrokeEditElement,
   WorkerStudioTextAlign,

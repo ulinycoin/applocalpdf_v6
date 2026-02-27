@@ -379,6 +379,16 @@ export function StudioPageEditor({
                                     nextH = nextW / aspect;
                                 }
                                 handleElementAction(el.id, 'update', { w: nextW, h: nextH });
+                            } else if (sess && sess.id === el.id && sess.mode === 'resize-form-field') {
+                                const dx = (e.clientX - sess.startClientX) / width;
+                                const dy = (e.clientY - sess.startClientY) / height;
+                                const minW = 0.02;
+                                const minH = 0.02;
+                                const maxW = Math.max(minW, 1 - sess.originX);
+                                const maxH = Math.max(minH, 1 - sess.originY);
+                                const nextW = clamp(sess.originW + dx, minW, maxW);
+                                const nextH = clamp(sess.originH + dy, minH, maxH);
+                                handleElementAction(el.id, 'update', { w: nextW, h: nextH });
                             } else if (sess && sess.id === el.id && sess.mode === 'resize-text') {
                                 const dx = (e.clientX - sess.startClientX) / width;
                                 const dy = (e.clientY - sess.startClientY) / height;
@@ -452,15 +462,44 @@ export function StudioPageEditor({
                             }} />
                         )}
                         {el.type === 'form-field' && (
-                            <div style={{
-                                width: '100%', height: '100%',
-                                backgroundColor: 'rgba(59, 130, 246, 0.1)',
-                                border: '1px dashed #3b82f6', opacity: el.opacity,
-                                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                fontFamily: 'sans-serif', fontSize: 12, color: '#3b82f6',
-                                overflow: 'hidden'
-                            }}>
-                                {el.formType === 'text' ? 'Text Field' : el.formType === 'checkbox' ? 'Checkbox' : 'Radio'}
+                            <div style={{ width: '100%', height: '100%', position: 'relative', overflow: 'visible' }}>
+                                <div style={{
+                                    position: 'absolute',
+                                    top: -30,
+                                    left: 0,
+                                    background: '#4b5563',
+                                    color: '#e5e7eb',
+                                    borderRadius: 8,
+                                    fontSize: 12,
+                                    fontWeight: 600,
+                                    padding: '4px 10px',
+                                    lineHeight: 1.2,
+                                    maxWidth: '100%',
+                                    overflow: 'hidden',
+                                    textOverflow: 'ellipsis',
+                                    whiteSpace: 'nowrap',
+                                }}>
+                                    {el.name || el.id}
+                                </div>
+                                <div style={{
+                                    width: '100%', height: '100%',
+                                    backgroundColor: 'rgba(59, 130, 246, 0.12)',
+                                    border: '2px solid rgba(148, 163, 184, 0.9)', opacity: el.opacity,
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                    fontFamily: 'sans-serif', fontSize: 12, color: '#475569',
+                                    overflow: 'hidden',
+                                    textShadow: '0 1px 0 rgba(255,255,255,0.6)',
+                                }}>
+                                    {el.formType === 'text'
+                                        ? 'Text'
+                                        : el.formType === 'multiline'
+                                            ? 'Multiline'
+                                            : el.formType === 'checkbox'
+                                                ? 'Checkbox'
+                                                : el.formType === 'radio'
+                                                    ? 'Radio'
+                                                    : 'Dropdown'}
+                                </div>
                             </div>
                         )}
                         {el.type === 'image' && (
@@ -513,6 +552,30 @@ export function StudioPageEditor({
                                         originH: image.h,
                                         originX: image.x,
                                         originY: image.y,
+                                        initialElements: elements,
+                                    };
+                                    try {
+                                        (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
+                                    } catch (err) { }
+                                }}
+                            />
+                        )}
+                        {selectedElementId === el.id && el.type === 'form-field' && (
+                            <button
+                                type="button"
+                                className="studio-edit-text-resize"
+                                title="Resize field"
+                                onPointerDown={(event) => {
+                                    event.stopPropagation();
+                                    dragSessionRef.current = {
+                                        mode: 'resize-form-field',
+                                        id: el.id,
+                                        startClientX: event.clientX,
+                                        startClientY: event.clientY,
+                                        originW: el.w,
+                                        originH: el.h,
+                                        originX: el.x,
+                                        originY: el.y,
                                         initialElements: elements,
                                     };
                                     try {

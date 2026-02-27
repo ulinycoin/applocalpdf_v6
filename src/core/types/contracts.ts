@@ -160,12 +160,14 @@ export interface WorkerStudioImageEditElement {
 export interface WorkerStudioFormFieldEditElement {
   id: string;
   type: 'form-field';
-  formType: 'text' | 'checkbox' | 'radio';
+  formType: 'text' | 'multiline' | 'checkbox' | 'radio' | 'dropdown';
+  name?: string;
   x: number;
   y: number;
   w: number;
   h: number;
   defaultValue: string;
+  options?: string[];
   required: boolean;
   fontSize: number;
   opacity: number;

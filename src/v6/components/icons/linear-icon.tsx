@@ -39,7 +39,10 @@ type LinearIconName =
   | 'maximize'
   | 'move-horizontal'
   | 'signature'
-  | 'highlighter';
+  | 'highlighter'
+  | 'pen-tool'
+  | 'file-input'
+  | 'feather';
 
 interface LinearIconProps extends Omit<SVGProps<SVGSVGElement>, 'children'> {
   name: LinearIconName;
@@ -276,6 +279,28 @@ export function LinearIcon({ name, size, ...props }: LinearIconProps): JSX.Eleme
         <>
           <path d="m9 11-6 6v3h9l3-3" />
           <path d="m22 12-4.6 4.6a2 2 0 0 1-2.8 0l-5.2-5.2a2 2 0 0 1 0-2.8L14 4" />
+        </>
+      )}
+      {name === 'pen-tool' && (
+        <>
+          <path d="M12 19h7" />
+          <path d="m16.5 3.5 4 4" />
+          <path d="m3 17 5-1 11-11a2.8 2.8 0 1 0-4-4L4 12l-1 5Z" />
+        </>
+      )}
+      {name === 'file-input' && (
+        <>
+          <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8Z" />
+          <path d="M14 3v5h5" />
+          <path d="M12 18v-6" />
+          <path d="m9.5 14.5 2.5-2.5 2.5 2.5" />
+        </>
+      )}
+      {name === 'feather' && (
+        <>
+          <path d="M20 4c-5.5.5-9.5 3.8-12.2 8.6L5 19l6.4-2.7C16.2 13.6 19.5 9.5 20 4Z" />
+          <path d="M8.2 14.8 13 10" />
+          <path d="M7.2 17.1 9 15.3" />
         </>
       )}
       {name === 'check' && (

@@ -36,7 +36,7 @@ function getToolIcon(toolId: string): Parameters<typeof LinearIcon>[0]['name'] {
     case 'excel-to-pdf':
       return 'excel';
     case 'pdf-editor':
-      return 'tool';
+      return 'pen-tool';
     default:
       return 'tool';
   }

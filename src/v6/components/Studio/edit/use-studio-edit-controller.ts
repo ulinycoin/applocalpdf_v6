@@ -15,6 +15,7 @@ import { CommandExecutor, type AnyCommand } from '../store/command-manager';
 const USE_COMMAND_PATTERN_FOR_SAVES = true;
 import {
     EditElement,
+    FormFieldElement,
     ImageElement,
     TextElement,
     TextEditorState,
@@ -96,7 +97,8 @@ export function useStudioEditController(ui: any) {
     const [applyToSelection, setApplyToSelection] = useState(false);
     const [isSignComposerOpen, setSignComposerOpen] = useState(false);
     const [annotateColor, setAnnotateColor] = useState('#fff176');
-    const [formType, setFormType] = useState<'text' | 'checkbox' | 'radio'>('text');
+    const [formType] = useState<'text' | 'multiline' | 'checkbox' | 'radio' | 'dropdown'>('text');
+    const [isFormsComposerOpen, setFormsComposerOpen] = useState(false);
 
     const selectedPages = useMemo(() => buildSelectedPages(documents, selection), [documents, selection]);
     const activeDocument = useMemo(() => documents.find((doc) => doc.id === activeDocumentId) ?? null, [activeDocumentId, documents]);
@@ -267,6 +269,36 @@ export function useStudioEditController(ui: any) {
         };
         addElement(next);
         setTool('sign');
+    }, [addElement]);
+
+    const addFormField = useCallback((type: 'text' | 'multiline' | 'checkbox' | 'radio' | 'dropdown') => {
+        const fieldIndex = elementsRef.current.filter(
+            (item) => item.type === 'form-field' && item.formType === type,
+        ).length + 1;
+        const size = type === 'text'
+            ? { w: 0.32, h: 0.06 }
+            : type === 'multiline'
+                ? { w: 0.34, h: 0.24 }
+                : type === 'dropdown'
+                    ? { w: 0.3, h: 0.07 }
+                    : { w: 0.1, h: 0.06 };
+        const next: FormFieldElement = {
+            id: crypto.randomUUID(),
+            type: 'form-field',
+            formType: type,
+            name: `${type}_field_${fieldIndex}`,
+            x: type === 'text' ? 0.34 : type === 'multiline' ? 0.33 : type === 'dropdown' ? 0.34 : 0.4,
+            y: 0.74,
+            w: size.w,
+            h: size.h,
+            defaultValue: type === 'checkbox' ? 'Off' : type === 'dropdown' ? 'Option 1' : '',
+            options: type === 'dropdown' ? ['Option 1', 'Option 2', 'Option 3'] : undefined,
+            required: false,
+            fontSize: 12,
+            opacity: 1,
+        };
+        addElement(next);
+        setTool('forms');
     }, [addElement]);
 
     const undo = useCallback(() => {
@@ -544,14 +576,16 @@ export function useStudioEditController(ui: any) {
         isSelectMode, setIsSelectMode,
         textSelectionMode, setTextSelectionMode,
         annotateColor, setAnnotateColor,
-        formType, setFormType,
         applyToSelection, setApplyToSelection,
         hasDirtyChanges, canApplyToSelection,
         applyChanges, undoLastSave, redoLastSave,
         isSignComposerOpen,
         setSignComposerOpen,
+        isFormsComposerOpen,
+        setFormsComposerOpen,
         addTypedSignature,
         addImageSignature,
+        addFormField,
         clearEditSession,
         preview, selectedPages, activeDocument,
         saveUndoStack: USE_COMMAND_PATTERN_FOR_SAVES ? commandUndoStack : saveUndoStack,

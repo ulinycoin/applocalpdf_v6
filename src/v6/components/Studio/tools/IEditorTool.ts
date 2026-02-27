@@ -27,7 +27,7 @@ export interface ToolContext {
     isPointerDown: boolean;
     setIsPointerDown: (val: boolean) => void;
     annotateColor: string;
-    formType?: 'text' | 'checkbox' | 'radio';
+    formType?: 'text' | 'multiline' | 'checkbox' | 'radio' | 'dropdown';
 }
 
 export interface IEditorTool {

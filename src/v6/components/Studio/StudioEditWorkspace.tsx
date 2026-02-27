@@ -1,14 +1,16 @@
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useStudioEditController } from './edit/use-studio-edit-controller';
 import { StudioEditToolbar } from './edit/StudioEditToolbar';
 import { StudioSignComposerModal } from './edit/StudioSignComposerModal';
 import { StudioAnnotateSettingsPanel } from './edit/StudioAnnotateSettingsPanel';
+import { StudioFormsQuickBar } from './edit/StudioFormsQuickBar';
 import { LinearIcon } from '../icons/linear-icon';
 import { detectStudioEditLocale, getStudioEditMessages } from './studio-edit-i18n';
 import { StudioPageEditor } from './StudioPageEditor';
 import { DraggableFloatingMenu } from './StudioDraggableFloatingMenu';
 import { useStudioEditZoom } from './edit/use-studio-edit-zoom';
+import type { FormFieldElement } from './editor-types';
 
 export function StudioEditWorkspace() {
     const locale = useMemo(() => detectStudioEditLocale(), []);
@@ -17,6 +19,7 @@ export function StudioEditWorkspace() {
     const ctrl = useStudioEditController(ui);
     const zoom = useStudioEditZoom(ctrl.runId || 'unknown', 1);
     const imageRef = useRef<HTMLImageElement | null>(null);
+    const [canvasSize, setCanvasSize] = useState<{ width: number; height: number }>({ width: 620, height: 840 });
 
     useEffect(() => {
         if (!ctrl.message) {
@@ -37,6 +40,46 @@ export function StudioEditWorkspace() {
         }
     };
 
+    useEffect(() => {
+        const url = ctrl.preview?.page.thumbnailUrl;
+        if (!url) {
+            setCanvasSize({ width: 620, height: 840 });
+            return;
+        }
+        const img = new Image();
+        img.onload = () => {
+            const naturalWidth = img.naturalWidth || 620;
+            const naturalHeight = img.naturalHeight || 840;
+            const maxWidth = 620;
+            const maxHeight = 840;
+            const scale = Math.min(maxWidth / naturalWidth, maxHeight / naturalHeight);
+            const width = Math.max(240, Math.round(naturalWidth * scale));
+            const height = Math.max(320, Math.round(naturalHeight * scale));
+            setCanvasSize({ width, height });
+        };
+        img.onerror = () => {
+            setCanvasSize({ width: 620, height: 840 });
+        };
+        img.src = url;
+    }, [ctrl.preview?.page.thumbnailUrl]);
+
+    const selectedFormField = ctrl.selectedElementId
+        ? ctrl.elements.find(
+            (element): element is FormFieldElement => element.id === ctrl.selectedElementId && element.type === 'form-field',
+        ) ?? null
+        : null;
+
+    const updateSelectedFormField = (patch: Partial<FormFieldElement>) => {
+        if (!selectedFormField) return;
+        const next = ctrl.elements.map((element) => (
+            element.id === selectedFormField.id && element.type === 'form-field'
+                ? { ...element, ...patch }
+                : element
+        ));
+        ctrl.setElements(next);
+        ctrl.pushHistory(next);
+    };
+
     if (!ctrl.preview) {
         return (
             <section className="studio-edit-shell">
@@ -51,8 +94,8 @@ export function StudioEditWorkspace() {
     }
 
     // Calculation for canvas wrapper sizing
-    const scaledWidth = 620 * zoom.zoomLevel;
-    const scaledHeight = 840 * zoom.zoomLevel;
+    const scaledWidth = canvasSize.width * zoom.zoomLevel;
+    const scaledHeight = canvasSize.height * zoom.zoomLevel;
 
     return (
         <section className="studio-edit-shell" translate="no" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
@@ -87,10 +130,10 @@ export function StudioEditWorkspace() {
                         </button>
                         <div style={{ width: 1, height: 16, background: 'rgba(255,255,255,0.1)', margin: '0 4px' }} />
                         <button type="button" className="studio-floating-btn" style={{ padding: '0 8px', height: 24, fontSize: 12 }} onClick={() => zoom.zoomToHundred()} title="100%">1:1</button>
-                        <button type="button" className="studio-floating-btn" style={{ width: 24, height: 24 }} onClick={() => zoom.fitToPage(620, 840)} title="Fit to Page">
+                        <button type="button" className="studio-floating-btn" style={{ width: 24, height: 24 }} onClick={() => zoom.fitToPage(canvasSize.width, canvasSize.height)} title="Fit to Page">
                             <LinearIcon name="maximize" size={14} />
                         </button>
-                        <button type="button" className="studio-floating-btn" style={{ width: 24, height: 24 }} onClick={() => zoom.fitToWidth(620)} title="Fit to Width">
+                        <button type="button" className="studio-floating-btn" style={{ width: 24, height: 24 }} onClick={() => zoom.fitToWidth(canvasSize.width)} title="Fit to Width">
                             <LinearIcon name="move-horizontal" size={14} />
                         </button>
                     </div>
@@ -110,6 +153,17 @@ export function StudioEditWorkspace() {
 
                 </div>
             </div>
+            {ctrl.tool === 'forms' && (
+                <div style={{ padding: '0 16px 12px' }}>
+                    <StudioFormsQuickBar
+                        onAddField={ctrl.addFormField}
+                        selectedField={selectedFormField}
+                        onUpdateSelectedField={updateSelectedFormField}
+                        canvasWidth={canvasSize.width}
+                        canvasHeight={canvasSize.height}
+                    />
+                </div>
+            )}
 
             {/* Main Workspace Area (Toolbar + Canvas) */}
             <div style={{ display: 'flex', flex: 1, overflow: 'hidden', position: 'relative' }}>
@@ -118,8 +172,6 @@ export function StudioEditWorkspace() {
                         ui={ui}
                         tool={ctrl.tool}
                         onSelectTool={ctrl.setTool}
-                        formType={ctrl.formType}
-                        setFormType={ctrl.setFormType}
                     />
                     {ctrl.tool === 'annotate' && (
                         <StudioAnnotateSettingsPanel
@@ -149,14 +201,14 @@ export function StudioEditWorkspace() {
                         <div
                             className="studio-edit-canvas-surface"
                             style={{
-                                width: 620,
-                                height: 840,
+                                width: canvasSize.width,
+                                height: canvasSize.height,
                                 position: 'relative',
                                 transform: `scale(${zoom.zoomLevel})`,
                                 transformOrigin: 'center center',
                                 flexShrink: 0,
                                 // These margins keep the flexing box aware of the transform size constraints
-                                margin: `${Math.max(0, (scaledHeight - 840) / 2)}px ${Math.max(0, (scaledWidth - 620) / 2)}px`,
+                                margin: `${Math.max(0, (scaledHeight - canvasSize.height) / 2)}px ${Math.max(0, (scaledWidth - canvasSize.width) / 2)}px`,
                             }}
                         >
                             <img
@@ -170,8 +222,8 @@ export function StudioEditWorkspace() {
                             />
                             <StudioPageEditor
                                 page={ctrl.preview.page}
-                                width={620}
-                                height={840}
+                                width={canvasSize.width}
+                                height={canvasSize.height}
                                 activeTool={ctrl.tool}
                                 onActiveToolChange={ctrl.setTool}
                                 textLayerSpans={ctrl.textLayerSpans}

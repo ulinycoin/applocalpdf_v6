@@ -65,12 +65,14 @@ export interface ImageElement {
 export interface FormFieldElement {
     id: string;
     type: 'form-field';
-    formType: 'text' | 'checkbox' | 'radio';
+    formType: 'text' | 'multiline' | 'checkbox' | 'radio' | 'dropdown';
+    name: string;
     x: number;
     y: number;
     w: number;
     h: number;
     defaultValue: string;
+    options?: string[];
     required: boolean;
     fontSize: number;
     opacity: number;
@@ -97,6 +99,7 @@ export type DragSession =
     | { mode: 'move-rect'; id: string; startClientX: number; startClientY: number; originX: number; originY: number; initialElements: EditElement[]; }
     | { mode: 'resize-rect'; id: string; startClientX: number; startClientY: number; originW: number; originH: number; initialElements: EditElement[]; }
     | { mode: 'resize-image'; id: string; startClientX: number; startClientY: number; originW: number; originH: number; originX: number; originY: number; initialElements: EditElement[]; }
+    | { mode: 'resize-form-field'; id: string; startClientX: number; startClientY: number; originW: number; originH: number; originX: number; originY: number; initialElements: EditElement[]; }
     | { mode: 'move-stroke'; id: string; startClientX: number; startClientY: number; initialPoints: number[]; initialElements: EditElement[]; }
     | { mode: 'resize-stroke'; id: string; startClientX: number; startClientY: number; initialPoints: number[]; bounds: { minX: number; minY: number; maxX: number; maxY: number }; initialElements: EditElement[]; };
 

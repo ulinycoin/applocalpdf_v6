@@ -122,3 +122,62 @@ test('normalizeAndValidateStudioEditRequest accepts extended font families', () 
     assert.equal(textElement.fontFamily, 'noto-arabic');
   }
 });
+
+test('normalizeAndValidateStudioEditRequest accepts form-field elements', () => {
+  const result = normalizeAndValidateStudioEditRequest({
+    pageIndex: 1,
+    elements: [{
+      id: 'f-1',
+      type: 'form-field',
+      formType: 'checkbox',
+      name: 'accept_terms',
+      x: 0.12,
+      y: 0.22,
+      w: 0.2,
+      h: 0.08,
+      defaultValue: 'On',
+      required: true,
+      fontSize: 12,
+      opacity: 0.9,
+    }],
+  });
+
+  assert.equal(result.pageIndex, 1);
+  assert.equal(result.elements.length, 1);
+  const field = result.elements[0];
+  assert.equal(field.type, 'form-field');
+  if (field.type === 'form-field') {
+    assert.equal(field.formType, 'checkbox');
+    assert.equal(field.name, 'accept_terms');
+    assert.equal(field.required, true);
+    assert.equal(field.defaultValue, 'On');
+    assert.equal(field.opacity, 0.9);
+  }
+});
+
+test('normalizeAndValidateStudioEditRequest normalizes dropdown options for form fields', () => {
+  const result = normalizeAndValidateStudioEditRequest({
+    pageIndex: 0,
+    elements: [{
+      id: 'f-2',
+      type: 'form-field',
+      formType: 'dropdown',
+      x: 0.1,
+      y: 0.2,
+      w: 0.3,
+      h: 0.06,
+      defaultValue: 'B',
+      options: ['A', ' ', 'B', 42 as unknown as string],
+      required: false,
+      fontSize: 11,
+      opacity: 1,
+    }],
+  });
+
+  const field = result.elements[0];
+  assert.equal(field.type, 'form-field');
+  if (field.type === 'form-field') {
+    assert.equal(field.formType, 'dropdown');
+    assert.deepEqual(field.options, ['A', 'B']);
+  }
+});
