@@ -1,3 +1,4 @@
+import { existsSync } from 'node:fs';
 import { readdir, readFile } from 'node:fs/promises';
 import path from 'node:path';
 
@@ -8,6 +9,7 @@ const JSON_OUTPUT = process.argv.includes('--json');
 
 const SOURCE_EXTENSIONS = new Set(['.ts', '.tsx', '.js', '.jsx', '.mts', '.cts']);
 const UI_CORE_ALLOWLIST = [/core\/public(?:\/[a-z0-9._-]+)?$/i];
+const SOURCE_EXTENSIONS_LIST = ['.ts', '.tsx', '.js', '.jsx', '.mts', '.cts'];
 
 async function walk(dir) {
   const entries = await readdir(dir, { withFileTypes: true });
@@ -79,12 +81,49 @@ function isUiZone(filePath) {
 }
 
 function extractServiceModule(specifier) {
-  const marker = 'services/';
-  const index = specifier.indexOf(marker);
-  if (index === -1) {
+  const marker = 'src/services/';
+  if (!specifier.includes(marker)) {
     return specifier;
   }
-  return specifier.slice(index + marker.length);
+  return specifier.slice(specifier.indexOf(marker) + marker.length);
+}
+
+function resolveImportTarget(filePath, specifier) {
+  if (!specifier.startsWith('.')) {
+    return null;
+  }
+  const basePath = path.resolve(path.dirname(filePath), specifier);
+  const candidates = [basePath];
+  for (const extension of SOURCE_EXTENSIONS_LIST) {
+    candidates.push(`${basePath}${extension}`);
+  }
+  for (const extension of SOURCE_EXTENSIONS_LIST) {
+    candidates.push(path.join(basePath, `index${extension}`));
+  }
+  for (const candidate of candidates) {
+    if (existsSync(candidate)) {
+      return candidate;
+    }
+  }
+  return basePath;
+}
+
+function resolveServiceImport(filePath, specifier) {
+  if (specifier.startsWith('.')) {
+    const resolved = resolveImportTarget(filePath, specifier);
+    if (!resolved) {
+      return null;
+    }
+    const relative = toRelative(resolved);
+    if (!relative.startsWith('src/services/')) {
+      return null;
+    }
+    return relative;
+  }
+  if (specifier.startsWith('src/services/')) {
+    return specifier;
+  }
+  return null;
 }
 
 function collectImports(content) {
@@ -130,12 +169,13 @@ async function main() {
     const relative = toRelative(file);
     for (const item of imports) {
       const line = getLineNumber(content, item.index);
-      if (item.specifier.includes('services/')) {
+      const resolvedServiceImport = resolveServiceImport(file, item.specifier);
+      if (resolvedServiceImport) {
         findings.push({
           file: relative,
           line,
           specifier: item.specifier,
-          serviceModule: extractServiceModule(item.specifier),
+          serviceModule: extractServiceModule(resolvedServiceImport),
           zone: classifyZone(relative),
         });
         if (

@@ -1,8 +1,7 @@
 import type { ReactNode } from 'react';
 import { createContext, useContext, useEffect, useMemo } from 'react';
 import { bootstrapPlatform, type PlatformBootstrap } from '../platform/bootstrap';
-import { extractEmbeddedPdfText } from '../../services/pdf/pdf-text-extractor';
-import { extractPdfTextLayerSpans } from '../../services/pdf/pdf-text-layer-extractor';
+import type { WorkerPdfTextLayerSpan } from '../../core/public/contracts';
 
 const PlatformContext = createContext<PlatformBootstrap | null>(null);
 
@@ -86,15 +85,20 @@ export function PlatformProvider({ children }: { children: ReactNode }) {
         (value.runtime.runner as any).pageCountFallbackMode = 'limited';
       },
       extractPdfText: async (fileId: string) => {
-        const entry = await value.runtime.vfs.read(fileId);
-        const blob = await entry.getBlob();
-        const result = await extractEmbeddedPdfText(blob);
-        if (result?.text && result.text.trim().length > 0) {
-          return result.text;
-        }
         try {
-          const bytes = new Uint8Array(await blob.arrayBuffer());
-          const spans = await extractPdfTextLayerSpans(bytes, 1);
+          const command = {
+            id: crypto.randomUUID(),
+            type: 'COMMAND',
+            payload: {
+              type: 'GET_PDF_TEXT_LAYER',
+              payload: { fileId, pageNumber: 1 },
+            },
+          };
+          const finalEvent = await workerOrchestrator.dispatch(command);
+          if (finalEvent?.payload?.type !== 'TEXT_LAYER_RESULT') {
+            return '';
+          }
+          const spans = finalEvent.payload.payload.spans as WorkerPdfTextLayerSpan[];
           const fromLayer = spans.map((span) => span.text).join(' ').replace(/\s+/gu, ' ').trim();
           return fromLayer;
         } catch {
