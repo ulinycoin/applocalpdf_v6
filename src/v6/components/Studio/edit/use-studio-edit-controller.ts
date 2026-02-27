@@ -10,7 +10,7 @@ import {
     type StudioEditToolId,
     type SaveCheckpointEntry,
 } from '../studio-store';
-import { requestTextLayerSpans, requestTextLayerSpansFallback } from '../../../services/pdf-text-layer.service';
+import { requestTextLayerSpans, requestTextLayerSpansFallback } from '../../../pdf/text-layer-client';
 import { CommandExecutor, type AnyCommand } from '../store/command-manager';
 const USE_COMMAND_PATTERN_FOR_SAVES = true;
 import {
