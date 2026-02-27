@@ -1,6 +1,4 @@
 import { IWorkerCommand } from '../../core/public/contracts';
-import { extractEmbeddedPdfText } from '../../services/pdf/pdf-text-extractor';
-import { extractPdfTextLayerSpans } from '../../services/pdf/pdf-text-layer-extractor';
 import { TextLayerSpan } from '../components/Studio/editor-types';
 
 export async function requestTextLayerSpans(
@@ -110,17 +108,8 @@ export async function requestTextLayerSpansFallback(
     const entry = await runtime.vfs.read(fileId);
     const blob = await entry.getBlob();
     const bytes = new Uint8Array(await blob.arrayBuffer());
-    const directSpans = await extractPdfTextLayerSpans(bytes, pageNumber);
-    if (directSpans.length > 0) {
-        return directSpans;
+    if (containsTextOperators(bytes) || await detectTextOperatorsWithPdfLib(bytes)) {
+        return [fallbackSpan('Editable text')];
     }
-    const embeddedText = await extractEmbeddedPdfText(blob);
-    const fallbackText = embeddedText?.text?.replace(/\s+/gu, ' ').trim() ?? '';
-    if (!fallbackText) {
-        if (await detectTextOperatorsWithPdfLib(bytes)) {
-            return [fallbackSpan('Editable text')];
-        }
-        return [];
-    }
-    return [fallbackSpan(fallbackText.slice(0, 240))];
+    return [];
 }
