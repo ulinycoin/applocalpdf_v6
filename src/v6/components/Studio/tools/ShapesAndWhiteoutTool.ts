@@ -4,12 +4,12 @@ import type { EditorToolId } from '../editor-types';
 
 export const createRectTool = (id: EditorToolId): IEditorTool => ({
     id,
-    onPointerDown: (ctx: ToolContext, event: React.PointerEvent, { x, y }: Point) => {
+    onPointerDown: (ctx: ToolContext, _event: React.PointerEvent, { x, y }: Point) => {
         if (ctx.textEditor) ctx.commitTextEditor();
         ctx.setIsPointerDown(true);
         ctx.setDraftRect({ startX: x, startY: y, x, y, w: 0, h: 0 });
     },
-    onPointerMove: (ctx: ToolContext, event: React.PointerEvent, { x, y }: Point) => {
+    onPointerMove: (ctx: ToolContext, _event: React.PointerEvent, { x, y }: Point) => {
         if (!ctx.isPointerDown) return;
         ctx.setDraftRect(prev => prev ? {
             ...prev,
@@ -19,7 +19,7 @@ export const createRectTool = (id: EditorToolId): IEditorTool => ({
             h: Math.abs(y - prev.startY)
         } : null);
     },
-    onPointerUp: (ctx: ToolContext, event: React.PointerEvent, { x, y }: Point) => {
+    onPointerUp: (ctx: ToolContext, _event: React.PointerEvent, _worldPos: Point) => {
         ctx.setIsPointerDown(false);
         const draft = ctx.draftRect;
         if (draft && draft.w > 0.002) {

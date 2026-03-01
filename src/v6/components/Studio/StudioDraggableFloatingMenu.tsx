@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { LinearIcon } from '../icons/linear-icon';
 import { clamp, type FontFamilyId } from './inline-text-utils';
-import { EditElement, TextElement, TextAlignId } from './editor-types';
+import { EditElement, TextElement } from './editor-types';
 
 export interface StudioFloatingMenuProps {
     element: EditElement;
@@ -13,7 +13,7 @@ export interface StudioFloatingMenuProps {
     onActivateMove?: () => void;
 }
 
-export function DraggableFloatingMenu({ element, onUpdate, onDelete, onDuplicate, onDeselect, onActivateMove }: StudioFloatingMenuProps) {
+export function DraggableFloatingMenu({ element, onUpdate, onDelete, onDuplicate: _onDuplicate, onDeselect, onActivateMove }: StudioFloatingMenuProps) {
     const menuRef = useRef<HTMLDivElement | null>(null);
     const isAnchoredToText = element.type === 'text';
     const [position, setPosition] = useState(() => ({

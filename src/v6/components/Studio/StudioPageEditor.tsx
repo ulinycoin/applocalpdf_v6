@@ -1,13 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { usePlatform } from '../../../app/react/platform-context';
-import type { IWorkerCommand } from '../../../core/public/contracts';
-import { useStudioStore, type PageItem, type StudioEditToolId } from './studio-store';
+import type { PageItem, StudioEditToolId } from './studio-store';
 import {
     clamp,
-    estimateInlineFontSizePt,
-    findNearestTextSpan,
-    mergeTextLine,
-    resolveFontFamily,
     sanitizeInlineText,
     type FontFamilyId,
 } from './inline-text-utils';
@@ -17,19 +11,14 @@ import {
     EditElement,
     ImageElement,
     TextElement,
-    RectElement,
-    StrokeElement,
     RectDraft,
     StrokeDraft,
     DragSession,
     TextEditorState,
     InlineUiState,
-    TextAlignId,
     TextLayerSpan
 } from './editor-types';
 import { TOOLS, ToolContext } from './tools';
-
-import { LinearIcon } from '../icons/linear-icon';
 
 
 
@@ -53,7 +42,7 @@ export interface StudioPageEditorProps {
     isSelectMode: boolean;
     setIsSelectMode: (val: boolean) => void;
     textSelectionMode?: 'line' | 'word';
-    onTextSelectionModeChange?: (mode: 'line' | 'word') => void;
+    onTextSelectionModeChange?: (_mode: 'line' | 'word') => void;
     annotateColor?: string;
     textLayerSpans: TextLayerSpan[];
     onFinish?: () => void;
@@ -61,7 +50,7 @@ export interface StudioPageEditorProps {
 }
 
 export function StudioPageEditor({
-    page,
+    page: _page,
     width,
     height,
     activeTool: externalActiveTool = 'text',
@@ -73,19 +62,17 @@ export function StudioPageEditor({
     textEditor: externalTextEditor,
     onTextEditorChange,
     onInlineUiStateChange,
-    onMessageChange,
-    onActiveToolChange,
+    onMessageChange: _onMessageChange,
+    onActiveToolChange: _onActiveToolChange,
     isSelectMode,
-    setIsSelectMode,
+    setIsSelectMode: _setIsSelectMode,
     textSelectionMode: externalTextSelectionMode,
-    onTextSelectionModeChange,
+    onTextSelectionModeChange: _onTextSelectionModeChange,
     annotateColor = '#fff176',
     textLayerSpans,
-    onFinish,
-    onDiscard
+    onFinish: _onFinish,
+    onDiscard: _onDiscard
 }: StudioPageEditorProps) {
-    const { runtime } = usePlatform();
-
     const canvasRef = useRef<HTMLDivElement | null>(null);
     const dragSessionRef = useRef<DragSession | null>(null);
 
@@ -114,19 +101,8 @@ export function StudioPageEditor({
     const [draftRect, setDraftRect] = useState<RectDraft | null>(null);
     const [draftStroke, setDraftStroke] = useState<StrokeDraft | null>(null);
 
-    const [internalTextSelectionMode, setInternalTextSelectionMode] = useState<'line' | 'word'>('line');
-    const textSelectionMode = externalTextSelectionMode !== undefined ? externalTextSelectionMode : internalTextSelectionMode;
-    const setTextSelectionMode = (mode: 'line' | 'word') => {
-        if (onTextSelectionModeChange) onTextSelectionModeChange(mode);
-        else setInternalTextSelectionMode(mode);
-    };
-
-    const [internalActiveTool, setInternalActiveTool] = useState<StudioEditToolId>(externalActiveTool);
-    const activeTool = externalActiveTool !== undefined ? externalActiveTool : internalActiveTool;
-    const setActiveTool = (tool: StudioEditToolId) => {
-        if (onActiveToolChange) onActiveToolChange(tool);
-        else setInternalActiveTool(tool);
-    };
+    const textSelectionMode = externalTextSelectionMode ?? 'line';
+    const activeTool = externalActiveTool;
 
     const locale = useMemo(() => detectStudioEditLocale(), []);
     const ui = useMemo(() => getStudioEditMessages(locale), [locale]);
@@ -645,21 +621,4 @@ export function StudioPageEditor({
             {textLayerNodes}
         </div>
     );
-}
-
-function toolBtnStyle(active: boolean): React.CSSProperties {
-    return {
-        all: 'unset',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        width: 32,
-        height: 32,
-        borderRadius: 8,
-        cursor: 'pointer',
-        color: active ? '#ffffff' : 'rgba(255,255,255,0.6)',
-        background: active ? 'rgba(59, 130, 246, 0.4)' : 'transparent',
-        transition: 'all 0.2s ease',
-        border: active ? '1px solid rgba(147, 197, 253, 0.5)' : '1px solid transparent'
-    };
 }

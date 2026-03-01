@@ -1,9 +1,8 @@
-import type React from 'react';
-import type { IEditorTool, ToolContext, Point } from './IEditorTool';
+import type { IEditorTool, ToolContext } from './IEditorTool';
 
 export const SignTool: IEditorTool = {
     id: 'sign',
-    onPointerDown: (ctx: ToolContext, event: React.PointerEvent, worldPos: Point) => {
+    onPointerDown: (ctx: ToolContext) => {
         if (ctx.textEditor) ctx.commitTextEditor();
         ctx.setIsPointerDown(false);
     },

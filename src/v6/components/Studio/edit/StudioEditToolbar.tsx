@@ -1,4 +1,3 @@
-import type React from 'react';
 import { LinearIcon } from '../../icons/linear-icon';
 import type { EditorToolId } from '../editor-types';
 

@@ -11,7 +11,7 @@ import { findNearestTextSpan } from '../inline-text-utils';
 
 export const TextTool: IEditorTool = {
     id: 'text',
-    onPointerDown: (ctx: ToolContext, event: React.PointerEvent, { x, y }: Point) => {
+    onPointerDown: (ctx: ToolContext, _event: React.PointerEvent, { x, y }: Point) => {
         if (ctx.textEditor) ctx.commitTextEditor();
         ctx.setIsPointerDown(true);
 
@@ -30,10 +30,10 @@ export const TextTool: IEditorTool = {
             ctx.startEditingText(next);
         }
     },
-    onPointerMove: (ctx: ToolContext, event: React.PointerEvent, worldPos: Point) => {
+    onPointerMove: (_ctx: ToolContext, _event: React.PointerEvent, _worldPos: Point) => {
         // Text tool doesn't do drawing
     },
-    onPointerUp: (ctx: ToolContext, event: React.PointerEvent, worldPos: Point) => {
+    onPointerUp: (ctx: ToolContext, _event: React.PointerEvent, _worldPos: Point) => {
         ctx.setIsPointerDown(false);
     }
 };

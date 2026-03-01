@@ -1,9 +1,9 @@
-import { useEffect, useRef, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import type Konva from 'konva';
-import { useStudioStore, StudioState, PageItem } from './studio-store';
+import { useStudioStore, StudioState } from './studio-store';
 import { StudioPageEditor } from './StudioPageEditor';
 import { DraggableFloatingMenu } from './StudioDraggableFloatingMenu';
-import { EditElement, InlineUiState, TextEditorState, TextLayerSpan } from './editor-types';
+import { EditElement, TextLayerSpan } from './editor-types';
 import { usePlatform } from '../../../app/react/platform-context';
 import type { IWorkerCommand, WorkerStudioEditElement } from '../../../core/public/contracts';
 import { defaultFilePreviewService } from '../../preview/preview-service';
@@ -171,7 +171,7 @@ export function StudioInPlaceEditor({ stageRef }: StudioInPlaceEditorProps) {
                     width={overlayRect.w}
                     height={overlayRect.h}
                     activeTool={editSession?.activeTool ?? 'text'}
-                    onActiveToolChange={(newTool) => {
+                    onActiveToolChange={(_newTool) => {
                         // Optionally sync back to session if needed
                     }}
                     isSelectMode={isSelectMode}

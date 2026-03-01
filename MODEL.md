@@ -280,3 +280,36 @@ architecture remains clean
 
 This file is authoritative.
 Deviation is a bug.
+
+14. Studio-First UI Workflow (MANDATORY)
+
+All document workflows must start in Studio.
+
+Required Studio behavior:
+
+document visualization is available in Studio
+
+page operations in Studio include add, delete, and reorder
+
+Edit and Convert actions are available only when a document is selected
+
+Required Edit/Convert behavior:
+
+Edit opens a unified workspace with tools in the side menu
+
+Convert follows the same unified workspace principle
+
+after Save from Edit, user returns to the same Studio workspace context:
+same collection/folder, same selected document, same sorting/filtering, same scroll position
+
+after Save from Convert, user returns to the same Studio workspace context and the converted result appears as a new file next to the source file
+
+save cancellation must be supported (user can explicitly refuse Save and keep or discard changes according to the chosen action)
+
+Download policy:
+
+document download is performed from Studio after returning from Edit/Convert
+
+Status indicator:
+
+after returning to Studio from successful Edit/Convert save, the modified/produced document must show a green "M" marker

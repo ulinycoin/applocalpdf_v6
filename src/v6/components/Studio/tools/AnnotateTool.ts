@@ -8,16 +8,16 @@ function clamp(value: number, min: number, max: number): number {
 
 export const AnnotateTool: IEditorTool = {
     id: 'annotate',
-    onPointerDown: (ctx: ToolContext, event: React.PointerEvent, { x, y }: Point) => {
+    onPointerDown: (ctx: ToolContext, _event: React.PointerEvent, { x, y }: Point) => {
         if (ctx.textEditor) ctx.commitTextEditor();
         ctx.setIsPointerDown(true);
         ctx.setDraftStroke({ points: [x, y] });
     },
-    onPointerMove: (ctx: ToolContext, event: React.PointerEvent, { x, y }: Point) => {
+    onPointerMove: (ctx: ToolContext, _event: React.PointerEvent, { x, y }: Point) => {
         if (!ctx.isPointerDown) return;
         ctx.setDraftStroke(prev => prev ? { points: [...prev.points, x, y] } : null);
     },
-    onPointerUp: (ctx: ToolContext, event: React.PointerEvent, { x, y }: Point) => {
+    onPointerUp: (ctx: ToolContext, _event: React.PointerEvent, { x, y }: Point) => {
         ctx.setIsPointerDown(false);
         const draft = ctx.draftStroke;
         if (draft && draft.points.length >= 4) {

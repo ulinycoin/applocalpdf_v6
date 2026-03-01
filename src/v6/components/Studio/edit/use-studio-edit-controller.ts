@@ -11,7 +11,7 @@ import {
     type SaveCheckpointEntry,
 } from '../studio-store';
 import { requestTextLayerSpans, requestTextLayerSpansFallback } from '../../../pdf/text-layer-client';
-import { CommandExecutor, type AnyCommand } from '../store/command-manager';
+import { CommandExecutor } from '../store/command-manager';
 const USE_COMMAND_PATTERN_FOR_SAVES = true;
 import {
     EditElement,
@@ -97,7 +97,6 @@ export function useStudioEditController(ui: any) {
     const [applyToSelection, setApplyToSelection] = useState(false);
     const [isSignComposerOpen, setSignComposerOpen] = useState(false);
     const [annotateColor, setAnnotateColor] = useState('#fff176');
-    const [formType] = useState<'text' | 'multiline' | 'checkbox' | 'radio' | 'dropdown'>('text');
     const [isFormsComposerOpen, setFormsComposerOpen] = useState(false);
 
     const selectedPages = useMemo(() => buildSelectedPages(documents, selection), [documents, selection]);

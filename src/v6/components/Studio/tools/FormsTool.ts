@@ -1,4 +1,3 @@
-import type React from 'react';
 import type { IEditorTool, ToolContext } from './IEditorTool';
 
 export const FormsTool: IEditorTool = {
