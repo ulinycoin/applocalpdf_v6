@@ -11,6 +11,7 @@ import { StudioFloatingMenu } from './StudioFloatingMenu';
 import { ThumbnailService } from '../../studio/thumbnail/thumbnail-service';
 import type { StudioReturnContext, StudioToolRouteState } from '../../studio/navigation/studio-tool-context';
 import * as pdfjs from 'pdfjs-dist';
+import { PDFDocument } from 'pdf-lib';
 import { StudioInPlaceEditor } from './StudioInPlaceEditor';
 
 export interface StudioShellProps {
@@ -288,8 +289,35 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
             onFilesDropped?.(files);
         }
 
-        for (const file of files) {
+        for (let file of files) {
             try {
+                // If it's an image, wrap it in a PDF on the fly
+                if (file.type.startsWith('image/')) {
+                    const pdfDoc = await PDFDocument.create();
+                    const imageBytes = await file.arrayBuffer();
+                    let embeddedImage;
+                    if (file.type === 'image/jpeg' || file.type === 'image/jpg') {
+                        embeddedImage = await pdfDoc.embedJpg(imageBytes);
+                    } else if (file.type === 'image/png') {
+                        embeddedImage = await pdfDoc.embedPng(imageBytes);
+                    } else {
+                        throw new Error(`Unsupported image type: ${file.type}`);
+                    }
+
+                    const { width, height } = embeddedImage.scale(1);
+                    const page = pdfDoc.addPage([width, height]);
+                    page.drawImage(embeddedImage, {
+                        x: 0,
+                        y: 0,
+                        width,
+                        height,
+                    });
+
+                    const pdfBytes = await pdfDoc.save();
+                    const baseName = file.name.substring(0, file.name.lastIndexOf('.')) || file.name;
+                    file = new File([pdfBytes], `${baseName}.pdf`, { type: 'application/pdf' });
+                }
+
                 // 1. Save to VFS
                 const entry = await runtime.vfs.write(file);
                 const buffer = await file.arrayBuffer();
@@ -588,7 +616,7 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
             <input
                 ref={uploadInputRef}
                 type="file"
-                accept="application/pdf"
+                accept="application/pdf,image/png,image/jpeg,image/webp"
                 multiple
                 className="hidden"
                 onChange={handleUploadInputChange}

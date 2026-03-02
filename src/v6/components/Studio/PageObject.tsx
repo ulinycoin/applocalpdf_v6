@@ -154,15 +154,36 @@ export const PageObject: React.FC<PageObjectProps> = ({ page, docId, x, y, curre
                 shadowOpacity={0.3}
                 cornerRadius={4}
             />
-            {image && (
-                <Image
-                    image={image}
-                    width={PAGE_WIDTH}
-                    height={PAGE_HEIGHT}
-                    imageSmoothingEnabled={false}
-                    cornerRadius={4}
-                />
-            )}
+            {image && (() => {
+                const imgRatio = image.width / image.height;
+                const boxRatio = PAGE_WIDTH / PAGE_HEIGHT;
+                let drawWidth = PAGE_WIDTH;
+                let drawHeight = PAGE_HEIGHT;
+                let offsetX = 0;
+                let offsetY = 0;
+
+                if (imgRatio > boxRatio) {
+                    drawWidth = PAGE_WIDTH;
+                    drawHeight = PAGE_WIDTH / imgRatio;
+                    offsetY = (PAGE_HEIGHT - drawHeight) / 2;
+                } else {
+                    drawHeight = PAGE_HEIGHT;
+                    drawWidth = PAGE_HEIGHT * imgRatio;
+                    offsetX = (PAGE_WIDTH - drawWidth) / 2;
+                }
+
+                return (
+                    <Image
+                        image={image}
+                        width={drawWidth}
+                        height={drawHeight}
+                        x={offsetX}
+                        y={offsetY}
+                        imageSmoothingEnabled={false}
+                        cornerRadius={4}
+                    />
+                );
+            })()}
 
             {/* Page Number Badge */}
             <Group x={PAGE_WIDTH - 24} y={PAGE_HEIGHT - 24}>

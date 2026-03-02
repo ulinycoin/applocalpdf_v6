@@ -82,15 +82,36 @@ export const DetachedPageObject: React.FC<DetachedPageObjectProps> = ({ page }) 
             rotation={page.rotation}
         >
             <Rect width={180} height={250} fill="white" shadowBlur={10} shadowOpacity={0.3} cornerRadius={4} />
-            {image && (
-                <Image
-                    image={image}
-                    width={180}
-                    height={250}
-                    imageSmoothingEnabled={false}
-                    cornerRadius={4}
-                />
-            )}
+            {image && (() => {
+                const imgRatio = image.width / image.height;
+                const boxRatio = 180 / 250;
+                let drawWidth = 180;
+                let drawHeight = 250;
+                let offsetX = 0;
+                let offsetY = 0;
+
+                if (imgRatio > boxRatio) {
+                    drawWidth = 180;
+                    drawHeight = 180 / imgRatio;
+                    offsetY = (250 - drawHeight) / 2;
+                } else {
+                    drawHeight = 250;
+                    drawWidth = 250 * imgRatio;
+                    offsetX = (180 - drawWidth) / 2;
+                }
+
+                return (
+                    <Image
+                        image={image}
+                        width={drawWidth}
+                        height={drawHeight}
+                        x={offsetX}
+                        y={offsetY}
+                        imageSmoothingEnabled={false}
+                        cornerRadius={4}
+                    />
+                );
+            })()}
             <Group x={0} y={-24}>
                 <Rect width={180} height={20} fill="rgba(15, 23, 42, 0.75)" cornerRadius={4} />
                 <Text text="Detached: click to add" fill="#dbeafe" fontSize={11} x={8} y={4} />
