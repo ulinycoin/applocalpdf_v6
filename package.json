@@ -25,6 +25,7 @@
     "konva": "^9.3.22",
     "mammoth": "^1.11.0",
     "pdf-lib": "^1.17.1",
+    "pdf-lib-plus-encrypt": "file:../Localpdf_v3/node_modules/pdf-lib-plus-encrypt",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-konva": "^18.2.10",

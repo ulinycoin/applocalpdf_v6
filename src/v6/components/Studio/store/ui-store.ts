@@ -9,6 +9,8 @@ export interface UIState {
     interactionMode: StudioInteractionMode;
     activeEditPageId: string | null;
     operationScope: StudioOperationScope;
+    studioViewScale: number;
+    studioViewPosition: { x: number; y: number };
 
     setSelection: (selection: { docId: string; pageId: string }[]) => void;
     requestInlineTool: (toolId: 'compress-pdf' | null) => void;
@@ -17,6 +19,7 @@ export interface UIState {
     setInteractionMode: (mode: StudioInteractionMode) => void;
     setActiveEditPageId: (id: string | null) => void;
     setOperationScope: (scope: StudioOperationScope) => void;
+    setStudioViewport: (scale: number, position: { x: number; y: number }) => void;
     clearUI: () => void;
 }
 
@@ -28,6 +31,8 @@ export const useUIStore = create<UIState>((set) => ({
     interactionMode: null,
     activeEditPageId: null,
     operationScope: 'selection',
+    studioViewScale: 1,
+    studioViewPosition: { x: 0, y: 0 },
 
     setSelection: (selection) => set((state) => ({
         selection,
@@ -39,6 +44,7 @@ export const useUIStore = create<UIState>((set) => ({
     setInteractionMode: (mode) => set({ interactionMode: mode }),
     setActiveEditPageId: (id) => set({ activeEditPageId: id }),
     setOperationScope: (scope) => set({ operationScope: scope }),
+    setStudioViewport: (scale, position) => set({ studioViewScale: scale, studioViewPosition: position }),
     clearUI: () => set({
         selection: [],
         requestedInlineTool: null,
@@ -46,5 +52,7 @@ export const useUIStore = create<UIState>((set) => ({
         interactionMode: null,
         activeEditPageId: null,
         operationScope: 'selection',
+        studioViewScale: 1,
+        studioViewPosition: { x: 0, y: 0 },
     }),
 }));

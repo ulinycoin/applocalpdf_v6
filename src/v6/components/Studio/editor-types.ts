@@ -2,7 +2,7 @@ import { WorkerPdfTextLayerSpan } from '../../../core/public/contracts';
 import { FontFamilyId } from './inline-text-utils';
 
 export type TextLayerSpan = WorkerPdfTextLayerSpan;
-export type EditorToolId = 'text' | 'sign' | 'annotate' | 'whiteout' | 'shapes' | 'forms';
+export type EditorToolId = 'text' | 'sign' | 'annotate' | 'whiteout' | 'shapes' | 'forms' | 'protect';
 export type TextAlignId = 'left' | 'center' | 'right';
 export type InlineUiState = 'idle' | 'hover' | 'selected' | 'editing' | 'saving' | 'saved' | 'error';
 

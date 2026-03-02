@@ -10,6 +10,7 @@ const EDIT_TOOL_IDS = new Set<string>([
   'compress-pdf',
   'unlock-pdf',
   'encrypt-pdf',
+  'protect-pdf',
   'pdf-editor',
 ]);
 

@@ -4,6 +4,7 @@ import { SignTool } from './SignTool';
 import { AnnotateTool } from './AnnotateTool';
 import { ShapesTool, WhiteoutTool } from './ShapesAndWhiteoutTool';
 import { FormsTool } from './FormsTool';
+import { ProtectTool } from './ProtectTool';
 
 export * from './IEditorTool';
 export * from './TextTool';
@@ -11,6 +12,7 @@ export * from './SignTool';
 export * from './AnnotateTool';
 export * from './ShapesAndWhiteoutTool';
 export * from './FormsTool';
+export * from './ProtectTool';
 
 export const TOOLS: Record<string, IEditorTool> = {
     text: TextTool,
@@ -19,4 +21,5 @@ export const TOOLS: Record<string, IEditorTool> = {
     shapes: ShapesTool,
     whiteout: WhiteoutTool,
     forms: FormsTool,
+    protect: ProtectTool,
 };

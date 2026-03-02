@@ -21,7 +21,7 @@ import { useFilePreviews } from '../../hooks/use-file-previews';
 import { PreviewPanel } from './PreviewPanel';
 import type { IOAdapter, SmartUploadZoneProps, WizardShellProps } from './types';
 import { PDFDocument } from 'pdf-lib';
-import type { StudioSelectedPageRef, StudioToolRouteState } from '../../studio/navigation/studio-tool-context';
+import type { StudioReturnContext, StudioSelectedPageRef, StudioToolRouteState } from '../../studio/navigation/studio-tool-context';
 
 function classNames(...parts: Array<string | false | null | undefined>): string {
   return parts.filter(Boolean).join(' ');
@@ -145,6 +145,7 @@ const PROCESSING_VERB_BY_TOOL: Record<string, string> = {
   'word-to-pdf': 'Converting',
   'excel-to-pdf': 'Converting',
   'encrypt-pdf': 'Encrypting',
+  'protect-pdf': 'Protecting',
   'unlock-pdf': 'Unlocking',
 };
 
@@ -160,6 +161,7 @@ const COMPLETION_BY_TOOL: Record<string, string> = {
   'word-to-pdf': 'Conversion complete',
   'excel-to-pdf': 'Conversion complete',
   'encrypt-pdf': 'Encryption complete',
+  'protect-pdf': 'Protection complete',
   'unlock-pdf': 'Unlock complete',
 };
 
@@ -256,8 +258,39 @@ export function WizardShell({ toolId, context = DEFAULT_TOOL_CONTEXT, ioAdapter,
   const routeState = (location.state as StudioToolRouteState | null) ?? null;
   const isStudioFlow = routeState?.source === 'studio';
   const routeStudioContext = routeState?.studioContext;
+  const routeReturnContext = routeState?.studioReturnContext;
   const isInlineUploadConfigFlow = toolId === 'word-to-pdf' || toolId === 'excel-to-pdf' || toolId === 'pdf-to-jpg' || toolId === 'pdf-editor';
-  const isWordSinglePageFlow = toolId === 'word-to-pdf' || toolId === 'excel-to-pdf' || toolId === 'pdf-to-jpg' || toolId === 'pdf-editor';
+  const isWordSinglePageFlow = toolId === 'word-to-pdf' || toolId === 'excel-to-pdf' || (toolId === 'pdf-to-jpg' && !isStudioFlow) || toolId === 'pdf-editor';
+  const allowStandaloneFlow = toolId === 'word-to-pdf' || toolId === 'excel-to-pdf';
+  const requiresStudioFlow = !allowStandaloneFlow;
+
+  const buildReturnContext = (): StudioReturnContext | undefined => routeReturnContext;
+
+  const navigateToStudio = (includeResult: boolean): void => {
+    navigate('/studio', {
+      state: {
+        source: 'studio',
+        studioReturnContext: buildReturnContext(),
+        ...(includeResult
+          ? {
+            studioToolResult: {
+              toolId,
+              outputIds: state.outputIds,
+              studioContext: routeStudioContext,
+            },
+          }
+          : {}),
+      } satisfies StudioToolRouteState,
+    });
+  };
+
+  const handleBackAction = (): void => {
+    if (isStudioFlow) {
+      navigateToStudio(false);
+      return;
+    }
+    void resetFlow(true);
+  };
 
   const handleWordFilesPicked = useCallback(
     async (files: File[]): Promise<void> => {
@@ -336,6 +369,28 @@ export function WizardShell({ toolId, context = DEFAULT_TOOL_CONTEXT, ioAdapter,
     dismissUpsell();
   }, [dismissUpsell, state.upsellReason]);
 
+  if (requiresStudioFlow && !isStudioFlow) {
+    return (
+      <section className="wizard-shell">
+        <header className="wizard-header">
+          <div>
+            <h2 className="wizard-title">{toolDef.name}</h2>
+          </div>
+        </header>
+        <div className="wizard-config-card">
+          <p className="wizard-subtitle">
+            This workflow is Studio-first. Select a document in Studio and launch the tool from there.
+          </p>
+          <div className="tool-config-actions">
+            <button className="btn-primary" onClick={() => navigate('/studio')}>
+              Go to Studio
+            </button>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
   return (
     <section
       className={classNames(
@@ -378,15 +433,19 @@ export function WizardShell({ toolId, context = DEFAULT_TOOL_CONTEXT, ioAdapter,
                 <WordConfigComponent
                   inputFiles={state.fileIds}
                   onStart={startProcessingWithContext}
-                  onBack={() => void resetFlow(true)}
+                  onBack={handleBackAction}
                   onPickFiles={state.isProcessing ? undefined : handleWordFilesPicked}
                   onClearFiles={() => void resetFlow(true)}
                   currentStep={state.step}
                   progress={state.progress}
                   outputCount={state.outputIds.length}
-                  onDownload={() => {
-                    void Promise.all(state.outputIds.map(async (fileId) => io.save(fileId)));
-                  }}
+                  onDownload={
+                    isStudioFlow
+                      ? undefined
+                      : () => {
+                        void Promise.all(state.outputIds.map(async (fileId) => io.save(fileId)));
+                      }
+                  }
                 />
               </Suspense>
             </ConfigErrorBoundary>
@@ -407,7 +466,7 @@ export function WizardShell({ toolId, context = DEFAULT_TOOL_CONTEXT, ioAdapter,
                   <ConfigComponent
                     inputFiles={state.fileIds}
                     onStart={startProcessingWithContext}
-                    onBack={() => void resetFlow(true)}
+                    onBack={handleBackAction}
                     onPickFiles={handleWordFilesPicked}
                     onClearFiles={() => void resetFlow(true)}
                   />
@@ -423,6 +482,13 @@ export function WizardShell({ toolId, context = DEFAULT_TOOL_CONTEXT, ioAdapter,
                 accept={uploadAccept}
               />
               {state.isValidating && <p className="wizard-subtitle" style={{ marginTop: '0.75rem' }}>Validating access limits...</p>}
+              {isStudioFlow && (
+                <div className="wizard-action-row" style={{ marginTop: '0.75rem' }}>
+                  <button className="btn-ghost" onClick={handleBackAction}>
+                    Back to Studio
+                  </button>
+                </div>
+              )}
             </div>
           )
         )}
@@ -452,7 +518,7 @@ export function WizardShell({ toolId, context = DEFAULT_TOOL_CONTEXT, ioAdapter,
                       <ConfigComponent
                         inputFiles={state.fileIds}
                         onStart={startProcessingWithContext}
-                        onBack={() => void resetFlow(true)}
+                        onBack={handleBackAction}
                         onPickFiles={isInlineUploadConfigFlow ? handleWordFilesPicked : undefined}
                         onClearFiles={isInlineUploadConfigFlow ? (() => void resetFlow(true)) : undefined}
                       />
@@ -472,7 +538,7 @@ export function WizardShell({ toolId, context = DEFAULT_TOOL_CONTEXT, ioAdapter,
                   <ConfigComponent
                     inputFiles={state.fileIds}
                     onStart={startProcessingWithContext}
-                    onBack={() => void resetFlow(true)}
+                    onBack={handleBackAction}
                     onPickFiles={isInlineUploadConfigFlow ? handleWordFilesPicked : undefined}
                     onClearFiles={isInlineUploadConfigFlow ? (() => void resetFlow(true)) : undefined}
                   />
@@ -520,17 +586,19 @@ export function WizardShell({ toolId, context = DEFAULT_TOOL_CONTEXT, ioAdapter,
                     {getResultLabel(toolId)}. {state.outputIds.length} file(s) generated.
                   </p>
                   <div className="wizard-action-row wizard-action-col">
-                    <button
-                      className="btn-primary"
-                      onClick={() => {
-                        void Promise.all(state.outputIds.map(async (fileId) => io.save(fileId)));
-                      }}
-                    >
-                      <span className="btn-inline">
-                        <LinearIcon name="download" className="linear-icon" />
-                        {state.outputIds.length > 1 ? 'Download ZIP' : 'Download File'}
-                      </span>
-                    </button>
+                    {!isStudioFlow && (
+                      <button
+                        className="btn-primary"
+                        onClick={() => {
+                          void Promise.all(state.outputIds.map(async (fileId) => io.save(fileId)));
+                        }}
+                      >
+                        <span className="btn-inline">
+                          <LinearIcon name="download" className="linear-icon" />
+                          {state.outputIds.length > 1 ? 'Download ZIP' : 'Download File'}
+                        </span>
+                      </button>
+                    )}
                     <button className="btn-ghost" onClick={() => void resetFlow(true)}>
                       <span className="btn-inline">
                         <LinearIcon name="refresh" className="linear-icon" />
@@ -539,22 +607,20 @@ export function WizardShell({ toolId, context = DEFAULT_TOOL_CONTEXT, ioAdapter,
                     </button>
                     {isStudioFlow && (
                       <button
-                        className="btn-secondary"
-                        onClick={() =>
-                          navigate('/studio', {
-                            state: {
-                              studioToolResult: {
-                                toolId,
-                                outputIds: state.outputIds,
-                                studioContext: routeStudioContext,
-                              },
-                            } satisfies StudioToolRouteState,
-                          })
-                        }
+                        className="btn-primary"
+                        onClick={() => navigateToStudio(true)}
                       >
                         <span className="btn-inline">
                           <LinearIcon name="tool" className="linear-icon" />
-                          Return to Studio
+                          Save to Studio
+                        </span>
+                      </button>
+                    )}
+                    {isStudioFlow && (
+                      <button className="btn-secondary" onClick={() => navigateToStudio(false)}>
+                        <span className="btn-inline">
+                          <LinearIcon name="x" className="linear-icon" />
+                          Discard and Return
                         </span>
                       </button>
                     )}
@@ -568,17 +634,19 @@ export function WizardShell({ toolId, context = DEFAULT_TOOL_CONTEXT, ioAdapter,
                   {getResultLabel(toolId)}. {state.outputIds.length} file(s) generated.
                 </p>
                 <div className="wizard-action-row">
-                  <button
-                    className="btn-primary"
-                    onClick={() => {
-                      void Promise.all(state.outputIds.map(async (fileId) => io.save(fileId)));
-                    }}
-                  >
-                    <span className="btn-inline">
-                      <LinearIcon name="download" className="linear-icon" />
-                      {state.outputIds.length > 1 ? 'Download ZIP' : 'Download File'}
-                    </span>
-                  </button>
+                  {!isStudioFlow && (
+                    <button
+                      className="btn-primary"
+                      onClick={() => {
+                        void Promise.all(state.outputIds.map(async (fileId) => io.save(fileId)));
+                      }}
+                    >
+                      <span className="btn-inline">
+                        <LinearIcon name="download" className="linear-icon" />
+                        {state.outputIds.length > 1 ? 'Download ZIP' : 'Download File'}
+                      </span>
+                    </button>
+                  )}
                   <button className="btn-ghost" onClick={() => void resetFlow(true)}>
                     <span className="btn-inline">
                       <LinearIcon name="refresh" className="linear-icon" />
@@ -587,22 +655,20 @@ export function WizardShell({ toolId, context = DEFAULT_TOOL_CONTEXT, ioAdapter,
                   </button>
                   {isStudioFlow && (
                     <button
-                      className="btn-secondary"
-                      onClick={() =>
-                        navigate('/studio', {
-                          state: {
-                            studioToolResult: {
-                              toolId,
-                              outputIds: state.outputIds,
-                              studioContext: routeStudioContext,
-                            },
-                          } satisfies StudioToolRouteState,
-                        })
-                      }
+                      className="btn-primary"
+                      onClick={() => navigateToStudio(true)}
                     >
                       <span className="btn-inline">
                         <LinearIcon name="tool" className="linear-icon" />
-                        Return to Studio
+                        Save to Studio
+                      </span>
+                    </button>
+                  )}
+                  {isStudioFlow && (
+                    <button className="btn-secondary" onClick={() => navigateToStudio(false)}>
+                      <span className="btn-inline">
+                        <LinearIcon name="x" className="linear-icon" />
+                        Discard and Return
                       </span>
                     </button>
                   )}

@@ -11,6 +11,14 @@ export interface StudioToolLaunchContext {
   selectedPages: StudioSelectedPageRef[];
 }
 
+export interface StudioReturnContext {
+  activeDocumentId: string | null;
+  selection: Array<{ docId: string; pageId: string }>;
+  interactionMode: 'edit' | 'convert' | null;
+  viewScale: number;
+  viewPosition: { x: number; y: number };
+}
+
 export interface StudioToolResultState {
   toolId: string;
   outputIds: string[];
@@ -22,4 +30,5 @@ export interface StudioToolRouteState {
   source?: 'studio';
   studioContext?: StudioToolLaunchContext;
   studioToolResult?: StudioToolResultState;
+  studioReturnContext?: StudioReturnContext;
 }

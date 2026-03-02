@@ -5,6 +5,7 @@ import { StudioEditToolbar } from './edit/StudioEditToolbar';
 import { StudioSignComposerModal } from './edit/StudioSignComposerModal';
 import { StudioAnnotateSettingsPanel } from './edit/StudioAnnotateSettingsPanel';
 import { StudioFormsQuickBar } from './edit/StudioFormsQuickBar';
+import { StudioProtectSettingsPanel } from './edit/StudioProtectSettingsPanel';
 import { LinearIcon } from '../icons/linear-icon';
 import { detectStudioEditLocale, getStudioEditMessages } from './studio-edit-i18n';
 import { StudioPageEditor } from './StudioPageEditor';
@@ -79,6 +80,11 @@ export function StudioEditWorkspace() {
         ctrl.setElements(next);
         ctrl.pushHistory(next);
     };
+
+    const protectPermissionsOnly = ctrl.protectOptions?.permissionsOnly === true;
+    const protectUserPassword = typeof ctrl.protectOptions?.userPassword === 'string'
+        ? ctrl.protectOptions.userPassword
+        : '';
 
     if (!ctrl.preview) {
         return (
@@ -161,6 +167,14 @@ export function StudioEditWorkspace() {
                         onUpdateSelectedField={updateSelectedFormField}
                         canvasWidth={canvasSize.width}
                         canvasHeight={canvasSize.height}
+                    />
+                </div>
+            )}
+            {ctrl.tool === 'protect' && (
+                <div style={{ padding: '0 16px 12px' }}>
+                    <StudioProtectSettingsPanel
+                        ui={ui}
+                        onOptionsChange={ctrl.setProtectOptions}
                     />
                 </div>
             )}
@@ -289,10 +303,18 @@ export function StudioEditWorkspace() {
                         type="button"
                         data-testid="studio-edit-save-btn"
                         className="studio-edit-btn-apply studio-edit-fixed-save-btn"
-                        onClick={ctrl.applyChanges}
-                        disabled={ctrl.isApplying || (ctrl.historyIndex === 0 && !ctrl.hasDirtyChanges)}
+                        onClick={ctrl.tool === 'protect'
+                            ? () => { void ctrl.protectAndReturnToStudio(ctrl.protectOptions); }
+                            : ctrl.applyChanges}
+                        disabled={ctrl.isApplying || (
+                            ctrl.tool === 'protect'
+                                ? (!protectPermissionsOnly && !protectUserPassword.trim())
+                                : (ctrl.historyIndex === 0 && !ctrl.hasDirtyChanges)
+                        )}
                     >
-                        {ctrl.isApplying ? ui.saving : ui.save}
+                        {ctrl.isApplying
+                            ? (ctrl.tool === 'protect' ? 'Protecting...' : ui.saving)
+                            : (ctrl.tool === 'protect' ? ui.protect : ui.save)}
                     </button>
                 </div>,
                 document.body

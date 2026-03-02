@@ -9,6 +9,7 @@ export interface StudioEditMessages {
   text: string;
   links: string;
   forms: string;
+  protect: string;
   images: string;
   sign: string;
   whiteout: string;
@@ -43,6 +44,8 @@ export interface StudioEditMessages {
   statusError: string;
   dirty: string;
   saveReverted: string;
+  protectPasswordRequired: string;
+  protectUnavailable: string;
 }
 
 const EN_MESSAGES: StudioEditMessages = {
@@ -54,6 +57,7 @@ const EN_MESSAGES: StudioEditMessages = {
   text: 'Text',
   links: 'Links',
   forms: 'Forms',
+  protect: 'Protect',
   images: 'Images',
   sign: 'Sign',
   whiteout: 'Whiteout',
@@ -88,6 +92,8 @@ const EN_MESSAGES: StudioEditMessages = {
   statusError: 'error',
   dirty: 'dirty',
   saveReverted: 'Saved changes reverted.',
+  protectPasswordRequired: 'Password is required unless restrictions-only mode is enabled.',
+  protectUnavailable: 'Protect PDF requires qpdf (Node/Desktop runtime). Current browser runtime is not supported.',
 };
 
 const RU_MESSAGES: StudioEditMessages = {
@@ -100,6 +106,7 @@ const RU_MESSAGES: StudioEditMessages = {
   text: 'Текст',
   links: 'Ссылки',
   forms: 'Формы',
+  protect: 'Защитить',
   images: 'Изображения',
   sign: 'Подпись',
   whiteout: 'Скрытие',
@@ -134,6 +141,8 @@ const RU_MESSAGES: StudioEditMessages = {
   statusError: 'ошибка',
   dirty: 'изменения',
   saveReverted: 'Сохранённые изменения отменены.',
+  protectPasswordRequired: 'Пароль обязателен, если не включен режим только ограничений.',
+  protectUnavailable: 'Protect PDF требует qpdf (Node/Desktop runtime). В текущем браузерном runtime недоступно.',
 };
 
 const SIMPLE_FALLBACKS: Record<Exclude<StudioEditLocale, 'en' | 'ru'>, StudioEditMessages> = {

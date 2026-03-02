@@ -25,7 +25,7 @@ export const StudioDocument: React.FC<StudioDocumentProps> = ({ doc }) => {
     const CARD_WIDTH = 200;
     const CARD_HEIGHT = 280;
     const GAP = 20;
-    const MODIFIED_BADGE_WIDTH = 65;
+    const MODIFIED_BADGE_WIDTH = 22;
 
     // Calculate doc bounds based on pages (Horizontal Layout)
     const width = Math.max(CARD_WIDTH + GAP, doc.pages.length * (CARD_WIDTH + GAP));
@@ -81,8 +81,8 @@ export const StudioDocument: React.FC<StudioDocumentProps> = ({ doc }) => {
                 {/* Modified Indicator */}
                 {doc.isModified && (
                     <Group x={labelMaxWidth + 8}>
-                        <Rect width={65} height={18} fill="#3b82f6" cornerRadius={4} />
-                        <Text text="MODIFIED" fill="white" fontSize={10} x={7} y={4} fontStyle="bold" />
+                        <Rect width={22} height={18} fill="#22c55e" cornerRadius={4} />
+                        <Text text="M" fill="white" fontSize={11} x={7} y={3} fontStyle="bold" />
                     </Group>
                 )}
             </Group>

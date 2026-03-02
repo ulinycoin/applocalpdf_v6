@@ -12,6 +12,7 @@ import {
 } from '../studio-store';
 import { requestTextLayerSpans, requestTextLayerSpansFallback } from '../../../pdf/text-layer-client';
 import { CommandExecutor } from '../store/command-manager';
+import type { StudioToolRouteState } from '../../../studio/navigation/studio-tool-context';
 const USE_COMMAND_PATTERN_FOR_SAVES = true;
 import {
     EditElement,
@@ -23,6 +24,24 @@ import {
     TextLayerSpan,
     EditorToolId
 } from '../editor-types';
+
+const STUDIO_TOOL_CONTEXT = {
+    userId: 'studio-user',
+    plan: 'pro' as const,
+    entitlements: [
+        'pdf.merge',
+        'pdf.split',
+        'pdf.compress',
+        'pdf.ocr',
+        'pdf.rotate',
+        'pdf.delete_pages',
+        'pdf.edit',
+        'pdf.to_image',
+        'office.convert',
+        'pdf.protect.encrypt',
+        'pdf.protect.unlock',
+    ],
+};
 
 export interface SelectedPage {
     docId: string;
@@ -59,6 +78,9 @@ export function useStudioEditController(ui: any) {
     const documents = useStudioStore((s) => s.documents);
     const selection = useStudioStore((s) => s.selection);
     const activeDocumentId = useStudioStore((s) => s.activeDocumentId);
+    const interactionMode = useStudioStore((s) => s.interactionMode);
+    const studioViewScale = useStudioStore((s) => s.studioViewScale);
+    const studioViewPosition = useStudioStore((s) => s.studioViewPosition);
     const updatePage = useStudioStore((s) => s.updatePage);
     const editSession = useStudioStore((s) => s.editSession);
     const clearEditSession = useStudioStore((s) => s.clearEditSession);
@@ -98,6 +120,19 @@ export function useStudioEditController(ui: any) {
     const [isSignComposerOpen, setSignComposerOpen] = useState(false);
     const [annotateColor, setAnnotateColor] = useState('#fff176');
     const [isFormsComposerOpen, setFormsComposerOpen] = useState(false);
+    const [protectOptions, setProtectOptions] = useState<Record<string, unknown>>({
+        permissionsOnly: false,
+        userPassword: '',
+        ownerPassword: '',
+        keyLength: 256,
+        printing: 'full',
+        copying: false,
+        modifying: false,
+        annotating: false,
+        fillingForms: true,
+        contentAccessibility: true,
+        documentAssembly: false,
+    });
 
     const selectedPages = useMemo(() => buildSelectedPages(documents, selection), [documents, selection]);
     const activeDocument = useMemo(() => documents.find((doc) => doc.id === activeDocumentId) ?? null, [activeDocumentId, documents]);
@@ -463,6 +498,82 @@ export function useStudioEditController(ui: any) {
         }
     };
 
+    const protectAndReturnToStudio = useCallback(async (options: Record<string, unknown>) => {
+        const targetDocumentId = activeDocument?.id ?? preview?.docId ?? null;
+        const targetDocument = targetDocumentId
+            ? documents.find((doc) => doc.id === targetDocumentId) ?? null
+            : null;
+        const inputIds = Array.from(new Set((targetDocument?.pages ?? []).map((page) => page.fileId)));
+        if (inputIds.length === 0) {
+            setMessage(ui.saveFailed);
+            return;
+        }
+
+        setIsApplying(true);
+        try {
+            const result = await runtime.runner.execute(
+                'protect-pdf',
+                {
+                    inputIds,
+                    options: {
+                        ...options,
+                        studioContext: {
+                            mode: 'document',
+                            documentId: targetDocumentId,
+                            selectedPages: [],
+                        },
+                    },
+                },
+                STUDIO_TOOL_CONTEXT,
+            );
+
+            if (result.type === 'TOOL_ERROR') {
+                setMessage(result.message || ui.saveFailed);
+                return;
+            }
+            if (result.type === 'TOOL_ACCESS_DENIED') {
+                setMessage(result.details ?? result.reason);
+                return;
+            }
+
+            navigate('/studio', {
+                state: {
+                    source: 'studio',
+                    studioToolResult: {
+                        toolId: 'protect-pdf',
+                        outputIds: result.outputIds,
+                        studioContext: {
+                            mode: 'document',
+                            documentId: targetDocumentId,
+                            selectedPages: [],
+                        },
+                    },
+                    studioReturnContext: {
+                        activeDocumentId,
+                        selection,
+                        interactionMode,
+                        viewScale: studioViewScale,
+                        viewPosition: studioViewPosition,
+                    },
+                } satisfies StudioToolRouteState,
+            });
+        } finally {
+            setIsApplying(false);
+        }
+    }, [
+        activeDocument?.id,
+        activeDocumentId,
+        documents,
+        interactionMode,
+        navigate,
+        preview?.docId,
+        runtime.runner,
+        selection,
+        studioViewPosition,
+        studioViewScale,
+        ui.saveFailed,
+    ]);
+
     const undoLastSave = useCallback(() => {
         if (USE_COMMAND_PATTERN_FOR_SAVES) {
             const command = popCommandUndo();
@@ -582,9 +693,12 @@ export function useStudioEditController(ui: any) {
         setSignComposerOpen,
         isFormsComposerOpen,
         setFormsComposerOpen,
+        protectOptions,
+        setProtectOptions,
         addTypedSignature,
         addImageSignature,
         addFormField,
+        protectAndReturnToStudio,
         clearEditSession,
         preview, selectedPages, activeDocument,
         saveUndoStack: USE_COMMAND_PATTERN_FOR_SAVES ? commandUndoStack : saveUndoStack,

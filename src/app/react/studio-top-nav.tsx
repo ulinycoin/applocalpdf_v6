@@ -42,6 +42,8 @@ export function StudioTopNav({ onToggleTelemetry, telemetryOpen }: StudioTopNavP
   const selection = useStudioStore((s: StudioState) => s.selection);
   const activeDocumentId = useStudioStore((s: StudioState) => s.activeDocumentId);
   const interactionMode = useStudioStore((s: StudioState) => s.interactionMode);
+  const studioViewScale = useStudioStore((s: StudioState) => s.studioViewScale);
+  const studioViewPosition = useStudioStore((s: StudioState) => s.studioViewPosition);
   const setInteractionMode = useStudioStore((s: StudioState) => s.setInteractionMode);
   const addDocument = useStudioStore((s: StudioState) => s.addDocument);
   const removeDocument = useStudioStore((s: StudioState) => s.removeDocument);
@@ -97,6 +99,37 @@ export function StudioTopNav({ onToggleTelemetry, telemetryOpen }: StudioTopNavP
   }, [hasEditTarget, interactionMode, setInteractionMode]);
 
   const exportDocument = async (doc: StudioDocument): Promise<void> => {
+    const canDownloadSourceDirectly = (() => {
+      if (doc.pages.length === 0) {
+        return false;
+      }
+      const sourceFileId = doc.pages[0]?.fileId;
+      if (!sourceFileId) {
+        return false;
+      }
+      return doc.pages.every((page, index) => (
+        page.fileId === sourceFileId
+        && page.pageIndex === index
+        && (page.rotation ?? 0) === 0
+      ));
+    })();
+
+    if (canDownloadSourceDirectly) {
+      const sourceFileId = doc.pages[0]?.fileId;
+      if (sourceFileId) {
+        const sourceEntry = await runtime.vfs.read(sourceFileId);
+        const sourceBlob = await sourceEntry.getBlob();
+        const sourceUrl = URL.createObjectURL(sourceBlob);
+        const sourceAnchor = document.createElement('a');
+        sourceAnchor.href = sourceUrl;
+        sourceAnchor.download = sourceEntry.getName();
+        sourceAnchor.click();
+        URL.revokeObjectURL(sourceUrl);
+        markWorkspaceExported();
+        return;
+      }
+    }
+
     const sequence = doc.pages.map((page: PageItem) => ({
       sourceFileId: page.fileId,
       pageIndex: page.pageIndex,
@@ -146,6 +179,13 @@ export function StudioTopNav({ onToggleTelemetry, telemetryOpen }: StudioTopNavP
       source: 'studio',
       preloadedFileIds: selectedInputIds,
       studioContext,
+      studioReturnContext: {
+        activeDocumentId,
+        selection,
+        interactionMode,
+        viewScale: studioViewScale,
+        viewPosition: studioViewPosition,
+      },
     };
   };
 
@@ -263,9 +303,9 @@ export function StudioTopNav({ onToggleTelemetry, telemetryOpen }: StudioTopNavP
           </button>
           <button
             type="button"
-            className={`studio-segment-btn ${hasTargetSelection && interactionMode === 'convert' ? 'active' : ''}`}
+            className={`studio-segment-btn ${hasEditTarget && interactionMode === 'convert' ? 'active' : ''}`}
             onClick={() => {
-              if (!hasTargetSelection) {
+              if (!hasEditTarget) {
                 return;
               }
               setInteractionMode('convert');
@@ -273,8 +313,8 @@ export function StudioTopNav({ onToggleTelemetry, telemetryOpen }: StudioTopNavP
                 navigate('/studio');
               }
             }}
-            disabled={!hasTargetSelection}
-            title={!hasTargetSelection ? 'Select page or area first' : 'Convert mode'}
+            disabled={!hasEditTarget}
+            title={!hasEditTarget ? 'Select a document first' : 'Convert mode'}
           >
             Convert
           </button>

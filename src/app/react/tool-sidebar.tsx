@@ -2,7 +2,7 @@ import { NavLink, useLocation } from 'react-router-dom';
 import { LinearIcon } from '../../v6/components/icons/linear-icon';
 import { usePlatform } from './platform-context';
 import { useStudioStore, type StudioState, type StudioDocument, type PageItem } from '../../v6/components/Studio/studio-store';
-import type { StudioSelectedPageRef, StudioToolLaunchContext } from '../../v6/studio/navigation/studio-tool-context';
+import type { StudioSelectedPageRef, StudioToolLaunchContext, StudioToolRouteState } from '../../v6/studio/navigation/studio-tool-context';
 
 const SIDEBAR_TOOL_ORDER: Record<string, number> = {
   'ocr-pdf': 0,
@@ -85,6 +85,9 @@ export function ToolSidebar({ collapsed, onToggleCollapsed }: ToolSidebarProps) 
   const documents = useStudioStore((s: StudioState) => s.documents);
   const selection = useStudioStore((s: StudioState) => s.selection);
   const activeDocumentId = useStudioStore((s: StudioState) => s.activeDocumentId);
+  const interactionMode = useStudioStore((s: StudioState) => s.interactionMode);
+  const studioViewScale = useStudioStore((s: StudioState) => s.studioViewScale);
+  const studioViewPosition = useStudioStore((s: StudioState) => s.studioViewPosition);
 
   const activeDocument = documents.find((doc: StudioDocument) => doc.id === activeDocumentId) ?? documents[0] ?? null;
   const selectedPages: StudioSelectedPageRef[] = selection
@@ -114,9 +117,20 @@ export function ToolSidebar({ collapsed, onToggleCollapsed }: ToolSidebarProps) 
         selectedPages,
       }
       : undefined;
-  const toolNavState =
+  const toolNavState: StudioToolRouteState | undefined =
     studioContext
-      ? { preloadedFileIds: selectedInputIds, source: 'studio' as const, studioContext }
+      ? {
+        preloadedFileIds: selectedInputIds,
+        source: 'studio',
+        studioContext,
+        studioReturnContext: {
+          activeDocumentId,
+          selection,
+          interactionMode,
+          viewScale: studioViewScale,
+          viewPosition: studioViewPosition,
+        },
+      }
       : undefined;
   const orderedMenu = [...menu].sort((a, b) => {
     const aHasOrder = Object.prototype.hasOwnProperty.call(SIDEBAR_TOOL_ORDER, a.toolId);

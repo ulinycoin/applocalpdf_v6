@@ -9,7 +9,7 @@ import { StudioDocument } from './StudioDocument';
 import { DetachedPageObject } from './DetachedPageObject';
 import { StudioFloatingMenu } from './StudioFloatingMenu';
 import { ThumbnailService } from '../../studio/thumbnail/thumbnail-service';
-import type { StudioToolRouteState } from '../../studio/navigation/studio-tool-context';
+import type { StudioReturnContext, StudioToolRouteState } from '../../studio/navigation/studio-tool-context';
 import * as pdfjs from 'pdfjs-dist';
 import { StudioInPlaceEditor } from './StudioInPlaceEditor';
 
@@ -34,6 +34,27 @@ interface NewDocumentDraft {
     name: string;
     pages: PageItem[];
     isModified: boolean;
+}
+
+function isPdfPasswordError(error: unknown): boolean {
+    if (!error || typeof error !== 'object') {
+        return false;
+    }
+    const maybe = error as {
+        name?: unknown;
+        code?: unknown;
+        message?: unknown;
+    };
+    const name = typeof maybe.name === 'string' ? maybe.name.toLowerCase() : '';
+    const code = typeof maybe.code === 'number' ? maybe.code : null;
+    const message = typeof maybe.message === 'string' ? maybe.message.toLowerCase() : '';
+    return (
+        name.includes('passwordexception')
+        || message.includes('passwordexception')
+        || message.includes('encrypted')
+        || code === 1
+        || code === 2
+    );
 }
 
 function clampScale(scale: number): number {
@@ -113,8 +134,11 @@ function computeDocumentsBounds(docs: IStudioDocument[]): { minX: number; minY: 
 
 export function StudioShell({ onFilesDropped }: StudioShellProps) {
     const [dimensions, setDimensions] = useState({ width: window.innerWidth, height: window.innerHeight });
-    const [viewScale, setViewScale] = useState(1);
-    const [viewPosition, setViewPosition] = useState({ x: 0, y: 0 });
+    const studioViewScale = useStudioStore((s: StudioState) => s.studioViewScale);
+    const studioViewPosition = useStudioStore((s: StudioState) => s.studioViewPosition);
+    const setStudioViewport = useStudioStore((s: StudioState) => s.setStudioViewport);
+    const [viewScale, setViewScale] = useState(studioViewScale);
+    const [viewPosition, setViewPosition] = useState(studioViewPosition);
     const containerRef = useRef<HTMLDivElement>(null);
     const uploadInputRef = useRef<HTMLInputElement | null>(null);
     const stageRef = useRef<Konva.Stage | null>(null);
@@ -128,11 +152,15 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
     const documents = useStudioStore((s: StudioState) => s.documents);
     const detachedPages = useStudioStore((s: StudioState) => s.detachedPages);
     const addDocument = useStudioStore((s: StudioState) => s.addDocument);
-    const updateDocument = useStudioStore((s: StudioState) => s.updateDocument);
-    const updatePage = useStudioStore((s: StudioState) => s.updatePage);
+    const setDocuments = useStudioStore((s: StudioState) => s.setDocuments);
     const setActiveDocument = useStudioStore((s: StudioState) => s.setActiveDocument);
     const setSelection = useStudioStore((s: StudioState) => s.setSelection);
+    const setInteractionMode = useStudioStore((s: StudioState) => s.setInteractionMode);
     const hasFiles = documents.length > 0 || detachedPages.length > 0;
+
+    useEffect(() => {
+        setStudioViewport(viewScale, viewPosition);
+    }, [setStudioViewport, viewPosition, viewScale]);
 
     const fitToDocuments = useCallback((targetDocs: IStudioDocument[]) => {
         if (targetDocs.length === 0) {
@@ -199,6 +227,32 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
         await pdf.destroy();
         return { name: entry.getName(), pages };
     }, [runtime.vfs]);
+
+    const buildEncryptedFallbackFromSource = useCallback(async (
+        fileId: string,
+        sourceDoc: IStudioDocument,
+    ): Promise<{ name: string; pages: PageItem[] }> => {
+        const entry = await runtime.vfs.read(fileId);
+        const pages = sourceDoc.pages.map((page) => ({
+            id: crypto.randomUUID(),
+            fileId,
+            pageIndex: page.pageIndex,
+            thumbnailUrl: page.thumbnailUrl,
+            rotation: page.rotation,
+        }));
+        return { name: entry.getName(), pages };
+    }, [runtime.vfs]);
+
+    const applyReturnContext = useCallback((ctx: StudioReturnContext | undefined) => {
+        if (!ctx) {
+            return;
+        }
+        setActiveDocument(ctx.activeDocumentId);
+        setSelection(ctx.selection);
+        setInteractionMode(ctx.interactionMode);
+        setViewScale(clampScale(ctx.viewScale));
+        setViewPosition(ctx.viewPosition);
+    }, [setActiveDocument, setInteractionMode, setSelection]);
 
     useEffect(() => {
         const handleResize = () => {
@@ -346,7 +400,12 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
     useEffect(() => {
         const routeState = (location.state as StudioToolRouteState | null) ?? null;
         const toolResult = routeState?.studioToolResult;
+        const returnContext = routeState?.studioReturnContext;
         if (!toolResult || toolResult.outputIds.length === 0) {
+            if (routeState?.source === 'studio' && returnContext) {
+                applyReturnContext(returnContext);
+                navigate('/studio', { replace: true, state: null });
+            }
             return;
         }
 
@@ -354,62 +413,72 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
         void (async () => {
             try {
                 const { outputIds, studioContext } = toolResult;
-                const singleSelectedPage = studioContext?.selectedPages.length === 1 ? studioContext.selectedPages[0] : null;
+                const sourceDocId = studioContext?.documentId ?? studioContext?.selectedPages[0]?.docId ?? null;
+                const sourceDoc = sourceDocId
+                    ? documents.find((doc) => doc.id === sourceDocId) ?? null
+                    : null;
+                const returnDoc = returnContext?.activeDocumentId
+                    ? documents.find((doc) => doc.id === returnContext.activeDocumentId) ?? null
+                    : null;
+                const fallbackDoc = sourceDoc ?? returnDoc;
+                const newDocs: IStudioDocument[] = [];
 
-                if (singleSelectedPage && outputIds.length >= 1) {
-                    const rebuilt = await buildPagesFromFileId(outputIds[0]);
-                    if (!cancelled && rebuilt.pages.length > 0) {
-                        const firstPage = rebuilt.pages[0];
-                        updatePage(singleSelectedPage.docId, singleSelectedPage.pageId, {
-                            fileId: firstPage.fileId,
-                            pageIndex: firstPage.pageIndex,
-                            thumbnailUrl: firstPage.thumbnailUrl,
-                            rotation: 0
-                        });
-                        setActiveDocument(singleSelectedPage.docId);
-                        setSelection([]);
-                    }
-                } else if (studioContext?.mode === 'document' && studioContext.documentId && outputIds.length >= 1) {
-                    const rebuilt = await buildPagesFromFileId(outputIds[0]);
-                    if (!cancelled) {
-                        updateDocument(studioContext.documentId, {
-                            name: rebuilt.name,
-                            pages: rebuilt.pages,
-                            isModified: true
-                        });
-                        setActiveDocument(studioContext.documentId);
-                        setSelection([]);
-                    }
-                } else {
-                    let currentMaxY = documents.reduce((rawMax: number, doc: IStudioDocument) => Math.max(rawMax, doc.y + 320), 0);
-                    if (currentMaxY === 0) currentMaxY = 50;
-
-                    for (const outputId of outputIds) {
-                        const rebuilt = await buildPagesFromFileId(outputId);
-                        if (cancelled) {
-                            break;
+                for (let index = 0; index < outputIds.length; index += 1) {
+                    let rebuilt: { name: string; pages: PageItem[] };
+                    try {
+                        rebuilt = await buildPagesFromFileId(outputIds[index]);
+                    } catch (error) {
+                        const isPasswordProtected = isPdfPasswordError(error);
+                        const isProtectTool = toolResult.toolId === 'protect-pdf';
+                        if (isProtectTool && isPasswordProtected && fallbackDoc) {
+                            rebuilt = await buildEncryptedFallbackFromSource(outputIds[index], fallbackDoc);
+                        } else {
+                            throw error;
                         }
-                        const nextDocId = crypto.randomUUID();
-                        const nextY = currentMaxY + 50;
-                        addDocument({
-                            id: nextDocId,
-                            name: rebuilt.name,
-                            x: 100,
-                            y: nextY,
-                            pages: rebuilt.pages,
-                            isModified: true
-                        });
-                        setActiveDocument(nextDocId);
-                        currentMaxY = nextY + 320;
                     }
-                    setSelection([]);
+                    if (cancelled) {
+                        break;
+                    }
+                    const x = sourceDoc
+                        ? sourceDoc.x + estimateDocumentWidth(sourceDoc.pages.length) + DOC_WRAP_GAP_X + index * (CARD_WIDTH + DOC_WRAP_GAP_X)
+                        : 100;
+                    const y = sourceDoc ? sourceDoc.y : (100 + index * (DOC_BLOCK_HEIGHT + 50));
+                    newDocs.push({
+                        id: crypto.randomUUID(),
+                        name: rebuilt.name,
+                        x,
+                        y,
+                        pages: rebuilt.pages,
+                        isModified: true,
+                    });
                 }
+
+                if (newDocs.length > 0) {
+                    if (sourceDoc) {
+                        const sourceIndex = documents.findIndex((doc) => doc.id === sourceDoc.id);
+                        if (sourceIndex >= 0) {
+                            const nextDocuments = [...documents];
+                            nextDocuments.splice(sourceIndex + 1, 0, ...newDocs);
+                            setDocuments(nextDocuments);
+                        } else {
+                            for (const doc of newDocs) {
+                                addDocument(doc);
+                            }
+                        }
+                    } else {
+                        for (const doc of newDocs) {
+                            addDocument(doc);
+                        }
+                    }
+                }
+                setSelection([]);
             } catch (error) {
                 if (!cancelled) {
                     console.error('Failed to apply tool result in Studio:', error);
                 }
             } finally {
                 if (!cancelled) {
+                    applyReturnContext(returnContext);
                     navigate('/studio', { replace: true, state: null });
                 }
             }
@@ -420,15 +489,17 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
         };
     }, [
         addDocument,
+        applyReturnContext,
         buildPagesFromFileId,
+        buildEncryptedFallbackFromSource,
         documents,
         fitToDocuments,
         location.state,
         navigate,
+        setDocuments,
         setActiveDocument,
+        setInteractionMode,
         setSelection,
-        updateDocument,
-        updatePage,
     ]);
 
     useEffect(() => {

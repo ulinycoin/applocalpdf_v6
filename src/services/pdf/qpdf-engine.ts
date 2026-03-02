@@ -4,6 +4,16 @@ export interface EncryptPdfOptions {
   userPassword: string;
   ownerPassword?: string;
   keyLength?: 128 | 256;
+  printing?: 'none' | 'low' | 'full';
+  modify?: 'none' | 'assembly' | 'form' | 'annotate' | 'all';
+  extract?: boolean;
+  accessibility?: boolean;
+  annotate?: boolean;
+  form?: boolean;
+  assemble?: boolean;
+  modifyOther?: boolean;
+  cleartextMetadata?: boolean;
+  allowInsecure?: boolean;
 }
 
 export interface DecryptPdfOptions {
@@ -59,14 +69,69 @@ async function runQpdf(args: string[]): Promise<void> {
   });
 }
 
+function pushBooleanEncryptOption(args: string[], flag: string, value: boolean | undefined): void {
+  if (typeof value !== 'boolean') {
+    return;
+  }
+  args.push(`${flag}=${value ? 'y' : 'n'}`);
+}
+
+function normalizePrintOption(value: EncryptPdfOptions['printing']): 'none' | 'low' | 'full' | null {
+  if (value === 'none' || value === 'low' || value === 'full') {
+    return value;
+  }
+  return null;
+}
+
+function normalizeModifyOption(value: EncryptPdfOptions['modify']): 'none' | 'assembly' | 'form' | 'annotate' | 'all' | null {
+  if (value === 'none' || value === 'assembly' || value === 'form' || value === 'annotate' || value === 'all') {
+    return value;
+  }
+  return null;
+}
+
+export function buildQpdfEncryptArgs(inputPath: string, outputPath: string, options: EncryptPdfOptions): string[] {
+  const userPassword = options.userPassword;
+  const ownerPassword = options.ownerPassword ?? options.userPassword;
+  const keyLength = options.keyLength ?? 256;
+  const args: string[] = ['--encrypt', userPassword, ownerPassword, String(keyLength)];
+
+  const printOpt = normalizePrintOption(options.printing);
+  if (printOpt) {
+    args.push(`--print=${printOpt}`);
+  }
+
+  const modifyOpt = normalizeModifyOption(options.modify);
+  if (modifyOpt) {
+    args.push(`--modify=${modifyOpt}`);
+  }
+
+  pushBooleanEncryptOption(args, '--extract', options.extract);
+  pushBooleanEncryptOption(args, '--accessibility', options.accessibility);
+  pushBooleanEncryptOption(args, '--annotate', options.annotate);
+  pushBooleanEncryptOption(args, '--form', options.form);
+  pushBooleanEncryptOption(args, '--assemble', options.assemble);
+  pushBooleanEncryptOption(args, '--modify-other', options.modifyOther);
+
+  if (options.cleartextMetadata) {
+    args.push('--cleartext-metadata');
+  }
+  if (options.allowInsecure) {
+    args.push('--allow-insecure');
+  }
+
+  args.push('--', inputPath, outputPath);
+  return args;
+}
+
 class NodeQpdfEngine implements QpdfEngine {
   async encrypt(pdfBlob: Blob, options: EncryptPdfOptions): Promise<Blob> {
     const userPassword = options.userPassword;
     const ownerPassword = options.ownerPassword ?? options.userPassword;
     const keyLength = options.keyLength ?? 256;
 
-    if (!userPassword) {
-      throw new QpdfPipelineError('PROTECT_INVALID_OPTIONS', 'userPassword is required for PDF encryption.');
+    if (!userPassword && !ownerPassword) {
+      throw new QpdfPipelineError('PROTECT_INVALID_OPTIONS', 'Either userPassword or ownerPassword is required for PDF encryption.');
     }
     if (keyLength !== 128 && keyLength !== 256) {
       throw new QpdfPipelineError('PROTECT_INVALID_OPTIONS', `Unsupported keyLength: ${keyLength}.`);
@@ -88,15 +153,12 @@ class NodeQpdfEngine implements QpdfEngine {
       const inputBytes = new Uint8Array(await pdfBlob.arrayBuffer());
       await fsMod.writeFile(inputPath, inputBytes);
 
-      await runQpdf([
-        '--encrypt',
+      await runQpdf(buildQpdfEncryptArgs(inputPath, outputPath, {
+        ...options,
         userPassword,
         ownerPassword,
-        String(keyLength),
-        '--',
-        inputPath,
-        outputPath,
-      ]);
+        keyLength,
+      }));
 
       const encryptedBytes = await fsMod.readFile(outputPath);
       const normalized = new Uint8Array(encryptedBytes.byteLength);
