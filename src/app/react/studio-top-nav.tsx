@@ -1,8 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useStudioStore, type PageItem, type StudioDocument, type StudioState } from '../../v6/components/Studio/studio-store';
 import { LinearIcon } from '../../v6/components/icons/linear-icon';
-import type { StudioSelectedPageRef, StudioToolLaunchContext, StudioToolRouteState } from '../../v6/studio/navigation/studio-tool-context';
 import { usePlatform } from './platform-context';
 import { PipelineRunner } from '../../v6/studio/pipeline/PipelineRunner';
 import type { IPipelineRecipe } from '../../v6/studio/pipeline/types';
@@ -12,38 +11,14 @@ interface StudioTopNavProps {
   telemetryOpen: boolean;
 }
 
-type StudioActionKind = 'route';
-type StudioActionMode = 'edit' | 'convert';
-type StudioActionId =
-  | 'ocr'
-  | 'pdf-to-jpg';
-
-interface StudioAction {
-  id: StudioActionId;
-  label: string;
-  mode: StudioActionMode;
-  icon: Parameters<typeof LinearIcon>[0]['name'];
-  kind: StudioActionKind;
-  toolId?: string;
-  allowedScopes: Array<'selection' | 'document'>;
-}
-
-const STUDIO_ACTIONS: StudioAction[] = [
-  { id: 'ocr', label: 'OCR', mode: 'convert', icon: 'ocr', kind: 'route', toolId: 'ocr-pdf', allowedScopes: ['selection', 'document'] },
-  { id: 'pdf-to-jpg', label: 'PDF to JPG', mode: 'convert', icon: 'image', kind: 'route', toolId: 'pdf-to-jpg', allowedScopes: ['selection', 'document'] },
-];
-
 export function StudioTopNav({ onToggleTelemetry, telemetryOpen }: StudioTopNavProps) {
   const { runtime } = usePlatform();
-  const location = useLocation();
   const navigate = useNavigate();
   const [notice, setNotice] = useState<string | null>(null);
   const documents = useStudioStore((s: StudioState) => s.documents);
   const selection = useStudioStore((s: StudioState) => s.selection);
   const activeDocumentId = useStudioStore((s: StudioState) => s.activeDocumentId);
   const interactionMode = useStudioStore((s: StudioState) => s.interactionMode);
-  const studioViewScale = useStudioStore((s: StudioState) => s.studioViewScale);
-  const studioViewPosition = useStudioStore((s: StudioState) => s.studioViewPosition);
   const setInteractionMode = useStudioStore((s: StudioState) => s.setInteractionMode);
   const addDocument = useStudioStore((s: StudioState) => s.addDocument);
   const removeDocument = useStudioStore((s: StudioState) => s.removeDocument);
@@ -57,7 +32,7 @@ export function StudioTopNav({ onToggleTelemetry, telemetryOpen }: StudioTopNavP
     () => documents.find((doc: StudioDocument) => doc.id === activeDocumentId) ?? null,
     [activeDocumentId, documents],
   );
-  const selectedPages = useMemo<StudioSelectedPageRef[]>(() => {
+  const selectedPages = useMemo(() => {
     return selection
       .map((selected) => {
         const doc = documents.find((candidate: StudioDocument) => candidate.id === selected.docId);
@@ -70,24 +45,10 @@ export function StudioTopNav({ onToggleTelemetry, telemetryOpen }: StudioTopNavP
           pageId: page.id,
           fileId: page.fileId,
           pageIndex: page.pageIndex,
-        } satisfies StudioSelectedPageRef;
+        };
       })
-      .filter((item): item is StudioSelectedPageRef => item !== null);
+      .filter((item) => item !== null);
   }, [documents, selection]);
-  const documentPages = useMemo<StudioSelectedPageRef[]>(() => {
-    if (!activeDocument) {
-      return [];
-    }
-    return activeDocument.pages.map((page: PageItem) => ({
-      docId: activeDocument.id,
-      pageId: page.id,
-      fileId: page.fileId,
-      pageIndex: page.pageIndex,
-    }));
-  }, [activeDocument]);
-  const operationScope: 'selection' | 'document' = selectedPages.length > 0 ? 'selection' : 'document';
-  const targetPages = operationScope === 'selection' ? selectedPages : documentPages;
-  const visibleActions = STUDIO_ACTIONS.filter((action) => action.mode === interactionMode);
   const hasActivePages = (activeDocument?.pages.length ?? 0) > 0;
   const hasTargetSelection = selectedPages.length > 0;
   const hasEditTarget = hasTargetSelection || hasActivePages;
@@ -157,50 +118,6 @@ export function StudioTopNav({ onToggleTelemetry, telemetryOpen }: StudioTopNavP
     anchor.click();
     URL.revokeObjectURL(url);
     markWorkspaceExported();
-  };
-
-  const buildRouteState = (): StudioToolRouteState | null => {
-    const selectedInputIds = Array.from(new Set(targetPages.map((page) => page.fileId)));
-    if (selectedInputIds.length === 0) {
-      return null;
-    }
-    const studioContext: StudioToolLaunchContext = operationScope === 'selection'
-      ? {
-        mode: 'page-selection',
-        documentId: targetPages[0]?.docId ?? null,
-        selectedPages: targetPages,
-      }
-      : {
-        mode: 'document',
-        documentId: activeDocument?.id ?? null,
-        selectedPages: [],
-      };
-    return {
-      source: 'studio',
-      preloadedFileIds: selectedInputIds,
-      studioContext,
-      studioReturnContext: {
-        activeDocumentId,
-        selection,
-        interactionMode,
-        viewScale: studioViewScale,
-        viewPosition: studioViewPosition,
-      },
-    };
-  };
-
-  const handleRunAction = (action: StudioAction): void => {
-    if (!action.allowedScopes.includes(operationScope)) {
-      return;
-    }
-    if (action.kind === 'route' && action.toolId) {
-      const routeState = buildRouteState();
-      if (!routeState) {
-        setNotice('Select pages or choose a document before conversion.');
-        return;
-      }
-      navigate(`/${action.toolId}`, { state: routeState });
-    }
   };
 
   const handleCreateSpace = (): void => {
@@ -309,9 +226,7 @@ export function StudioTopNav({ onToggleTelemetry, telemetryOpen }: StudioTopNavP
                 return;
               }
               setInteractionMode('convert');
-              if (location.pathname !== '/studio') {
-                navigate('/studio');
-              }
+              navigate('/studio/convert');
             }}
             disabled={!hasEditTarget}
             title={!hasEditTarget ? 'Select a document first' : 'Convert mode'}
@@ -319,22 +234,6 @@ export function StudioTopNav({ onToggleTelemetry, telemetryOpen }: StudioTopNavP
             Convert
           </button>
         </div>
-        {interactionMode === 'convert' && location.pathname === '/studio' && (
-          <div className="studio-top-actions" aria-label="Actions">
-            {visibleActions.map((action) => (
-              <button
-                key={action.id}
-                type="button"
-                className="studio-action-btn"
-                onClick={() => handleRunAction(action)}
-                disabled={!action.allowedScopes.includes(operationScope)}
-              >
-                <LinearIcon name={action.icon} className="linear-icon" />
-                <span>{action.label}</span>
-              </button>
-            ))}
-          </div>
-        )}
       </div>
 
       <div className="studio-top-nav-center" aria-live="polite">
