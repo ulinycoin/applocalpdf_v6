@@ -94,14 +94,17 @@ function collectDocumentPages(doc: StudioDocument): StudioConvertPageRef[] {
 async function downloadFileById(
   runtime: ReturnType<typeof usePlatform>['runtime'],
   fileId: string,
+  preferredName: string,
 ): Promise<void> {
   const entry = await runtime.vfs.read(fileId);
   const blob = await entry.getBlob();
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement('a');
   anchor.href = url;
-  anchor.download = entry.getName();
+  anchor.download = preferredName;
+  document.body.appendChild(anchor);
   anchor.click();
+  document.body.removeChild(anchor);
   URL.revokeObjectURL(url);
 }
 
@@ -459,22 +462,30 @@ export function useStudioConvertController() {
   ]);
 
   const downloadResults = useCallback(async () => {
+    const baseDocName = activeDocument?.name || 'converted';
+
     if (activeTool === 'ocr-pdf' && ocrResult && (ocrResult.kind === 'text' || ocrResult.kind === 'json')) {
+      const extension = ocrResult.kind === 'json' ? '.json' : '.txt';
       const text = ocrResult.content || '';
       const blob = new Blob([text], { type: ocrResult.kind === 'json' ? 'application/json' : 'text/plain' });
       const url = URL.createObjectURL(blob);
       const anchor = document.createElement('a');
       anchor.href = url;
-      anchor.download = ocrResult.fileName;
+      anchor.download = `${baseDocName}${extension}`;
+      document.body.appendChild(anchor);
       anchor.click();
+      document.body.removeChild(anchor);
       URL.revokeObjectURL(url);
       return;
     }
 
-    for (const outputId of outputIds) {
-      await downloadFileById(runtime, outputId);
+    for (let i = 0; i < outputIds.length; i++) {
+      const outputId = outputIds[i];
+      const suffix = outputIds.length > 1 ? `_${i + 1}` : '';
+      const extension = activeTool === 'pdf-to-jpg' ? '.jpg' : '.pdf';
+      await downloadFileById(runtime, outputId, `${baseDocName}${suffix}${extension}`);
     }
-  }, [activeTool, ocrResult, outputIds, runtime]);
+  }, [activeDocument?.name, activeTool, ocrResult, outputIds, runtime]);
 
   const navigateBack = useCallback(() => {
     setInteractionMode('convert');

@@ -17,6 +17,7 @@ export function StudioActionBar() {
     const setActiveDocument = useStudioStore((s: StudioState) => s.setActiveDocument);
     const setSelection = useStudioStore((s: StudioState) => s.setSelection);
     const requestInlineTool = useStudioStore((s: StudioState) => s.requestInlineTool);
+    const updateDocument = useStudioStore((s: StudioState) => s.updateDocument);
     const activeDocumentId = useStudioStore((s: StudioState) => s.activeDocumentId);
     const markWorkspaceExported = useStudioStore((s: StudioState) => s.markWorkspaceExported);
     const documents = useStudioStore((s: StudioState) => s.documents);
@@ -60,8 +61,10 @@ export function StudioActionBar() {
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = result.fileName;
+            a.download = fileName;
+            document.body.appendChild(a);
             a.click();
+            document.body.removeChild(a);
             URL.revokeObjectURL(url);
             markWorkspaceExported();
         } catch (error: unknown) {
@@ -74,24 +77,45 @@ export function StudioActionBar() {
         if (!activeDocument || activeDocument.pages.length === 0) {
             return;
         }
-        const safeName = activeDocument.name.replace(/[^\w.-]+/g, '_').slice(0, 64) || 'workspace';
-        await exportDocuments([activeDocument], `LocalPDF_${safeName}.pdf`);
+
+        const userInput = window.prompt('Enter file name for export:', activeDocument.name);
+        if (userInput === null) return;
+
+        const fileName = userInput.trim() || activeDocument.name;
+        const safeName = fileName.replace(/[<>:"/\\|?*]/g, '_').slice(0, 64) || 'Workspace';
+        await exportDocuments([activeDocument], `${safeName}.pdf`);
     };
 
     const handleCreateSpace = () => {
-        const maxY = documents.reduce((acc, doc) => Math.max(acc, doc.y + 360), 80);
+        const maxY = documents.reduce((acc, doc) => Math.max(acc, doc.y + 120), 80);
+
+        const userInput = window.prompt('Enter name for the new workspace:', `Workspace ${documents.length + 1}`);
+        if (userInput === null) return;
+
+        const name = userInput.trim() || `Workspace ${documents.length + 1}`;
         const nextDocId = crypto.randomUUID();
         addDocument({
             id: nextDocId,
-            name: `Workspace ${documents.length + 1}`,
+            name: name,
             x: 100,
-            y: hasDocuments ? maxY : 100,
+            y: hasDocuments ? maxY + 40 : 100,
             pages: [],
             allowEmpty: true,
             includeInExport: true,
             isModified: true,
         });
         setActiveDocument(nextDocId);
+    };
+
+    const handleRenameActiveSpace = () => {
+        if (!activeDocument) return;
+        const userInput = window.prompt('Enter new name for the workspace:', activeDocument.name);
+        if (userInput === null) return;
+
+        const newName = userInput.trim();
+        if (newName) {
+            updateDocument(activeDocument.id, { name: newName });
+        }
     };
 
     const handleDeleteActiveSpace = () => {
@@ -113,6 +137,10 @@ export function StudioActionBar() {
                 <button className="studio-space-btn" onClick={handleCreateSpace}>
                     <LinearIcon name="tool" className="linear-icon" />
                     <span>New Space</span>
+                </button>
+                <button className="studio-space-btn" onClick={handleRenameActiveSpace} disabled={!activeDocument}>
+                    <LinearIcon name="edit" className="linear-icon" />
+                    <span>Rename</span>
                 </button>
                 <button className="studio-space-btn studio-space-btn-danger" onClick={handleDeleteActiveSpace} disabled={!activeDocument}>
                     <LinearIcon name="delete-pages" className="linear-icon" />

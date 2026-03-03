@@ -18,14 +18,14 @@ export function StudioEditToolbar({ ui, tool, onSelectTool }: StudioEditToolbarP
                 onClick={() => { onSelectTool('text'); }}
                 title={ui.text}
             >
-                <LinearIcon name="pen-tool" size={22} />
+                <LinearIcon name="text" size={22} />
             </button>
             <button
                 className={`studio-edit-tool-btn ${tool === 'sign' ? 'active' : ''}`}
                 onClick={() => { onSelectTool('sign'); }}
                 title={ui.sign}
             >
-                <LinearIcon name="feather" size={22} />
+                <LinearIcon name="signature" size={22} />
             </button>
             <button
                 className={`studio-edit-tool-btn ${tool === 'annotate' ? 'active' : ''}`}

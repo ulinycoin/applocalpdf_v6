@@ -48,25 +48,25 @@ export const PageObject: React.FC<PageObjectProps> = ({ page, docId, x, y, curre
         const inverseTransform = stage.getAbsoluteTransform().copy().invert();
         const worldPos = inverseTransform.point(pos);
 
-        // Ignore the dragged page itself to resolve drop target underneath.
-        node.hide();
-        const hit = stage.getIntersection(pos);
-        node.show();
-        stage.batchDraw();
-        let targetDocId = null;
+        let targetDocId: string | null = null;
         let targetDocNode: Konva.Group | null = null;
 
-        if (hit) {
-            // Find the parent document group
-            let parent = hit.getParent();
-            while (parent && parent.attrs.name !== 'document') {
-                parent = parent.getParent();
-            }
-            if (parent) {
-                targetDocId = parent.attrs.id;
-                targetDocNode = parent as Konva.Group;
-            }
+        const documentNodes = stage.find('.document');
+        for (const node of documentNodes) {
+            const dId = node.id();
+            const docItem = documents.find(d => d.id === dId);
+            if (!docItem) continue;
 
+            const transform = node.getAbsoluteTransform().copy().invert();
+            const localPos = transform.point(pos);
+            const width = Math.max(220, docItem.pages.length * 220);
+            const height = 300;
+
+            if (localPos.x >= -30 && localPos.x <= width + 30 && localPos.y >= -50 && localPos.y <= height + 50) {
+                targetDocId = dId;
+                targetDocNode = node as Konva.Group;
+                break;
+            }
         }
 
         const sourceDoc = documents.find((doc) => doc.id === docId);

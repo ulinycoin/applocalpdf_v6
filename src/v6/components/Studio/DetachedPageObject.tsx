@@ -13,6 +13,7 @@ export const DetachedPageObject: React.FC<DetachedPageObjectProps> = ({ page }) 
     const [image] = useImage(page.thumbnailUrl);
     const attachDetachedPage = useStudioStore((s: StudioState) => s.attachDetachedPage);
     const moveDetachedPage = useStudioStore((s: StudioState) => s.moveDetachedPage);
+    const removeDetachedPage = useStudioStore((s: StudioState) => s.removeDetachedPage);
     const activeDocumentId = useStudioStore((s: StudioState) => s.activeDocumentId);
 
     const handleDragEnd = (e: KonvaEventObject<DragEvent>) => {
@@ -27,22 +28,24 @@ export const DetachedPageObject: React.FC<DetachedPageObjectProps> = ({ page }) 
             return;
         }
 
-        node.hide();
-        const hit = stage.getIntersection(pos);
-        node.show();
-        stage.batchDraw();
-
         let targetDocId: string | null = null;
         let targetDocNode: Konva.Group | null = null;
 
-        if (hit) {
-            let parent = hit.getParent();
-            while (parent && parent.attrs.name !== 'document') {
-                parent = parent.getParent();
-            }
-            if (parent) {
-                targetDocId = parent.attrs.id;
-                targetDocNode = parent as Konva.Group;
+        const documentNodes = stage.find('.document');
+        for (const node of documentNodes) {
+            const docId = node.id();
+            const doc = useStudioStore.getState().documents.find(d => d.id === docId);
+            if (!doc) continue;
+
+            const transform = node.getAbsoluteTransform().copy().invert();
+            const localPos = transform.point(pos);
+            const width = Math.max(220, doc.pages.length * 220);
+            const height = 300;
+
+            if (localPos.x >= -30 && localPos.x <= width + 30 && localPos.y >= -50 && localPos.y <= height + 50) {
+                targetDocId = docId;
+                targetDocNode = node as Konva.Group;
+                break;
             }
         }
 
@@ -114,7 +117,27 @@ export const DetachedPageObject: React.FC<DetachedPageObjectProps> = ({ page }) 
             })()}
             <Group x={0} y={-24}>
                 <Rect width={180} height={20} fill="rgba(15, 23, 42, 0.75)" cornerRadius={4} />
-                <Text text="Detached: click to add" fill="#dbeafe" fontSize={11} x={8} y={4} />
+                <Text text="Detached page" fill="#dbeafe" fontSize={11} x={8} y={4} />
+            </Group>
+
+            <Group
+                x={162}
+                y={-8}
+                onClick={(e) => {
+                    e.cancelBubble = true;
+                    removeDetachedPage(page.id);
+                }}
+                onMouseEnter={(e) => {
+                    const container = e.target.getStage()?.container();
+                    if (container) container.style.cursor = 'pointer';
+                }}
+                onMouseLeave={(e) => {
+                    const container = e.target.getStage()?.container();
+                    if (container) container.style.cursor = 'default';
+                }}
+            >
+                <Rect width={24} height={24} fill="#ef4444" cornerRadius={12} shadowBlur={4} shadowOpacity={0.3} x={-12} y={-12} />
+                <Text text="✕" fill="white" fontSize={14} fontStyle="bold" x={-6} y={-7} />
             </Group>
             <Rect
                 width={180}

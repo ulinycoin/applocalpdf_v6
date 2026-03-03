@@ -68,10 +68,23 @@ export const StudioDocument: React.FC<StudioDocumentProps> = ({ doc }) => {
                 shadowOpacity={0.3}
             />
             {/* Document Label */}
-            <Group y={-25}>
+            <Group
+                y={-25}
+                onClick={(e) => {
+                    e.cancelBubble = true;
+                    const userInput = window.prompt('Enter new name for the workspace:', doc.name);
+                    if (userInput !== null) {
+                        const newName = userInput.trim();
+                        if (newName) {
+                            updateDocument(doc.id, { name: newName });
+                        }
+                    }
+                }}
+                style={{ cursor: 'pointer' }}
+            >
                 <Text
                     text={doc.name}
-                    fill="rgba(255,255,255,0.6)"
+                    fill="rgba(255,255,255,0.8)"
                     fontSize={14}
                     fontStyle="bold"
                     width={labelMaxWidth}

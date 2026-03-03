@@ -59,38 +59,7 @@ export function StudioTopNav({ onToggleTelemetry, telemetryOpen }: StudioTopNavP
     }
   }, [hasEditTarget, interactionMode, setInteractionMode]);
 
-  const exportDocument = async (doc: StudioDocument): Promise<void> => {
-    const canDownloadSourceDirectly = (() => {
-      if (doc.pages.length === 0) {
-        return false;
-      }
-      const sourceFileId = doc.pages[0]?.fileId;
-      if (!sourceFileId) {
-        return false;
-      }
-      return doc.pages.every((page, index) => (
-        page.fileId === sourceFileId
-        && page.pageIndex === index
-        && (page.rotation ?? 0) === 0
-      ));
-    })();
-
-    if (canDownloadSourceDirectly) {
-      const sourceFileId = doc.pages[0]?.fileId;
-      if (sourceFileId) {
-        const sourceEntry = await runtime.vfs.read(sourceFileId);
-        const sourceBlob = await sourceEntry.getBlob();
-        const sourceUrl = URL.createObjectURL(sourceBlob);
-        const sourceAnchor = document.createElement('a');
-        sourceAnchor.href = sourceUrl;
-        sourceAnchor.download = sourceEntry.getName();
-        sourceAnchor.click();
-        URL.revokeObjectURL(sourceUrl);
-        markWorkspaceExported();
-        return;
-      }
-    }
-
+  const exportDocument = async (doc: StudioDocument, fileName: string): Promise<void> => {
     const sequence = doc.pages.map((page: PageItem) => ({
       sourceFileId: page.fileId,
       pageIndex: page.pageIndex,
@@ -103,7 +72,7 @@ export function StudioTopNav({ onToggleTelemetry, telemetryOpen }: StudioTopNavP
     const recipe: IPipelineRecipe = {
       inputs: Array.from(new Set(sequence.map((item) => item.sourceFileId))),
       operations: [{ type: 'reorder', sequence }],
-      outputName: `LocalPDF_${doc.name.replace(/[^\w.-]+/g, '_').slice(0, 64) || 'workspace'}.pdf`,
+      outputName: fileName,
     };
 
     const runner = new PipelineRunner(runtime.vfs);
@@ -114,20 +83,26 @@ export function StudioTopNav({ onToggleTelemetry, telemetryOpen }: StudioTopNavP
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement('a');
     anchor.href = url;
-    anchor.download = result.fileName;
+    anchor.download = fileName;
+    document.body.appendChild(anchor);
     anchor.click();
+    document.body.removeChild(anchor);
     URL.revokeObjectURL(url);
     markWorkspaceExported();
   };
 
   const handleCreateSpace = (): void => {
-    const maxY = documents.reduce((acc, doc) => Math.max(acc, doc.y + 360), 80);
+    const maxY = documents.reduce((acc, doc) => Math.max(acc, doc.y + 120), 80);
+    const userInput = window.prompt('Enter name for the new workspace:', `Workspace ${documents.length + 1}`);
+    if (userInput === null) return;
+
+    const name = userInput.trim() || `Workspace ${documents.length + 1}`;
     const nextDocId = crypto.randomUUID();
     addDocument({
       id: nextDocId,
-      name: `Workspace ${documents.length + 1}`,
+      name: name,
       x: 100,
-      y: documents.length > 0 ? maxY : 100,
+      y: documents.length > 0 ? maxY + 40 : 100,
       pages: [],
       allowEmpty: true,
       includeInExport: true,
@@ -153,8 +128,15 @@ export function StudioTopNav({ onToggleTelemetry, telemetryOpen }: StudioTopNavP
     if (!activeDocument || activeDocument.pages.length === 0) {
       return;
     }
+
+    const userInput = window.prompt('Enter file name for export:', activeDocument.name);
+    if (userInput === null) return;
+
+    const fileName = userInput.trim() || activeDocument.name;
+    const safeName = fileName.replace(/[<>:"/\\|?*]/g, '_').slice(0, 64) || 'Workspace';
+
     try {
-      await exportDocument(activeDocument);
+      await exportDocument(activeDocument, `${safeName}.pdf`);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Export failed';
       setNotice(message);

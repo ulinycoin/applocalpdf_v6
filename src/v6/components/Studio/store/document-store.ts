@@ -18,6 +18,7 @@ export interface DocumentState {
     detachPage: (docId: string, pageId: string, x: number, y: number) => void;
     attachDetachedPage: (detachedPageId: string, targetDocId: string, index?: number) => void;
     moveDetachedPage: (detachedPageId: string, x: number, y: number) => void;
+    removeDetachedPage: (detachedPageId: string) => void;
     removePage: (docId: string, pageId: string) => void;
     updatePage: (docId: string, pageId: string, updates: Partial<PageItem>) => void;
 
@@ -172,6 +173,10 @@ export const useDocumentStore = create<DocumentState>((set) => ({
 
     moveDetachedPage: (detachedPageId, x, y) => set((state) => ({
         detachedPages: state.detachedPages.map((item) => item.id === detachedPageId ? { ...item, x, y } : item),
+    })),
+
+    removeDetachedPage: (detachedPageId) => set((state) => ({
+        detachedPages: state.detachedPages.filter((item) => item.id !== detachedPageId),
     })),
 
     removePage: (docId, pageId) => set((state) => {

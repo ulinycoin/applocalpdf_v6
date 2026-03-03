@@ -91,7 +91,10 @@ export function StudioEditWorkspace() {
             <section className="studio-edit-shell">
                 <div className="studio-edit-empty">
                     <h2 className="studio-edit-empty-title">{ui.selectPageTitle}</h2>
-                    <button type="button" className="studio-edit-back-btn" onClick={() => ctrl.navigate('/studio')}>
+                    <button type="button" className="studio-edit-back-btn" onClick={() => {
+                        ctrl.clearEditSession();
+                        ctrl.navigate('/studio');
+                    }}>
                         {ui.backToCanvas}
                     </button>
                 </div>
@@ -108,7 +111,11 @@ export function StudioEditWorkspace() {
             {/* Header Area */}
             <div className="studio-edit-meta" style={{ padding: '8px 16px', background: 'rgba(15,23,42,0.4)', borderRadius: '0 0 12px 12px', marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div style={{ display: 'flex', gap: 12, flex: 1, alignItems: 'center' }}>
-                    <button type="button" className="studio-edit-back-btn" onClick={ctrl.clearEditSession} title={ui.backToCanvas} style={{ background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: '4px' }}>
+                    <button type="button" className="studio-edit-back-btn" onClick={() => {
+                        if (ctrl.hasDirtyChanges && !window.confirm(ui.unsavedConfirm)) return;
+                        ctrl.clearEditSession();
+                        ctrl.navigate('/studio');
+                    }} title={ui.backToCanvas} style={{ background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: '4px' }}>
                         <LinearIcon name="chevron-left" size={18} />
                     </button>
 

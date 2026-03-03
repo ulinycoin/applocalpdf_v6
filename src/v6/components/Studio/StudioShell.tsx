@@ -315,7 +315,7 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
 
                     const pdfBytes = await pdfDoc.save();
                     const baseName = file.name.substring(0, file.name.lastIndexOf('.')) || file.name;
-                    file = new File([pdfBytes], `${baseName}.pdf`, { type: 'application/pdf' });
+                    file = new File([pdfBytes as any], `${baseName}.pdf`, { type: 'application/pdf' });
                 }
 
                 // 1. Save to VFS
