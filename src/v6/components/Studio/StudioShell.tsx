@@ -37,6 +37,18 @@ interface NewDocumentDraft {
     isModified: boolean;
 }
 
+function toProtectedName(name: string): string {
+    const trimmed = name.trim();
+    const lower = trimmed.toLowerCase();
+    if (lower.endsWith('(protected)') || lower.endsWith('(protected).pdf')) {
+        return trimmed;
+    }
+    if (lower.endsWith('.pdf')) {
+        return `${trimmed.slice(0, -4)} (protected).pdf`;
+    }
+    return `${trimmed} (protected)`;
+}
+
 function isPdfPasswordError(error: unknown): boolean {
     if (!error || typeof error !== 'object') {
         return false;
@@ -482,7 +494,22 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
                 }
 
                 if (newDocs.length > 0) {
-                    if (sourceDoc) {
+                    if (toolResult.toolId === 'protect-pdf' && sourceDoc) {
+                        const protectedDoc = newDocs[0];
+                        const nextDocuments = documents.map((doc) => {
+                            if (doc.id !== sourceDoc.id) {
+                                return doc;
+                            }
+                            return {
+                                ...doc,
+                                name: toProtectedName(doc.name),
+                                pages: protectedDoc.pages,
+                                isModified: true,
+                            };
+                        });
+                        setDocuments(nextDocuments);
+                        setActiveDocument(sourceDoc.id);
+                    } else if (sourceDoc) {
                         const sourceIndex = documents.findIndex((doc) => doc.id === sourceDoc.id);
                         if (sourceIndex >= 0) {
                             const nextDocuments = [...documents];

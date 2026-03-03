@@ -31,7 +31,7 @@ workerScope.onmessage = async (e: MessageEvent<PipelineWorkerRequest>) => {
 
         // 1. Load all source documents
         for (const file of files) {
-            const doc = await PDFDocument.load(file.buffer);
+            const doc = await PDFDocument.load(file.buffer, { ignoreEncryption: true });
             sourceDocs.set(file.id, doc);
         }
 

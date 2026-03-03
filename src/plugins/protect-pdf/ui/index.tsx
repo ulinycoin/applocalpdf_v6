@@ -10,7 +10,7 @@ type SecurityPreset = 'basic' | 'business' | 'confidential' | 'custom';
 type PrintingPermission = 'none' | 'low' | 'full';
 
 export default function ProtectPdfConfig({ onStart, onBack }: ProtectPdfConfigProps) {
-  const [permissionsOnly, setPermissionsOnly] = useState(false);
+  const [permissionsOnly, setPermissionsOnly] = useState(true);
   const [userPassword, setUserPassword] = useState('');
   const [ownerPassword, setOwnerPassword] = useState('');
   const [useOwnerPassword, setUseOwnerPassword] = useState(false);

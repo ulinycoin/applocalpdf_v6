@@ -26,7 +26,7 @@
     "lucide-react": "^0.576.0",
     "mammoth": "^1.11.0",
     "pdf-lib": "^1.17.1",
-    "pdf-lib-plus-encrypt": "file:../Localpdf_v3/node_modules/pdf-lib-plus-encrypt",
+    "pdf-lib-plus-encrypt": "file:vendor/pdf-lib-plus-encrypt/pdf-lib-plus-encrypt-1.1.0.tgz",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-konva": "^18.2.10",

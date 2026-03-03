@@ -121,7 +121,7 @@ export function useStudioEditController(ui: any) {
     const [annotateColor, setAnnotateColor] = useState('#fff176');
     const [isFormsComposerOpen, setFormsComposerOpen] = useState(false);
     const [protectOptions, setProtectOptions] = useState<Record<string, unknown>>({
-        permissionsOnly: false,
+        permissionsOnly: true,
         userPassword: '',
         ownerPassword: '',
         keyLength: 256,

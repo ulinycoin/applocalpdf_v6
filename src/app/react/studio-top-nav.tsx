@@ -11,6 +11,26 @@ interface StudioTopNavProps {
   telemetryOpen: boolean;
 }
 
+function canExportAsSourceFile(pages: PageItem[]): { fileId: string } | null {
+  if (pages.length === 0) {
+    return null;
+  }
+  const sourceFileId = pages[0].fileId;
+  for (let index = 0; index < pages.length; index += 1) {
+    const page = pages[index];
+    if (page.fileId !== sourceFileId) {
+      return null;
+    }
+    if ((page.rotation % 360) !== 0) {
+      return null;
+    }
+    if (page.pageIndex !== index) {
+      return null;
+    }
+  }
+  return { fileId: sourceFileId };
+}
+
 export function StudioTopNav({ onToggleTelemetry, telemetryOpen }: StudioTopNavProps) {
   const { runtime } = usePlatform();
   const navigate = useNavigate();
@@ -60,6 +80,22 @@ export function StudioTopNav({ onToggleTelemetry, telemetryOpen }: StudioTopNavP
   }, [hasEditTarget, interactionMode, setInteractionMode]);
 
   const exportDocument = async (doc: StudioDocument, fileName: string): Promise<void> => {
+    const directSource = canExportAsSourceFile(doc.pages);
+    if (directSource) {
+      const entry = await runtime.vfs.read(directSource.fileId);
+      const blob = await entry.getBlob();
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = fileName;
+      document.body.appendChild(anchor);
+      anchor.click();
+      document.body.removeChild(anchor);
+      URL.revokeObjectURL(url);
+      markWorkspaceExported();
+      return;
+    }
+
     const sequence = doc.pages.map((page: PageItem) => ({
       sourceFileId: page.fileId,
       pageIndex: page.pageIndex,

@@ -193,7 +193,7 @@ async function buildSinglePageInputIdsFromSelection(
       sourceBytesByFileId.set(selected.fileId, sourceBytes);
     }
 
-    const sourcePdf = await PDFDocument.load(sourceBytes);
+    const sourcePdf = await PDFDocument.load(sourceBytes, { ignoreEncryption: true });
     if (selected.pageIndex >= sourcePdf.getPageCount()) {
       continue;
     }
