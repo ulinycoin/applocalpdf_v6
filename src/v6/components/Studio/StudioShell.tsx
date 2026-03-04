@@ -167,9 +167,12 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
     const addDocument = useStudioStore((s: StudioState) => s.addDocument);
     const setDocuments = useStudioStore((s: StudioState) => s.setDocuments);
     const setActiveDocument = useStudioStore((s: StudioState) => s.setActiveDocument);
+    const activeDocumentId = useStudioStore((s: StudioState) => s.activeDocumentId);
+    const selection = useStudioStore((s: StudioState) => s.selection);
     const setSelection = useStudioStore((s: StudioState) => s.setSelection);
     const setInteractionMode = useStudioStore((s: StudioState) => s.setInteractionMode);
     const hasFiles = documents.length > 0 || detachedPages.length > 0;
+    const pageClipboardRef = useRef<PageItem[]>([]);
 
     useEffect(() => {
         setStudioViewport(viewScale, viewPosition);
@@ -401,8 +404,58 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
             }
 
             const key = event.key.toLowerCase();
+            const isModifierPressed = event.ctrlKey || event.metaKey;
             const isOpenShortcut = (event.ctrlKey || event.metaKey) && key === 'o';
             const isQuickUploadShortcut = !event.ctrlKey && !event.metaKey && !event.altKey && key === 'u';
+            const isCopyShortcut = isModifierPressed && !event.shiftKey && !event.altKey && key === 'c';
+            const isPasteShortcut = isModifierPressed && !event.shiftKey && !event.altKey && key === 'v';
+
+            if (isCopyShortcut) {
+                if (selection.length === 0) {
+                    return;
+                }
+                event.preventDefault();
+                const selectionSet = new Set(selection.map((item) => item.pageId));
+                const orderedPages: PageItem[] = [];
+                for (const doc of documents) {
+                    for (const page of doc.pages) {
+                        if (selectionSet.has(page.id)) {
+                            orderedPages.push(page);
+                        }
+                    }
+                }
+                pageClipboardRef.current = orderedPages;
+                return;
+            }
+
+            if (isPasteShortcut) {
+                if (!activeDocumentId || pageClipboardRef.current.length === 0) {
+                    return;
+                }
+                const targetDoc = documents.find((doc) => doc.id === activeDocumentId);
+                if (!targetDoc) {
+                    return;
+                }
+
+                event.preventDefault();
+                const clonedPages: PageItem[] = pageClipboardRef.current.map((page) => ({
+                    ...page,
+                    id: crypto.randomUUID(),
+                }));
+                const nextDocuments = documents.map((doc) => {
+                    if (doc.id !== activeDocumentId) {
+                        return doc;
+                    }
+                    return {
+                        ...doc,
+                        pages: [...doc.pages, ...clonedPages],
+                        isModified: true,
+                    };
+                });
+                setDocuments(nextDocuments);
+                setSelection(clonedPages.map((page) => ({ docId: activeDocumentId, pageId: page.id })));
+                return;
+            }
 
             if (!isOpenShortcut && !isQuickUploadShortcut) {
                 return;
@@ -414,7 +467,7 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
 
         window.addEventListener('keydown', onKeyDown);
         return () => window.removeEventListener('keydown', onKeyDown);
-    }, [openUploadDialog]);
+    }, [activeDocumentId, documents, openUploadDialog, selection, setDocuments, setSelection]);
 
     const handleStageWheel = useCallback((event: KonvaEventObject<WheelEvent>) => {
         event.evt.preventDefault();

@@ -31,6 +31,10 @@ export const PageObject: React.FC<PageObjectProps> = ({ page, docId, x, y, curre
 
     const movePage = useStudioStore((s: StudioState) => s.movePage);
 
+    const handleMouseDown = (e: KonvaEventObject<MouseEvent | TouchEvent>) => {
+        e.cancelBubble = true;
+    };
+
     const handleDragStart = (e: KonvaEventObject<DragEvent>) => {
         e.cancelBubble = true; // Don't drag the document
         const node = e.target;
@@ -103,10 +107,13 @@ export const PageObject: React.FC<PageObjectProps> = ({ page, docId, x, y, curre
     const handleClick = (e: KonvaEventObject<MouseEvent>) => {
         e.cancelBubble = true;
         setActiveDocument(docId);
-        if (e.evt.shiftKey) {
-            setSelection(isSelected
-                ? selection.filter(s => s.pageId !== page.id)
-                : [...selection, { docId, pageId: page.id }]);
+        const currentSelection = useStudioStore.getState().selection;
+        const isToggleSelect = e.evt.shiftKey || e.evt.altKey || e.evt.getModifierState?.('Alt');
+        const isCurrentlySelected = currentSelection.some((item) => item.pageId === page.id);
+        if (isToggleSelect) {
+            setSelection(isCurrentlySelected
+                ? currentSelection.filter((item) => item.pageId !== page.id)
+                : [...currentSelection, { docId, pageId: page.id }]);
         } else {
             setSelection([{ docId, pageId: page.id }]);
         }
@@ -123,6 +130,8 @@ export const PageObject: React.FC<PageObjectProps> = ({ page, docId, x, y, curre
             x={x}
             y={y}
             draggable
+            onMouseDown={handleMouseDown}
+            onTouchStart={handleMouseDown}
             onDragStart={handleDragStart}
             onDragEnd={handleDragEnd}
             onClick={handleClick}
