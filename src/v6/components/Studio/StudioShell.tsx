@@ -74,18 +74,22 @@ function clampScale(scale: number): number {
     return Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, scale));
 }
 
-function estimateDocumentWidth(pageCount: number): number {
-    return Math.max(240, pageCount * (CARD_WIDTH + CARD_GAP) + 20);
+function estimateDocumentWidth(pageCount: number, gridColumns: number): number {
+    const cols = Math.min(pageCount || 1, gridColumns);
+    return Math.max(240, cols * (CARD_WIDTH + CARD_GAP) + 20);
 }
 
-function estimateDocumentHeight(): number {
-    return DOC_BLOCK_HEIGHT;
+function estimateDocumentHeight(pageCount: number, gridColumns: number): number {
+    const cols = Math.min(pageCount || 1, gridColumns);
+    const rows = Math.ceil(pageCount / cols) || 1;
+    return Math.max(DOC_BLOCK_HEIGHT, rows * (CARD_HEIGHT + CARD_GAP) + 60);
 }
 
 function placeNewDocumentsInRows(
     existingDocs: IStudioDocument[],
     drafts: NewDocumentDraft[],
     viewportWidth: number,
+    gridColumns: number
 ): IStudioDocument[] {
     if (drafts.length === 0) {
         return [];
@@ -94,7 +98,7 @@ function placeNewDocumentsInRows(
     const startX = DOC_WRAP_PADDING_X;
     const startY = Math.max(
         DOC_WRAP_PADDING_Y,
-        ...existingDocs.map((doc) => doc.y + estimateDocumentHeight() + DOC_WRAP_GAP_Y),
+        ...existingDocs.map((doc) => doc.y + estimateDocumentHeight(doc.pages.length, gridColumns) + DOC_WRAP_GAP_Y),
     );
     const usableWidth = Math.max(420, viewportWidth - DOC_WRAP_PADDING_X * 2);
 
@@ -104,8 +108,8 @@ function placeNewDocumentsInRows(
     let rowHeight = 0;
 
     for (const draft of drafts) {
-        const width = estimateDocumentWidth(draft.pages.length);
-        const height = estimateDocumentHeight();
+        const width = estimateDocumentWidth(draft.pages.length, gridColumns);
+        const height = estimateDocumentHeight(draft.pages.length, gridColumns);
         const wouldOverflow = cursorX !== startX && (cursorX - startX + width > usableWidth);
 
         if (wouldOverflow) {
@@ -127,15 +131,15 @@ function placeNewDocumentsInRows(
     return positioned;
 }
 
-function computeDocumentsBounds(docs: IStudioDocument[]): { minX: number; minY: number; maxX: number; maxY: number } {
+function computeDocumentsBounds(docs: IStudioDocument[], gridColumns: number): { minX: number; minY: number; maxX: number; maxY: number } {
     let minX = Number.POSITIVE_INFINITY;
     let minY = Number.POSITIVE_INFINITY;
     let maxX = Number.NEGATIVE_INFINITY;
     let maxY = Number.NEGATIVE_INFINITY;
 
     for (const doc of docs) {
-        const docWidth = estimateDocumentWidth(doc.pages.length);
-        const docHeight = estimateDocumentHeight();
+        const docWidth = estimateDocumentWidth(doc.pages.length, gridColumns);
+        const docHeight = estimateDocumentHeight(doc.pages.length, gridColumns);
         minX = Math.min(minX, doc.x - 20);
         minY = Math.min(minY, doc.y - 40);
         maxX = Math.max(maxX, doc.x + docWidth + 20);
@@ -150,6 +154,8 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
     const studioViewScale = useStudioStore((s: StudioState) => s.studioViewScale);
     const studioViewPosition = useStudioStore((s: StudioState) => s.studioViewPosition);
     const setStudioViewport = useStudioStore((s: StudioState) => s.setStudioViewport);
+    const gridColumns = useStudioStore((s: StudioState) => s.gridColumns);
+    const setGridColumns = useStudioStore((s: StudioState) => s.setGridColumns);
     const [viewScale, setViewScale] = useState(studioViewScale);
     const [viewPosition, setViewPosition] = useState(studioViewPosition);
     const containerRef = useRef<HTMLDivElement>(null);
@@ -175,8 +181,8 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
     const pageClipboardRef = useRef<PageItem[]>([]);
 
     useEffect(() => {
-        setStudioViewport(viewScale, viewPosition);
-    }, [setStudioViewport, viewPosition, viewScale]);
+        setStudioViewport(viewScale, viewPosition, dimensions);
+    }, [setStudioViewport, viewPosition, viewScale, dimensions]);
 
     const fitToDocuments = useCallback((targetDocs: IStudioDocument[]) => {
         if (targetDocs.length === 0) {
@@ -185,7 +191,7 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
             return;
         }
 
-        const bounds = computeDocumentsBounds(targetDocs);
+        const bounds = computeDocumentsBounds(targetDocs, gridColumns);
         const boundsWidth = Math.max(1, bounds.maxX - bounds.minX);
         const boundsHeight = Math.max(1, bounds.maxY - bounds.minY);
         const padding = 56;
@@ -200,7 +206,7 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
 
         setViewScale(fitScale);
         setViewPosition({ x: nextX, y: nextY });
-    }, [dimensions.height, dimensions.width]);
+    }, [dimensions.height, dimensions.width, gridColumns]);
 
     const zoomAtScreenPoint = useCallback((point: { x: number; y: number }, direction: 'in' | 'out') => {
         const oldScale = viewScale;
@@ -370,14 +376,14 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
             }
         }
 
-        const positionedDocs = placeNewDocumentsInRows(documents, drafts, dimensions.width);
+        const positionedDocs = placeNewDocumentsInRows(documents, drafts, dimensions.width, gridColumns);
         for (const doc of positionedDocs) {
             addDocument(doc);
         }
         if (positionedDocs.length > 0) {
             fitToDocuments([...documents, ...positionedDocs]);
         }
-    }, [addDocument, dimensions.width, documents, fitToDocuments, onFilesDropped, runtime.vfs]);
+    }, [addDocument, dimensions.width, documents, fitToDocuments, onFilesDropped, runtime.vfs, gridColumns]);
 
     const handleDrop = useCallback(async (e: React.DragEvent) => {
         e.preventDefault();
@@ -533,9 +539,9 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
                         break;
                     }
                     const x = sourceDoc
-                        ? sourceDoc.x + estimateDocumentWidth(sourceDoc.pages.length) + DOC_WRAP_GAP_X + index * (CARD_WIDTH + DOC_WRAP_GAP_X)
+                        ? sourceDoc.x + estimateDocumentWidth(sourceDoc.pages.length, gridColumns) + DOC_WRAP_GAP_X + index * (CARD_WIDTH + DOC_WRAP_GAP_X)
                         : 100;
-                    const y = sourceDoc ? sourceDoc.y : (100 + index * (DOC_BLOCK_HEIGHT + 50));
+                    const y = sourceDoc ? sourceDoc.y : (100 + index * (estimateDocumentHeight(rebuilt.pages.length, gridColumns) + 50));
                     newDocs.push({
                         id: crypto.randomUUID(),
                         name: rebuilt.name,
@@ -608,6 +614,7 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
         setActiveDocument,
         setInteractionMode,
         setSelection,
+        gridColumns,
     ]);
 
     useEffect(() => {
@@ -688,6 +695,21 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
                         <button className="studio-viewport-btn" onClick={zoomIn} title="Zoom in">+</button>
                         <button className="studio-viewport-btn studio-viewport-btn-fit" onClick={() => fitToDocuments(documents)} title="Fit all documents">
                             Fit
+                        </button>
+                        <div className="studio-viewport-divider" />
+                        <button
+                            className={`studio-viewport-btn ${gridColumns === 3 ? 'active' : ''}`}
+                            onClick={() => setGridColumns(3)}
+                            title="Grid: 3 columns"
+                        >
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect></svg>
+                        </button>
+                        <button
+                            className={`studio-viewport-btn ${gridColumns === 5 ? 'active' : ''}`}
+                            onClick={() => setGridColumns(5)}
+                            title="Grid: 5 columns overview"
+                        >
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="3" y1="15" x2="21" y2="15"></line><line x1="9" y1="3" x2="9" y2="21"></line><line x1="15" y1="3" x2="15" y2="21"></line></svg>
                         </button>
                         <span className="studio-viewport-scale">{Math.round(viewScale * 100)}%</span>
                     </>

@@ -97,7 +97,7 @@ export function StudioConvertWorkspace() {
                   style={{
                     width: Math.round(420 * ctrl.zoomLevel),
                     borderRadius: 12,
-                    border: page.selected ? '2px solid rgba(34,197,94,0.85)' : '1px solid rgba(148,163,184,0.35)',
+                    border: page.selected ? '2px solid rgba(56, 189, 248, 0.85)' : '1px solid rgba(148,163,184,0.35)',
                     background: 'rgba(15,23,42,0.45)',
                     cursor: 'pointer',
                     padding: 10,

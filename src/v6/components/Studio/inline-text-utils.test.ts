@@ -87,17 +87,17 @@ test('mergeTextLine stops on shifted restart of the same line token', () => {
 
 test('mergeTextLine stops on shifted restart with repeated non-first token', () => {
   const spans = [
-    { id: 'a1', text: 'Теперь', xRatio: 0.1, yRatio: 0.2, widthRatio: 0.08, heightRatio: 0.03, fontSizeRatio: 0.02 },
-    { id: 'a2', text: 'текст', xRatio: 0.185, yRatio: 0.2, widthRatio: 0.06, heightRatio: 0.03, fontSizeRatio: 0.02 },
-    { id: 'a3', text: 'применяется', xRatio: 0.25, yRatio: 0.2, widthRatio: 0.11, heightRatio: 0.03, fontSizeRatio: 0.02 },
+    { id: 'a1', text: 'Now', xRatio: 0.1, yRatio: 0.2, widthRatio: 0.08, heightRatio: 0.03, fontSizeRatio: 0.02 },
+    { id: 'a2', text: 'text', xRatio: 0.185, yRatio: 0.2, widthRatio: 0.06, heightRatio: 0.03, fontSizeRatio: 0.02 },
+    { id: 'a3', text: 'applies', xRatio: 0.25, yRatio: 0.2, widthRatio: 0.11, heightRatio: 0.03, fontSizeRatio: 0.02 },
     // Duplicate run starts from the second token after several edit/save passes.
-    { id: 'b1', text: 'текст', xRatio: 0.43, yRatio: 0.2, widthRatio: 0.06, heightRatio: 0.03, fontSizeRatio: 0.02 },
-    { id: 'b2', text: 'применяется', xRatio: 0.495, yRatio: 0.2, widthRatio: 0.11, heightRatio: 0.03, fontSizeRatio: 0.02 },
+    { id: 'b1', text: 'text', xRatio: 0.43, yRatio: 0.2, widthRatio: 0.06, heightRatio: 0.03, fontSizeRatio: 0.02 },
+    { id: 'b2', text: 'applies', xRatio: 0.495, yRatio: 0.2, widthRatio: 0.11, heightRatio: 0.03, fontSizeRatio: 0.02 },
   ];
 
   const merged = mergeTextLine(spans, spans[0]);
   assert.ok(merged);
-  assert.equal(merged?.text, 'Теперь текст применяется');
+  assert.equal(merged?.text, 'Now text applies');
 });
 
 test('mergeTextLine splits medium-gap shifted duplicate run after repeated saves', () => {

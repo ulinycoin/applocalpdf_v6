@@ -11,6 +11,8 @@ export interface UIState {
     operationScope: StudioOperationScope;
     studioViewScale: number;
     studioViewPosition: { x: number; y: number };
+    gridColumns: 3 | 5;
+    viewportSize: { width: number; height: number };
 
     setSelection: (selection: { docId: string; pageId: string }[]) => void;
     requestInlineTool: (toolId: 'compress-pdf' | null) => void;
@@ -19,7 +21,8 @@ export interface UIState {
     setInteractionMode: (mode: StudioInteractionMode) => void;
     setActiveEditPageId: (id: string | null) => void;
     setOperationScope: (scope: StudioOperationScope) => void;
-    setStudioViewport: (scale: number, position: { x: number; y: number }) => void;
+    setStudioViewport: (scale: number, position: { x: number; y: number }, size?: { width: number; height: number }) => void;
+    setGridColumns: (columns: 3 | 5) => void;
     clearUI: () => void;
 }
 
@@ -33,6 +36,8 @@ export const useUIStore = create<UIState>((set) => ({
     operationScope: 'selection',
     studioViewScale: 1,
     studioViewPosition: { x: 0, y: 0 },
+    gridColumns: 5,
+    viewportSize: { width: window.innerWidth, height: window.innerHeight },
 
     setSelection: (selection) => set((state) => ({
         selection,
@@ -44,7 +49,12 @@ export const useUIStore = create<UIState>((set) => ({
     setInteractionMode: (mode) => set({ interactionMode: mode }),
     setActiveEditPageId: (id) => set({ activeEditPageId: id }),
     setOperationScope: (scope) => set({ operationScope: scope }),
-    setStudioViewport: (scale, position) => set({ studioViewScale: scale, studioViewPosition: position }),
+    setStudioViewport: (scale, position, size) => set((state) => ({
+        studioViewScale: scale,
+        studioViewPosition: position,
+        viewportSize: size ?? state.viewportSize
+    })),
+    setGridColumns: (columns) => set({ gridColumns: columns }),
     clearUI: () => set({
         selection: [],
         requestedInlineTool: null,
@@ -54,5 +64,7 @@ export const useUIStore = create<UIState>((set) => ({
         operationScope: 'selection',
         studioViewScale: 1,
         studioViewPosition: { x: 0, y: 0 },
+        // Intentionally not clearing gridColumns and viewportSize on clearUI
+        // as they are user preferences / environment state
     }),
 }));

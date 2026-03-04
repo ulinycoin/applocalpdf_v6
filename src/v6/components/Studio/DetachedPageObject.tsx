@@ -15,6 +15,7 @@ export const DetachedPageObject: React.FC<DetachedPageObjectProps> = ({ page }) 
     const moveDetachedPage = useStudioStore((s: StudioState) => s.moveDetachedPage);
     const removeDetachedPage = useStudioStore((s: StudioState) => s.removeDetachedPage);
     const activeDocumentId = useStudioStore((s: StudioState) => s.activeDocumentId);
+    const gridColumns = useStudioStore((s: StudioState) => s.gridColumns);
 
     const handleDragEnd = (e: KonvaEventObject<DragEvent>) => {
         e.cancelBubble = true;
@@ -31,6 +32,21 @@ export const DetachedPageObject: React.FC<DetachedPageObjectProps> = ({ page }) 
         let targetDocId: string | null = null;
         let targetDocNode: Konva.Group | null = null;
 
+        const CARD_WIDTH = 200;
+        const CARD_HEIGHT = 280;
+        const GAP_X = 20;
+        const GAP_Y = 30;
+        const STEP_X = CARD_WIDTH + GAP_X;
+        const STEP_Y = CARD_HEIGHT + GAP_Y;
+
+        const stageScale = stage.scaleX() || 1;
+        const absPos = node.absolutePosition();
+        // Detached page is visually 180x250, so center is 90x125
+        const centerPos = {
+            x: absPos.x + 90 * stageScale,
+            y: absPos.y + 125 * stageScale
+        };
+
         const documentNodes = stage.find('.document');
         for (const node of documentNodes) {
             const docId = node.id();
@@ -38,9 +54,12 @@ export const DetachedPageObject: React.FC<DetachedPageObjectProps> = ({ page }) 
             if (!doc) continue;
 
             const transform = node.getAbsoluteTransform().copy().invert();
-            const localPos = transform.point(pos);
-            const width = Math.max(220, doc.pages.length * 220);
-            const height = 300;
+            const localPos = transform.point(centerPos);
+
+            const cols = Math.min(doc.pages.length || 1, gridColumns);
+            const rows = Math.ceil(doc.pages.length / cols) || 1;
+            const width = Math.max(STEP_X, cols * STEP_X);
+            const height = Math.max(STEP_Y, rows * STEP_Y);
 
             if (localPos.x >= -30 && localPos.x <= width + 30 && localPos.y >= -50 && localPos.y <= height + 50) {
                 targetDocId = docId;
@@ -50,17 +69,19 @@ export const DetachedPageObject: React.FC<DetachedPageObjectProps> = ({ page }) 
         }
 
         if (targetDocId && targetDocNode) {
-            const STEP = 200 + 20;
             const transform = targetDocNode.getAbsoluteTransform().copy().invert();
-            const localPos = transform.point(pos);
-            const targetIndex = Math.max(0, Math.round(localPos.x / STEP));
+            const localPos = transform.point(centerPos);
+            const targetCol = Math.max(0, Math.min(gridColumns - 1, Math.round(localPos.x / STEP_X)));
+            const targetRow = Math.max(0, Math.round(localPos.y / STEP_Y));
+            const targetIndex = targetRow * gridColumns + targetCol;
+
             attachDetachedPage(page.id, targetDocId, targetIndex);
             return;
         }
 
         const inverseTransform = stage.getAbsoluteTransform().copy().invert();
-        const worldPos = inverseTransform.point(pos);
-        moveDetachedPage(page.id, Math.max(80, worldPos.x - 90), Math.max(80, worldPos.y - 125));
+        const worldDropPos = inverseTransform.point(absPos);
+        moveDetachedPage(page.id, worldDropPos.x, worldDropPos.y);
     };
 
     return (

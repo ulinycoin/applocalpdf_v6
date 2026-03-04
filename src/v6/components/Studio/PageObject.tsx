@@ -3,7 +3,33 @@ import { Group, Image, Rect, Text } from 'react-konva';
 import Konva from 'konva';
 import type { KonvaEventObject } from 'konva/lib/Node';
 import useImage from 'use-image';
+import * as pdfjs from 'pdfjs-dist';
 import { PageItem, StudioState, useStudioStore } from './studio-store';
+import { usePlatform } from '../../../app/react/platform-context';
+
+// --- LRU Cache for High-Res Bitmaps ---
+const HIGH_RES_CACHE_LIMIT = 30; // Max number of high-res canvases to keep in memory (approx 100-300MB depending on resolution)
+const highResCache = new Map<string, HTMLCanvasElement>();
+
+function getCachedHighRes(key: string): HTMLCanvasElement | undefined {
+    const canvas = highResCache.get(key);
+    if (canvas) {
+        // Refresh position in LRU
+        highResCache.delete(key);
+        highResCache.set(key, canvas);
+    }
+    return canvas;
+}
+
+function setCachedHighRes(key: string, canvas: HTMLCanvasElement) {
+    if (highResCache.size >= HIGH_RES_CACHE_LIMIT) {
+        // Evict oldest (Map iterates in insertion order, so first key is oldest)
+        const oldestKey = highResCache.keys().next().value;
+        if (oldestKey) highResCache.delete(oldestKey);
+    }
+    highResCache.set(key, canvas);
+}
+
 
 interface PageObjectProps {
     page: PageItem;
@@ -11,6 +37,7 @@ interface PageObjectProps {
     x: number;
     y: number;
     currentIndex: number;
+    shouldPrefetchOnly?: boolean;
 }
 
 // Define the type for a selection item
@@ -19,10 +46,19 @@ interface SelectionItem {
     pageId: string;
 }
 
-export const PageObject: React.FC<PageObjectProps> = ({ page, docId, x, y, currentIndex }) => {
+export const PageObject: React.FC<PageObjectProps> = ({ page, docId, x, y, currentIndex, shouldPrefetchOnly = false }) => {
     const groupRef = useRef<Konva.Group>(null);
-    const [image] = useImage(page.thumbnailUrl);
+    const { runtime } = usePlatform();
+
+    // Tier 0: Thumbnail
+    const [thumbImage] = useImage(page.thumbnailUrl);
+
+    // Tier 1: High-res
+    const [highResCanvas, setHighResCanvas] = React.useState<HTMLCanvasElement | null>(null);
+    const [isRenderingHighRes, setIsRenderingHighRes] = React.useState(false);
+
     const documents = useStudioStore((s: StudioState) => s.documents);
+    const gridColumns = useStudioStore((s: StudioState) => s.gridColumns);
     const detachPage = useStudioStore((s: StudioState) => s.detachPage);
     const selection = useStudioStore((s: StudioState) => s.selection);
     const setSelection = useStudioStore((s: StudioState) => s.setSelection);
@@ -55,6 +91,20 @@ export const PageObject: React.FC<PageObjectProps> = ({ page, docId, x, y, curre
         let targetDocId: string | null = null;
         let targetDocNode: Konva.Group | null = null;
 
+        const CARD_WIDTH = 200;
+        const CARD_HEIGHT = 280;
+        const GAP_X = 20;
+        const GAP_Y = 30;
+        const STEP_X = CARD_WIDTH + GAP_X;
+        const STEP_Y = CARD_HEIGHT + GAP_Y;
+
+        const stageScale = stage.scaleX() || 1;
+        const absPos = node.absolutePosition();
+        const centerPos = {
+            x: absPos.x + 100 * stageScale,
+            y: absPos.y + 140 * stageScale
+        };
+
         const documentNodes = stage.find('.document');
         for (const node of documentNodes) {
             const dId = node.id();
@@ -62,9 +112,12 @@ export const PageObject: React.FC<PageObjectProps> = ({ page, docId, x, y, curre
             if (!docItem) continue;
 
             const transform = node.getAbsoluteTransform().copy().invert();
-            const localPos = transform.point(pos);
-            const width = Math.max(220, docItem.pages.length * 220);
-            const height = 300;
+            const localPos = transform.point(centerPos);
+
+            const cols = Math.min(docItem.pages.length || 1, gridColumns);
+            const rows = Math.ceil(docItem.pages.length / cols) || 1;
+            const width = Math.max(STEP_X, cols * STEP_X);
+            const height = Math.max(STEP_Y, rows * STEP_Y);
 
             if (localPos.x >= -30 && localPos.x <= width + 30 && localPos.y >= -50 && localPos.y <= height + 50) {
                 targetDocId = dId;
@@ -74,11 +127,21 @@ export const PageObject: React.FC<PageObjectProps> = ({ page, docId, x, y, curre
         }
 
         const sourceDoc = documents.find((doc) => doc.id === docId);
-        const sourceDocWidth = Math.max(220, (sourceDoc?.pages.length ?? 1) * 220 + 20);
-        const sourceMinX = (sourceDoc?.x ?? 0) - 12;
-        const sourceMaxX = (sourceDoc?.x ?? 0) + sourceDocWidth + 12;
-        const sourceMinY = (sourceDoc?.y ?? 0) - 32;
-        const sourceMaxY = (sourceDoc?.y ?? 0) + 342;
+
+        let sourceDocWidth = STEP_X;
+        let sourceDocHeight = STEP_Y;
+        if (sourceDoc) {
+            const cols = Math.min(sourceDoc.pages.length || 1, gridColumns);
+            const rows = Math.ceil(sourceDoc.pages.length / cols) || 1;
+            sourceDocWidth = Math.max(STEP_X, cols * STEP_X);
+            sourceDocHeight = Math.max(STEP_Y, rows * STEP_Y);
+        }
+
+        const sourceMinX = (sourceDoc?.x ?? 0) - 30;
+        const sourceMaxX = (sourceDoc?.x ?? 0) + sourceDocWidth + 30;
+        const sourceMinY = (sourceDoc?.y ?? 0) - 50;
+        const sourceMaxY = (sourceDoc?.y ?? 0) + sourceDocHeight + 50;
+
         const droppedOutsideSourceDoc =
             !sourceDoc
             || worldPos.x < sourceMinX
@@ -87,20 +150,23 @@ export const PageObject: React.FC<PageObjectProps> = ({ page, docId, x, y, curre
             || worldPos.y > sourceMaxY;
 
         if (targetDocId && targetDocNode && !(targetDocId === docId && droppedOutsideSourceDoc)) {
-            const STEP = 200 + 20; // CARD_WIDTH + GAP
 
             // Get local position relative to the target document
             const transform = targetDocNode.getAbsoluteTransform().copy().invert();
-            const localPos = transform.point(pos);
+            const localPos = transform.point(centerPos);
 
-            // Calculate index based on local X position in the horizontal pages row
-            const targetIndex = Math.max(0, Math.round(localPos.x / STEP));
+            // Calculate col and row index based on local X and Y position in the grid
+            const targetCol = Math.max(0, Math.min(gridColumns - 1, Math.round(localPos.x / STEP_X)));
+            const targetRow = Math.max(0, Math.round(localPos.y / STEP_Y));
+
+            // Calculate final 1D index
+            const targetIndex = targetRow * gridColumns + targetCol;
 
             movePage(docId, page.id, targetDocId, targetIndex);
         } else {
-            const detachedX = Number.isFinite(worldPos.x) ? Math.max(80, worldPos.x - 90) : x;
-            const detachedY = Number.isFinite(worldPos.y) ? Math.max(80, worldPos.y - 125) : y;
-            detachPage(docId, page.id, detachedX, detachedY);
+            const absPos = node.absolutePosition();
+            const worldDropPos = inverseTransform.point(absPos);
+            detachPage(docId, page.id, worldDropPos.x, worldDropPos.y);
         }
     };
 
@@ -119,8 +185,89 @@ export const PageObject: React.FC<PageObjectProps> = ({ page, docId, x, y, curre
         }
     };
 
+    // Trigger High-Res render when component mounts (it only mounts when visible due to culling)
+    React.useEffect(() => {
+        let isMounted = true;
+        const cacheKey = `${page.fileId}_${page.pageIndex}`;
+
+        const existingCanvas = getCachedHighRes(cacheKey);
+        if (existingCanvas) {
+            setHighResCanvas(existingCanvas);
+            return;
+        }
+
+        const renderHighRes = async () => {
+            if (isRenderingHighRes) return;
+            setIsRenderingHighRes(true);
+
+            try {
+                // Read from VFS
+                const entry = await runtime.vfs.read(page.fileId);
+                const blob = await entry.getBlob();
+                const buffer = await blob.arrayBuffer();
+
+                // Get PDF Document
+                const loadingTask = pdfjs.getDocument({ data: new Uint8Array(buffer) });
+                const pdf = await loadingTask.promise;
+
+                if (!isMounted) {
+                    await pdf.destroy();
+                    return;
+                }
+
+                const pdfPage = await pdf.getPage(page.pageIndex + 1);
+
+                // Calculate scale for high-res (e.g., 2.0 for retina display crispness)
+                const viewport = pdfPage.getViewport({ scale: 2.0 });
+
+                const canvas = document.createElement('canvas');
+                const context = canvas.getContext('2d');
+                if (!context) throw new Error("Could not get 2d context for high-res render");
+
+                canvas.height = viewport.height;
+                canvas.width = viewport.width;
+
+                const renderContext = {
+                    canvasContext: context,
+                    viewport: viewport,
+                    canvas: canvas
+                };
+
+                await pdfPage.render(renderContext).promise;
+
+                if (isMounted) {
+                    setCachedHighRes(cacheKey, canvas);
+                    setHighResCanvas(canvas);
+                }
+
+                await pdf.destroy();
+            } catch (error) {
+                console.error("Failed to render high-res page:", error);
+            } finally {
+                if (isMounted) setIsRenderingHighRes(false);
+            }
+        };
+
+        // Delay render slightly to prioritize scrolling/panning smoothness over immediate high-res
+        const timeoutId = setTimeout(() => {
+            renderHighRes();
+        }, 150);
+
+        return () => {
+            isMounted = false;
+            clearTimeout(timeoutId);
+        };
+    }, [page.fileId, page.pageIndex, runtime.vfs]);
+
+    // If this is just a prefetch mount, we don't return any Konva nodes
+    // The useEffect above will still run and populate the LRU cache
+    if (shouldPrefetchOnly) {
+        return null;
+    }
+
     const PAGE_WIDTH = 180;
     const PAGE_HEIGHT = 250;
+
 
     return (
         <Group
@@ -163,8 +310,13 @@ export const PageObject: React.FC<PageObjectProps> = ({ page, docId, x, y, curre
                 shadowOpacity={0.3}
                 cornerRadius={4}
             />
-            {image && (() => {
-                const imgRatio = image.width / image.height;
+
+            {/* Render Image (HighRes prioritised, fallback to Thumb) */}
+            {(highResCanvas || thumbImage) && (() => {
+                const activeImage = highResCanvas || thumbImage;
+                if (!activeImage) return null;
+
+                const imgRatio = activeImage.width / activeImage.height;
                 const boxRatio = PAGE_WIDTH / PAGE_HEIGHT;
                 let drawWidth = PAGE_WIDTH;
                 let drawHeight = PAGE_HEIGHT;
@@ -183,12 +335,14 @@ export const PageObject: React.FC<PageObjectProps> = ({ page, docId, x, y, curre
 
                 return (
                     <Image
-                        image={image}
+                        image={activeImage}
                         width={drawWidth}
                         height={drawHeight}
                         x={offsetX}
                         y={offsetY}
-                        imageSmoothingEnabled={false}
+                        // Use ImageSmoothing for the low-res thumb to make it look less pixelated
+                        // If we have high-res, we can disable it or keep it true for downscaling
+                        imageSmoothingEnabled={true}
                         cornerRadius={4}
                     />
                 );
