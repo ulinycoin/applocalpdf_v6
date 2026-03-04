@@ -121,6 +121,8 @@ export function useStudioEditController(ui: any) {
     const [applyToSelection, setApplyToSelection] = useState(false);
     const [isSignComposerOpen, setSignComposerOpen] = useState(false);
     const [annotateColor, setAnnotateColor] = useState('#fff176');
+    const [annotateMode, setAnnotateMode] = useState<'highlight' | 'pen'>('highlight');
+    const [annotateStrokeWidth, setAnnotateStrokeWidth] = useState(5);
     const [isFormsComposerOpen, setFormsComposerOpen] = useState(false);
     const [watermarkOptions, setWatermarkOptions] = useState<{
         text: string;
@@ -742,6 +744,8 @@ export function useStudioEditController(ui: any) {
         isSelectMode, setIsSelectMode,
         textSelectionMode, setTextSelectionMode,
         annotateColor, setAnnotateColor,
+        annotateMode, setAnnotateMode,
+        annotateStrokeWidth, setAnnotateStrokeWidth,
         watermarkOptions, setWatermarkOptions,
         applyToSelection, setApplyToSelection,
         hasDirtyChanges, canApplyToSelection,

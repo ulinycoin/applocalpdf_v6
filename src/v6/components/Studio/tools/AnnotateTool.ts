@@ -21,6 +21,19 @@ export const AnnotateTool: IEditorTool = {
         ctx.setIsPointerDown(false);
         const draft = ctx.draftStroke;
         if (draft && draft.points.length >= 4) {
+            if (ctx.annotateMode === 'pen') {
+                ctx.applyElements([...ctx.elements, {
+                    id: crypto.randomUUID(),
+                    type: 'stroke',
+                    points: draft.points,
+                    color: ctx.annotateColor,
+                    width: ctx.annotateStrokeWidth,
+                    opacity: 1,
+                }]);
+                ctx.setDraftStroke(null);
+                return;
+            }
+
             const startX = draft.points[0];
             const startY = draft.points[1];
             const endX = x;

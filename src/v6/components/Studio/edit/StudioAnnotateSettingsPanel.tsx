@@ -1,8 +1,16 @@
 interface StudioAnnotateSettingsPanelProps {
     title: string;
     highlightLabel: string;
+    markerLabel: string;
+    penLabel: string;
+    penSizeLabel: string;
+    customColorLabel: string;
     color: string;
+    mode: 'highlight' | 'pen';
+    strokeWidth: number;
     onColorChange: (color: string) => void;
+    onModeChange: (mode: 'highlight' | 'pen') => void;
+    onStrokeWidthChange: (width: number) => void;
 }
 
 const MARKER_COLORS = [
@@ -16,43 +24,68 @@ const MARKER_COLORS = [
 
 export function StudioAnnotateSettingsPanel({
     title,
+    highlightLabel,
+    markerLabel,
+    penLabel,
+    penSizeLabel,
+    customColorLabel,
     color,
+    mode,
+    strokeWidth,
     onColorChange,
+    onModeChange,
+    onStrokeWidthChange,
 }: StudioAnnotateSettingsPanelProps) {
     return (
-        <div style={{
-            marginTop: 12,
-            width: 96,
-            borderRadius: 12,
-            background: 'rgba(15, 23, 42, 0.86)',
-            border: '1px solid rgba(255, 255, 255, 0.12)',
-            boxShadow: '0 8px 24px rgba(0, 0, 0, 0.35)',
-            padding: 10,
-            pointerEvents: 'auto',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 8,
-        }}>
-            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 0.3, color: 'rgba(226,232,240,0.9)' }}>
-                {title}
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 6 }}>
+        <div className="studio-annotate-quickbar-wrap">
+            <div className="studio-annotate-quickbar">
+                <span className="studio-annotate-quickbar-label">{title}</span>
+                <span className="studio-annotate-quickbar-caption">{highlightLabel}</span>
+                <div className="studio-annotate-mode-toggle" role="group" aria-label={title}>
+                    <button
+                        type="button"
+                        className={`studio-annotate-mode-btn ${mode === 'highlight' ? 'active' : ''}`}
+                        onClick={() => onModeChange('highlight')}
+                    >
+                        {markerLabel}
+                    </button>
+                    <button
+                        type="button"
+                        className={`studio-annotate-mode-btn ${mode === 'pen' ? 'active' : ''}`}
+                        onClick={() => onModeChange('pen')}
+                    >
+                        {penLabel}
+                    </button>
+                </div>
+                <div className="studio-annotate-quickbar-swatches">
                 {MARKER_COLORS.map((preset) => (
                     <button
                         key={preset}
                         type="button"
                         onClick={() => onColorChange(preset)}
                         title={preset}
-                        style={{
-                            width: 34,
-                            height: 24,
-                            borderRadius: 6,
-                            border: color === preset ? '2px solid #e2e8f0' : '1px solid rgba(255,255,255,0.2)',
-                            background: preset,
-                            cursor: 'pointer',
-                        }}
+                        className={`studio-annotate-swatch ${color.toLowerCase() === preset.toLowerCase() ? 'active' : ''}`}
+                        style={{ background: preset }}
                     />
                 ))}
+                </div>
+                <label className="studio-annotate-quickbar-custom-color" title={color}>
+                    <span>{customColorLabel}</span>
+                    <input type="color" value={color} onChange={(event) => onColorChange(event.target.value)} />
+                </label>
+                {mode === 'pen' && (
+                    <label className="studio-annotate-quickbar-custom-color">
+                        <span>{penSizeLabel}</span>
+                        <input
+                            type="range"
+                            min={1}
+                            max={18}
+                            step={1}
+                            value={strokeWidth}
+                            onChange={(event) => onStrokeWidthChange(Math.max(1, Math.min(18, Number(event.target.value) || 5)))}
+                        />
+                    </label>
+                )}
             </div>
         </div>
     );

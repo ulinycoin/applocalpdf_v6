@@ -17,6 +17,10 @@ export interface StudioEditMessages {
   annotate: string;
   annotateUnderline: string;
   annotateHighlight: string;
+  annotateMarker: string;
+  annotatePen: string;
+  annotatePenSize: string;
+  annotateCustomColor: string;
   shapes: string;
   undo: string;
   redo: string;
@@ -66,6 +70,10 @@ const EN_MESSAGES: StudioEditMessages = {
   annotate: 'Annotate',
   annotateUnderline: 'Underline',
   annotateHighlight: 'Highlight',
+  annotateMarker: 'Marker',
+  annotatePen: 'Pen',
+  annotatePenSize: 'Pen size',
+  annotateCustomColor: 'Custom',
   shapes: 'Shapes',
   undo: 'Undo',
   redo: 'Redo',
@@ -116,6 +124,10 @@ const RU_MESSAGES: StudioEditMessages = {
   annotate: 'Аннотация',
   annotateUnderline: 'Подчеркивание',
   annotateHighlight: 'Закрашивание',
+  annotateMarker: 'Маркер',
+  annotatePen: 'Перо',
+  annotatePenSize: 'Толщина пера',
+  annotateCustomColor: 'Свой цвет',
   shapes: 'Фигуры',
   undo: 'Отменить',
   redo: 'Повторить',

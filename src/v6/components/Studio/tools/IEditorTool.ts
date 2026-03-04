@@ -36,6 +36,8 @@ export interface ToolContext {
     isPointerDown: boolean;
     setIsPointerDown: (val: boolean) => void;
     annotateColor: string;
+    annotateMode: 'highlight' | 'pen';
+    annotateStrokeWidth: number;
     watermarkOptions: {
         text: string;
         color: string;

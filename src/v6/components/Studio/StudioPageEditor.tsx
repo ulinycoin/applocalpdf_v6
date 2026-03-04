@@ -45,6 +45,8 @@ export interface StudioPageEditorProps {
     textSelectionMode?: 'line' | 'word';
     onTextSelectionModeChange?: (_mode: 'line' | 'word') => void;
     annotateColor?: string;
+    annotateMode?: 'highlight' | 'pen';
+    annotateStrokeWidth?: number;
     watermarkOptions?: {
         text: string;
         color: string;
@@ -85,6 +87,8 @@ export function StudioPageEditor({
     textSelectionMode: externalTextSelectionMode,
     onTextSelectionModeChange: _onTextSelectionModeChange,
     annotateColor = '#fff176',
+    annotateMode = 'highlight',
+    annotateStrokeWidth = 5,
     watermarkOptions = {
         text: 'CONFIDENTIAL',
         color: '#64748b',
@@ -134,6 +138,7 @@ export function StudioPageEditor({
 
     const textSelectionMode = externalTextSelectionMode ?? 'line';
     const activeTool = externalActiveTool;
+    const isPenModeActive = activeTool === 'annotate' && annotateMode === 'pen';
 
     const locale = useMemo(() => detectStudioEditLocale(), []);
     const ui = useMemo(() => getStudioEditMessages(locale), [locale]);
@@ -186,6 +191,8 @@ export function StudioPageEditor({
         isPointerDown,
         setIsPointerDown,
         annotateColor,
+        annotateMode,
+        annotateStrokeWidth,
         watermarkOptions,
     });
 
@@ -330,7 +337,7 @@ export function StudioPageEditor({
                         onPointerDown={(e) => {
                             e.stopPropagation();
                             setSelectedElementId(el.id);
-                            if (!textEditor || textEditor.id !== el.id) {
+                            if (!isPenModeActive && (!textEditor || textEditor.id !== el.id)) {
                                 dragSessionRef.current = {
                                     mode: el.type === 'text'
                                         ? 'move-text'
@@ -793,8 +800,8 @@ export function StudioPageEditor({
                         }, '').trim()}
                         fill="none"
                         stroke={annotateColor}
-                        strokeWidth={12}
-                        strokeOpacity={0.45}
+                        strokeWidth={annotateMode === 'pen' ? annotateStrokeWidth : 12}
+                        strokeOpacity={annotateMode === 'pen' ? 1 : 0.45}
                         strokeLinecap="round"
                         strokeLinejoin="round"
                     />

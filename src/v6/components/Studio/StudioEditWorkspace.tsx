@@ -212,6 +212,24 @@ export function StudioEditWorkspace() {
                     />
                 </div>
             )}
+            {ctrl.tool === 'annotate' && (
+                <div style={{ padding: '0 16px 12px' }}>
+                    <StudioAnnotateSettingsPanel
+                        title={ui.annotate}
+                        highlightLabel={ui.annotateHighlight}
+                        markerLabel={ui.annotateMarker}
+                        penLabel={ui.annotatePen}
+                        penSizeLabel={ui.annotatePenSize}
+                        customColorLabel={ui.annotateCustomColor}
+                        color={ctrl.annotateColor}
+                        mode={ctrl.annotateMode}
+                        strokeWidth={ctrl.annotateStrokeWidth}
+                        onColorChange={ctrl.setAnnotateColor}
+                        onModeChange={ctrl.setAnnotateMode}
+                        onStrokeWidthChange={ctrl.setAnnotateStrokeWidth}
+                    />
+                </div>
+            )}
 
             {/* Main Workspace Area (Toolbar + Canvas) */}
             <div style={{ display: 'flex', flex: 1, overflow: 'hidden', position: 'relative' }}>
@@ -221,14 +239,6 @@ export function StudioEditWorkspace() {
                         tool={ctrl.tool}
                         onSelectTool={ctrl.setTool}
                     />
-                    {ctrl.tool === 'annotate' && (
-                        <StudioAnnotateSettingsPanel
-                            title={ui.annotate}
-                            highlightLabel={ui.annotateHighlight}
-                            color={ctrl.annotateColor}
-                            onColorChange={ctrl.setAnnotateColor}
-                        />
-                    )}
                 </div>
 
                 <div
@@ -280,6 +290,8 @@ export function StudioEditWorkspace() {
                                 textSelectionMode={ctrl.textSelectionMode}
                                 onTextSelectionModeChange={ctrl.setTextSelectionMode}
                                 annotateColor={ctrl.annotateColor}
+                                annotateMode={ctrl.annotateMode}
+                                annotateStrokeWidth={ctrl.annotateStrokeWidth}
                                 watermarkOptions={ctrl.watermarkOptions}
                                 elements={ctrl.elements}
                                 onElementsChange={ctrl.setElements}
