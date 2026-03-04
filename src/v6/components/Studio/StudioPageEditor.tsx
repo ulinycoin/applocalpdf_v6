@@ -11,6 +11,7 @@ import {
     EditElement,
     ImageElement,
     TextElement,
+    WatermarkElement,
     RectDraft,
     StrokeDraft,
     DragSession,
@@ -44,6 +45,21 @@ export interface StudioPageEditorProps {
     textSelectionMode?: 'line' | 'word';
     onTextSelectionModeChange?: (_mode: 'line' | 'word') => void;
     annotateColor?: string;
+    watermarkOptions?: {
+        text: string;
+        color: string;
+        fontSize: number;
+        fontFamily: FontFamilyId;
+        fontWeight: 'normal' | 'bold';
+        fontStyle: 'normal' | 'italic';
+        opacity: number;
+        rotation: number;
+        repeatEnabled: boolean;
+        repeatCols: number;
+        repeatRows: number;
+        repeatGapX: number;
+        repeatGapY: number;
+    };
     textLayerSpans: TextLayerSpan[];
     onFinish?: () => void;
     onDiscard?: () => void;
@@ -69,6 +85,21 @@ export function StudioPageEditor({
     textSelectionMode: externalTextSelectionMode,
     onTextSelectionModeChange: _onTextSelectionModeChange,
     annotateColor = '#fff176',
+    watermarkOptions = {
+        text: 'CONFIDENTIAL',
+        color: '#64748b',
+        fontSize: 30,
+        fontFamily: 'sora',
+        fontWeight: 'bold',
+        fontStyle: 'normal',
+        opacity: 0.25,
+        rotation: -30,
+        repeatEnabled: true,
+        repeatCols: 3,
+        repeatRows: 4,
+        repeatGapX: 0.2,
+        repeatGapY: 0.16,
+    },
     textLayerSpans,
     onFinish: _onFinish,
     onDiscard: _onDiscard
@@ -155,6 +186,7 @@ export function StudioPageEditor({
         isPointerDown,
         setIsPointerDown,
         annotateColor,
+        watermarkOptions,
     });
 
     // Pointer Handlers
@@ -272,18 +304,26 @@ export function StudioPageEditor({
                             position: 'absolute',
                             left: el.type === 'stroke'
                                 ? `${((strokeBounds?.minX ?? 0) - paddingLimit) * 100}%`
-                                : (('x' in el) ? `${el.x * 100}%` : '0'),
+                                : (el.type === 'watermark' && el.repeatEnabled
+                                    ? '0'
+                                    : (('x' in el) ? `${el.x * 100}%` : '0')),
                             top: el.type === 'stroke'
                                 ? `${((strokeBounds?.minY ?? 0) - paddingLimit) * 100}%`
-                                : (('y' in el) ? `${el.y * 100}%` : '0'),
+                                : (el.type === 'watermark' && el.repeatEnabled
+                                    ? '0'
+                                    : (('y' in el) ? `${el.y * 100}%` : '0')),
                             width: el.type === 'stroke'
                                 ? `${strokeWidth * 100}%`
-                                : ((textEditor?.id === el.id) ? 'auto' : (('w' in el) ? `${el.w * 100}%` : 'auto')),
+                                : (el.type === 'watermark' && el.repeatEnabled
+                                    ? '100%'
+                                    : ((textEditor?.id === el.id) ? 'auto' : (('w' in el) ? `${el.w * 100}%` : 'auto'))),
                             minWidth: (textEditor?.id === el.id && 'w' in el) ? `${el.w * 100}%` : 'auto',
                             maxWidth: (textEditor?.id === el.id) ? '90%' : 'none',
                             height: el.type === 'stroke'
                                 ? `${strokeHeight * 100}%`
-                                : (('h' in el) ? `${el.h * 100}%` : 'auto'),
+                                : (el.type === 'watermark' && el.repeatEnabled
+                                    ? '100%'
+                                    : (('h' in el) ? `${el.h * 100}%` : 'auto')),
                             pointerEvents: 'auto',
                             zIndex: selectedElementId === el.id ? 1001 : 1,
                         }}
@@ -294,7 +334,9 @@ export function StudioPageEditor({
                                 dragSessionRef.current = {
                                     mode: el.type === 'text'
                                         ? 'move-text'
-                                        : (el.type === 'rect' || el.type === 'image' ? 'move-rect' : 'move-stroke') as any,
+                                        : (el.type === 'watermark'
+                                            ? 'move-watermark'
+                                            : (el.type === 'rect' || el.type === 'image' || el.type === 'form-field' ? 'move-rect' : 'move-stroke')) as any,
                                     id: el.id,
                                     startClientX: e.clientX,
                                     startClientY: e.clientY,
@@ -332,6 +374,10 @@ export function StudioPageEditor({
                                     x: nextX,
                                     y: nextY
                                 });
+                            } else if (sess && sess.id === el.id && sess.mode === 'rotate-watermark' && el.type === 'watermark') {
+                                const angleRad = Math.atan2(e.clientY - sess.centerClientY, e.clientX - sess.centerClientX);
+                                const angleDeg = (angleRad * 180) / Math.PI;
+                                handleElementAction(el.id, 'update', { rotation: angleDeg });
                             } else if (sess && sess.id === el.id && sess.mode === 'resize-image') {
                                 const dx = (e.clientX - sess.startClientX) / width;
                                 const minW = 0.04;
@@ -365,6 +411,18 @@ export function StudioPageEditor({
                                 const nextW = clamp(sess.originW + dx, minW, maxW);
                                 const nextH = clamp(sess.originH + dy, minH, maxH);
                                 handleElementAction(el.id, 'update', { w: nextW, h: nextH });
+                            } else if (sess && sess.id === el.id && sess.mode === 'resize-watermark' && el.type === 'watermark') {
+                                const dx = (e.clientX - sess.startClientX) / width;
+                                const dy = (e.clientY - sess.startClientY) / height;
+                                const scale = clamp(1 + Math.max(dx, dy) * 1.6, 0.3, 5);
+                                const nextW = clamp(sess.originW * scale, 0.08, 0.95);
+                                const nextH = clamp(sess.originH * scale, 0.02, 0.4);
+                                const nextFontSize = clamp(sess.originFontSize * scale, 8, 144);
+                                handleElementAction(el.id, 'update', {
+                                    w: nextW,
+                                    h: nextH,
+                                    fontSize: nextFontSize,
+                                });
                             } else if (sess && sess.id === el.id && sess.mode === 'resize-text') {
                                 const dx = (e.clientX - sess.startClientX) / width;
                                 const dy = (e.clientY - sess.startClientY) / height;
@@ -429,6 +487,81 @@ export function StudioPageEditor({
                                         />
                                     </>
                                 ) : el.text}
+                            </div>
+                        )}
+                        {el.type === 'watermark' && (
+                            <div
+                                style={{
+                                    width: '100%',
+                                    height: '100%',
+                                    position: 'relative',
+                                    overflow: 'visible',
+                                }}
+                            >
+                                {Array.from({
+                                    length: (() => {
+                                        if (!el.repeatEnabled) return 1;
+                                        const charCount = Math.max(4, (el.text || '').trim().length || 0);
+                                        const baseWidthRatio = Math.max(0.08, (el.fontSize * charCount * 0.64) / width);
+                                        const baseHeightRatio = Math.max(0.02, (el.fontSize * 1.35) / height);
+                                        const angleRad = Math.abs((el.rotation || 0) * Math.PI / 180);
+                                        const cos = Math.abs(Math.cos(angleRad));
+                                        const sin = Math.abs(Math.sin(angleRad));
+                                        const textWidthRatio = clamp(baseWidthRatio * cos + baseHeightRatio * sin, 0.14, 1.2);
+                                        const textHeightRatio = clamp(baseWidthRatio * sin + baseHeightRatio * cos, 0.03, 0.35);
+                                        const stepX = Math.max(textWidthRatio * 1.22, textWidthRatio + 0.06);
+                                        const stepY = Math.max(textHeightRatio * 1.3, textHeightRatio + 0.05);
+                                        const cols = Math.max(1, Math.ceil((1 + textWidthRatio * 3) / stepX));
+                                        const rows = Math.max(1, Math.ceil((1 + textHeightRatio * 3) / stepY));
+                                        return Math.min(700, cols * rows);
+                                    })(),
+                                }).map((_, index) => {
+                                    const charCount = Math.max(4, (el.text || '').trim().length || 0);
+                                    const baseWidthRatio = Math.max(0.08, (el.fontSize * charCount * 0.64) / width);
+                                    const baseHeightRatio = Math.max(0.02, (el.fontSize * 1.35) / height);
+                                    const angleRad = Math.abs((el.rotation || 0) * Math.PI / 180);
+                                    const cos = Math.abs(Math.cos(angleRad));
+                                    const sin = Math.abs(Math.sin(angleRad));
+                                    const textWidthRatio = clamp(baseWidthRatio * cos + baseHeightRatio * sin, 0.14, 1.2);
+                                    const textHeightRatio = clamp(baseWidthRatio * sin + baseHeightRatio * cos, 0.03, 0.35);
+                                    const stepX = Math.max(textWidthRatio * 1.22, textWidthRatio + 0.06);
+                                    const stepY = Math.max(textHeightRatio * 1.3, textHeightRatio + 0.05);
+                                    const startX = -textWidthRatio + clamp(el.x, 0, 1);
+                                    const startY = -textHeightRatio + clamp(el.y, 0, 1);
+                                    const cols = Math.max(1, Math.ceil((1 + textWidthRatio * 3) / stepX));
+                                    const col = el.repeatEnabled ? index % cols : 0;
+                                    const row = el.repeatEnabled ? Math.floor(index / cols) : 0;
+                                    const staggerX = el.repeatEnabled && row % 2 === 1 ? stepX * 0.5 : 0;
+                                    const tx = el.repeatEnabled ? startX + staggerX + col * stepX : 0;
+                                    const ty = el.repeatEnabled ? startY + row * stepY : 0;
+                                    const centerX = (tx + textWidthRatio * 0.5) * 100;
+                                    const centerY = (ty + textHeightRatio * 0.5) * 100;
+                                    return (
+                                        <div
+                                            key={`${el.id}-wm-${index}`}
+                                            style={{
+                                                position: 'absolute',
+                                                left: `${centerX}%`,
+                                                top: `${centerY}%`,
+                                                color: el.color,
+                                                opacity: el.opacity,
+                                                fontSize: el.fontSize,
+                                                fontFamily: toCssFontFamily(el.fontFamily),
+                                                fontWeight: el.fontWeight,
+                                                fontStyle: el.fontStyle,
+                                                lineHeight: 1.1,
+                                                whiteSpace: 'nowrap',
+                                                pointerEvents: 'none',
+                                                userSelect: 'none',
+                                                textTransform: 'uppercase',
+                                                transform: `translate(-50%, -50%) rotate(${el.rotation}deg)`,
+                                                transformOrigin: 'center center',
+                                            }}
+                                        >
+                                            {el.text}
+                                        </div>
+                                    );
+                                })}
                             </div>
                         )}
                         {el.type === 'rect' && (
@@ -583,6 +716,56 @@ export function StudioPageEditor({
                                     } catch (err) { }
                                 }}
                             />
+                        )}
+                        {selectedElementId === el.id && el.type === 'watermark' && (
+                            <>
+                                <button
+                                    type="button"
+                                    className="studio-edit-text-resize"
+                                    title="Resize watermark"
+                                    onPointerDown={(event) => {
+                                        event.stopPropagation();
+                                        const mark = el as WatermarkElement;
+                                        dragSessionRef.current = {
+                                            mode: 'resize-watermark',
+                                            id: mark.id,
+                                            startClientX: event.clientX,
+                                            startClientY: event.clientY,
+                                            originW: mark.w,
+                                            originH: mark.h,
+                                            originFontSize: mark.fontSize,
+                                            originX: mark.x,
+                                            originY: mark.y,
+                                            initialElements: elements,
+                                        };
+                                        try {
+                                            (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
+                                        } catch (err) { }
+                                    }}
+                                />
+                                <button
+                                    type="button"
+                                    className="studio-edit-watermark-rotate"
+                                    title="Rotate watermark"
+                                    onPointerDown={(event) => {
+                                        event.stopPropagation();
+                                        const box = (event.currentTarget.closest('[data-editor-element-id]') as HTMLElement | null)?.getBoundingClientRect();
+                                        const centerClientX = box ? box.left + box.width / 2 : event.clientX;
+                                        const centerClientY = box ? box.top + box.height / 2 : event.clientY;
+                                        dragSessionRef.current = {
+                                            mode: 'rotate-watermark',
+                                            id: el.id,
+                                            centerClientX,
+                                            centerClientY,
+                                            originRotation: el.rotation,
+                                            initialElements: elements,
+                                        };
+                                        try {
+                                            (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
+                                        } catch (err) { }
+                                    }}
+                                />
+                            </>
                         )}
                     </div>
                 );

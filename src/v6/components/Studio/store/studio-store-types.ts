@@ -24,7 +24,7 @@ export interface StudioDocument {
 
 export type StudioInteractionMode = 'edit' | 'convert' | null;
 export type StudioOperationScope = 'selection' | 'document';
-export type StudioEditToolId = 'text' | 'sign' | 'annotate' | 'whiteout' | 'shapes' | 'forms' | 'protect';
+export type StudioEditToolId = 'text' | 'sign' | 'annotate' | 'whiteout' | 'shapes' | 'forms' | 'watermark' | 'protect';
 
 export interface StudioEditSession {
     docId: string;

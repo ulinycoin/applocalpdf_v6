@@ -1,4 +1,4 @@
-import { PDFDocument, StandardFonts, rgb, type PDFFont } from 'pdf-lib';
+import { PDFDocument, StandardFonts, degrees, rgb, type PDFFont } from 'pdf-lib';
 import fontkit from '@pdf-lib/fontkit';
 import type { WorkerStudioEditElement, WorkerStudioFontFamilyId } from '../../core/types/contracts';
 import { parsePdfTextOperators } from './pdf-content-stream-parser';
@@ -900,6 +900,77 @@ export async function applyStudioTextEditsToPdfBytes(params: {
         }
       } catch (err) {
         // Silently ignore form creation failures for individual elements
+      }
+      continue;
+    }
+
+    if (element.type === 'watermark') {
+      const line = sanitizeInlineText(element.text || ' ');
+      const rendered = await resolveRenderableText({
+        family: element.fontFamily,
+        weight: element.fontWeight,
+        style: element.fontStyle,
+        text: line,
+      });
+      const font = rendered.font;
+      const textToDraw = rendered.text || ' ';
+      const { r, g, b } = hexToRgb(element.color);
+      const uiAngle = element.rotation || 0;
+      const pdfAngle = -uiAngle;
+      const angleRad = (pdfAngle * Math.PI) / 180;
+      const cos = Math.cos(angleRad);
+      const sin = Math.sin(angleRad);
+      const textWidthPt = Math.max(1, font.widthOfTextAtSize(textToDraw, element.fontSize));
+      const textHeightPt = Math.max(1, element.fontSize * 1.1);
+      const centerOffsetX = textWidthPt * 0.5;
+      const centerOffsetY = element.fontSize * 0.3;
+
+      const drawCenteredRotatedText = (centerX: number, centerY: number) => {
+        const anchorX = centerX - (centerOffsetX * cos - centerOffsetY * sin);
+        const anchorY = centerY - (centerOffsetX * sin + centerOffsetY * cos);
+        page.drawText(textToDraw, {
+          x: anchorX,
+          y: anchorY,
+          size: element.fontSize,
+          font,
+          color: rgb(r, g, b),
+          opacity: element.opacity,
+          rotate: degrees(pdfAngle),
+        });
+      };
+
+      if (!element.repeatEnabled) {
+        const xTopLeft = element.x * pageWidth;
+        const yTop = element.y * pageHeight;
+        const centerX = xTopLeft + textWidthPt * 0.5;
+        const centerY = pageHeight - yTop - textHeightPt * 0.5;
+        drawCenteredRotatedText(centerX, centerY);
+      } else {
+        const charCount = Math.max(4, textToDraw.trim().length || 0);
+        const baseWidthRatio = Math.max(0.08, (element.fontSize * charCount * 0.64) / pageWidth);
+        const baseHeightRatio = Math.max(0.02, (element.fontSize * 1.35) / pageHeight);
+        const absCos = Math.abs(Math.cos(angleRad));
+        const absSin = Math.abs(Math.sin(angleRad));
+        const textWidthRatio = clamp(baseWidthRatio * absCos + baseHeightRatio * absSin, 0.14, 1.2);
+        const textHeightRatio = clamp(baseWidthRatio * absSin + baseHeightRatio * absCos, 0.03, 0.35);
+        const stepX = Math.max(textWidthRatio * 1.22, textWidthRatio + 0.06);
+        const stepY = Math.max(textHeightRatio * 1.3, textHeightRatio + 0.05);
+        const startX = -textWidthRatio + clamp(element.x, 0, 1);
+        const startY = -textHeightRatio + clamp(element.y, 0, 1);
+        const cols = Math.max(1, Math.ceil((1 + textWidthRatio * 3) / stepX));
+        const rows = Math.max(1, Math.ceil((1 + textHeightRatio * 3) / stepY));
+        const repeatCount = Math.min(700, cols * rows);
+
+        for (let i = 0; i < repeatCount; i += 1) {
+          const col = i % cols;
+          const row = Math.floor(i / cols);
+          const staggerX = row % 2 === 1 ? stepX * 0.5 : 0;
+          const xRatio = startX + staggerX + col * stepX;
+          const yRatio = startY + row * stepY;
+          const centerX = (xRatio + textWidthRatio * 0.5) * pageWidth;
+          const centerY = pageHeight - ((yRatio + textHeightRatio * 0.5) * pageHeight);
+          drawCenteredRotatedText(centerX, centerY);
+        }
       }
       continue;
     }

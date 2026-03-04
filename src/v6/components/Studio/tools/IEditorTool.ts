@@ -1,5 +1,14 @@
 import type React from 'react';
-import type { EditElement, TextElement, RectDraft, StrokeDraft, TextLayerSpan, TextEditorState, EditorToolId } from '../editor-types';
+import type {
+    EditElement,
+    TextElement,
+    RectDraft,
+    StrokeDraft,
+    TextLayerSpan,
+    TextEditorState,
+    EditorToolId
+} from '../editor-types';
+import type { FontFamilyId } from '../inline-text-utils';
 
 export interface Point {
     x: number;
@@ -27,6 +36,21 @@ export interface ToolContext {
     isPointerDown: boolean;
     setIsPointerDown: (val: boolean) => void;
     annotateColor: string;
+    watermarkOptions: {
+        text: string;
+        color: string;
+        fontSize: number;
+        fontFamily: FontFamilyId;
+        fontWeight: 'normal' | 'bold';
+        fontStyle: 'normal' | 'italic';
+        opacity: number;
+        rotation: number;
+        repeatEnabled: boolean;
+        repeatCols: number;
+        repeatRows: number;
+        repeatGapX: number;
+        repeatGapY: number;
+    };
     formType?: 'text' | 'multiline' | 'checkbox' | 'radio' | 'dropdown';
 }
 

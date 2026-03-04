@@ -3649,6 +3649,19 @@ textarea:focus-visible {
   cursor: nwse-resize;
 }
 
+.studio-edit-watermark-rotate {
+  position: absolute;
+  left: 50%;
+  top: -20px;
+  transform: translateX(-50%);
+  width: 14px;
+  height: 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(30, 64, 175, 0.7);
+  background: rgba(147, 197, 253, 0.95);
+  cursor: grab;
+}
+
 .studio-edit-stroke-box {
   position: absolute;
   border: 1px dashed rgba(59, 130, 246, 0.78);

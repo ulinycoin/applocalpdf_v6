@@ -58,6 +58,13 @@ export function StudioEditToolbar({ ui, tool, onSelectTool }: StudioEditToolbarP
                 <LinearIcon name="file-input" size={22} />
             </button>
             <button
+                className={`studio-edit-tool-btn ${tool === 'watermark' ? 'active' : ''}`}
+                onClick={() => onSelectTool('watermark')}
+                title={ui.watermark}
+            >
+                <LinearIcon name="text" size={22} />
+            </button>
+            <button
                 className={`studio-edit-tool-btn ${tool === 'protect' ? 'active' : ''}`}
                 onClick={() => onSelectTool('protect')}
                 title={ui.protect}

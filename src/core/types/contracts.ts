@@ -173,12 +173,35 @@ export interface WorkerStudioFormFieldEditElement {
   opacity: number;
 }
 
+export interface WorkerStudioWatermarkEditElement {
+  id: string;
+  type: 'watermark';
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  text: string;
+  color: string;
+  fontSize: number;
+  fontFamily: WorkerStudioFontFamilyId;
+  fontWeight: 'normal' | 'bold';
+  fontStyle: 'normal' | 'italic';
+  opacity: number;
+  rotation: number;
+  repeatEnabled: boolean;
+  repeatCols: number;
+  repeatRows: number;
+  repeatGapX: number;
+  repeatGapY: number;
+}
+
 export type WorkerStudioEditElement =
   | WorkerStudioTextEditElement
   | WorkerStudioStrokeEditElement
   | WorkerStudioRectEditElement
   | WorkerStudioImageEditElement
-  | WorkerStudioFormFieldEditElement;
+  | WorkerStudioFormFieldEditElement
+  | WorkerStudioWatermarkEditElement;
 
 export type WorkerCommandPayload =
   | { type: 'PROCESS_TOOL'; payload: { toolId: string; inputIds: string[]; options?: Record<string, unknown> } }

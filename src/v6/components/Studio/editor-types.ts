@@ -2,7 +2,7 @@ import { WorkerPdfTextLayerSpan } from '../../../core/public/contracts';
 import { FontFamilyId } from './inline-text-utils';
 
 export type TextLayerSpan = WorkerPdfTextLayerSpan;
-export type EditorToolId = 'text' | 'sign' | 'annotate' | 'whiteout' | 'shapes' | 'forms' | 'protect';
+export type EditorToolId = 'text' | 'sign' | 'annotate' | 'whiteout' | 'shapes' | 'forms' | 'watermark' | 'protect';
 export type TextAlignId = 'left' | 'center' | 'right';
 export type InlineUiState = 'idle' | 'hover' | 'selected' | 'editing' | 'saving' | 'saved' | 'error';
 
@@ -78,7 +78,29 @@ export interface FormFieldElement {
     opacity: number;
 }
 
-export type EditElement = TextElement | StrokeElement | RectElement | ImageElement | FormFieldElement;
+export interface WatermarkElement {
+    id: string;
+    type: 'watermark';
+    x: number;
+    y: number;
+    w: number;
+    h: number;
+    text: string;
+    color: string;
+    fontSize: number;
+    fontFamily: FontFamilyId;
+    fontWeight: 'normal' | 'bold';
+    fontStyle: 'normal' | 'italic';
+    opacity: number;
+    rotation: number;
+    repeatEnabled: boolean;
+    repeatCols: number;
+    repeatRows: number;
+    repeatGapX: number;
+    repeatGapY: number;
+}
+
+export type EditElement = TextElement | StrokeElement | RectElement | ImageElement | FormFieldElement | WatermarkElement;
 
 export interface RectDraft {
     startX: number;
@@ -100,6 +122,9 @@ export type DragSession =
     | { mode: 'resize-rect'; id: string; startClientX: number; startClientY: number; originW: number; originH: number; initialElements: EditElement[]; }
     | { mode: 'resize-image'; id: string; startClientX: number; startClientY: number; originW: number; originH: number; originX: number; originY: number; initialElements: EditElement[]; }
     | { mode: 'resize-form-field'; id: string; startClientX: number; startClientY: number; originW: number; originH: number; originX: number; originY: number; initialElements: EditElement[]; }
+    | { mode: 'move-watermark'; id: string; startClientX: number; startClientY: number; originX: number; originY: number; initialElements: EditElement[]; }
+    | { mode: 'resize-watermark'; id: string; startClientX: number; startClientY: number; originW: number; originH: number; originFontSize: number; originX: number; originY: number; initialElements: EditElement[]; }
+    | { mode: 'rotate-watermark'; id: string; centerClientX: number; centerClientY: number; originRotation: number; initialElements: EditElement[]; }
     | { mode: 'move-stroke'; id: string; startClientX: number; startClientY: number; initialPoints: number[]; initialElements: EditElement[]; }
     | { mode: 'resize-stroke'; id: string; startClientX: number; startClientY: number; initialPoints: number[]; bounds: { minX: number; minY: number; maxX: number; maxY: number }; initialElements: EditElement[]; };
 

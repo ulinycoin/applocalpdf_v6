@@ -7,6 +7,7 @@ import type {
   WorkerStudioStrokeEditElement,
   WorkerStudioTextAlign,
   WorkerStudioTextEditElement,
+  WorkerStudioWatermarkEditElement,
 } from '../../core/types/contracts';
 
 const MAX_EDIT_ELEMENTS = 2000;
@@ -206,6 +207,33 @@ function normalizeFormFieldElement(input: WorkerStudioFormFieldEditElement): Wor
   };
 }
 
+function normalizeWatermarkElement(input: WorkerStudioWatermarkEditElement): WorkerStudioWatermarkEditElement {
+  if (typeof input.text !== 'string') {
+    fail('Invalid watermark payload: text must be a string', 'STUDIO_EDIT_INVALID_PAYLOAD');
+  }
+  return {
+    id: typeof input.id === 'string' && input.id.trim().length > 0 ? input.id : crypto.randomUUID(),
+    type: 'watermark',
+    x: toSafeRatio(input.x, 'watermark.x'),
+    y: toSafeRatio(input.y, 'watermark.y'),
+    w: clamp(toFiniteNumber(input.w, 'watermark.w'), 0.001, 1),
+    h: clamp(toFiniteNumber(input.h, 'watermark.h'), 0.001, 1),
+    text: input.text.replace(/[\r\n]+/gu, ' ').slice(0, MAX_TEXT_LENGTH),
+    color: normalizeColor(input.color),
+    fontSize: clamp(toFiniteNumber(input.fontSize, 'watermark.fontSize'), 4, 144),
+    fontFamily: normalizeFontFamily(input.fontFamily),
+    fontWeight: input.fontWeight === 'bold' ? 'bold' : 'normal',
+    fontStyle: input.fontStyle === 'italic' ? 'italic' : 'normal',
+    opacity: normalizeOpacity(input.opacity),
+    rotation: clamp(toFiniteNumber(input.rotation, 'watermark.rotation'), -180, 180),
+    repeatEnabled: Boolean(input.repeatEnabled),
+    repeatCols: Math.max(1, Math.min(12, Math.floor(toFiniteNumber(input.repeatCols, 'watermark.repeatCols')))),
+    repeatRows: Math.max(1, Math.min(12, Math.floor(toFiniteNumber(input.repeatRows, 'watermark.repeatRows')))),
+    repeatGapX: clamp(toFiniteNumber(input.repeatGapX, 'watermark.repeatGapX'), 0, 0.5),
+    repeatGapY: clamp(toFiniteNumber(input.repeatGapY, 'watermark.repeatGapY'), 0, 0.5),
+  };
+}
+
 export function normalizeAndValidateStudioEditRequest(payload: {
   pageIndex: unknown;
   elements: unknown;
@@ -243,6 +271,10 @@ export function normalizeAndValidateStudioEditRequest(payload: {
     }
     if (typed.type === 'form-field') {
       normalized.push(normalizeFormFieldElement(typed));
+      continue;
+    }
+    if (typed.type === 'watermark') {
+      normalized.push(normalizeWatermarkElement(typed));
       continue;
     }
     fail(`Unsupported edit element type: ${(typed as { type: unknown }).type as string}`, 'STUDIO_EDIT_UNSUPPORTED_ELEMENT');

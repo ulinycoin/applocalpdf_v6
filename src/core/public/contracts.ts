@@ -25,6 +25,7 @@ export type {
   WorkerStudioRectEditElement,
   WorkerStudioFormFieldEditElement,
   WorkerStudioImageEditElement,
+  WorkerStudioWatermarkEditElement,
   WorkerStudioStrokeEditElement,
   WorkerStudioTextAlign,
   WorkerStudioTextEditElement,

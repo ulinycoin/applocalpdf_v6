@@ -9,6 +9,7 @@ export interface StudioEditMessages {
   text: string;
   links: string;
   forms: string;
+  watermark: string;
   protect: string;
   images: string;
   sign: string;
@@ -57,6 +58,7 @@ const EN_MESSAGES: StudioEditMessages = {
   text: 'Text',
   links: 'Links',
   forms: 'Forms',
+  watermark: 'Watermark',
   protect: 'Protect',
   images: 'Images',
   sign: 'Sign',
@@ -106,6 +108,7 @@ const RU_MESSAGES: StudioEditMessages = {
   text: 'Текст',
   links: 'Ссылки',
   forms: 'Формы',
+  watermark: 'Ватермарк',
   protect: 'Защитить',
   images: 'Изображения',
   sign: 'Подпись',

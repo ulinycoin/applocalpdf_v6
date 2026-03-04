@@ -19,11 +19,13 @@ import {
     FormFieldElement,
     ImageElement,
     TextElement,
+    WatermarkElement,
     TextEditorState,
     InlineUiState,
     TextLayerSpan,
     EditorToolId
 } from '../editor-types';
+import type { FontFamilyId } from '../inline-text-utils';
 
 const STUDIO_TOOL_CONTEXT = {
     userId: 'studio-user',
@@ -120,6 +122,35 @@ export function useStudioEditController(ui: any) {
     const [isSignComposerOpen, setSignComposerOpen] = useState(false);
     const [annotateColor, setAnnotateColor] = useState('#fff176');
     const [isFormsComposerOpen, setFormsComposerOpen] = useState(false);
+    const [watermarkOptions, setWatermarkOptions] = useState<{
+        text: string;
+        color: string;
+        fontSize: number;
+        fontFamily: FontFamilyId;
+        fontWeight: 'normal' | 'bold';
+        fontStyle: 'normal' | 'italic';
+        opacity: number;
+        rotation: number;
+        repeatEnabled: boolean;
+        repeatCols: number;
+        repeatRows: number;
+        repeatGapX: number;
+        repeatGapY: number;
+    }>({
+        text: 'CONFIDENTIAL',
+        color: '#64748b',
+        fontSize: 30,
+        fontFamily: 'sora',
+        fontWeight: 'bold',
+        fontStyle: 'normal',
+        opacity: 0.25,
+        rotation: -30,
+        repeatEnabled: true,
+        repeatCols: 3,
+        repeatRows: 4,
+        repeatGapX: 0.2,
+        repeatGapY: 0.16,
+    });
     const [protectOptions, setProtectOptions] = useState<Record<string, unknown>>({
         permissionsOnly: true,
         userPassword: '',
@@ -394,6 +425,29 @@ export function useStudioEditController(ui: any) {
         setTextEditor(null);
     }, [elements, pushHistory, selectedElementId, textEditor]);
 
+    useEffect(() => {
+        if (!selectedElementId) return;
+        const selected = elementsRef.current.find((item): item is WatermarkElement => (
+            item.id === selectedElementId && item.type === 'watermark'
+        ));
+        if (!selected) return;
+        setWatermarkOptions({
+            text: selected.text,
+            color: selected.color,
+            fontSize: selected.fontSize,
+            fontFamily: selected.fontFamily,
+            fontWeight: selected.fontWeight,
+            fontStyle: selected.fontStyle,
+            opacity: selected.opacity,
+            rotation: selected.rotation,
+            repeatEnabled: selected.repeatEnabled,
+            repeatCols: selected.repeatCols,
+            repeatRows: selected.repeatRows,
+            repeatGapX: selected.repeatGapX,
+            repeatGapY: selected.repeatGapY,
+        });
+    }, [selectedElementId, elements]);
+
     const applyChanges = async () => {
         if (!preview) return;
         const elementsToApply = elementsRef.current;
@@ -663,6 +717,8 @@ export function useStudioEditController(ui: any) {
                     selectTool('text');
                 } else if (key === 'a') {
                     selectTool('annotate');
+                } else if (key === 'w') {
+                    selectTool('watermark');
                 }
             }
         };
@@ -686,6 +742,7 @@ export function useStudioEditController(ui: any) {
         isSelectMode, setIsSelectMode,
         textSelectionMode, setTextSelectionMode,
         annotateColor, setAnnotateColor,
+        watermarkOptions, setWatermarkOptions,
         applyToSelection, setApplyToSelection,
         hasDirtyChanges, canApplyToSelection,
         applyChanges, undoLastSave, redoLastSave,

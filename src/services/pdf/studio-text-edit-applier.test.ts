@@ -646,3 +646,35 @@ test('fixture taxonomy matrix keeps expected true-replace and fallback behavior'
     }
   }
 });
+
+test('applyStudioTextEditsToPdfBytes applies watermark elements with repeat safely', async () => {
+  const sourceBytes = await createBlankPdfBytes();
+  const result = await applyStudioTextEditsToPdfBytes({
+    sourceBytes,
+    pageIndex: 0,
+    elements: [{
+      id: 'wm-repeat',
+      type: 'watermark',
+      x: 0.12,
+      y: 0.18,
+      w: 0.22,
+      h: 0.08,
+      text: 'DRAFT',
+      color: '#666666',
+      fontSize: 26,
+      fontFamily: 'sora',
+      fontWeight: 'bold',
+      fontStyle: 'normal',
+      opacity: 0.2,
+      rotation: -35,
+      repeatEnabled: true,
+      repeatCols: 3,
+      repeatRows: 3,
+      repeatGapX: 0.12,
+      repeatGapY: 0.1,
+    }],
+  });
+
+  assert.ok(result.outputBytes.byteLength > 0);
+  assert.equal(result.overflowDetected, false);
+});

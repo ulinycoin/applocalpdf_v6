@@ -181,3 +181,40 @@ test('normalizeAndValidateStudioEditRequest normalizes dropdown options for form
     assert.deepEqual(field.options, ['A', 'B']);
   }
 });
+
+test('normalizeAndValidateStudioEditRequest accepts watermark elements', () => {
+  const result = normalizeAndValidateStudioEditRequest({
+    pageIndex: 0,
+    elements: [{
+      id: 'wm-1',
+      type: 'watermark',
+      x: 0.1,
+      y: 0.2,
+      w: 0.3,
+      h: 0.07,
+      text: 'CONFIDENTIAL',
+      color: '#778899',
+      fontSize: 28,
+      fontFamily: 'sora',
+      fontWeight: 'bold',
+      fontStyle: 'normal',
+      opacity: 0.2,
+      rotation: -32,
+      repeatEnabled: true,
+      repeatCols: 4,
+      repeatRows: 3,
+      repeatGapX: 0.12,
+      repeatGapY: 0.1,
+    }],
+  });
+
+  const element = result.elements[0];
+  assert.equal(element.type, 'watermark');
+  if (element.type === 'watermark') {
+    assert.equal(element.text, 'CONFIDENTIAL');
+    assert.equal(element.repeatEnabled, true);
+    assert.equal(element.repeatCols, 4);
+    assert.equal(element.repeatRows, 3);
+    assert.equal(element.rotation, -32);
+  }
+});

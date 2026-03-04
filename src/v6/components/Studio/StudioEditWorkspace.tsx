@@ -6,12 +6,13 @@ import { StudioSignComposerModal } from './edit/StudioSignComposerModal';
 import { StudioAnnotateSettingsPanel } from './edit/StudioAnnotateSettingsPanel';
 import { StudioFormsQuickBar } from './edit/StudioFormsQuickBar';
 import { StudioProtectSettingsPanel } from './edit/StudioProtectSettingsPanel';
+import { StudioWatermarkSettingsPanel } from './edit/StudioWatermarkSettingsPanel';
 import { LinearIcon } from '../icons/linear-icon';
 import { detectStudioEditLocale, getStudioEditMessages } from './studio-edit-i18n';
 import { StudioPageEditor } from './StudioPageEditor';
 import { DraggableFloatingMenu } from './StudioDraggableFloatingMenu';
 import { useStudioEditZoom } from './edit/use-studio-edit-zoom';
-import type { FormFieldElement } from './editor-types';
+import type { FormFieldElement, WatermarkElement } from './editor-types';
 
 export function StudioEditWorkspace() {
     const locale = useMemo(() => detectStudioEditLocale(), []);
@@ -85,6 +86,24 @@ export function StudioEditWorkspace() {
     const protectUserPassword = typeof ctrl.protectOptions?.userPassword === 'string'
         ? ctrl.protectOptions.userPassword
         : '';
+
+    const selectedWatermark = ctrl.selectedElementId
+        ? ctrl.elements.find(
+            (element): element is WatermarkElement => element.id === ctrl.selectedElementId && element.type === 'watermark',
+        ) ?? null
+        : null;
+
+    const handleWatermarkOptionsChange = (next: typeof ctrl.watermarkOptions) => {
+        ctrl.setWatermarkOptions(next);
+        if (!selectedWatermark) return;
+        const patched = ctrl.elements.map((element) => (
+            element.id === selectedWatermark.id && element.type === 'watermark'
+                ? { ...element, ...next }
+                : element
+        ));
+        ctrl.setElements(patched);
+        ctrl.pushHistory(patched);
+    };
 
     if (!ctrl.preview) {
         return (
@@ -185,6 +204,14 @@ export function StudioEditWorkspace() {
                     />
                 </div>
             )}
+            {ctrl.tool === 'watermark' && (
+                <div style={{ padding: '0 16px 12px' }}>
+                    <StudioWatermarkSettingsPanel
+                        options={ctrl.watermarkOptions}
+                        onOptionsChange={handleWatermarkOptionsChange}
+                    />
+                </div>
+            )}
 
             {/* Main Workspace Area (Toolbar + Canvas) */}
             <div style={{ display: 'flex', flex: 1, overflow: 'hidden', position: 'relative' }}>
@@ -253,6 +280,7 @@ export function StudioEditWorkspace() {
                                 textSelectionMode={ctrl.textSelectionMode}
                                 onTextSelectionModeChange={ctrl.setTextSelectionMode}
                                 annotateColor={ctrl.annotateColor}
+                                watermarkOptions={ctrl.watermarkOptions}
                                 elements={ctrl.elements}
                                 onElementsChange={ctrl.setElements}
                                 onPushHistory={ctrl.pushHistory}
