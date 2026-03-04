@@ -21,6 +21,10 @@ export interface StudioEditMessages {
   annotatePen: string;
   annotatePenSize: string;
   annotateCustomColor: string;
+  shapeRectangle: string;
+  shapeLine: string;
+  shapeArrow: string;
+  shapeThickness: string;
   shapes: string;
   undo: string;
   redo: string;
@@ -74,6 +78,10 @@ const EN_MESSAGES: StudioEditMessages = {
   annotatePen: 'Pen',
   annotatePenSize: 'Pen size',
   annotateCustomColor: 'Custom',
+  shapeRectangle: 'Rectangle',
+  shapeLine: 'Line',
+  shapeArrow: 'Arrow',
+  shapeThickness: 'Thickness',
   shapes: 'Shapes',
   undo: 'Undo',
   redo: 'Redo',
@@ -128,6 +136,10 @@ const RU_MESSAGES: StudioEditMessages = {
   annotatePen: 'Перо',
   annotatePenSize: 'Толщина пера',
   annotateCustomColor: 'Свой цвет',
+  shapeRectangle: 'Прямоугольник',
+  shapeLine: 'Линия',
+  shapeArrow: 'Стрелка',
+  shapeThickness: 'Толщина',
   shapes: 'Фигуры',
   undo: 'Отменить',
   redo: 'Повторить',

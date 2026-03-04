@@ -3864,26 +3864,56 @@ textarea:focus-visible {
   gap: 10px;
 }
 
+.studio-edit-floating-top-panel {
+  position: fixed;
+  top: 72px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1100;
+  width: fit-content;
+  max-width: calc(100vw - 180px);
+  padding: 0 8px;
+  pointer-events: auto;
+}
+
+.studio-edit-floating-top-panel>* {
+  max-width: 100%;
+}
+
 .studio-annotate-quickbar {
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   gap: 10px;
   padding: 10px 12px;
   border-radius: 12px;
-  border: 1px solid rgba(183, 202, 219, 0.2);
-  background: rgba(15, 23, 42, 0.5);
+  border: 1px solid rgba(148, 163, 184, 0.45);
+  background: rgba(15, 23, 42, 0.86);
+  box-shadow: 0 10px 24px rgba(2, 6, 23, 0.35);
   flex-wrap: wrap;
 }
 
+@media (max-width: 900px) {
+  .studio-edit-floating-top-panel {
+    top: 64px;
+    max-width: calc(100vw - 20px);
+    width: calc(100vw - 20px);
+    padding: 0;
+  }
+
+  .studio-annotate-quickbar {
+    justify-content: center;
+  }
+}
+
 .studio-annotate-quickbar-label {
-  color: rgba(226, 232, 240, 0.9);
+  color: rgba(248, 250, 252, 0.98);
   font-weight: 600;
   white-space: nowrap;
 }
 
 .studio-annotate-quickbar-caption {
-  color: rgba(148, 163, 184, 0.95);
+  color: rgba(226, 232, 240, 0.92);
   font-size: 0.8rem;
   white-space: nowrap;
 }
@@ -3902,6 +3932,9 @@ textarea:focus-visible {
 }
 
 .studio-annotate-mode-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   border: 1px solid rgba(148, 163, 184, 0.26);
   background: rgba(2, 6, 23, 0.7);
   color: #e2e8f0;
@@ -3947,7 +3980,7 @@ textarea:focus-visible {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  color: rgba(226, 232, 240, 0.9);
+  color: rgba(248, 250, 252, 0.92);
   font-size: 0.8rem;
   font-weight: 600;
 }

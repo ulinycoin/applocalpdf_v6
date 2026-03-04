@@ -3,6 +3,7 @@ import { FontFamilyId } from './inline-text-utils';
 
 export type TextLayerSpan = WorkerPdfTextLayerSpan;
 export type EditorToolId = 'text' | 'sign' | 'annotate' | 'whiteout' | 'shapes' | 'forms' | 'watermark' | 'protect';
+export type ShapePreset = 'rectangle' | 'line' | 'arrow';
 export type TextAlignId = 'left' | 'center' | 'right';
 export type InlineUiState = 'idle' | 'hover' | 'selected' | 'editing' | 'saving' | 'saved' | 'error';
 
@@ -105,6 +106,8 @@ export type EditElement = TextElement | StrokeElement | RectElement | ImageEleme
 export interface RectDraft {
     startX: number;
     startY: number;
+    endX: number;
+    endY: number;
     x: number;
     y: number;
     w: number;

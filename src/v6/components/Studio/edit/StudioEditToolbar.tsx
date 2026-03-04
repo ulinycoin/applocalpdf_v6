@@ -36,13 +36,6 @@ export function StudioEditToolbar({ ui, tool, onSelectTool }: StudioEditToolbarP
             </button>
             <div style={{ width: 24, height: 1, background: 'rgba(255,255,255,0.1)', margin: '4px auto' }} />
             <button
-                className={`studio-edit-tool-btn ${tool === 'shapes' ? 'active' : ''}`}
-                onClick={() => onSelectTool('shapes')}
-                title={ui.shapes}
-            >
-                <LinearIcon name="shape" size={22} />
-            </button>
-            <button
                 className={`studio-edit-tool-btn ${tool === 'whiteout' ? 'active' : ''}`}
                 onClick={() => onSelectTool('whiteout')}
                 title={ui.whiteout}

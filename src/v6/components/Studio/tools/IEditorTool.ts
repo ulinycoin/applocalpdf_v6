@@ -6,7 +6,8 @@ import type {
     StrokeDraft,
     TextLayerSpan,
     TextEditorState,
-    EditorToolId
+    EditorToolId,
+    ShapePreset,
 } from '../editor-types';
 import type { FontFamilyId } from '../inline-text-utils';
 
@@ -36,8 +37,11 @@ export interface ToolContext {
     isPointerDown: boolean;
     setIsPointerDown: (val: boolean) => void;
     annotateColor: string;
-    annotateMode: 'highlight' | 'pen';
+    annotateMode: 'highlight' | 'pen' | 'shapes';
     annotateStrokeWidth: number;
+    shapePreset: ShapePreset;
+    shapeColor: string;
+    shapeStrokeWidth: number;
     watermarkOptions: {
         text: string;
         color: string;

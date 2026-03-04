@@ -11,14 +11,91 @@ export const AnnotateTool: IEditorTool = {
     onPointerDown: (ctx: ToolContext, _event: React.PointerEvent, { x, y }: Point) => {
         if (ctx.textEditor) ctx.commitTextEditor();
         ctx.setIsPointerDown(true);
+        if (ctx.annotateMode === 'shapes') {
+            ctx.setDraftRect({ startX: x, startY: y, endX: x, endY: y, x, y, w: 0, h: 0 });
+            return;
+        }
         ctx.setDraftStroke({ points: [x, y] });
     },
     onPointerMove: (ctx: ToolContext, _event: React.PointerEvent, { x, y }: Point) => {
         if (!ctx.isPointerDown) return;
+        if (ctx.annotateMode === 'shapes') {
+            ctx.setDraftRect(prev => prev ? {
+                ...prev,
+                endX: x,
+                endY: y,
+                x: Math.min(prev.startX, x),
+                y: Math.min(prev.startY, y),
+                w: Math.abs(x - prev.startX),
+                h: Math.abs(y - prev.startY),
+            } : null);
+            return;
+        }
         ctx.setDraftStroke(prev => prev ? { points: [...prev.points, x, y] } : null);
     },
     onPointerUp: (ctx: ToolContext, _event: React.PointerEvent, { x, y }: Point) => {
         ctx.setIsPointerDown(false);
+        if (ctx.annotateMode === 'shapes') {
+            const draftRect = ctx.draftRect;
+            if (!draftRect) {
+                ctx.setDraftRect(null);
+                return;
+            }
+            if (ctx.shapePreset === 'rectangle') {
+                if (draftRect.w > 0.002 && draftRect.h > 0.002) {
+                    ctx.applyElements([...ctx.elements, {
+                        id: crypto.randomUUID(),
+                        type: 'rect',
+                        x: draftRect.x,
+                        y: draftRect.y,
+                        w: draftRect.w,
+                        h: draftRect.h,
+                        fill: 'transparent',
+                        stroke: ctx.shapeColor,
+                        strokeWidth: ctx.shapeStrokeWidth,
+                        opacity: 1,
+                    }]);
+                }
+            } else {
+                const sx = draftRect.startX;
+                const sy = draftRect.startY;
+                const ex = draftRect.endX;
+                const ey = draftRect.endY;
+                const dx = ex - sx;
+                const dy = ey - sy;
+                const len = Math.hypot(dx, dy);
+                if (len > 0.002) {
+                    const points: number[] = [sx, sy, ex, ey];
+                    if (ctx.shapePreset === 'arrow') {
+                        const ux = dx / len;
+                        const uy = dy / len;
+                        const px = -uy;
+                        const py = ux;
+                        const head = Math.min(0.045, Math.max(0.018, len * 0.24));
+                        const wing = head * 0.62;
+                        points.push(
+                            ex - ux * head + px * wing,
+                            ey - uy * head + py * wing,
+                            ex,
+                            ey,
+                            ex - ux * head - px * wing,
+                            ey - uy * head - py * wing,
+                        );
+                    }
+                    ctx.applyElements([...ctx.elements, {
+                        id: crypto.randomUUID(),
+                        type: 'stroke',
+                        points,
+                        color: ctx.shapeColor,
+                        width: ctx.shapeStrokeWidth,
+                        opacity: 1,
+                    }]);
+                }
+            }
+            ctx.setDraftRect(null);
+            ctx.setDraftStroke(null);
+            return;
+        }
         const draft = ctx.draftStroke;
         if (draft && draft.points.length >= 4) {
             if (ctx.annotateMode === 'pen') {
@@ -66,5 +143,6 @@ export const AnnotateTool: IEditorTool = {
             }]);
         }
         ctx.setDraftStroke(null);
+        ctx.setDraftRect(null);
     }
 };

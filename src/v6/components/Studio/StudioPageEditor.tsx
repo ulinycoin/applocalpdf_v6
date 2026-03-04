@@ -10,6 +10,7 @@ import { clamp01, getStrokeBounds, moveStrokePoints } from '../../utils/studio-e
 import {
     EditElement,
     ImageElement,
+    ShapePreset,
     TextElement,
     WatermarkElement,
     RectDraft,
@@ -45,8 +46,11 @@ export interface StudioPageEditorProps {
     textSelectionMode?: 'line' | 'word';
     onTextSelectionModeChange?: (_mode: 'line' | 'word') => void;
     annotateColor?: string;
-    annotateMode?: 'highlight' | 'pen';
+    annotateMode?: 'highlight' | 'pen' | 'shapes';
     annotateStrokeWidth?: number;
+    shapePreset?: ShapePreset;
+    shapeColor?: string;
+    shapeStrokeWidth?: number;
     watermarkOptions?: {
         text: string;
         color: string;
@@ -89,6 +93,9 @@ export function StudioPageEditor({
     annotateColor = '#fff176',
     annotateMode = 'highlight',
     annotateStrokeWidth = 5,
+    shapePreset = 'rectangle',
+    shapeColor = '#2563eb',
+    shapeStrokeWidth = 2,
     watermarkOptions = {
         text: 'CONFIDENTIAL',
         color: '#64748b',
@@ -193,6 +200,9 @@ export function StudioPageEditor({
         annotateColor,
         annotateMode,
         annotateStrokeWidth,
+        shapePreset,
+        shapeColor,
+        shapeStrokeWidth,
         watermarkOptions,
     });
 
@@ -780,11 +790,58 @@ export function StudioPageEditor({
 
             {/* Draw Drafts */}
             {draftRect && (
-                <div style={{
-                    position: 'absolute', left: `${draftRect.x * 100}%`, top: `${draftRect.y * 100}%`,
-                    width: `${draftRect.w * 100}%`, height: `${draftRect.h * 100}%`,
-                    border: '1px dashed #2563eb'
-                }} />
+                activeTool === 'annotate' && annotateMode === 'shapes' && shapePreset !== 'rectangle'
+                    ? (
+                        <svg
+                            style={{ position: 'absolute', inset: 0, pointerEvents: 'none', overflow: 'visible' }}
+                            width={width}
+                            height={height}
+                            viewBox={`0 0 ${width} ${height}`}
+                        >
+                            {(() => {
+                                const sx = draftRect.startX * width;
+                                const sy = draftRect.startY * height;
+                                const ex = draftRect.endX * width;
+                                const ey = draftRect.endY * height;
+                                const dx = ex - sx;
+                                const dy = ey - sy;
+                                const len = Math.hypot(dx, dy);
+                                if (len < 1) return null;
+                                const points: Array<[number, number]> = [[sx, sy], [ex, ey]];
+                                if (shapePreset === 'arrow') {
+                                    const ux = dx / len;
+                                    const uy = dy / len;
+                                    const px = -uy;
+                                    const py = ux;
+                                    const head = Math.min(36, Math.max(14, len * 0.24));
+                                    const wing = head * 0.62;
+                                    points.push(
+                                        [ex - ux * head + px * wing, ey - uy * head + py * wing],
+                                        [ex, ey],
+                                        [ex - ux * head - px * wing, ey - uy * head - py * wing],
+                                    );
+                                }
+                                return (
+                                    <polyline
+                                        points={points.map(([x, y]) => `${x},${y}`).join(' ')}
+                                        fill="none"
+                                        stroke={shapeColor}
+                                        strokeWidth={shapeStrokeWidth}
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        strokeOpacity={0.9}
+                                    />
+                                );
+                            })()}
+                        </svg>
+                    )
+                    : (
+                        <div style={{
+                            position: 'absolute', left: `${draftRect.x * 100}%`, top: `${draftRect.y * 100}%`,
+                            width: `${draftRect.w * 100}%`, height: `${draftRect.h * 100}%`,
+                            border: `1px dashed ${activeTool === 'annotate' && annotateMode === 'shapes' ? shapeColor : '#2563eb'}`
+                        }} />
+                    )
             )}
             {draftStroke && draftStroke.points.length >= 4 && (
                 <svg

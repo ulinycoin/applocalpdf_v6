@@ -21,7 +21,9 @@ export function StudioEditWorkspace() {
     const ctrl = useStudioEditController(ui);
     const zoom = useStudioEditZoom(ctrl.runId || 'unknown', 1);
     const imageRef = useRef<HTMLImageElement | null>(null);
+    const surfaceRef = useRef<HTMLDivElement | null>(null);
     const [canvasSize, setCanvasSize] = useState<{ width: number; height: number }>({ width: 620, height: 840 });
+    const [floatingPanelLayout, setFloatingPanelLayout] = useState<{ left: number; width: number } | null>(null);
 
     useEffect(() => {
         if (!ctrl.message) {
@@ -64,6 +66,52 @@ export function StudioEditWorkspace() {
         };
         img.src = url;
     }, [ctrl.preview?.page.thumbnailUrl]);
+
+    useEffect(() => {
+        let frameId = 0;
+        const refreshLayout = () => {
+            if (frameId) {
+                window.cancelAnimationFrame(frameId);
+            }
+            frameId = window.requestAnimationFrame(() => {
+                const surfaceEl = surfaceRef.current;
+                if (!surfaceEl) {
+                    setFloatingPanelLayout(null);
+                    return;
+                }
+                const rect = surfaceEl.getBoundingClientRect();
+                const viewportWidth = window.innerWidth || document.documentElement.clientWidth || 0;
+                const safeViewportWidth = Math.max(0, viewportWidth - 24);
+                const desiredWidth = Math.max(280, Math.min(rect.width, safeViewportWidth));
+                const centerX = rect.left + rect.width / 2;
+                const minCenter = desiredWidth / 2 + 12;
+                const maxCenter = Math.max(minCenter, viewportWidth - desiredWidth / 2 - 12);
+                const clampedCenter = Math.min(maxCenter, Math.max(minCenter, centerX));
+                setFloatingPanelLayout((prev) => {
+                    if (prev && Math.abs(prev.left - clampedCenter) < 0.5 && Math.abs(prev.width - desiredWidth) < 0.5) {
+                        return prev;
+                    }
+                    return { left: clampedCenter, width: desiredWidth };
+                });
+            });
+        };
+
+        refreshLayout();
+
+        const onResize = () => refreshLayout();
+        window.addEventListener('resize', onResize);
+        const scrollHost = zoom.containerRef.current;
+        const onScroll = () => refreshLayout();
+        scrollHost?.addEventListener('scroll', onScroll, { passive: true });
+
+        return () => {
+            if (frameId) {
+                window.cancelAnimationFrame(frameId);
+            }
+            window.removeEventListener('resize', onResize);
+            scrollHost?.removeEventListener('scroll', onScroll);
+        };
+    }, [zoom.containerRef, zoom.zoomLevel, canvasSize.width, canvasSize.height, ctrl.tool, ctrl.preview?.page.id]);
 
     const selectedFormField = ctrl.selectedElementId
         ? ctrl.elements.find(
@@ -124,6 +172,67 @@ export function StudioEditWorkspace() {
     // Calculation for canvas wrapper sizing
     const scaledWidth = canvasSize.width * zoom.zoomLevel;
     const scaledHeight = canvasSize.height * zoom.zoomLevel;
+    const topSettingsPanel = ctrl.tool === 'forms'
+        ? (
+            <StudioFormsQuickBar
+                onAddField={ctrl.addFormField}
+                selectedField={selectedFormField}
+                onUpdateSelectedField={updateSelectedFormField}
+                canvasWidth={canvasSize.width}
+                canvasHeight={canvasSize.height}
+            />
+        )
+        : ctrl.tool === 'protect'
+            ? (
+                <StudioProtectSettingsPanel
+                    ui={ui}
+                    onOptionsChange={ctrl.setProtectOptions}
+                />
+            )
+            : ctrl.tool === 'watermark'
+                ? (
+                    <StudioWatermarkSettingsPanel
+                        options={ctrl.watermarkOptions}
+                        onOptionsChange={handleWatermarkOptionsChange}
+                    />
+                )
+                : ctrl.tool === 'annotate'
+                    ? (
+                        <StudioAnnotateSettingsPanel
+                            title={ui.annotate}
+                            highlightLabel={ui.annotateHighlight}
+                            markerLabel={ui.annotateMarker}
+                            penLabel={ui.annotatePen}
+                            shapesLabel={ui.shapes}
+                            shapeLabel={ui.shapeRectangle}
+                            lineLabel={ui.shapeLine}
+                            arrowLabel={ui.shapeArrow}
+                            shapeThicknessLabel={ui.shapeThickness}
+                            penSizeLabel={ui.annotatePenSize}
+                            customColorLabel={ui.annotateCustomColor}
+                            color={ctrl.annotateMode === 'shapes' ? ctrl.shapeColor : ctrl.annotateColor}
+                            mode={ctrl.annotateMode}
+                            shapePreset={ctrl.shapePreset}
+                            strokeWidth={ctrl.annotateMode === 'shapes' ? ctrl.shapeStrokeWidth : ctrl.annotateStrokeWidth}
+                            onColorChange={(next) => {
+                                if (ctrl.annotateMode === 'shapes') {
+                                    ctrl.setShapeColor(next);
+                                    return;
+                                }
+                                ctrl.setAnnotateColor(next);
+                            }}
+                            onModeChange={ctrl.setAnnotateMode}
+                            onShapePresetChange={ctrl.setShapePreset}
+                            onStrokeWidthChange={(next) => {
+                                if (ctrl.annotateMode === 'shapes') {
+                                    ctrl.setShapeStrokeWidth(next);
+                                    return;
+                                }
+                                ctrl.setAnnotateStrokeWidth(next);
+                            }}
+                        />
+                    )
+                    : null;
 
     return (
         <section className="studio-edit-shell" translate="no" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
@@ -185,52 +294,6 @@ export function StudioEditWorkspace() {
 
                 </div>
             </div>
-            {ctrl.tool === 'forms' && (
-                <div style={{ padding: '0 16px 12px' }}>
-                    <StudioFormsQuickBar
-                        onAddField={ctrl.addFormField}
-                        selectedField={selectedFormField}
-                        onUpdateSelectedField={updateSelectedFormField}
-                        canvasWidth={canvasSize.width}
-                        canvasHeight={canvasSize.height}
-                    />
-                </div>
-            )}
-            {ctrl.tool === 'protect' && (
-                <div style={{ padding: '0 16px 12px' }}>
-                    <StudioProtectSettingsPanel
-                        ui={ui}
-                        onOptionsChange={ctrl.setProtectOptions}
-                    />
-                </div>
-            )}
-            {ctrl.tool === 'watermark' && (
-                <div style={{ padding: '0 16px 12px' }}>
-                    <StudioWatermarkSettingsPanel
-                        options={ctrl.watermarkOptions}
-                        onOptionsChange={handleWatermarkOptionsChange}
-                    />
-                </div>
-            )}
-            {ctrl.tool === 'annotate' && (
-                <div style={{ padding: '0 16px 12px' }}>
-                    <StudioAnnotateSettingsPanel
-                        title={ui.annotate}
-                        highlightLabel={ui.annotateHighlight}
-                        markerLabel={ui.annotateMarker}
-                        penLabel={ui.annotatePen}
-                        penSizeLabel={ui.annotatePenSize}
-                        customColorLabel={ui.annotateCustomColor}
-                        color={ctrl.annotateColor}
-                        mode={ctrl.annotateMode}
-                        strokeWidth={ctrl.annotateStrokeWidth}
-                        onColorChange={ctrl.setAnnotateColor}
-                        onModeChange={ctrl.setAnnotateMode}
-                        onStrokeWidthChange={ctrl.setAnnotateStrokeWidth}
-                    />
-                </div>
-            )}
-
             {/* Main Workspace Area (Toolbar + Canvas) */}
             <div style={{ display: 'flex', flex: 1, overflow: 'hidden', position: 'relative' }}>
                 <div style={{ padding: '0 16px', zIndex: 10 }}>
@@ -257,6 +320,7 @@ export function StudioEditWorkspace() {
                         padding: '40px' // Add some padding so we can scroll past edges
                     }}>
                         <div
+                            ref={surfaceRef}
                             className="studio-edit-canvas-surface"
                             style={{
                                 width: canvasSize.width,
@@ -291,7 +355,10 @@ export function StudioEditWorkspace() {
                                 onTextSelectionModeChange={ctrl.setTextSelectionMode}
                                 annotateColor={ctrl.annotateColor}
                                 annotateMode={ctrl.annotateMode}
-                                annotateStrokeWidth={ctrl.annotateStrokeWidth}
+                                annotateStrokeWidth={ctrl.annotateMode === 'shapes' ? ctrl.shapeStrokeWidth : ctrl.annotateStrokeWidth}
+                                shapePreset={ctrl.shapePreset}
+                                shapeColor={ctrl.shapeColor}
+                                shapeStrokeWidth={ctrl.shapeStrokeWidth}
                                 watermarkOptions={ctrl.watermarkOptions}
                                 elements={ctrl.elements}
                                 onElementsChange={ctrl.setElements}
@@ -363,6 +430,18 @@ export function StudioEditWorkspace() {
                             ? (ctrl.tool === 'protect' ? 'Protecting...' : ui.saving)
                             : (ctrl.tool === 'protect' ? ui.protect : ui.save)}
                     </button>
+                </div>,
+                document.body
+            )}
+
+            {topSettingsPanel && typeof document !== 'undefined' && createPortal(
+                <div
+                    className="studio-edit-floating-top-panel"
+                    style={floatingPanelLayout
+                        ? { left: `${floatingPanelLayout.left}px`, width: `${floatingPanelLayout.width}px`, transform: 'translateX(-50%)' }
+                        : undefined}
+                >
+                    {topSettingsPanel}
                 </div>,
                 document.body
             )}

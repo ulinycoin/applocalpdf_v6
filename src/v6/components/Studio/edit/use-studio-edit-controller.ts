@@ -18,6 +18,7 @@ import {
     EditElement,
     FormFieldElement,
     ImageElement,
+    ShapePreset,
     TextElement,
     WatermarkElement,
     TextEditorState,
@@ -121,8 +122,11 @@ export function useStudioEditController(ui: any) {
     const [applyToSelection, setApplyToSelection] = useState(false);
     const [isSignComposerOpen, setSignComposerOpen] = useState(false);
     const [annotateColor, setAnnotateColor] = useState('#fff176');
-    const [annotateMode, setAnnotateMode] = useState<'highlight' | 'pen'>('highlight');
+    const [annotateMode, setAnnotateMode] = useState<'highlight' | 'pen' | 'shapes'>('highlight');
     const [annotateStrokeWidth, setAnnotateStrokeWidth] = useState(5);
+    const [shapePreset, setShapePreset] = useState<ShapePreset>('rectangle');
+    const [shapeColor, setShapeColor] = useState('#2563eb');
+    const [shapeStrokeWidth, setShapeStrokeWidth] = useState(2);
     const [isFormsComposerOpen, setFormsComposerOpen] = useState(false);
     const [watermarkOptions, setWatermarkOptions] = useState<{
         text: string;
@@ -189,8 +193,14 @@ export function useStudioEditController(ui: any) {
     const canApplyToSelection = selectedPages.length > 1;
 
     useEffect(() => {
-        if (editSession?.activeTool && editSession.activeTool !== tool) setTool(editSession.activeTool);
-    }, [editSession?.activeTool, tool]);
+        if (!editSession?.activeTool) return;
+        if (editSession.activeTool === 'shapes') {
+            setTool('annotate');
+            updateEditSessionTool('annotate');
+            return;
+        }
+        if (editSession.activeTool !== tool) setTool(editSession.activeTool);
+    }, [editSession?.activeTool, tool, updateEditSessionTool]);
 
     useEffect(() => {
         if (!preview) return;
@@ -211,12 +221,13 @@ export function useStudioEditController(ui: any) {
     const [sessionRunId] = useState(() => crypto.randomUUID());
 
     const selectTool = useCallback((nextTool: StudioEditToolId, method: 'ui' | 'shortcut' = 'ui') => {
-        setTool(nextTool);
-        updateEditSessionTool(nextTool);
-        if (nextTool === 'sign') {
+        const resolvedTool: StudioEditToolId = nextTool === 'shapes' ? 'annotate' : nextTool;
+        setTool(resolvedTool);
+        updateEditSessionTool(resolvedTool);
+        if (resolvedTool === 'sign') {
             setSignComposerOpen(true);
         }
-        runtime.telemetry.track({ type: 'STUDIO_EDIT_TOOL_SELECTED', runId: sessionRunId, toolId: 'studio.edit', tool: nextTool, method });
+        runtime.telemetry.track({ type: 'STUDIO_EDIT_TOOL_SELECTED', runId: sessionRunId, toolId: 'studio.edit', tool: resolvedTool, method });
     }, [updateEditSessionTool, runtime, sessionRunId]);
 
     const hasDirtyChanges = elements.length > 0 || historyIndex > 0 || Boolean(textEditor && textEditor.value !== textEditor.initialValue);
@@ -746,6 +757,9 @@ export function useStudioEditController(ui: any) {
         annotateColor, setAnnotateColor,
         annotateMode, setAnnotateMode,
         annotateStrokeWidth, setAnnotateStrokeWidth,
+        shapePreset, setShapePreset,
+        shapeColor, setShapeColor,
+        shapeStrokeWidth, setShapeStrokeWidth,
         watermarkOptions, setWatermarkOptions,
         applyToSelection, setApplyToSelection,
         hasDirtyChanges, canApplyToSelection,
