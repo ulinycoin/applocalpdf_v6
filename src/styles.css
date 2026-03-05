@@ -3868,7 +3868,7 @@ textarea:focus-visible {
 
 .studio-edit-floating-top-panel {
   position: fixed;
-  top: 72px;
+  top: 80px;
   left: 50%;
   transform: translateX(-50%);
   z-index: 1100;
@@ -3897,7 +3897,7 @@ textarea:focus-visible {
 
 @media (max-width: 900px) {
   .studio-edit-floating-top-panel {
-    top: 64px;
+    top: 72px;
     max-width: calc(100vw - 20px);
     width: calc(100vw - 20px);
     padding: 0;

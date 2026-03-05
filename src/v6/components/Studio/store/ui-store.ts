@@ -23,6 +23,8 @@ export interface UIState {
     setOperationScope: (scope: StudioOperationScope) => void;
     setStudioViewport: (scale: number, position: { x: number; y: number }, size?: { width: number; height: number }) => void;
     setGridColumns: (columns: 3 | 5) => void;
+    whiteoutColor: string;
+    setWhiteoutColor: (color: string) => void;
     clearUI: () => void;
 }
 
@@ -38,6 +40,7 @@ export const useUIStore = create<UIState>((set) => ({
     studioViewPosition: { x: 0, y: 0 },
     gridColumns: 5,
     viewportSize: { width: window.innerWidth, height: window.innerHeight },
+    whiteoutColor: '#ffffff',
 
     setSelection: (selection) => set((state) => ({
         selection,
@@ -55,6 +58,7 @@ export const useUIStore = create<UIState>((set) => ({
         viewportSize: size ?? state.viewportSize
     })),
     setGridColumns: (columns) => set({ gridColumns: columns }),
+    setWhiteoutColor: (color) => set({ whiteoutColor: color }),
     clearUI: () => set({
         selection: [],
         requestedInlineTool: null,

@@ -74,7 +74,7 @@ test.describe('Studio telemetry P2', () => {
       await expect(textarea).toBeVisible({ timeout: 10000 });
       await textarea.fill('TELEMETRY UPDATED');
       await page.getByTestId('studio-edit-save-btn').click();
-      await expect(page.getByText(/Changes applied|Изменения сохранены/i)).toBeVisible({ timeout: 15000 });
+      await expect(page.getByText(/Changes applied/i)).toBeVisible({ timeout: 15000 });
 
       const saveActions = await page.waitForFunction(() => {
         const api = (window as any).__LOCALPDF_V6_TEST_API;

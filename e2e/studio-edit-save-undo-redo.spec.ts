@@ -87,7 +87,7 @@ test.describe('Studio save undo/redo P1', () => {
       }, initialFileId, { timeout: 90000 });
       const savedFileId = await savedFileIdHandle.jsonValue() as string;
 
-      await page.getByRole('button', { name: /Undo Save|Отменить сохранение/i }).click();
+      await page.getByRole('button', { name: /Undo Save/i }).click();
       await page.waitForFunction((expected) => {
         const store = (window as Window & { __LOCALPDF_STUDIO_STORE__?: { getState: () => {
           documents: Array<{ pages: Array<{ fileId: string }> }>;
@@ -95,7 +95,7 @@ test.describe('Studio save undo/redo P1', () => {
         return store?.getState().documents[0]?.pages[0]?.fileId === expected;
       }, initialFileId, { timeout: 90000 });
 
-      await page.getByRole('button', { name: /Redo Save|Повторить сохранение/i }).click();
+      await page.getByRole('button', { name: /Redo Save/i }).click();
       await page.waitForFunction((expected) => {
         const store = (window as Window & { __LOCALPDF_STUDIO_STORE__?: { getState: () => {
           documents: Array<{ pages: Array<{ fileId: string }> }>;

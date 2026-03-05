@@ -37,6 +37,7 @@ import {
   Menu,
   Maximize,
   MoveHorizontal,
+  MoveVertical,
   PenTool,
   Highlighter,
   FileSignature
@@ -80,6 +81,7 @@ export type LinearIconName =
   | 'menu'
   | 'maximize'
   | 'move-horizontal'
+  | 'move-vertical'
   | 'signature'
   | 'highlighter'
   | 'pen-tool'
@@ -129,6 +131,7 @@ const iconMap: Record<LinearIconName, React.FC<any>> = {
   menu: Menu,
   maximize: Maximize,
   'move-horizontal': MoveHorizontal,
+  'move-vertical': MoveVertical,
   signature: FileSignature,
   highlighter: Highlighter,
   'pen-tool': PenTool,

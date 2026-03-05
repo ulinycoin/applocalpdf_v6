@@ -80,7 +80,7 @@ test.describe('Studio inline text edit', () => {
       await textarea.fill('INLINE UPDATED');
       await textarea.press('Enter');
 
-      await expect(page.getByText(/Changes applied|Изменения сохранены/i)).toBeVisible({ timeout: 15000 });
+      await expect(page.getByText(/Changes applied/i)).toBeVisible({ timeout: 15000 });
 
       await page.locator('.studio-edit-text').first().click();
       await expect(textarea).toBeVisible({ timeout: 10000 });
@@ -125,7 +125,7 @@ test.describe('Studio inline text edit', () => {
       const selectTextBtn = page.locator('.studio-edit-toolbar .studio-edit-tool-btn').first();
       await selectTextBtn.click();
       await expect(selectTextBtn).toHaveClass(/select-mode/);
-      await expect(page.getByText(/no text layer|текстовый слой/i)).toBeVisible({ timeout: 15000 });
+      await expect(page.getByText(/no text layer/i)).toBeVisible({ timeout: 15000 });
     } finally {
       safeDelete(pdfPath);
     }

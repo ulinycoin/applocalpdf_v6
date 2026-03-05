@@ -89,6 +89,8 @@ export function useStudioEditController(ui: any) {
     const clearEditSession = useStudioStore((s) => s.clearEditSession);
     const updateEditSessionTool = useStudioStore((s) => s.updateEditSessionTool);
     const syncEditSessionTarget = useStudioStore((s) => s.syncEditSessionTarget);
+    const whiteoutColor = useStudioStore((s) => s.whiteoutColor);
+    const setWhiteoutColor = useStudioStore((s) => s.setWhiteoutColor);
 
     const saveUndoStack = useStudioStore((s) => s.saveUndoStack);
     const saveRedoStack = useStudioStore((s) => s.saveRedoStack);
@@ -128,6 +130,25 @@ export function useStudioEditController(ui: any) {
     const [shapeColor, setShapeColor] = useState('#2563eb');
     const [shapeStrokeWidth, setShapeStrokeWidth] = useState(2);
     const [isFormsComposerOpen, setFormsComposerOpen] = useState(false);
+    const [textStyle, setTextStyle] = useState<{
+        fontFamily: FontFamilyId;
+        fontSize: number;
+        fontWeight: 'normal' | 'bold';
+        fontStyle: 'normal' | 'italic';
+        lineHeight: number;
+        letterSpacing: number;
+        color: string;
+        backgroundColor: string;
+    }>({
+        fontFamily: 'sora',
+        fontSize: 18,
+        fontWeight: 'normal',
+        fontStyle: 'normal',
+        lineHeight: 1.2,
+        letterSpacing: 0,
+        color: '#0f172a',
+        backgroundColor: '#ffffff'
+    });
     const [watermarkOptions, setWatermarkOptions] = useState<{
         text: string;
         color: string;
@@ -768,6 +789,10 @@ export function useStudioEditController(ui: any) {
         setSignComposerOpen,
         isFormsComposerOpen,
         setFormsComposerOpen,
+        whiteoutColor,
+        setWhiteoutColor,
+        textStyle,
+        setTextStyle,
         protectOptions,
         setProtectOptions,
         addTypedSignature,

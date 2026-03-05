@@ -42,6 +42,17 @@ export interface ToolContext {
     shapePreset: ShapePreset;
     shapeColor: string;
     shapeStrokeWidth: number;
+    whiteoutColor: string;
+    textStyle: {
+        fontFamily: FontFamilyId;
+        fontSize: number;
+        fontWeight: 'normal' | 'bold';
+        fontStyle: 'normal' | 'italic';
+        lineHeight: number;
+        letterSpacing: number;
+        color: string;
+        backgroundColor: string;
+    };
     watermarkOptions: {
         text: string;
         color: string;

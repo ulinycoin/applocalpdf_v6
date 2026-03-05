@@ -7,12 +7,15 @@ import { StudioAnnotateSettingsPanel } from './edit/StudioAnnotateSettingsPanel'
 import { StudioFormsQuickBar } from './edit/StudioFormsQuickBar';
 import { StudioProtectSettingsPanel } from './edit/StudioProtectSettingsPanel';
 import { StudioWatermarkSettingsPanel } from './edit/StudioWatermarkSettingsPanel';
+import { StudioWhiteoutSettingsPanel } from './edit/StudioWhiteoutSettingsPanel';
+import { StudioTextSettingsPanel } from './edit/StudioTextSettingsPanel';
 import { LinearIcon } from '../icons/linear-icon';
 import { detectStudioEditLocale, getStudioEditMessages } from './studio-edit-i18n';
 import { StudioPageEditor } from './StudioPageEditor';
 import { DraggableFloatingMenu } from './StudioDraggableFloatingMenu';
 import { useStudioEditZoom } from './edit/use-studio-edit-zoom';
 import type { FormFieldElement, WatermarkElement } from './editor-types';
+import type { FontFamilyId } from './inline-text-utils';
 
 export function StudioEditWorkspace() {
     const locale = useMemo(() => detectStudioEditLocale(), []);
@@ -172,67 +175,128 @@ export function StudioEditWorkspace() {
     // Calculation for canvas wrapper sizing
     const scaledWidth = canvasSize.width * zoom.zoomLevel;
     const scaledHeight = canvasSize.height * zoom.zoomLevel;
-    const topSettingsPanel = ctrl.tool === 'forms'
+    const selectedTextElement = ctrl.selectedElementId
+        ? ctrl.elements.find(e => e.id === ctrl.selectedElementId && e.type === 'text') as import('./editor-types').TextElement | undefined
+        : undefined;
+
+    const topSettingsPanel = ctrl.tool === 'text'
         ? (
-            <StudioFormsQuickBar
-                onAddField={ctrl.addFormField}
-                selectedField={selectedFormField}
-                onUpdateSelectedField={updateSelectedFormField}
-                canvasWidth={canvasSize.width}
-                canvasHeight={canvasSize.height}
+            <StudioTextSettingsPanel
+                title={ui.text}
+                fontFamilyLabel={ui.textFontFamily}
+                fontSizeLabel={ui.textFontSize}
+                textColorLabel={ui.textColor}
+                bgColorLabel={ui.textBackgroundColor}
+                fontFamily={selectedTextElement?.fontFamily ?? ctrl.textStyle.fontFamily}
+                fontSize={selectedTextElement?.fontSize ?? ctrl.textStyle.fontSize}
+                fontWeight={selectedTextElement?.fontWeight ?? ctrl.textStyle.fontWeight}
+                fontStyle={selectedTextElement?.fontStyle ?? ctrl.textStyle.fontStyle}
+                lineHeight={selectedTextElement?.lineHeight ?? ctrl.textStyle.lineHeight}
+                letterSpacing={selectedTextElement?.letterSpacing ?? ctrl.textStyle.letterSpacing}
+                color={selectedTextElement?.color ?? ctrl.textStyle.color}
+                backgroundColor={(() => {
+                    const bgId = `${ctrl.selectedElementId}_bg`;
+                    const bg = ctrl.elements.find(e => e.id === bgId && e.type === 'rect') as import('./editor-types').RectElement | undefined;
+                    return bg?.fill ?? ctrl.textStyle.backgroundColor;
+                })()}
+                onStyleChange={(patch) => {
+                    if (ctrl.selectedElementId) {
+                        ctrl.handleElementAction(ctrl.selectedElementId, 'update', patch);
+                        // If color/background changed, and it's color specifically, we might need to handle the bg link here.
+                        if (patch.backgroundColor) {
+                            const newFill = patch.backgroundColor as string;
+                            const bgId = `${ctrl.selectedElementId}_bg`;
+                            const next = ctrl.elements.map(e => e.id === bgId && e.type === 'rect' ? { ...e, fill: newFill } : e);
+                            ctrl.setElements(next);
+                        }
+                    } else {
+                        ctrl.setTextStyle({ ...ctrl.textStyle, ...patch });
+                    }
+                }}
+                onDelete={ctrl.selectedElementId ? () => {
+                    const bgId = `${ctrl.selectedElementId}_bg`;
+                    const hasBg = ctrl.elements.some(e => e.id === bgId);
+                    if (hasBg) {
+                        const next = ctrl.elements.filter(e => e.id !== ctrl.selectedElementId && e.id !== bgId);
+                        ctrl.setElements(next);
+                        ctrl.pushHistory(next);
+                        ctrl.setSelectedElementId(null);
+                    } else {
+                        ctrl.handleElementAction(ctrl.selectedElementId!, 'delete');
+                    }
+                } : undefined}
             />
         )
-        : ctrl.tool === 'protect'
+        : ctrl.tool === 'forms'
             ? (
-                <StudioProtectSettingsPanel
-                    ui={ui}
-                    onOptionsChange={ctrl.setProtectOptions}
+                <StudioFormsQuickBar
+                    onAddField={ctrl.addFormField}
+                    selectedField={selectedFormField}
+                    onUpdateSelectedField={updateSelectedFormField}
+                    canvasWidth={canvasSize.width}
+                    canvasHeight={canvasSize.height}
                 />
             )
-            : ctrl.tool === 'watermark'
+            : ctrl.tool === 'protect'
                 ? (
-                    <StudioWatermarkSettingsPanel
-                        options={ctrl.watermarkOptions}
-                        onOptionsChange={handleWatermarkOptionsChange}
+                    <StudioProtectSettingsPanel
+                        ui={ui}
+                        onOptionsChange={ctrl.setProtectOptions}
                     />
                 )
-                : ctrl.tool === 'annotate'
+                : ctrl.tool === 'watermark'
                     ? (
-                        <StudioAnnotateSettingsPanel
-                            title={ui.annotate}
-                            highlightLabel={ui.annotateHighlight}
-                            markerLabel={ui.annotateMarker}
-                            penLabel={ui.annotatePen}
-                            shapesLabel={ui.shapes}
-                            shapeLabel={ui.shapeRectangle}
-                            lineLabel={ui.shapeLine}
-                            arrowLabel={ui.shapeArrow}
-                            shapeThicknessLabel={ui.shapeThickness}
-                            penSizeLabel={ui.annotatePenSize}
-                            customColorLabel={ui.annotateCustomColor}
-                            color={ctrl.annotateMode === 'shapes' ? ctrl.shapeColor : ctrl.annotateColor}
-                            mode={ctrl.annotateMode}
-                            shapePreset={ctrl.shapePreset}
-                            strokeWidth={ctrl.annotateMode === 'shapes' ? ctrl.shapeStrokeWidth : ctrl.annotateStrokeWidth}
-                            onColorChange={(next) => {
-                                if (ctrl.annotateMode === 'shapes') {
-                                    ctrl.setShapeColor(next);
-                                    return;
-                                }
-                                ctrl.setAnnotateColor(next);
-                            }}
-                            onModeChange={ctrl.setAnnotateMode}
-                            onShapePresetChange={ctrl.setShapePreset}
-                            onStrokeWidthChange={(next) => {
-                                if (ctrl.annotateMode === 'shapes') {
-                                    ctrl.setShapeStrokeWidth(next);
-                                    return;
-                                }
-                                ctrl.setAnnotateStrokeWidth(next);
-                            }}
+                        <StudioWatermarkSettingsPanel
+                            options={ctrl.watermarkOptions}
+                            onOptionsChange={handleWatermarkOptionsChange}
                         />
                     )
-                    : null;
+                    : ctrl.tool === 'whiteout'
+                        ? (
+                            <StudioWhiteoutSettingsPanel
+                                title={ui.whiteout}
+                                customColorLabel={ui.whiteoutCustomColor}
+                                color={ctrl.whiteoutColor}
+                                onColorChange={ctrl.setWhiteoutColor}
+                            />
+                        )
+                        : ctrl.tool === 'annotate'
+                            ? (
+                                <StudioAnnotateSettingsPanel
+                                    title={ui.annotate}
+                                    highlightLabel={ui.annotateHighlight}
+                                    markerLabel={ui.annotateMarker}
+                                    penLabel={ui.annotatePen}
+                                    shapesLabel={ui.shapes}
+                                    shapeLabel={ui.shapeRectangle}
+                                    lineLabel={ui.shapeLine}
+                                    arrowLabel={ui.shapeArrow}
+                                    shapeThicknessLabel={ui.shapeThickness}
+                                    penSizeLabel={ui.annotatePenSize}
+                                    customColorLabel={ui.annotateCustomColor}
+                                    color={ctrl.annotateMode === 'shapes' ? ctrl.shapeColor : ctrl.annotateColor}
+                                    mode={ctrl.annotateMode}
+                                    shapePreset={ctrl.shapePreset}
+                                    strokeWidth={ctrl.annotateMode === 'shapes' ? ctrl.shapeStrokeWidth : ctrl.annotateStrokeWidth}
+                                    onColorChange={(next) => {
+                                        if (ctrl.annotateMode === 'shapes') {
+                                            ctrl.setShapeColor(next);
+                                            return;
+                                        }
+                                        ctrl.setAnnotateColor(next);
+                                    }}
+                                    onModeChange={ctrl.setAnnotateMode}
+                                    onShapePresetChange={ctrl.setShapePreset}
+                                    onStrokeWidthChange={(next) => {
+                                        if (ctrl.annotateMode === 'shapes') {
+                                            ctrl.setShapeStrokeWidth(next);
+                                            return;
+                                        }
+                                        ctrl.setAnnotateStrokeWidth(next);
+                                    }}
+                                />
+                            )
+                            : null;
 
     return (
         <section className="studio-edit-shell" translate="no" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
@@ -359,6 +423,7 @@ export function StudioEditWorkspace() {
                                 shapePreset={ctrl.shapePreset}
                                 shapeColor={ctrl.shapeColor}
                                 shapeStrokeWidth={ctrl.shapeStrokeWidth}
+                                whiteoutColor={ctrl.whiteoutColor}
                                 watermarkOptions={ctrl.watermarkOptions}
                                 elements={ctrl.elements}
                                 onElementsChange={ctrl.setElements}
@@ -379,22 +444,12 @@ export function StudioEditWorkspace() {
                                 }}
                             />
 
-                            {ctrl.selectedElementId && ctrl.textEditor?.id === ctrl.selectedElementId && ctrl.elements.find(e => e.id === ctrl.selectedElementId)?.type === 'text' && (
+                            {ctrl.selectedElementId && ctrl.textEditor?.id === ctrl.selectedElementId && ctrl.elements.find(e => e.id === ctrl.selectedElementId)?.type !== 'text' && (
                                 <DraggableFloatingMenu
                                     element={ctrl.elements.find(e => e.id === ctrl.selectedElementId)!}
                                     onUpdate={(patch) => ctrl.handleElementAction(ctrl.selectedElementId!, 'update', patch)}
                                     onDelete={() => ctrl.handleElementAction(ctrl.selectedElementId!, 'delete')}
                                     onDuplicate={() => ctrl.handleElementAction(ctrl.selectedElementId!, 'duplicate')}
-                                    onActivateMove={() => {
-                                        if (ctrl.textEditor) {
-                                            ctrl.commitTextEditor();
-                                        }
-                                    }}
-                                    onDeselect={() => {
-                                        if (ctrl.textEditor) ctrl.commitTextEditor();
-                                        ctrl.setSelectedElementId(null);
-                                        ctrl.pushHistory(ctrl.elements);
-                                    }}
                                 />
                             )}
                         </div>

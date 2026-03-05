@@ -7,6 +7,10 @@ export interface StudioEditMessages {
   switchToSelectTextMode: string;
   selectText: string;
   text: string;
+  textFontFamily: string;
+  textFontSize: string;
+  textColor: string;
+  textBackgroundColor: string;
   links: string;
   forms: string;
   watermark: string;
@@ -21,6 +25,7 @@ export interface StudioEditMessages {
   annotatePen: string;
   annotatePenSize: string;
   annotateCustomColor: string;
+  whiteoutCustomColor: string;
   shapeRectangle: string;
   shapeLine: string;
   shapeArrow: string;
@@ -64,6 +69,10 @@ const EN_MESSAGES: StudioEditMessages = {
   switchToSelectTextMode: 'Switch to Select Text Mode',
   selectText: 'Select Text',
   text: 'Text',
+  textFontFamily: 'Font',
+  textFontSize: 'Size',
+  textColor: 'Color',
+  textBackgroundColor: 'Background',
   links: 'Links',
   forms: 'Forms',
   watermark: 'Watermark',
@@ -78,6 +87,7 @@ const EN_MESSAGES: StudioEditMessages = {
   annotatePen: 'Pen',
   annotatePenSize: 'Pen size',
   annotateCustomColor: 'Custom',
+  whiteoutCustomColor: 'Custom color',
   shapeRectangle: 'Rectangle',
   shapeLine: 'Line',
   shapeArrow: 'Arrow',
@@ -116,6 +126,11 @@ const EN_MESSAGES: StudioEditMessages = {
 
 const RU_MESSAGES: StudioEditMessages = {
   ...EN_MESSAGES,
+  whiteoutCustomColor: 'Свой цвет',
+  textFontFamily: 'Шрифт',
+  textFontSize: 'Размер',
+  textColor: 'Цвет текста',
+  textBackgroundColor: 'Фон',
 };
 
 const SIMPLE_FALLBACKS: Record<Exclude<StudioEditLocale, 'en' | 'ru'>, StudioEditMessages> = {

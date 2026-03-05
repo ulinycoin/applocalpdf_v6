@@ -88,8 +88,8 @@ test.describe('Studio telemetry save actions P2', () => {
         const events = api?.getTelemetrySnapshot?.() ?? [];
         return events.some((event: any) => event?.type === 'STUDIO_EDIT_SAVE_ACTION' && event.scope === 'selection' && event.action === 'apply');
       }, { timeout: 90000 });
-      await page.getByRole('button', { name: /Undo Save|Отменить сохранение/i }).click();
-      await page.getByRole('button', { name: /Redo Save|Повторить сохранение/i }).click();
+      await page.getByRole('button', { name: /Undo Save/i }).click();
+      await page.getByRole('button', { name: /Redo Save/i }).click();
 
       const actionsHandle = await page.waitForFunction(() => {
         const api = (window as any).__LOCALPDF_V6_TEST_API;

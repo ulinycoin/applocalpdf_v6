@@ -74,13 +74,13 @@ test('manual annotate check: underline + highlight', async ({ page }) => {
       throw new Error('Text highlight bbox not found');
     }
 
-    await page.getByRole('button', { name: /Underline|Подчеркивание/i }).click();
+    await page.getByRole('button', { name: /Underline/i }).click();
     await page.mouse.move(box.x + 8, box.y + box.height * 0.82);
     await page.mouse.down();
     await page.mouse.move(box.x + Math.max(24, box.width - 6), box.y + box.height * 0.82);
     await page.mouse.up();
 
-    await page.getByRole('button', { name: /Highlight|Закрашивание/i }).click();
+    await page.getByRole('button', { name: /Highlight/i }).click();
     await page.mouse.move(box.x + 8, box.y + box.height * 0.5);
     await page.mouse.down();
     await page.mouse.move(box.x + Math.max(24, box.width - 6), box.y + box.height * 0.5);

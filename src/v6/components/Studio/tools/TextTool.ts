@@ -21,9 +21,16 @@ export const TextTool: IEditorTool = {
         } else {
             const next: TextElement = {
                 id: crypto.randomUUID(), type: 'text', x, y, w: 0.5, h: 0.06,
-                text: ctx.uiMessages.text || 'Add text', color: '#0f172a', fontSize: 18, fontFamily: 'sora',
-                fontWeight: 'normal', fontStyle: 'normal', textAlign: 'left',
-                lineHeight: 1.2, letterSpacing: 0, opacity: 1
+                text: ctx.uiMessages.text || 'Add text',
+                color: ctx.textStyle.color,
+                fontSize: ctx.textStyle.fontSize,
+                fontFamily: ctx.textStyle.fontFamily,
+                fontWeight: ctx.textStyle.fontWeight,
+                fontStyle: ctx.textStyle.fontStyle,
+                lineHeight: ctx.textStyle.lineHeight,
+                letterSpacing: ctx.textStyle.letterSpacing,
+                textAlign: 'left',
+                opacity: 1
             };
             ctx.applyElements([...ctx.elements, next]);
             ctx.setSelectedElementId(next.id);
@@ -81,17 +88,19 @@ function selectTextSpanForEditing(ctx: ToolContext, clickedSpan: TextLayerSpan) 
         return;
     }
 
+    const textId = crypto.randomUUID();
+
     const whiteout: RectElement = {
-        id: crypto.randomUUID(),
+        id: `${textId}_bg`,
         type: 'rect',
-        x: clamp01(left - 0.005), y: clamp01(top - 0.005),
-        w: w + 0.01, h: h + 0.01,
-        fill: '#ffffff', stroke: 'transparent', strokeWidth: 0, opacity: 1
+        x: clamp01(left - 0.005), y: clamp01(top - 0.001),
+        w: w + 0.01, h: h + 0.006,
+        fill: ctx.textStyle.backgroundColor || '#ffffff', stroke: 'transparent', strokeWidth: 0, opacity: 1
     };
 
     const next: TextElement = {
-        id: crypto.randomUUID(), type: 'text', x: left, y: top, w: w + 0.05, h: h + 0.01,
-        text: mergedLine.text, color: '#000000',
+        id: textId, type: 'text', x: left, y: top, w: w + 0.05, h: h + 0.01,
+        text: mergedLine.text, color: ctx.textStyle.color || '#000000',
         fontSize: estimateInlineFontSizePt(mergedLine.fontSizeRatio, mergedLine.pageHeightPt ?? 842),
         fontFamily: resolveFontFamily(mergedLine.fontName, mergedLine.fontFamilyHint),
         ...inferFontStyle(mergedLine.fontName ?? mergedLine.fontFamilyHint),

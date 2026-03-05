@@ -56,7 +56,7 @@ test('manual export: save original and edited pdf in project root', async ({ pag
   await expect(textarea).toBeVisible({ timeout: 10000 });
   await textarea.fill('INLINE UPDATED EXPORT');
   await page.getByTestId('studio-edit-save-btn').click();
-  await expect(page.getByText(/Changes applied|Изменения сохранены/i)).toBeVisible({ timeout: 15000 });
+  await expect(page.getByText(/Changes applied/i)).toBeVisible({ timeout: 15000 });
 
   const afterFileId = await page.waitForFunction((prevId) => {
     const store = (window as Window & { __LOCALPDF_STUDIO_STORE__?: { getState: () => {

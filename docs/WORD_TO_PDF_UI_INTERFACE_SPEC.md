@@ -1,44 +1,44 @@
-# Word-to-PDF: описание интерфейса, разметка и стили
+# Word-to-PDF: Interface Description, Markup, and Styles
 
-Статус: Canonical reference для UI-паттерна инструментов V6.
+Status: Canonical reference for the V6 tool UI pattern.
 
-## 1) Описание интерфейса
+## 1) Interface Description
 
-Интерфейс инструмента `word-to-pdf` состоит из двух колонок:
+The `word-to-pdf` tool interface has two columns:
 
-- Левая колонка (`settings panel`)
-  - Заголовок и краткое описание сценария.
-  - Зона загрузки `.docx` файла.
-  - Блок выбранного файла (имя + очистка).
-  - Настройки конвертации:
-    - качество (`standard`, `high`, `min`);
-    - `PDF/A` (вкл/выкл);
-    - `Searchable PDF` (вкл/выкл);
-    - защита паролем (если доступна среда).
-  - Действия:
+- Left column (`settings panel`)
+  - Header and short scenario description.
+  - `.docx` upload area.
+  - Selected file block (name + clear action).
+  - Conversion settings:
+    - quality (`standard`, `high`, `min`);
+    - `PDF/A` (on/off);
+    - `Searchable PDF` (on/off);
+    - password protection (when environment support is available).
+  - Actions:
     - `Cancel`;
-    - `Convert to PDF` / `Download PDF` (по состоянию шага).
+    - `Convert to PDF` / `Download PDF` (depends on step state).
 
-- Правая колонка (`preview panel`)
-  - Пустое состояние: приглашение загрузить документ.
-  - Табы:
-    - `PDF` (визуальный предпросмотр страниц);
-    - `Details` (техническая сводка параметров).
-  - Пейджер страниц предпросмотра (`Prev`, `Page N`, `Next`).
-  - Область контента:
-    - изображение страницы PDF;
-    - текст ошибки/загрузки при необходимости.
+- Right column (`preview panel`)
+  - Empty state: prompt to upload a document.
+  - Tabs:
+    - `PDF` (visual page preview);
+    - `Details` (technical parameter summary).
+  - Preview page pager (`Prev`, `Page N`, `Next`).
+  - Content area:
+    - PDF page image;
+    - loading/error text when needed.
 
-Состояния интерфейса:
+Interface states:
 
-- `upload`: нет файла, показывается empty-state.
-- `config`: файл выбран, доступны параметры и превью.
-- `processing`: кнопка запуска показывает прогресс.
-- `result`: доступна кнопка скачивания результата.
+- `upload`: no file selected, empty state is shown.
+- `config`: file selected, settings and preview are available.
+- `processing`: start button shows progress.
+- `result`: download button for the result is available.
 
 ---
 
-## 2) Пример разметки (HTML-структура)
+## 2) Markup Example (HTML Structure)
 
 ```html
 <section class="word-tool">
@@ -109,7 +109,7 @@
 
 ---
 
-## 3) Пример стилей (CSS)
+## 3) Style Example (CSS)
 
 ```css
 .word-tool {

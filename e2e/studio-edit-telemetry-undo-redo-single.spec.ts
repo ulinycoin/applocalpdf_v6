@@ -75,9 +75,9 @@ test.describe('Studio telemetry undo/redo single P2', () => {
       await textarea.fill('TELEMETRY UNDO REDO SINGLE UPDATED');
       await page.getByTestId('studio-edit-save-btn').click();
 
-      await expect(page.getByText(/Changes applied|Изменения сохранены/i)).toBeVisible({ timeout: 15000 });
-      await page.getByRole('button', { name: /Undo Save|Отменить сохранение/i }).click();
-      await page.getByRole('button', { name: /Redo Save|Повторить сохранение/i }).click();
+      await expect(page.getByText(/Changes applied/i)).toBeVisible({ timeout: 15000 });
+      await page.getByRole('button', { name: /Undo Save/i }).click();
+      await page.getByRole('button', { name: /Redo Save/i }).click();
 
       const actionsHandle = await page.waitForFunction(() => {
         const api = (window as any).__LOCALPDF_V6_TEST_API;

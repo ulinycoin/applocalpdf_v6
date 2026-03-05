@@ -11,9 +11,11 @@ export interface StudioFloatingMenuProps {
     onDuplicate: () => void;
     onDeselect?: () => void;
     onActivateMove?: () => void;
+    bgColor?: string;
+    onBgColorChange?: (color: string) => void;
 }
 
-export function DraggableFloatingMenu({ element, onUpdate, onDelete, onDuplicate: _onDuplicate, onDeselect, onActivateMove }: StudioFloatingMenuProps) {
+export function DraggableFloatingMenu({ element, onUpdate, onDelete, onDuplicate: _onDuplicate, onDeselect, onActivateMove, bgColor, onBgColorChange }: StudioFloatingMenuProps) {
     const menuRef = useRef<HTMLDivElement | null>(null);
     const isAnchoredToText = element.type === 'text';
     const [position, setPosition] = useState(() => ({
@@ -202,6 +204,17 @@ export function DraggableFloatingMenu({ element, onUpdate, onDelete, onDuplicate
                             title="Text Color"
                         />
                     </div>
+                    {onBgColorChange && (
+                        <div className="studio-floating-color-wrap">
+                            <input
+                                type="color"
+                                className="studio-floating-color"
+                                value={bgColor || '#ffffff'}
+                                onChange={(e) => onBgColorChange(e.target.value)}
+                                title="Background Color"
+                            />
+                        </div>
+                    )}
                 </div>
 
                 <div className="studio-floating-divider" />

@@ -33,7 +33,7 @@ export const createRectTool = (id: EditorToolId): IEditorTool => ({
                 ctx.applyElements([...ctx.elements, {
                     id: crypto.randomUUID(), type: 'rect', x: draft.x, y: draft.y,
                     w: draft.w, h: draft.h,
-                    fill: id === 'whiteout' ? '#ffffff' : 'transparent',
+                    fill: id === 'whiteout' ? (ctx.whiteoutColor || '#ffffff') : 'transparent',
                     stroke: id === 'whiteout' ? 'transparent' : ctx.shapeColor,
                     strokeWidth: id === 'whiteout' ? 0 : ctx.shapeStrokeWidth,
                     opacity: 1

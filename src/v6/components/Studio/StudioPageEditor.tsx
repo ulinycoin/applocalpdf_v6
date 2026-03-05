@@ -51,6 +51,17 @@ export interface StudioPageEditorProps {
     shapePreset?: ShapePreset;
     shapeColor?: string;
     shapeStrokeWidth?: number;
+    whiteoutColor?: string;
+    textStyle?: {
+        fontFamily: FontFamilyId;
+        fontSize: number;
+        fontWeight: 'normal' | 'bold';
+        fontStyle: 'normal' | 'italic';
+        lineHeight: number;
+        letterSpacing: number;
+        color: string;
+        backgroundColor: string;
+    };
     watermarkOptions?: {
         text: string;
         color: string;
@@ -96,6 +107,17 @@ export function StudioPageEditor({
     shapePreset = 'rectangle',
     shapeColor = '#2563eb',
     shapeStrokeWidth = 2,
+    whiteoutColor = '#ffffff',
+    textStyle = {
+        fontFamily: 'sora',
+        fontSize: 18,
+        fontWeight: 'normal',
+        fontStyle: 'normal',
+        lineHeight: 1.2,
+        letterSpacing: 0,
+        color: '#0f172a',
+        backgroundColor: '#ffffff'
+    },
     watermarkOptions = {
         text: 'CONFIDENTIAL',
         color: '#64748b',
@@ -203,6 +225,8 @@ export function StudioPageEditor({
         shapePreset,
         shapeColor,
         shapeStrokeWidth,
+        whiteoutColor,
+        textStyle,
         watermarkOptions,
     });
 
