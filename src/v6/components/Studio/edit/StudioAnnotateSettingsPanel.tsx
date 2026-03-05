@@ -21,6 +21,8 @@ interface StudioAnnotateSettingsPanelProps {
     onModeChange: (mode: 'highlight' | 'pen' | 'shapes') => void;
     onShapePresetChange: (preset: ShapePreset) => void;
     onStrokeWidthChange: (width: number) => void;
+    onDelete?: () => void;
+    onDuplicate?: () => void;
 }
 
 const MARKER_COLORS = [
@@ -52,6 +54,8 @@ export function StudioAnnotateSettingsPanel({
     onModeChange,
     onShapePresetChange,
     onStrokeWidthChange,
+    onDelete,
+    onDuplicate,
 }: StudioAnnotateSettingsPanelProps) {
     return (
         <div className="studio-annotate-quickbar-wrap">
@@ -111,16 +115,16 @@ export function StudioAnnotateSettingsPanel({
                     </div>
                 )}
                 <div className="studio-annotate-quickbar-swatches">
-                {MARKER_COLORS.map((preset) => (
-                    <button
-                        key={preset}
-                        type="button"
-                        onClick={() => onColorChange(preset)}
-                        title={preset}
-                        className={`studio-annotate-swatch ${color.toLowerCase() === preset.toLowerCase() ? 'active' : ''}`}
-                        style={{ background: preset }}
-                    />
-                ))}
+                    {MARKER_COLORS.map((preset) => (
+                        <button
+                            key={preset}
+                            type="button"
+                            onClick={() => onColorChange(preset)}
+                            title={preset}
+                            className={`studio-annotate-swatch ${color.toLowerCase() === preset.toLowerCase() ? 'active' : ''}`}
+                            style={{ background: preset }}
+                        />
+                    ))}
                 </div>
                 <label className="studio-annotate-quickbar-custom-color" title={color}>
                     <span>{customColorLabel}</span>
@@ -138,6 +142,33 @@ export function StudioAnnotateSettingsPanel({
                             onChange={(event) => onStrokeWidthChange(Math.max(1, Math.min(18, Number(event.target.value) || 5)))}
                         />
                     </label>
+                )}
+
+                {onDuplicate && (
+                    <button
+                        type="button"
+                        className="studio-floating-btn"
+                        onClick={onDuplicate}
+                        title="Duplicate"
+                        style={{ width: 32, height: 32 }}
+                    >
+                        <LinearIcon name="copy" />
+                    </button>
+                )}
+
+                {onDelete && (
+                    <>
+                        <div className="studio-floating-divider" style={{ margin: '0 12px' }} />
+                        <button
+                            type="button"
+                            className="studio-floating-btn delete"
+                            onClick={onDelete}
+                            title="Delete"
+                            style={{ width: 32, height: 32, color: '#ef4444' }}
+                        >
+                            <LinearIcon name="x" />
+                        </button>
+                    </>
                 )}
             </div>
         </div>

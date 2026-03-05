@@ -1,4 +1,5 @@
 import type { FormFieldElement } from '../editor-types';
+import { LinearIcon } from '../../icons/linear-icon';
 
 interface StudioFormsQuickBarProps {
     onAddField: (type: 'text' | 'multiline' | 'checkbox' | 'radio' | 'dropdown') => void;
@@ -6,6 +7,8 @@ interface StudioFormsQuickBarProps {
     onUpdateSelectedField: (patch: Partial<FormFieldElement>) => void;
     canvasWidth: number;
     canvasHeight: number;
+    onDelete?: () => void;
+    onDuplicate?: () => void;
 }
 
 const FIELD_BUTTONS: Array<{ type: 'text' | 'multiline' | 'checkbox' | 'radio' | 'dropdown'; label: string }> = [
@@ -22,6 +25,8 @@ export function StudioFormsQuickBar({
     onUpdateSelectedField,
     canvasWidth,
     canvasHeight,
+    onDelete,
+    onDuplicate,
 }: StudioFormsQuickBarProps) {
     const pageWidthPx = Math.max(1, Math.round(canvasWidth));
     const pageHeightPx = Math.max(1, Math.round(canvasHeight));
@@ -48,6 +53,33 @@ export function StudioFormsQuickBar({
                         </button>
                     ))}
                 </div>
+
+                {onDuplicate && (
+                    <button
+                        type="button"
+                        className="studio-floating-btn"
+                        onClick={onDuplicate}
+                        title="Duplicate"
+                        style={{ width: 32, height: 32, marginLeft: 8 }}
+                    >
+                        <LinearIcon name="copy" />
+                    </button>
+                )}
+
+                {onDelete && (
+                    <>
+                        <div className="studio-floating-divider" style={{ margin: '0 12px' }} />
+                        <button
+                            type="button"
+                            className="studio-floating-btn delete"
+                            onClick={onDelete}
+                            title="Delete"
+                            style={{ width: 32, height: 32, color: '#ef4444' }}
+                        >
+                            <LinearIcon name="x" />
+                        </button>
+                    </>
+                )}
             </div>
             {selectedField && (
                 <div className="studio-forms-field-controls">

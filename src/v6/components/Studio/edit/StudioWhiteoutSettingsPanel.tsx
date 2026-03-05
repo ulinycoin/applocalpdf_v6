@@ -5,6 +5,8 @@ interface StudioWhiteoutSettingsPanelProps {
     customColorLabel: string;
     color: string;
     onColorChange: (color: string) => void;
+    onDelete?: () => void;
+    onDuplicate?: () => void;
 }
 
 const WHITEOUT_PRESETS = [
@@ -21,6 +23,8 @@ export function StudioWhiteoutSettingsPanel({
     customColorLabel,
     color = '#ffffff',
     onColorChange,
+    onDelete,
+    onDuplicate,
 }: StudioWhiteoutSettingsPanelProps) {
     return (
         <div className="studio-annotate-quickbar-wrap">
@@ -43,6 +47,33 @@ export function StudioWhiteoutSettingsPanel({
                     <span>{customColorLabel}</span>
                     <input type="color" value={color} onChange={(event) => onColorChange(event.target.value)} />
                 </label>
+
+                {onDuplicate && (
+                    <button
+                        type="button"
+                        className="studio-floating-btn"
+                        onClick={onDuplicate}
+                        title="Duplicate"
+                        style={{ width: 32, height: 32 }}
+                    >
+                        <LinearIcon name="copy" />
+                    </button>
+                )}
+
+                {onDelete && (
+                    <>
+                        <div className="studio-floating-divider" style={{ margin: '0 12px' }} />
+                        <button
+                            type="button"
+                            className="studio-floating-btn delete"
+                            onClick={onDelete}
+                            title="Delete"
+                            style={{ width: 32, height: 32, color: '#ef4444' }}
+                        >
+                            <LinearIcon name="x" />
+                        </button>
+                    </>
+                )}
             </div>
         </div>
     );

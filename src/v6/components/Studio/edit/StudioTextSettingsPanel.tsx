@@ -26,6 +26,7 @@ interface StudioTextSettingsPanelProps {
         backgroundColor?: string
     }) => void;
     onDelete?: () => void;
+    onDuplicate?: () => void;
 }
 
 export function StudioTextSettingsPanel({
@@ -44,6 +45,7 @@ export function StudioTextSettingsPanel({
     backgroundColor,
     onStyleChange,
     onDelete,
+    onDuplicate,
 }: StudioTextSettingsPanelProps) {
     return (
         <div className="studio-annotate-quickbar-wrap">
@@ -144,6 +146,18 @@ export function StudioTextSettingsPanel({
                     <span>{bgColorLabel}</span>
                     <input type="color" value={backgroundColor} onChange={(event) => onStyleChange({ backgroundColor: event.target.value })} />
                 </label>
+
+                {onDuplicate && (
+                    <button
+                        type="button"
+                        className="studio-floating-btn"
+                        onClick={onDuplicate}
+                        title="Duplicate"
+                        style={{ width: 32, height: 32 }}
+                    >
+                        <LinearIcon name="copy" />
+                    </button>
+                )}
 
                 {onDelete && (
                     <>

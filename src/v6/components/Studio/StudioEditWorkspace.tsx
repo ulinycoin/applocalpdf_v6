@@ -12,7 +12,6 @@ import { StudioTextSettingsPanel } from './edit/StudioTextSettingsPanel';
 import { LinearIcon } from '../icons/linear-icon';
 import { detectStudioEditLocale, getStudioEditMessages } from './studio-edit-i18n';
 import { StudioPageEditor } from './StudioPageEditor';
-import { DraggableFloatingMenu } from './StudioDraggableFloatingMenu';
 import { useStudioEditZoom } from './edit/use-studio-edit-zoom';
 import type { FormFieldElement, WatermarkElement } from './editor-types';
 import type { FontFamilyId } from './inline-text-utils';
@@ -179,6 +178,14 @@ export function StudioEditWorkspace() {
         ? ctrl.elements.find(e => e.id === ctrl.selectedElementId && e.type === 'text') as import('./editor-types').TextElement | undefined
         : undefined;
 
+    const selectedRectElement = ctrl.selectedElementId
+        ? ctrl.elements.find(e => e.id === ctrl.selectedElementId && e.type === 'rect') as import('./editor-types').RectElement | undefined
+        : undefined;
+
+    const selectedStrokeElement = ctrl.selectedElementId
+        ? ctrl.elements.find(e => e.id === ctrl.selectedElementId && e.type === 'stroke') as import('./editor-types').StrokeElement | undefined
+        : undefined;
+
     const topSettingsPanel = ctrl.tool === 'text'
         ? (
             <StudioTextSettingsPanel
@@ -225,6 +232,17 @@ export function StudioEditWorkspace() {
                         ctrl.handleElementAction(ctrl.selectedElementId!, 'delete');
                     }
                 } : undefined}
+                onDuplicate={ctrl.selectedElementId ? () => {
+                    const original = ctrl.elements.find(e => e.id === ctrl.selectedElementId);
+                    if (!original) return;
+                    const newId = crypto.randomUUID();
+                    const x = 'x' in original ? original.x + 0.05 : 0.05;
+                    const y = 'y' in original ? original.y + 0.05 : 0.05;
+                    const next = [...ctrl.elements, { ...original, id: newId, x, y } as any];
+                    ctrl.setElements(next);
+                    ctrl.pushHistory(next);
+                    ctrl.setSelectedElementId(newId);
+                } : undefined}
             />
         )
         : ctrl.tool === 'forms'
@@ -235,6 +253,8 @@ export function StudioEditWorkspace() {
                     onUpdateSelectedField={updateSelectedFormField}
                     canvasWidth={canvasSize.width}
                     canvasHeight={canvasSize.height}
+                    onDelete={ctrl.selectedElementId ? () => ctrl.handleElementAction(ctrl.selectedElementId!, 'delete') : undefined}
+                    onDuplicate={ctrl.selectedElementId ? () => ctrl.handleElementAction(ctrl.selectedElementId!, 'duplicate') : undefined}
                 />
             )
             : ctrl.tool === 'protect'
@@ -256,8 +276,16 @@ export function StudioEditWorkspace() {
                             <StudioWhiteoutSettingsPanel
                                 title={ui.whiteout}
                                 customColorLabel={ui.whiteoutCustomColor}
-                                color={ctrl.whiteoutColor}
-                                onColorChange={ctrl.setWhiteoutColor}
+                                color={selectedRectElement?.fill ?? ctrl.whiteoutColor}
+                                onColorChange={(next) => {
+                                    if (selectedRectElement) {
+                                        ctrl.handleElementAction(selectedRectElement.id, 'update', { fill: next });
+                                    } else {
+                                        ctrl.setWhiteoutColor(next);
+                                    }
+                                }}
+                                onDelete={ctrl.selectedElementId ? () => ctrl.handleElementAction(ctrl.selectedElementId!, 'delete') : undefined}
+                                onDuplicate={ctrl.selectedElementId ? () => ctrl.handleElementAction(ctrl.selectedElementId!, 'duplicate') : undefined}
                             />
                         )
                         : ctrl.tool === 'annotate'
@@ -274,11 +302,27 @@ export function StudioEditWorkspace() {
                                     shapeThicknessLabel={ui.shapeThickness}
                                     penSizeLabel={ui.annotatePenSize}
                                     customColorLabel={ui.annotateCustomColor}
-                                    color={ctrl.annotateMode === 'shapes' ? ctrl.shapeColor : ctrl.annotateColor}
+                                    color={(() => {
+                                        if (selectedRectElement) return selectedRectElement.fill || selectedRectElement.stroke;
+                                        if (selectedStrokeElement) return selectedStrokeElement.color;
+                                        return ctrl.annotateMode === 'shapes' ? ctrl.shapeColor : ctrl.annotateColor;
+                                    })()}
                                     mode={ctrl.annotateMode}
                                     shapePreset={ctrl.shapePreset}
-                                    strokeWidth={ctrl.annotateMode === 'shapes' ? ctrl.shapeStrokeWidth : ctrl.annotateStrokeWidth}
+                                    strokeWidth={(() => {
+                                        if (selectedRectElement) return selectedRectElement.strokeWidth;
+                                        if (selectedStrokeElement) return selectedStrokeElement.width;
+                                        return ctrl.annotateMode === 'shapes' ? ctrl.shapeStrokeWidth : ctrl.annotateStrokeWidth;
+                                    })()}
                                     onColorChange={(next) => {
+                                        if (selectedRectElement) {
+                                            ctrl.handleElementAction(selectedRectElement.id, 'update', { fill: selectedRectElement.fill !== 'transparent' ? next : 'transparent', stroke: selectedRectElement.stroke !== 'transparent' ? next : 'transparent' });
+                                            return;
+                                        }
+                                        if (selectedStrokeElement) {
+                                            ctrl.handleElementAction(selectedStrokeElement.id, 'update', { color: next });
+                                            return;
+                                        }
                                         if (ctrl.annotateMode === 'shapes') {
                                             ctrl.setShapeColor(next);
                                             return;
@@ -288,12 +332,22 @@ export function StudioEditWorkspace() {
                                     onModeChange={ctrl.setAnnotateMode}
                                     onShapePresetChange={ctrl.setShapePreset}
                                     onStrokeWidthChange={(next) => {
+                                        if (selectedRectElement) {
+                                            ctrl.handleElementAction(selectedRectElement.id, 'update', { strokeWidth: next });
+                                            return;
+                                        }
+                                        if (selectedStrokeElement) {
+                                            ctrl.handleElementAction(selectedStrokeElement.id, 'update', { width: next });
+                                            return;
+                                        }
                                         if (ctrl.annotateMode === 'shapes') {
                                             ctrl.setShapeStrokeWidth(next);
                                             return;
                                         }
                                         ctrl.setAnnotateStrokeWidth(next);
                                     }}
+                                    onDelete={ctrl.selectedElementId ? () => ctrl.handleElementAction(ctrl.selectedElementId!, 'delete') : undefined}
+                                    onDuplicate={ctrl.selectedElementId ? () => ctrl.handleElementAction(ctrl.selectedElementId!, 'duplicate') : undefined}
                                 />
                             )
                             : null;
@@ -444,14 +498,7 @@ export function StudioEditWorkspace() {
                                 }}
                             />
 
-                            {ctrl.selectedElementId && ctrl.textEditor?.id === ctrl.selectedElementId && ctrl.elements.find(e => e.id === ctrl.selectedElementId)?.type !== 'text' && (
-                                <DraggableFloatingMenu
-                                    element={ctrl.elements.find(e => e.id === ctrl.selectedElementId)!}
-                                    onUpdate={(patch) => ctrl.handleElementAction(ctrl.selectedElementId!, 'update', patch)}
-                                    onDelete={() => ctrl.handleElementAction(ctrl.selectedElementId!, 'delete')}
-                                    onDuplicate={() => ctrl.handleElementAction(ctrl.selectedElementId!, 'duplicate')}
-                                />
-                            )}
+
                         </div>
                     </div>
                 </div>
