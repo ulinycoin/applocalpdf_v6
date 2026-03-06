@@ -48,6 +48,9 @@ export interface StudioPageEditorProps {
     annotateColor?: string;
     annotateMode?: 'highlight' | 'pen' | 'shapes';
     annotateStrokeWidth?: number;
+    signMode?: 'type' | 'draw';
+    signColor?: string;
+    signStrokeWidth?: number;
     shapePreset?: ShapePreset;
     shapeColor?: string;
     shapeStrokeWidth?: number;
@@ -104,6 +107,9 @@ export function StudioPageEditor({
     annotateColor = '#fff176',
     annotateMode = 'highlight',
     annotateStrokeWidth = 5,
+    signMode = 'type',
+    signColor = '#111827',
+    signStrokeWidth = 3,
     shapePreset = 'rectangle',
     shapeColor = '#2563eb',
     shapeStrokeWidth = 2,
@@ -167,7 +173,7 @@ export function StudioPageEditor({
 
     const textSelectionMode = externalTextSelectionMode ?? 'line';
     const activeTool = externalActiveTool;
-    const isPenModeActive = activeTool === 'annotate' && annotateMode === 'pen';
+    const isPenModeActive = (activeTool === 'annotate' && annotateMode === 'pen') || (activeTool === 'sign' && signMode === 'draw');
 
     const locale = useMemo(() => detectStudioEditLocale(), []);
     const ui = useMemo(() => getStudioEditMessages(locale), [locale]);
@@ -228,6 +234,9 @@ export function StudioPageEditor({
         whiteoutColor,
         textStyle,
         watermarkOptions,
+        signMode,
+        signColor,
+        signStrokeWidth,
     });
 
     // Pointer Handlers
@@ -371,7 +380,7 @@ export function StudioPageEditor({
                         onPointerDown={(e) => {
                             e.stopPropagation();
                             setSelectedElementId(el.id);
-                            if (!isPenModeActive && (!textEditor || textEditor.id !== el.id)) {
+                            if (!textEditor || textEditor.id !== el.id) {
                                 dragSessionRef.current = {
                                     mode: el.type === 'text'
                                         ? 'move-text'
@@ -880,9 +889,9 @@ export function StudioPageEditor({
                             return `${acc}${mapped}${idx % 2 === 0 ? ',' : ' '}`;
                         }, '').trim()}
                         fill="none"
-                        stroke={annotateColor}
-                        strokeWidth={annotateMode === 'pen' ? annotateStrokeWidth : 12}
-                        strokeOpacity={annotateMode === 'pen' ? 1 : 0.45}
+                        stroke={activeTool === 'sign' ? signColor : annotateColor}
+                        strokeWidth={activeTool === 'sign' ? signStrokeWidth : (annotateMode === 'pen' ? annotateStrokeWidth : 12)}
+                        strokeOpacity={activeTool === 'sign' ? 1 : (annotateMode === 'pen' ? 1 : 0.45)}
                         strokeLinecap="round"
                         strokeLinejoin="round"
                     />

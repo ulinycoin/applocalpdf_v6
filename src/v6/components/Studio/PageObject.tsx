@@ -59,6 +59,7 @@ export const PageObject: React.FC<PageObjectProps> = ({ page, docId, x, y, curre
 
     const documents = useStudioStore((s: StudioState) => s.documents);
     const gridColumns = useStudioStore((s: StudioState) => s.gridColumns);
+    const studioViewScale = useStudioStore((s: StudioState) => s.studioViewScale);
     const detachPage = useStudioStore((s: StudioState) => s.detachPage);
     const selection = useStudioStore((s: StudioState) => s.selection);
     const setSelection = useStudioStore((s: StudioState) => s.setSelection);
@@ -66,6 +67,15 @@ export const PageObject: React.FC<PageObjectProps> = ({ page, docId, x, y, curre
     const isSelected = selection.some((s: SelectionItem) => s.pageId === page.id);
 
     const movePage = useStudioStore((s: StudioState) => s.movePage);
+    const highResRenderScale = React.useMemo(() => {
+        if (shouldPrefetchOnly) {
+            return 2;
+        }
+        if (isSelected) {
+            return studioViewScale >= 1.35 ? 3 : 2.5;
+        }
+        return studioViewScale >= 1.35 ? 3 : 2;
+    }, [isSelected, shouldPrefetchOnly, studioViewScale]);
 
     const handleMouseDown = (e: KonvaEventObject<MouseEvent | TouchEvent>) => {
         e.cancelBubble = true;
@@ -188,7 +198,7 @@ export const PageObject: React.FC<PageObjectProps> = ({ page, docId, x, y, curre
     // Trigger High-Res render when component mounts (it only mounts when visible due to culling)
     React.useEffect(() => {
         let isMounted = true;
-        const cacheKey = `${page.fileId}_${page.pageIndex}`;
+        const cacheKey = `${page.fileId}_${page.pageIndex}_${highResRenderScale}`;
 
         const existingCanvas = getCachedHighRes(cacheKey);
         if (existingCanvas) {
@@ -217,8 +227,7 @@ export const PageObject: React.FC<PageObjectProps> = ({ page, docId, x, y, curre
 
                 const pdfPage = await pdf.getPage(page.pageIndex + 1);
 
-                // Calculate scale for high-res (e.g., 2.0 for retina display crispness)
-                const viewport = pdfPage.getViewport({ scale: 2.0 });
+                const viewport = pdfPage.getViewport({ scale: highResRenderScale });
 
                 const canvas = document.createElement('canvas');
                 const context = canvas.getContext('2d');
@@ -257,7 +266,7 @@ export const PageObject: React.FC<PageObjectProps> = ({ page, docId, x, y, curre
             isMounted = false;
             clearTimeout(timeoutId);
         };
-    }, [page.fileId, page.pageIndex, runtime.vfs]);
+    }, [highResRenderScale, page.fileId, page.pageIndex, runtime.vfs]);
 
     // If this is just a prefetch mount, we don't return any Konva nodes
     // The useEffect above will still run and populate the LRU cache
@@ -342,7 +351,7 @@ export const PageObject: React.FC<PageObjectProps> = ({ page, docId, x, y, curre
                         y={offsetY}
                         // Use ImageSmoothing for the low-res thumb to make it look less pixelated
                         // If we have high-res, we can disable it or keep it true for downscaling
-                        imageSmoothingEnabled={true}
+                        imageSmoothingEnabled={!highResCanvas}
                         cornerRadius={4}
                     />
                 );

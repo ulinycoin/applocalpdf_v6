@@ -122,7 +122,11 @@ export function useStudioEditController(ui: any) {
     const [isSelectMode, setIsSelectMode] = useState(false);
     const [textSelectionMode, setTextSelectionMode] = useState<'line' | 'word'>('line');
     const [applyToSelection, setApplyToSelection] = useState(false);
-    const [isSignComposerOpen, setSignComposerOpen] = useState(false);
+    const [signMode, setSignMode] = useState<'type' | 'draw'>('type');
+    const [signTypedValue, setSignTypedValue] = useState('');
+    const [signTypedFontSize, setSignTypedFontSize] = useState(30);
+    const [signDrawColor, setSignDrawColor] = useState('#111827');
+    const [signDrawStrokeWidth, setSignDrawStrokeWidth] = useState(3);
     const [annotateColor, setAnnotateColor] = useState('#fff176');
     const [annotateMode, setAnnotateMode] = useState<'highlight' | 'pen' | 'shapes'>('highlight');
     const [annotateStrokeWidth, setAnnotateStrokeWidth] = useState(5);
@@ -245,9 +249,6 @@ export function useStudioEditController(ui: any) {
         const resolvedTool: StudioEditToolId = nextTool === 'shapes' ? 'annotate' : nextTool;
         setTool(resolvedTool);
         updateEditSessionTool(resolvedTool);
-        if (resolvedTool === 'sign') {
-            setSignComposerOpen(true);
-        }
         runtime.telemetry.track({ type: 'STUDIO_EDIT_TOOL_SELECTED', runId: sessionRunId, toolId: 'studio.edit', tool: resolvedTool, method });
     }, [updateEditSessionTool, runtime, sessionRunId]);
 
@@ -369,6 +370,13 @@ export function useStudioEditController(ui: any) {
         addElement(next);
         setTool('sign');
     }, [addElement]);
+
+    const insertTypedSignature = useCallback(() => {
+        addTypedSignature({
+            value: signTypedValue || 'Signature',
+            fontSize: signTypedFontSize,
+        });
+    }, [addTypedSignature, signTypedFontSize, signTypedValue]);
 
     const addFormField = useCallback((type: 'text' | 'multiline' | 'checkbox' | 'radio' | 'dropdown') => {
         const fieldIndex = elementsRef.current.filter(
@@ -778,6 +786,11 @@ export function useStudioEditController(ui: any) {
         annotateColor, setAnnotateColor,
         annotateMode, setAnnotateMode,
         annotateStrokeWidth, setAnnotateStrokeWidth,
+        signMode, setSignMode,
+        signTypedValue, setSignTypedValue,
+        signTypedFontSize, setSignTypedFontSize,
+        signDrawColor, setSignDrawColor,
+        signDrawStrokeWidth, setSignDrawStrokeWidth,
         shapePreset, setShapePreset,
         shapeColor, setShapeColor,
         shapeStrokeWidth, setShapeStrokeWidth,
@@ -785,8 +798,6 @@ export function useStudioEditController(ui: any) {
         applyToSelection, setApplyToSelection,
         hasDirtyChanges, canApplyToSelection,
         applyChanges, undoLastSave, redoLastSave,
-        isSignComposerOpen,
-        setSignComposerOpen,
         isFormsComposerOpen,
         setFormsComposerOpen,
         whiteoutColor,
@@ -797,6 +808,7 @@ export function useStudioEditController(ui: any) {
         setProtectOptions,
         addTypedSignature,
         addImageSignature,
+        insertTypedSignature,
         addFormField,
         protectAndReturnToStudio,
         clearEditSession,

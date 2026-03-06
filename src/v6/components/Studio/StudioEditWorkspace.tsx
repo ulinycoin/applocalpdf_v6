@@ -2,13 +2,13 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useStudioEditController } from './edit/use-studio-edit-controller';
 import { StudioEditToolbar } from './edit/StudioEditToolbar';
-import { StudioSignComposerModal } from './edit/StudioSignComposerModal';
 import { StudioAnnotateSettingsPanel } from './edit/StudioAnnotateSettingsPanel';
 import { StudioFormsQuickBar } from './edit/StudioFormsQuickBar';
 import { StudioProtectSettingsPanel } from './edit/StudioProtectSettingsPanel';
 import { StudioWatermarkSettingsPanel } from './edit/StudioWatermarkSettingsPanel';
 import { StudioWhiteoutSettingsPanel } from './edit/StudioWhiteoutSettingsPanel';
 import { StudioTextSettingsPanel } from './edit/StudioTextSettingsPanel';
+import { StudioSignSettingsPanel } from './edit/StudioSignSettingsPanel';
 import { LinearIcon } from '../icons/linear-icon';
 import { detectStudioEditLocale, getStudioEditMessages } from './studio-edit-i18n';
 import { StudioPageEditor } from './StudioPageEditor';
@@ -257,6 +257,26 @@ export function StudioEditWorkspace() {
                     onDuplicate={ctrl.selectedElementId ? () => ctrl.handleElementAction(ctrl.selectedElementId!, 'duplicate') : undefined}
                 />
             )
+            : ctrl.tool === 'sign'
+                ? (
+                    <StudioSignSettingsPanel
+                        title={ui.sign}
+                        mode={ctrl.signMode}
+                        typedValue={ctrl.signTypedValue}
+                        typedFontSize={ctrl.signTypedFontSize}
+                        drawColor={ctrl.signDrawColor}
+                        drawStrokeWidth={ctrl.signDrawStrokeWidth}
+                        onModeChange={ctrl.setSignMode}
+                        onTypedValueChange={ctrl.setSignTypedValue}
+                        onTypedFontSizeChange={ctrl.setSignTypedFontSize}
+                        onDrawColorChange={ctrl.setSignDrawColor}
+                        onDrawStrokeWidthChange={ctrl.setSignDrawStrokeWidth}
+                        onInsertTyped={ctrl.insertTypedSignature}
+                        onUploadImage={ctrl.addImageSignature}
+                        onDelete={ctrl.selectedElementId ? () => ctrl.handleElementAction(ctrl.selectedElementId!, 'delete') : undefined}
+                        onDuplicate={ctrl.selectedElementId ? () => ctrl.handleElementAction(ctrl.selectedElementId!, 'duplicate') : undefined}
+                    />
+                )
             : ctrl.tool === 'protect'
                 ? (
                     <StudioProtectSettingsPanel
@@ -474,6 +494,9 @@ export function StudioEditWorkspace() {
                                 annotateColor={ctrl.annotateColor}
                                 annotateMode={ctrl.annotateMode}
                                 annotateStrokeWidth={ctrl.annotateMode === 'shapes' ? ctrl.shapeStrokeWidth : ctrl.annotateStrokeWidth}
+                                signMode={ctrl.signMode}
+                                signColor={ctrl.signDrawColor}
+                                signStrokeWidth={ctrl.signDrawStrokeWidth}
                                 shapePreset={ctrl.shapePreset}
                                 shapeColor={ctrl.shapeColor}
                                 shapeStrokeWidth={ctrl.shapeStrokeWidth}
@@ -547,14 +570,6 @@ export function StudioEditWorkspace() {
                 </div>,
                 document.body
             )}
-
-            <StudioSignComposerModal
-                open={ctrl.isSignComposerOpen}
-                ui={ui}
-                onClose={() => ctrl.setSignComposerOpen(false)}
-                onInsertText={ctrl.addTypedSignature}
-                onInsertImage={ctrl.addImageSignature}
-            />
         </section>
     );
 }

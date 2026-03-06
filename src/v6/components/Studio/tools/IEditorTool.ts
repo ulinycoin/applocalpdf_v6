@@ -68,6 +68,9 @@ export interface ToolContext {
         repeatGapX: number;
         repeatGapY: number;
     };
+    signMode: 'type' | 'draw';
+    signColor: string;
+    signStrokeWidth: number;
     formType?: 'text' | 'multiline' | 'checkbox' | 'radio' | 'dropdown';
 }
 

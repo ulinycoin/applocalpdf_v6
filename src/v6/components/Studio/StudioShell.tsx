@@ -179,6 +179,7 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
     const setInteractionMode = useStudioStore((s: StudioState) => s.setInteractionMode);
     const hasFiles = documents.length > 0 || detachedPages.length > 0;
     const pageClipboardRef = useRef<PageItem[]>([]);
+    const [hasClipboardPages, setHasClipboardPages] = useState(false);
 
     useEffect(() => {
         setStudioViewport(viewScale, viewPosition, dimensions);
@@ -401,6 +402,55 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
         uploadInputRef.current?.click();
     }, []);
 
+    const copySelectedPages = useCallback(() => {
+        if (selection.length === 0) {
+            return false;
+        }
+        const selectionSet = new Set(selection.map((item) => item.pageId));
+        const orderedPages: PageItem[] = [];
+        for (const doc of documents) {
+            for (const page of doc.pages) {
+                if (selectionSet.has(page.id)) {
+                    orderedPages.push(page);
+                }
+            }
+        }
+        if (orderedPages.length === 0) {
+            return false;
+        }
+        pageClipboardRef.current = orderedPages;
+        setHasClipboardPages(true);
+        return true;
+    }, [documents, selection]);
+
+    const pasteSelectedPages = useCallback(() => {
+        if (!activeDocumentId || pageClipboardRef.current.length === 0) {
+            return false;
+        }
+        const targetDoc = documents.find((doc) => doc.id === activeDocumentId);
+        if (!targetDoc) {
+            return false;
+        }
+
+        const clonedPages: PageItem[] = pageClipboardRef.current.map((page) => ({
+            ...page,
+            id: crypto.randomUUID(),
+        }));
+        const nextDocuments = documents.map((doc) => {
+            if (doc.id !== activeDocumentId) {
+                return doc;
+            }
+            return {
+                ...doc,
+                pages: [...doc.pages, ...clonedPages],
+                isModified: true,
+            };
+        });
+        setDocuments(nextDocuments);
+        setSelection(clonedPages.map((page) => ({ docId: activeDocumentId, pageId: page.id })));
+        return true;
+    }, [activeDocumentId, documents, setDocuments, setSelection]);
+
     useEffect(() => {
         const onKeyDown = (event: KeyboardEvent) => {
             const target = event.target as HTMLElement | null;
@@ -417,49 +467,16 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
             const isPasteShortcut = isModifierPressed && !event.shiftKey && !event.altKey && key === 'v';
 
             if (isCopyShortcut) {
-                if (selection.length === 0) {
-                    return;
+                if (copySelectedPages()) {
+                    event.preventDefault();
                 }
-                event.preventDefault();
-                const selectionSet = new Set(selection.map((item) => item.pageId));
-                const orderedPages: PageItem[] = [];
-                for (const doc of documents) {
-                    for (const page of doc.pages) {
-                        if (selectionSet.has(page.id)) {
-                            orderedPages.push(page);
-                        }
-                    }
-                }
-                pageClipboardRef.current = orderedPages;
                 return;
             }
 
             if (isPasteShortcut) {
-                if (!activeDocumentId || pageClipboardRef.current.length === 0) {
-                    return;
+                if (pasteSelectedPages()) {
+                    event.preventDefault();
                 }
-                const targetDoc = documents.find((doc) => doc.id === activeDocumentId);
-                if (!targetDoc) {
-                    return;
-                }
-
-                event.preventDefault();
-                const clonedPages: PageItem[] = pageClipboardRef.current.map((page) => ({
-                    ...page,
-                    id: crypto.randomUUID(),
-                }));
-                const nextDocuments = documents.map((doc) => {
-                    if (doc.id !== activeDocumentId) {
-                        return doc;
-                    }
-                    return {
-                        ...doc,
-                        pages: [...doc.pages, ...clonedPages],
-                        isModified: true,
-                    };
-                });
-                setDocuments(nextDocuments);
-                setSelection(clonedPages.map((page) => ({ docId: activeDocumentId, pageId: page.id })));
                 return;
             }
 
@@ -473,7 +490,7 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
 
         window.addEventListener('keydown', onKeyDown);
         return () => window.removeEventListener('keydown', onKeyDown);
-    }, [activeDocumentId, documents, openUploadDialog, selection, setDocuments, setSelection]);
+    }, [copySelectedPages, openUploadDialog, pasteSelectedPages]);
 
     const handleStageWheel = useCallback((event: KonvaEventObject<WheelEvent>) => {
         event.evt.preventDefault();
@@ -686,34 +703,49 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
                 </Layer>
             </Stage>
             <div className="studio-viewport-controls animate-fade-in">
+                <button
+                    className="studio-viewport-btn"
+                    onClick={() => { copySelectedPages(); }}
+                    title="Copy selected pages (Ctrl/Cmd+C)"
+                    disabled={selection.length === 0}
+                >
+                    Copy
+                </button>
+                <button
+                    className="studio-viewport-btn"
+                    onClick={() => { pasteSelectedPages(); }}
+                    title="Paste copied pages (Ctrl/Cmd+V)"
+                    disabled={!activeDocumentId || !hasClipboardPages}
+                >
+                    Paste
+                </button>
+                <div className="studio-viewport-divider" />
+                <button className="studio-viewport-btn" onClick={zoomOut} title="Zoom out" disabled={!hasFiles}>-</button>
+                <span className="studio-viewport-scale">{Math.round(viewScale * 100)}%</span>
+                <button className="studio-viewport-btn" onClick={zoomIn} title="Zoom in" disabled={!hasFiles}>+</button>
+                <button className="studio-viewport-btn studio-viewport-btn-fit" onClick={() => fitToDocuments(documents)} title="Fit all documents" disabled={!hasFiles}>
+                    Fit
+                </button>
+                <div className="studio-viewport-divider" />
+                <button
+                    className={`studio-viewport-btn ${gridColumns === 3 ? 'active' : ''}`}
+                    onClick={() => setGridColumns(3)}
+                    title="Grid: 3 columns"
+                    disabled={!hasFiles}
+                >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect></svg>
+                </button>
+                <button
+                    className={`studio-viewport-btn ${gridColumns === 5 ? 'active' : ''}`}
+                    onClick={() => setGridColumns(5)}
+                    title="Grid: 5 columns overview"
+                    disabled={!hasFiles}
+                >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="3" y1="15" x2="21" y2="15"></line><line x1="9" y1="3" x2="9" y2="21"></line><line x1="15" y1="3" x2="15" y2="21"></line></svg>
+                </button>
                 <button className="studio-viewport-btn studio-viewport-btn-upload" onClick={openUploadDialog} title="Upload files (U or Ctrl/Cmd+O)">
                     Upload
                 </button>
-                {hasFiles && (
-                    <>
-                        <button className="studio-viewport-btn" onClick={zoomOut} title="Zoom out">-</button>
-                        <button className="studio-viewport-btn" onClick={zoomIn} title="Zoom in">+</button>
-                        <button className="studio-viewport-btn studio-viewport-btn-fit" onClick={() => fitToDocuments(documents)} title="Fit all documents">
-                            Fit
-                        </button>
-                        <div className="studio-viewport-divider" />
-                        <button
-                            className={`studio-viewport-btn ${gridColumns === 3 ? 'active' : ''}`}
-                            onClick={() => setGridColumns(3)}
-                            title="Grid: 3 columns"
-                        >
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect></svg>
-                        </button>
-                        <button
-                            className={`studio-viewport-btn ${gridColumns === 5 ? 'active' : ''}`}
-                            onClick={() => setGridColumns(5)}
-                            title="Grid: 5 columns overview"
-                        >
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="3" y1="15" x2="21" y2="15"></line><line x1="9" y1="3" x2="9" y2="21"></line><line x1="15" y1="3" x2="15" y2="21"></line></svg>
-                        </button>
-                        <span className="studio-viewport-scale">{Math.round(viewScale * 100)}%</span>
-                    </>
-                )}
             </div>
             <input
                 ref={uploadInputRef}
