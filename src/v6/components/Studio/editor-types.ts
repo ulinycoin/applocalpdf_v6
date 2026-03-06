@@ -34,6 +34,7 @@ export interface StrokeElement {
     id: string;
     type: 'stroke';
     points: number[];
+    paths?: number[][];
     color: string;
     width: number;
     opacity: number;
@@ -61,6 +62,12 @@ export interface ImageElement {
     h: number;
     opacity: number;
     dataUrl: string;
+    signatureSource?: 'typed' | 'drawn' | 'upload';
+    typedSignatureMeta?: {
+        baseFontSize: number;
+        sourceWidth: number;
+        sourceHeight: number;
+    };
 }
 
 export interface FormFieldElement {
@@ -116,6 +123,7 @@ export interface RectDraft {
 
 export interface StrokeDraft {
     points: number[];
+    paths?: number[][];
 }
 
 export type DragSession =
@@ -123,12 +131,13 @@ export type DragSession =
     | { mode: 'resize-text'; id: string; startClientX: number; startClientY: number; originW: number; originH: number; originFontSize: number; initialElements: EditElement[]; }
     | { mode: 'move-rect'; id: string; startClientX: number; startClientY: number; originX: number; originY: number; initialElements: EditElement[]; }
     | { mode: 'resize-rect'; id: string; startClientX: number; startClientY: number; originW: number; originH: number; initialElements: EditElement[]; }
+    | { mode: 'move-image'; id: string; startClientX: number; startClientY: number; originX: number; originY: number; originW: number; originH: number; initialElements: EditElement[]; }
     | { mode: 'resize-image'; id: string; startClientX: number; startClientY: number; originW: number; originH: number; originX: number; originY: number; initialElements: EditElement[]; }
     | { mode: 'resize-form-field'; id: string; startClientX: number; startClientY: number; originW: number; originH: number; originX: number; originY: number; initialElements: EditElement[]; }
     | { mode: 'move-watermark'; id: string; startClientX: number; startClientY: number; originX: number; originY: number; initialElements: EditElement[]; }
     | { mode: 'resize-watermark'; id: string; startClientX: number; startClientY: number; originW: number; originH: number; originFontSize: number; originX: number; originY: number; initialElements: EditElement[]; }
     | { mode: 'rotate-watermark'; id: string; centerClientX: number; centerClientY: number; originRotation: number; initialElements: EditElement[]; }
-    | { mode: 'move-stroke'; id: string; startClientX: number; startClientY: number; initialPoints: number[]; initialElements: EditElement[]; }
+    | { mode: 'move-stroke'; id: string; startClientX: number; startClientY: number; initialPoints: number[]; initialPaths?: number[][]; initialElements: EditElement[]; }
     | { mode: 'resize-stroke'; id: string; startClientX: number; startClientY: number; initialPoints: number[]; bounds: { minX: number; minY: number; maxX: number; maxY: number }; initialElements: EditElement[]; };
 
 export interface TextEditorState {

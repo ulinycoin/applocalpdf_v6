@@ -14,7 +14,10 @@ interface StudioSignSettingsPanelProps {
     onDrawColorChange: (color: string) => void;
     onDrawStrokeWidthChange: (size: number) => void;
     onInsertTyped: () => void;
+    onInsertDrawn: () => void;
+    onClearDrawn: () => void;
     onUploadImage: (payload: { dataUrl: string; width: number; height: number }) => void;
+    hasPendingDrawnSignature?: boolean;
     onDelete?: () => void;
     onDuplicate?: () => void;
 }
@@ -50,7 +53,10 @@ export function StudioSignSettingsPanel({
     onDrawColorChange,
     onDrawStrokeWidthChange,
     onInsertTyped,
+    onInsertDrawn,
+    onClearDrawn,
     onUploadImage,
+    hasPendingDrawnSignature = false,
     onDelete,
     onDuplicate,
 }: StudioSignSettingsPanelProps) {
@@ -139,6 +145,26 @@ export function StudioSignSettingsPanel({
                                 onChange={(event) => onDrawStrokeWidthChange(Math.max(1, Math.min(12, Number(event.target.value) || 3)))}
                             />
                         </label>
+                        <button
+                            type="button"
+                            className="studio-floating-btn"
+                            onClick={onInsertDrawn}
+                            disabled={!hasPendingDrawnSignature}
+                            title="Insert drawn signature"
+                            style={{ height: 32, padding: '0 10px', width: 'auto' }}
+                        >
+                            Insert
+                        </button>
+                        <button
+                            type="button"
+                            className="studio-floating-btn"
+                            onClick={onClearDrawn}
+                            disabled={!hasPendingDrawnSignature}
+                            title="Clear drawn signature"
+                            style={{ height: 32, padding: '0 10px', width: 'auto' }}
+                        >
+                            Clear
+                        </button>
                         <span className="studio-annotate-quickbar-caption">Draw directly on page</span>
                     </>
                 )}

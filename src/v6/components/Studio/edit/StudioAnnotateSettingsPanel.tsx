@@ -21,6 +21,9 @@ interface StudioAnnotateSettingsPanelProps {
     onModeChange: (mode: 'highlight' | 'pen' | 'shapes') => void;
     onShapePresetChange: (preset: ShapePreset) => void;
     onStrokeWidthChange: (width: number) => void;
+    onInsertPen?: () => void;
+    onClearPen?: () => void;
+    hasPendingPenDraft?: boolean;
     onDelete?: () => void;
     onDuplicate?: () => void;
 }
@@ -54,6 +57,9 @@ export function StudioAnnotateSettingsPanel({
     onModeChange,
     onShapePresetChange,
     onStrokeWidthChange,
+    onInsertPen,
+    onClearPen,
+    hasPendingPenDraft = false,
     onDelete,
     onDuplicate,
 }: StudioAnnotateSettingsPanelProps) {
@@ -142,6 +148,30 @@ export function StudioAnnotateSettingsPanel({
                             onChange={(event) => onStrokeWidthChange(Math.max(1, Math.min(18, Number(event.target.value) || 5)))}
                         />
                     </label>
+                )}
+                {mode === 'pen' && (
+                    <>
+                        <button
+                            type="button"
+                            className="studio-floating-btn"
+                            onClick={onInsertPen}
+                            disabled={!hasPendingPenDraft}
+                            title="Insert pen annotation"
+                            style={{ height: 32, padding: '0 10px', width: 'auto' }}
+                        >
+                            Insert
+                        </button>
+                        <button
+                            type="button"
+                            className="studio-floating-btn"
+                            onClick={onClearPen}
+                            disabled={!hasPendingPenDraft}
+                            title="Clear pen annotation"
+                            style={{ height: 32, padding: '0 10px', width: 'auto' }}
+                        >
+                            Clear
+                        </button>
+                    </>
                 )}
 
                 {onDuplicate && (

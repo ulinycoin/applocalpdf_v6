@@ -5,7 +5,28 @@ function clamp(value: number, min: number, max: number): number {
     return Math.max(min, Math.min(max, value));
 }
 
-function buildSignatureImage(points: number[], color: string, strokeWidth: number): { dataUrl: string; widthRatio: number; heightRatio: number; x: number; y: number } | null {
+function getAllDraftPaths(draft: { points: number[]; paths?: number[][] } | null | undefined): number[][] {
+    if (!draft) {
+        return [];
+    }
+    const paths = [...(draft.paths ?? [])];
+    if (draft.points.length >= 4) {
+        paths.push(draft.points);
+    }
+    return paths;
+}
+
+export function hasSignatureDraft(draft: { points: number[]; paths?: number[][] } | null | undefined): boolean {
+    return getAllDraftPaths(draft).length > 0;
+}
+
+export function buildSignatureImage(
+    draft: { points: number[]; paths?: number[][] },
+    color: string,
+    strokeWidth: number,
+): { dataUrl: string; widthRatio: number; heightRatio: number; x: number; y: number } | null {
+    const paths = getAllDraftPaths(draft);
+    const points = paths.flat();
     if (points.length < 4) {
         return null;
     }
@@ -48,17 +69,22 @@ function buildSignatureImage(points: number[], color: string, strokeWidth: numbe
     context.lineJoin = 'round';
     context.lineCap = 'round';
     context.lineWidth = Math.max(1.6, (strokeWidth / Math.max(w, h)) * 0.0032 * Math.min(targetWidth, targetHeight));
-    context.beginPath();
-    for (let i = 0; i < points.length; i += 2) {
-        const px = ((points[i] - x) / w) * targetWidth;
-        const py = ((points[i + 1] - y) / h) * targetHeight;
-        if (i === 0) {
-            context.moveTo(px, py);
-        } else {
-            context.lineTo(px, py);
+    for (const path of paths) {
+        if (path.length < 4) {
+            continue;
         }
+        context.beginPath();
+        for (let i = 0; i < path.length; i += 2) {
+            const px = ((path[i] - x) / w) * targetWidth;
+            const py = ((path[i + 1] - y) / h) * targetHeight;
+            if (i === 0) {
+                context.moveTo(px, py);
+            } else {
+                context.lineTo(px, py);
+            }
+        }
+        context.stroke();
     }
-    context.stroke();
 
     return {
         dataUrl: canvas.toDataURL('image/png'),
@@ -78,37 +104,65 @@ export const SignTool: IEditorTool = {
             return;
         }
         ctx.setIsPointerDown(true);
-        ctx.setDraftStroke({ points: [x, y] });
+        ctx.setDraftStroke((prev) => {
+            const nextPaths = [...(prev?.paths ?? [])];
+            if (prev?.points && prev.points.length >= 4) {
+                nextPaths.push(prev.points);
+            }
+            return { points: [x, y], paths: nextPaths };
+        });
     },
     onPointerMove: (ctx, _event, { x, y }) => {
         if (ctx.signMode !== 'draw' || !ctx.isPointerDown) {
             return;
         }
-        ctx.setDraftStroke((prev) => prev ? { points: [...prev.points, x, y] } : { points: [x, y] });
+        ctx.setDraftStroke((prev) => {
+            if (!prev) {
+                return { points: [x, y], paths: [] };
+            }
+            return {
+                points: [...prev.points, x, y],
+                paths: prev.paths ?? [],
+            };
+        });
     },
     onPointerUp: (ctx: ToolContext) => {
-        if (ctx.signMode === 'draw') {
-            const draft = ctx.draftStroke;
-            if (draft && draft.points.length >= 4) {
-                const rendered = buildSignatureImage(draft.points, ctx.signColor, ctx.signStrokeWidth);
-                if (rendered) {
-                    const next: ImageElement = {
-                        id: crypto.randomUUID(),
-                        type: 'image',
-                        x: rendered.x,
-                        y: rendered.y,
-                        w: rendered.widthRatio,
-                        h: rendered.heightRatio,
-                        opacity: 1,
-                        dataUrl: rendered.dataUrl,
-                    };
-                    ctx.applyElements([...ctx.elements, next]);
-                    ctx.setSelectedElementId(next.id);
-                    ctx.setInlineUiState('selected');
-                }
-            }
-        }
         ctx.setIsPointerDown(false);
-        ctx.setDraftStroke(null);
     },
 };
+
+export function finalizeSignatureDraft(params: {
+    draft: { points: number[]; paths?: number[][] } | null;
+    color: string;
+    strokeWidth: number;
+    elements: ToolContext['elements'];
+    applyElements: ToolContext['applyElements'];
+    setSelectedElementId: ToolContext['setSelectedElementId'];
+    setInlineUiState: ToolContext['setInlineUiState'];
+    setDraftStroke: ToolContext['setDraftStroke'];
+}): boolean {
+    const { draft, color, strokeWidth, elements, applyElements, setSelectedElementId, setInlineUiState, setDraftStroke } = params;
+    if (!hasSignatureDraft(draft)) {
+        return false;
+    }
+    const rendered = buildSignatureImage(draft!, color, strokeWidth);
+    if (!rendered) {
+        return false;
+    }
+    const next: ImageElement = {
+        id: crypto.randomUUID(),
+        type: 'image',
+        x: rendered.x,
+        y: rendered.y,
+        w: rendered.widthRatio,
+        h: rendered.heightRatio,
+        opacity: 1,
+        dataUrl: rendered.dataUrl,
+        signatureSource: 'drawn',
+    };
+    applyElements([...elements, next]);
+    setSelectedElementId(next.id);
+    setInlineUiState('selected');
+    setDraftStroke(null);
+    return true;
+}

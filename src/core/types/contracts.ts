@@ -128,6 +128,7 @@ export interface WorkerStudioStrokeEditElement {
   id: string;
   type: 'stroke';
   points: number[];
+  paths?: number[][];
   color: string;
   width: number;
   opacity: number;

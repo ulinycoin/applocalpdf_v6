@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { flushSync } from 'react-dom';
 import { useStudioEditController } from './edit/use-studio-edit-controller';
 import { StudioEditToolbar } from './edit/StudioEditToolbar';
 import { StudioAnnotateSettingsPanel } from './edit/StudioAnnotateSettingsPanel';
@@ -11,7 +12,7 @@ import { StudioTextSettingsPanel } from './edit/StudioTextSettingsPanel';
 import { StudioSignSettingsPanel } from './edit/StudioSignSettingsPanel';
 import { LinearIcon } from '../icons/linear-icon';
 import { detectStudioEditLocale, getStudioEditMessages } from './studio-edit-i18n';
-import { StudioPageEditor } from './StudioPageEditor';
+import { StudioPageEditor, type StudioPageEditorHandle } from './StudioPageEditor';
 import { useStudioEditZoom } from './edit/use-studio-edit-zoom';
 import type { FormFieldElement, WatermarkElement } from './editor-types';
 import type { FontFamilyId } from './inline-text-utils';
@@ -24,8 +25,11 @@ export function StudioEditWorkspace() {
     const zoom = useStudioEditZoom(ctrl.runId || 'unknown', 1);
     const imageRef = useRef<HTMLImageElement | null>(null);
     const surfaceRef = useRef<HTMLDivElement | null>(null);
+    const editorRef = useRef<StudioPageEditorHandle | null>(null);
     const [canvasSize, setCanvasSize] = useState<{ width: number; height: number }>({ width: 620, height: 840 });
     const [floatingPanelLayout, setFloatingPanelLayout] = useState<{ left: number; width: number } | null>(null);
+    const [hasPendingDrawnSignature, setHasPendingDrawnSignature] = useState(false);
+    const [hasPendingAnnotatePenDraft, setHasPendingAnnotatePenDraft] = useState(false);
 
     useEffect(() => {
         if (!ctrl.message) {
@@ -185,6 +189,65 @@ export function StudioEditWorkspace() {
     const selectedStrokeElement = ctrl.selectedElementId
         ? ctrl.elements.find(e => e.id === ctrl.selectedElementId && e.type === 'stroke') as import('./editor-types').StrokeElement | undefined
         : undefined;
+    const selectedImageElement = ctrl.selectedElementId
+        ? ctrl.elements.find(e => e.id === ctrl.selectedElementId && e.type === 'image') as import('./editor-types').ImageElement | undefined
+        : undefined;
+    const selectedTypedSignature = selectedImageElement?.signatureSource === 'typed' && selectedImageElement.typedSignatureMeta
+        ? selectedImageElement
+        : undefined;
+
+    const hasPendingChanges = ctrl.historyIndex > 0 || ctrl.hasDirtyChanges || hasPendingDrawnSignature || hasPendingAnnotatePenDraft;
+
+    const commitPendingSignIfNeeded = useCallback(() => {
+        if (ctrl.tool === 'sign' && ctrl.signMode === 'draw') {
+            flushSync(() => {
+                editorRef.current?.commitPendingSignDraft();
+            });
+        }
+    }, [ctrl.signMode, ctrl.tool]);
+
+    const commitPendingAnnotatePenIfNeeded = useCallback(() => {
+        if (ctrl.tool === 'annotate' && ctrl.annotateMode === 'pen') {
+            flushSync(() => {
+                editorRef.current?.commitPendingAnnotatePenDraft();
+            });
+        }
+    }, [ctrl.annotateMode, ctrl.tool]);
+
+    const handleSave = useCallback(() => {
+        commitPendingSignIfNeeded();
+        commitPendingAnnotatePenIfNeeded();
+        void ctrl.applyChanges();
+    }, [commitPendingAnnotatePenIfNeeded, commitPendingSignIfNeeded, ctrl.applyChanges]);
+
+    useEffect(() => {
+        const onKeyDown = (event: KeyboardEvent) => {
+            const key = event.key.toLowerCase();
+            if (!(event.ctrlKey || event.metaKey) || key !== 's') {
+                return;
+            }
+            if (ctrl.tool === 'protect' || ctrl.isApplying || !hasPendingChanges) {
+                return;
+            }
+            event.preventDefault();
+            event.stopPropagation();
+            handleSave();
+        };
+        window.addEventListener('keydown', onKeyDown, true);
+        return () => window.removeEventListener('keydown', onKeyDown, true);
+    }, [ctrl.isApplying, ctrl.tool, handleSave, hasPendingChanges]);
+
+    useEffect(() => {
+        if (ctrl.tool !== 'sign' || ctrl.signMode !== 'type' || !selectedTypedSignature?.typedSignatureMeta) {
+            return;
+        }
+        const meta = selectedTypedSignature.typedSignatureMeta;
+        const widthScale = selectedTypedSignature.w / Math.max(0.0001, 0.28);
+        const nextSize = Math.max(12, Math.min(96, Math.round(meta.baseFontSize * widthScale)));
+        if (nextSize !== ctrl.signTypedFontSize) {
+            ctrl.setSignTypedFontSize(nextSize);
+        }
+    }, [ctrl, selectedTypedSignature]);
 
     const topSettingsPanel = ctrl.tool === 'text'
         ? (
@@ -268,11 +331,50 @@ export function StudioEditWorkspace() {
                         drawStrokeWidth={ctrl.signDrawStrokeWidth}
                         onModeChange={ctrl.setSignMode}
                         onTypedValueChange={ctrl.setSignTypedValue}
-                        onTypedFontSizeChange={ctrl.setSignTypedFontSize}
+                        onTypedFontSizeChange={(next) => {
+                            const normalized = Math.max(12, Math.min(96, Math.round(next || 30)));
+                            if (ctrl.signMode === 'type' && selectedTypedSignature?.typedSignatureMeta) {
+                                const prevSize = Math.max(12, Math.min(96, Math.round(ctrl.signTypedFontSize || 30)));
+                                const scale = normalized / prevSize;
+                                const aspect = Math.max(0.05, selectedTypedSignature.w / Math.max(0.01, selectedTypedSignature.h));
+                                const maxW = Math.max(0.04, 1 - selectedTypedSignature.x);
+                                const maxH = Math.max(0.02, 1 - selectedTypedSignature.y);
+
+                                let nextW = Math.max(0.04, selectedTypedSignature.w * scale);
+                                let nextH = nextW / aspect;
+
+                                if (nextH > maxH) {
+                                    nextH = maxH;
+                                    nextW = nextH * aspect;
+                                }
+                                if (nextW > maxW) {
+                                    nextW = maxW;
+                                    nextH = nextW / aspect;
+                                }
+                                if (nextH < 0.02) {
+                                    nextH = 0.02;
+                                    nextW = nextH * aspect;
+                                }
+                                if (nextW < 0.04) {
+                                    nextW = 0.04;
+                                    nextH = nextW / aspect;
+                                }
+
+                                ctrl.handleElementAction(selectedTypedSignature.id, 'update', { w: nextW, h: nextH });
+                            }
+                            ctrl.setSignTypedFontSize(normalized);
+                        }}
                         onDrawColorChange={ctrl.setSignDrawColor}
                         onDrawStrokeWidthChange={ctrl.setSignDrawStrokeWidth}
                         onInsertTyped={ctrl.insertTypedSignature}
+                        onInsertDrawn={() => {
+                            commitPendingSignIfNeeded();
+                        }}
+                        onClearDrawn={() => {
+                            editorRef.current?.clearPendingSignDraft();
+                        }}
                         onUploadImage={ctrl.addImageSignature}
+                        hasPendingDrawnSignature={hasPendingDrawnSignature}
                         onDelete={ctrl.selectedElementId ? () => ctrl.handleElementAction(ctrl.selectedElementId!, 'delete') : undefined}
                         onDuplicate={ctrl.selectedElementId ? () => ctrl.handleElementAction(ctrl.selectedElementId!, 'duplicate') : undefined}
                     />
@@ -366,6 +468,13 @@ export function StudioEditWorkspace() {
                                         }
                                         ctrl.setAnnotateStrokeWidth(next);
                                     }}
+                                    onInsertPen={() => {
+                                        commitPendingAnnotatePenIfNeeded();
+                                    }}
+                                    onClearPen={() => {
+                                        editorRef.current?.clearPendingAnnotatePenDraft();
+                                    }}
+                                    hasPendingPenDraft={hasPendingAnnotatePenDraft}
                                     onDelete={ctrl.selectedElementId ? () => ctrl.handleElementAction(ctrl.selectedElementId!, 'delete') : undefined}
                                     onDuplicate={ctrl.selectedElementId ? () => ctrl.handleElementAction(ctrl.selectedElementId!, 'duplicate') : undefined}
                                 />
@@ -481,6 +590,7 @@ export function StudioEditWorkspace() {
                                 style={{ width: '100%', height: '100%', position: 'absolute', inset: 0 }}
                             />
                             <StudioPageEditor
+                                ref={editorRef}
                                 page={ctrl.preview.page}
                                 width={canvasSize.width}
                                 height={canvasSize.height}
@@ -497,6 +607,8 @@ export function StudioEditWorkspace() {
                                 signMode={ctrl.signMode}
                                 signColor={ctrl.signDrawColor}
                                 signStrokeWidth={ctrl.signDrawStrokeWidth}
+                                onPendingSignDraftChange={setHasPendingDrawnSignature}
+                                onPendingAnnotatePenDraftChange={setHasPendingAnnotatePenDraft}
                                 shapePreset={ctrl.shapePreset}
                                 shapeColor={ctrl.shapeColor}
                                 shapeStrokeWidth={ctrl.shapeStrokeWidth}
@@ -513,7 +625,7 @@ export function StudioEditWorkspace() {
                                 onMessageChange={ctrl.setMessage}
                                 onFinish={() => {
                                     if (ctrl.textEditor) ctrl.commitTextEditor();
-                                    void ctrl.applyChanges();
+                                    handleSave();
                                 }}
                                 onDiscard={() => {
                                     if (ctrl.hasDirtyChanges && !window.confirm(ui.unsavedConfirm)) return;
@@ -544,11 +656,11 @@ export function StudioEditWorkspace() {
                         className="studio-edit-btn-apply studio-edit-fixed-save-btn"
                         onClick={ctrl.tool === 'protect'
                             ? () => { void ctrl.protectAndReturnToStudio(ctrl.protectOptions); }
-                            : ctrl.applyChanges}
+                            : handleSave}
                         disabled={ctrl.isApplying || (
                             ctrl.tool === 'protect'
                                 ? (!protectPermissionsOnly && !protectUserPassword.trim())
-                                : (ctrl.historyIndex === 0 && !ctrl.hasDirtyChanges)
+                                : !hasPendingChanges
                         )}
                     >
                         {ctrl.isApplying

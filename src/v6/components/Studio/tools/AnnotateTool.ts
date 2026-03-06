@@ -6,6 +6,56 @@ function clamp(value: number, min: number, max: number): number {
     return Math.max(min, Math.min(max, value));
 }
 
+function getAllDraftPaths(draft: { points: number[]; paths?: number[][] } | null | undefined): number[][] {
+    if (!draft) {
+        return [];
+    }
+    const paths = [...(draft.paths ?? [])];
+    if (draft.points.length >= 4) {
+        paths.push(draft.points);
+    }
+    return paths;
+}
+
+export function hasAnnotatePenDraft(draft: { points: number[]; paths?: number[][] } | null | undefined): boolean {
+    return getAllDraftPaths(draft).length > 0;
+}
+
+export function finalizeAnnotatePenDraft(params: {
+    draft: { points: number[]; paths?: number[][] } | null;
+    color: string;
+    width: number;
+    elements: ToolContext['elements'];
+    applyElements: ToolContext['applyElements'];
+    setSelectedElementId: ToolContext['setSelectedElementId'];
+    setInlineUiState: ToolContext['setInlineUiState'];
+    setDraftStroke: ToolContext['setDraftStroke'];
+}): boolean {
+    const { draft, color, width, elements, applyElements, setSelectedElementId, setInlineUiState, setDraftStroke } = params;
+    if (!hasAnnotatePenDraft(draft)) {
+        return false;
+    }
+    const paths = getAllDraftPaths(draft);
+    const [firstPath, ...restPaths] = paths;
+    if (!firstPath || firstPath.length < 4) {
+        return false;
+    }
+    const next = {
+        id: crypto.randomUUID(),
+        type: 'stroke' as const,
+        points: firstPath,
+        paths: restPaths.length > 0 ? restPaths : undefined,
+        color,
+        width,
+        opacity: 1,
+    };
+    applyElements([...elements, next]);
+    setSelectedElementId(next.id);
+    setInlineUiState('selected');
+    setDraftStroke(null);
+    return true;
+}
+
 export const AnnotateTool: IEditorTool = {
     id: 'annotate',
     onPointerDown: (ctx: ToolContext, _event: React.PointerEvent, { x, y }: Point) => {
@@ -13,6 +63,16 @@ export const AnnotateTool: IEditorTool = {
         ctx.setIsPointerDown(true);
         if (ctx.annotateMode === 'shapes') {
             ctx.setDraftRect({ startX: x, startY: y, endX: x, endY: y, x, y, w: 0, h: 0 });
+            return;
+        }
+        if (ctx.annotateMode === 'pen') {
+            ctx.setDraftStroke((prev) => {
+                const nextPaths = [...(prev?.paths ?? [])];
+                if (prev?.points && prev.points.length >= 4) {
+                    nextPaths.push(prev.points);
+                }
+                return { points: [x, y], paths: nextPaths };
+            });
             return;
         }
         ctx.setDraftStroke({ points: [x, y] });
@@ -31,7 +91,7 @@ export const AnnotateTool: IEditorTool = {
             } : null);
             return;
         }
-        ctx.setDraftStroke(prev => prev ? { points: [...prev.points, x, y] } : null);
+        ctx.setDraftStroke(prev => prev ? { points: [...prev.points, x, y], paths: prev.paths ?? [] } : null);
     },
     onPointerUp: (ctx: ToolContext, _event: React.PointerEvent, { x, y }: Point) => {
         ctx.setIsPointerDown(false);
@@ -99,15 +159,6 @@ export const AnnotateTool: IEditorTool = {
         const draft = ctx.draftStroke;
         if (draft && draft.points.length >= 4) {
             if (ctx.annotateMode === 'pen') {
-                ctx.applyElements([...ctx.elements, {
-                    id: crypto.randomUUID(),
-                    type: 'stroke',
-                    points: draft.points,
-                    color: ctx.annotateColor,
-                    width: ctx.annotateStrokeWidth,
-                    opacity: 1,
-                }]);
-                ctx.setDraftStroke(null);
                 return;
             }
 

@@ -124,11 +124,28 @@ function normalizeStrokePoints(points: unknown): number[] {
   return points.map((value, index) => toSafeRatio(value, `stroke.points[${index}]`));
 }
 
+function normalizeStrokePaths(paths: unknown): number[][] | undefined {
+  if (paths == null) {
+    return undefined;
+  }
+  if (!Array.isArray(paths)) {
+    fail('Invalid stroke payload: paths must be an array', 'STUDIO_EDIT_INVALID_PAYLOAD');
+  }
+  const normalized = paths.map((path, index) => {
+    if (!Array.isArray(path) || path.length < 4 || path.length % 2 !== 0) {
+      fail(`Invalid stroke payload: paths[${index}] must be an even array with at least 4 numbers`, 'STUDIO_EDIT_INVALID_PAYLOAD');
+    }
+    return path.map((value, pointIndex) => toSafeRatio(value, `stroke.paths[${index}][${pointIndex}]`));
+  });
+  return normalized.length > 0 ? normalized : undefined;
+}
+
 function normalizeStrokeElement(input: WorkerStudioStrokeEditElement): WorkerStudioStrokeEditElement {
   return {
     id: typeof input.id === 'string' && input.id.trim().length > 0 ? input.id : crypto.randomUUID(),
     type: 'stroke',
     points: normalizeStrokePoints(input.points),
+    paths: normalizeStrokePaths(input.paths),
     color: normalizeColor(input.color),
     width: clamp(toFiniteNumber(input.width, 'stroke.width'), 0.1, 64),
     opacity: normalizeOpacity(input.opacity),

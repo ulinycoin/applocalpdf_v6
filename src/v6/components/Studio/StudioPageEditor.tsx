@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
 import type { PageItem, StudioEditToolId } from './studio-store';
 import {
     clamp,
@@ -21,8 +21,15 @@ import {
     TextLayerSpan
 } from './editor-types';
 import { TOOLS, ToolContext } from './tools';
+import { finalizeAnnotatePenDraft, hasAnnotatePenDraft } from './tools/AnnotateTool';
+import { finalizeSignatureDraft, hasSignatureDraft } from './tools/SignTool';
 
-
+export interface StudioPageEditorHandle {
+    commitPendingSignDraft: () => boolean;
+    clearPendingSignDraft: () => void;
+    commitPendingAnnotatePenDraft: () => boolean;
+    clearPendingAnnotatePenDraft: () => void;
+}
 
 export interface StudioPageEditorProps {
     page: PageItem;
@@ -51,6 +58,8 @@ export interface StudioPageEditorProps {
     signMode?: 'type' | 'draw';
     signColor?: string;
     signStrokeWidth?: number;
+    onPendingSignDraftChange?: (hasDraft: boolean) => void;
+    onPendingAnnotatePenDraftChange?: (hasDraft: boolean) => void;
     shapePreset?: ShapePreset;
     shapeColor?: string;
     shapeStrokeWidth?: number;
@@ -85,7 +94,7 @@ export interface StudioPageEditorProps {
     onDiscard?: () => void;
 }
 
-export function StudioPageEditor({
+export const StudioPageEditor = forwardRef<StudioPageEditorHandle, StudioPageEditorProps>(function StudioPageEditor({
     page: _page,
     width,
     height,
@@ -110,6 +119,8 @@ export function StudioPageEditor({
     signMode = 'type',
     signColor = '#111827',
     signStrokeWidth = 3,
+    onPendingSignDraftChange,
+    onPendingAnnotatePenDraftChange,
     shapePreset = 'rectangle',
     shapeColor = '#2563eb',
     shapeStrokeWidth = 2,
@@ -142,7 +153,7 @@ export function StudioPageEditor({
     textLayerSpans,
     onFinish: _onFinish,
     onDiscard: _onDiscard
-}: StudioPageEditorProps) {
+}: StudioPageEditorProps, ref) {
     const canvasRef = useRef<HTMLDivElement | null>(null);
     const dragSessionRef = useRef<DragSession | null>(null);
 
@@ -173,6 +184,8 @@ export function StudioPageEditor({
 
     const textSelectionMode = externalTextSelectionMode ?? 'line';
     const activeTool = externalActiveTool;
+    const hasPendingSignDraft = activeTool === 'sign' && signMode === 'draw' && hasSignatureDraft(draftStroke);
+    const hasPendingAnnotatePenDraft = activeTool === 'annotate' && annotateMode === 'pen' && hasAnnotatePenDraft(draftStroke);
     const isPenModeActive = (activeTool === 'annotate' && annotateMode === 'pen') || (activeTool === 'sign' && signMode === 'draw');
 
     const locale = useMemo(() => detectStudioEditLocale(), []);
@@ -238,6 +251,53 @@ export function StudioPageEditor({
         signColor,
         signStrokeWidth,
     });
+
+    const commitPendingSignDraft = useCallback(() => finalizeSignatureDraft({
+        draft: draftStroke,
+        color: signColor,
+        strokeWidth: signStrokeWidth,
+        elements,
+        applyElements,
+        setSelectedElementId,
+        setInlineUiState,
+        setDraftStroke,
+    }), [applyElements, draftStroke, elements, setSelectedElementId, signColor, signStrokeWidth]);
+
+    const clearPendingSignDraft = useCallback(() => {
+        setDraftStroke(null);
+        setInlineUiState(selectedElementId ? 'selected' : 'idle');
+    }, [selectedElementId]);
+
+    const commitPendingAnnotatePenDraft = useCallback(() => finalizeAnnotatePenDraft({
+        draft: draftStroke,
+        color: annotateColor,
+        width: annotateStrokeWidth,
+        elements,
+        applyElements,
+        setSelectedElementId,
+        setInlineUiState,
+        setDraftStroke,
+    }), [annotateColor, annotateStrokeWidth, applyElements, draftStroke, elements, setSelectedElementId]);
+
+    const clearPendingAnnotatePenDraft = useCallback(() => {
+        setDraftStroke(null);
+        setInlineUiState(selectedElementId ? 'selected' : 'idle');
+    }, [selectedElementId]);
+
+    useImperativeHandle(ref, () => ({
+        commitPendingSignDraft,
+        clearPendingSignDraft,
+        commitPendingAnnotatePenDraft,
+        clearPendingAnnotatePenDraft,
+    }), [clearPendingAnnotatePenDraft, clearPendingSignDraft, commitPendingAnnotatePenDraft, commitPendingSignDraft]);
+
+    useEffect(() => {
+        onPendingSignDraftChange?.(hasPendingSignDraft);
+    }, [hasPendingSignDraft, onPendingSignDraftChange]);
+
+    useEffect(() => {
+        onPendingAnnotatePenDraftChange?.(hasPendingAnnotatePenDraft);
+    }, [hasPendingAnnotatePenDraft, onPendingAnnotatePenDraftChange]);
 
     // Pointer Handlers
     const onCanvasPointerDown = (event: React.PointerEvent) => {
@@ -339,7 +399,8 @@ export function StudioPageEditor({
 
             {/* Render Elements */}
             {elements.map((el) => {
-                const strokeBounds = el.type === 'stroke' ? getStrokeBounds(el.points) : null;
+                const strokePaths = el.type === 'stroke' ? [...(el.paths ?? []), el.points] : [];
+                const strokeBounds = el.type === 'stroke' ? getStrokeBounds(strokePaths.flat()) : null;
                 // Add padding to ensure stroke width fits inside the SVG viewBox and it never collapses to 0 height
                 const paddingLimit = el.type === 'stroke' ? ((el.width ?? 0) / Math.max(width, height)) * 1.5 : 0;
                 const strokeWidth = strokeBounds ? Math.max(paddingLimit, strokeBounds.maxX - strokeBounds.minX + paddingLimit * 2) : 0;
@@ -379,6 +440,7 @@ export function StudioPageEditor({
                         }}
                         onPointerDown={(e) => {
                             e.stopPropagation();
+                            e.preventDefault();
                             setSelectedElementId(el.id);
                             if (!textEditor || textEditor.id !== el.id) {
                                 dragSessionRef.current = {
@@ -386,15 +448,18 @@ export function StudioPageEditor({
                                         ? 'move-text'
                                         : (el.type === 'watermark'
                                             ? 'move-watermark'
-                                            : (el.type === 'rect' || el.type === 'image' || el.type === 'form-field' ? 'move-rect' : 'move-stroke')) as any,
+                                            : (el.type === 'image'
+                                                ? 'move-image'
+                                                : (el.type === 'rect' || el.type === 'form-field' ? 'move-rect' : 'move-stroke'))),
                                     id: el.id,
                                     startClientX: e.clientX,
                                     startClientY: e.clientY,
                                     originX: ('x' in el) ? el.x : 0,
                                     originY: ('y' in el) ? el.y : 0,
-                                    ...(el.type === 'stroke' ? { initialPoints: el.points } : {}),
+                                    ...(el.type === 'image' ? { originW: el.w, originH: el.h } : {}),
+                                    ...(el.type === 'stroke' ? { initialPoints: el.points, initialPaths: el.paths ?? [] } : {}),
                                     initialElements: elements
-                                };
+                                } as DragSession;
                                 try {
                                     (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
                                 } catch (err) { }
@@ -414,6 +479,18 @@ export function StudioPageEditor({
                                 const dy = (e.clientY - sess.startClientY) / height;
                                 handleElementAction(el.id, 'update', {
                                     points: moveStrokePoints(sess.initialPoints ?? el.points, dx, dy),
+                                    paths: (sess.initialPaths ?? el.paths ?? []).map((path: number[]) => moveStrokePoints(path, dx, dy)),
+                                });
+                            } else if (sess && sess.id === el.id && sess.mode === 'move-image' && el.type === 'image') {
+                                const dx = (e.clientX - sess.startClientX) / width;
+                                const dy = (e.clientY - sess.startClientY) / height;
+                                const maxX = Math.max(0, 1 - sess.originW);
+                                const maxY = Math.max(0, 1 - sess.originH);
+                                const nextX = clamp(sess.originX + dx, 0, maxX);
+                                const nextY = clamp(sess.originY + dy, 0, maxY);
+                                handleElementAction(el.id, 'update', {
+                                    x: nextX,
+                                    y: nextY,
                                 });
                             } else if (sess && sess.id === el.id && sess.mode.startsWith('move-')) {
                                 const dx = (e.clientX - sess.startClientX) / width;
@@ -676,22 +753,25 @@ export function StudioPageEditor({
                                 viewBox={`0 0 ${strokeWidth * width} ${strokeHeight * height}`}
                                 style={{ overflow: 'visible', pointerEvents: 'none' }}
                             >
-                                <polyline
-                                    points={el.points.reduce((acc, value, idx) => {
-                                        if (idx % 2 === 0) {
-                                            const px = ((value - strokeBounds.minX + paddingLimit) / strokeWidth) * (strokeWidth * width);
-                                            return `${acc}${px},`;
-                                        }
-                                        const py = ((value - strokeBounds.minY + paddingLimit) / strokeHeight) * (strokeHeight * height);
-                                        return `${acc}${py} `;
-                                    }, '').trim()}
-                                    fill="none"
-                                    stroke={el.color}
-                                    strokeWidth={el.width}
-                                    strokeOpacity={el.opacity}
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                />
+                                {strokePaths.map((path, pathIndex) => (
+                                    <polyline
+                                        key={`${el.id}-path-${pathIndex}`}
+                                        points={path.reduce((acc, value, idx) => {
+                                            if (idx % 2 === 0) {
+                                                const px = ((value - strokeBounds.minX + paddingLimit) / strokeWidth) * (strokeWidth * width);
+                                                return `${acc}${px},`;
+                                            }
+                                            const py = ((value - strokeBounds.minY + paddingLimit) / strokeHeight) * (strokeHeight * height);
+                                            return `${acc}${py} `;
+                                        }, '').trim()}
+                                        fill="none"
+                                        stroke={el.color}
+                                        strokeWidth={el.width}
+                                        strokeOpacity={el.opacity}
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                    />
+                                ))}
                             </svg>
                         )}
                         {selectedElementId === el.id && el.type === 'image' && (
@@ -876,29 +956,32 @@ export function StudioPageEditor({
                         }} />
                     )
             )}
-            {draftStroke && draftStroke.points.length >= 4 && (
+            {draftStroke && (hasSignatureDraft(draftStroke) || hasAnnotatePenDraft(draftStroke)) && (
                 <svg
                     style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}
                     width={width}
                     height={height}
                     viewBox={`0 0 ${width} ${height}`}
                 >
-                    <polyline
-                        points={draftStroke.points.reduce((acc, value, idx) => {
-                            const mapped = idx % 2 === 0 ? value * width : value * height;
-                            return `${acc}${mapped}${idx % 2 === 0 ? ',' : ' '}`;
-                        }, '').trim()}
-                        fill="none"
-                        stroke={activeTool === 'sign' ? signColor : annotateColor}
-                        strokeWidth={activeTool === 'sign' ? signStrokeWidth : (annotateMode === 'pen' ? annotateStrokeWidth : 12)}
-                        strokeOpacity={activeTool === 'sign' ? 1 : (annotateMode === 'pen' ? 1 : 0.45)}
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                    />
+                    {[...(draftStroke.paths ?? []), ...(draftStroke.points.length >= 4 ? [draftStroke.points] : [])].map((path, index) => (
+                        <polyline
+                            key={`draft-stroke-${index}`}
+                            points={path.reduce((acc, value, idx) => {
+                                const mapped = idx % 2 === 0 ? value * width : value * height;
+                                return `${acc}${mapped}${idx % 2 === 0 ? ',' : ' '}`;
+                            }, '').trim()}
+                            fill="none"
+                            stroke={activeTool === 'sign' ? signColor : annotateColor}
+                            strokeWidth={activeTool === 'sign' ? signStrokeWidth : (annotateMode === 'pen' ? annotateStrokeWidth : 12)}
+                            strokeOpacity={activeTool === 'sign' ? 1 : (annotateMode === 'pen' ? 1 : 0.45)}
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                        />
+                    ))}
                 </svg>
             )}
 
             {textLayerNodes}
         </div>
     );
-}
+});

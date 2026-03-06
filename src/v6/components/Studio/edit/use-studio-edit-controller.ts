@@ -19,7 +19,6 @@ import {
     FormFieldElement,
     ImageElement,
     ShapePreset,
-    TextElement,
     WatermarkElement,
     TextEditorState,
     InlineUiState,
@@ -71,6 +70,76 @@ function buildSelectedPages(
         });
     }
     return out;
+}
+
+function buildTypedSignatureImage(value: string, fontSize: number): { dataUrl: string; width: number; height: number } | null {
+    const safe = value.trim();
+    if (!safe) {
+        return null;
+    }
+
+    const resolvedFontSize = Math.max(12, Math.min(96, Math.round(fontSize || 30)));
+    const paddingX = Math.max(20, Math.round(resolvedFontSize * 0.8));
+    const paddingY = Math.max(12, Math.round(resolvedFontSize * 0.45));
+
+    const canvas = document.createElement('canvas');
+    const context = canvas.getContext('2d');
+    if (!context) {
+        return null;
+    }
+
+    context.font = `italic ${resolvedFontSize}px "Times New Roman", Times, serif`;
+    const metrics = context.measureText(safe);
+    const textWidth = Math.max(metrics.width, resolvedFontSize * 1.6);
+    const ascent = Math.max(resolvedFontSize * 0.78, metrics.actualBoundingBoxAscent || 0);
+    const descent = Math.max(resolvedFontSize * 0.24, metrics.actualBoundingBoxDescent || 0);
+    const width = Math.max(180, Math.ceil(textWidth + paddingX * 2));
+    const height = Math.max(80, Math.ceil(ascent + descent + paddingY * 2));
+
+    canvas.width = width;
+    canvas.height = height;
+
+    const drawContext = canvas.getContext('2d');
+    if (!drawContext) {
+        return null;
+    }
+
+    drawContext.clearRect(0, 0, width, height);
+    drawContext.font = `italic ${resolvedFontSize}px "Times New Roman", Times, serif`;
+    drawContext.fillStyle = '#0f172a';
+    drawContext.textAlign = 'left';
+    drawContext.textBaseline = 'alphabetic';
+    drawContext.fillText(safe, paddingX, paddingY + ascent);
+
+    return {
+        dataUrl: canvas.toDataURL('image/png'),
+        width,
+        height,
+    };
+}
+
+function buildImageSignatureElement(payload: {
+    dataUrl: string;
+    width: number;
+    height: number;
+    signatureSource?: ImageElement['signatureSource'];
+    typedSignatureMeta?: ImageElement['typedSignatureMeta'];
+}): ImageElement {
+    const ratio = payload.width > 0 && payload.height > 0 ? payload.width / payload.height : 3;
+    const initialW = 0.28;
+    const initialH = initialW / Math.max(0.2, ratio);
+    return {
+        id: crypto.randomUUID(),
+        type: 'image',
+        x: 0.36,
+        y: 0.72,
+        w: Math.min(0.5, Math.max(0.08, initialW)),
+        h: Math.min(0.35, Math.max(0.04, initialH)),
+        opacity: 1,
+        dataUrl: payload.dataUrl,
+        signatureSource: payload.signatureSource,
+        typedSignatureMeta: payload.typedSignatureMeta,
+    };
 }
 
 export function useStudioEditController(ui: any) {
@@ -329,47 +398,32 @@ export function useStudioEditController(ui: any) {
         setTextEditor(null);
     }, [pushHistory, setElementsSafe]);
 
-    const addTypedSignature = useCallback((payload: { value: string; fontSize: number }) => {
-        const safe = (payload.value || ui.sign || 'Signature').trim() || 'Signature';
-        const next: TextElement = {
-            id: crypto.randomUUID(),
-            type: 'text',
-            x: 0.33,
-            y: 0.78,
-            w: 0.3,
-            h: 0.08,
-            text: safe,
-            color: '#0f172a',
-            fontSize: Math.max(12, Math.min(96, Math.round(payload.fontSize || 30))),
-            fontFamily: 'times',
-            fontWeight: 'normal',
-            fontStyle: 'italic',
-            textAlign: 'left',
-            lineHeight: 1.1,
-            letterSpacing: 0,
-            opacity: 1,
-        };
-        addElement(next);
-        setTool('sign');
-    }, [addElement, ui.sign]);
-
     const addImageSignature = useCallback((payload: { dataUrl: string; width: number; height: number }) => {
-        const ratio = payload.width > 0 && payload.height > 0 ? payload.width / payload.height : 3;
-        const initialW = 0.28;
-        const initialH = initialW / Math.max(0.2, ratio);
-        const next: ImageElement = {
-            id: crypto.randomUUID(),
-            type: 'image',
-            x: 0.36,
-            y: 0.72,
-            w: Math.min(0.5, Math.max(0.08, initialW)),
-            h: Math.min(0.35, Math.max(0.04, initialH)),
-            opacity: 1,
-            dataUrl: payload.dataUrl,
-        };
+        const next = buildImageSignatureElement({
+            ...payload,
+            signatureSource: 'upload',
+        });
         addElement(next);
         setTool('sign');
     }, [addElement]);
+
+    const addTypedSignature = useCallback((payload: { value: string; fontSize: number }) => {
+        const safe = (payload.value || ui.sign || 'Signature').trim() || 'Signature';
+        const rendered = buildTypedSignatureImage(safe, payload.fontSize);
+        if (!rendered) {
+            return;
+        }
+        addElement(buildImageSignatureElement({
+            ...rendered,
+            signatureSource: 'typed',
+            typedSignatureMeta: {
+                baseFontSize: Math.max(12, Math.min(96, Math.round(payload.fontSize || 30))),
+                sourceWidth: rendered.width,
+                sourceHeight: rendered.height,
+            },
+        }));
+        setTool('sign');
+    }, [addElement, ui.sign]);
 
     const insertTypedSignature = useCallback(() => {
         addTypedSignature({

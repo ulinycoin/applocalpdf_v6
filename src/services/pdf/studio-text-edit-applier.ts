@@ -976,22 +976,25 @@ export async function applyStudioTextEditsToPdfBytes(params: {
     }
 
     if (element.type === 'stroke') {
-      if (element.points.length < 4) {
+      const strokePaths = [...(element.paths ?? []), element.points].filter((path) => path.length >= 4);
+      if (strokePaths.length === 0) {
         continue;
       }
       const { r, g, b } = hexToRgb(element.color);
-      for (let i = 0; i < element.points.length - 2; i += 2) {
-        const sx = element.points[i] * pageWidth;
-        const sy = pageHeight - (element.points[i + 1] * pageHeight);
-        const ex = element.points[i + 2] * pageWidth;
-        const ey = pageHeight - (element.points[i + 3] * pageHeight);
-        page.drawLine({
-          start: { x: sx, y: sy },
-          end: { x: ex, y: ey },
-          thickness: element.width,
-          color: rgb(r, g, b),
-          opacity: element.opacity,
-        });
+      for (const path of strokePaths) {
+        for (let i = 0; i < path.length - 2; i += 2) {
+          const sx = path[i] * pageWidth;
+          const sy = pageHeight - (path[i + 1] * pageHeight);
+          const ex = path[i + 2] * pageWidth;
+          const ey = pageHeight - (path[i + 3] * pageHeight);
+          page.drawLine({
+            start: { x: sx, y: sy },
+            end: { x: ex, y: ey },
+            thickness: element.width,
+            color: rgb(r, g, b),
+            opacity: element.opacity,
+          });
+        }
       }
       continue;
     }
