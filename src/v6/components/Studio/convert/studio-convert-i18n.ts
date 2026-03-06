@@ -10,6 +10,7 @@ export interface StudioConvertMessages {
   clearSelection: string;
   runOcr: string;
   runPdfToJpg: string;
+  runExtractImages: string;
   running: string;
 }
 
@@ -23,6 +24,7 @@ const EN_MESSAGES: StudioConvertMessages = {
   clearSelection: 'Clear selection',
   runOcr: 'Run OCR',
   runPdfToJpg: 'Convert to JPG',
+  runExtractImages: 'Extract Images',
   running: 'Running...',
 };
 

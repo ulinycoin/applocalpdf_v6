@@ -20,6 +20,7 @@ export type {
   WorkerCommandPayload,
   WorkerEventPayload,
   WorkerPdfTextLayerSpan,
+  WorkerPdfImageCandidate,
   WorkerStudioEditElement,
   WorkerStudioFontFamilyId,
   WorkerStudioRectEditElement,

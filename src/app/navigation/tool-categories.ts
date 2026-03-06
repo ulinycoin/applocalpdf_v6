@@ -19,6 +19,7 @@ const CONVERT_TOOL_IDS = new Set<string>([
   'excel-to-pdf',
   'pdf-to-jpg',
   'ocr-pdf',
+  'extract-images',
 ]);
 
 export function getStudioToolCategory(toolId: string): StudioToolCategory | null {

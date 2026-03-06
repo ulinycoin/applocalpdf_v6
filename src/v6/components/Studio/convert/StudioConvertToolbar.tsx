@@ -25,6 +25,14 @@ export function StudioConvertToolbar({ activeTool, onSelectTool }: StudioConvert
       >
         <LinearIcon name="image" size={22} />
       </button>
+      <button
+        type="button"
+        className={`studio-edit-tool-btn ${activeTool === 'extract-images' ? 'active' : ''}`}
+        title="Extract Images"
+        onClick={() => onSelectTool('extract-images')}
+      >
+        <LinearIcon name="image" size={22} />
+      </button>
     </div>
   );
 }

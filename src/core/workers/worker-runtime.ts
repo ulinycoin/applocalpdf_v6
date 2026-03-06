@@ -2,6 +2,7 @@ import { GlobalRegistry } from '../registry/global-registry';
 import type { IFileSystem, IWorkerCommand, IWorkerEvent } from '../types/contracts';
 import { getPdfPageCountFromBytes } from '../pdf/page-count';
 import { extractPdfTextLayerSpans } from '../../services/pdf/pdf-text-layer-extractor';
+import { scanPdfImageCandidatesFromBlob } from '../../services/pdf/pdf-image-extractor';
 import { applyStudioTextEditsToPdfBytes } from '../../services/pdf/studio-text-edit-applier';
 import { normalizeAndValidateStudioEditRequest } from '../../services/pdf/studio-text-edit-validation';
 
@@ -78,6 +79,27 @@ export async function executeWorkerCommand(
         id: command.id,
         type: 'EVENT',
         payload: { type: 'TEXT_LAYER_RESULT', payload: { fileId, pageNumber, spans } },
+      };
+    }
+
+    if (command.payload.type === 'GET_PDF_IMAGE_CANDIDATES') {
+      const { fileId, pageNumber, bytes } = command.payload.payload;
+      let pdfBytes = bytes;
+      if (pdfBytes === undefined) {
+        const entry = await deps.fs.read(fileId);
+        const blob = await entry.getBlob();
+        pdfBytes = new Uint8Array(await blob.arrayBuffer());
+      }
+      const stableBytes = new Uint8Array(pdfBytes.byteLength);
+      stableBytes.set(pdfBytes);
+      const candidates = await scanPdfImageCandidatesFromBlob(
+        new Blob([stableBytes.buffer], { type: 'application/pdf' }),
+        { pageNumbers: [pageNumber] },
+      );
+      return {
+        id: command.id,
+        type: 'EVENT',
+        payload: { type: 'IMAGE_CANDIDATES_RESULT', payload: { fileId, pageNumber, candidates } },
       };
     }
 

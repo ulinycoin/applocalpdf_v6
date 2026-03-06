@@ -90,6 +90,18 @@ export interface WorkerPdfTextLayerSpan {
   ascentRatio?: number;
 }
 
+export interface WorkerPdfImageCandidate {
+  id: string;
+  pageNumber: number;
+  xRatio: number;
+  yRatio: number;
+  widthRatio: number;
+  heightRatio: number;
+  pixelWidth: number;
+  pixelHeight: number;
+  source: 'xobject' | 'inline';
+}
+
 export type WorkerStudioFontFamilyId =
   | 'sora'
   | 'times'
@@ -208,6 +220,7 @@ export type WorkerCommandPayload =
   | { type: 'PROCESS_TOOL'; payload: { toolId: string; inputIds: string[]; options?: Record<string, unknown> } }
   | { type: 'GET_PDF_PAGE_COUNT'; payload: { fileId: string; bytes?: Uint8Array; mimeType?: string } }
   | { type: 'GET_PDF_TEXT_LAYER'; payload: { fileId: string; pageNumber: number; bytes?: Uint8Array } }
+  | { type: 'GET_PDF_IMAGE_CANDIDATES'; payload: { fileId: string; pageNumber: number; bytes?: Uint8Array } }
   | { type: 'APPLY_STUDIO_TEXT_EDITS'; payload: { fileId: string; pageIndex: number; elements: WorkerStudioEditElement[] } }
   | { type: 'READ_FILE'; payload: { fileId: string } };
 
@@ -223,6 +236,7 @@ export type WorkerEventPayload =
   | { type: 'RESULT'; payload: { outputIds: string[] } }
   | { type: 'PAGE_COUNT_RESULT'; payload: { fileId: string; pageCount: number } }
   | { type: 'TEXT_LAYER_RESULT'; payload: { fileId: string; pageNumber: number; spans: WorkerPdfTextLayerSpan[] } }
+  | { type: 'IMAGE_CANDIDATES_RESULT'; payload: { fileId: string; pageNumber: number; candidates: WorkerPdfImageCandidate[] } }
   | {
     type: 'STUDIO_TEXT_EDITS_APPLIED';
     payload: {

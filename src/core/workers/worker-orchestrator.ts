@@ -45,6 +45,7 @@ export class WebWorkerOrchestrator implements WorkerOrchestrator {
         payload.payload.type === 'RESULT'
         || payload.payload.type === 'PAGE_COUNT_RESULT'
         || payload.payload.type === 'TEXT_LAYER_RESULT'
+        || payload.payload.type === 'IMAGE_CANDIDATES_RESULT'
         || payload.payload.type === 'STUDIO_TEXT_EDITS_APPLIED'
         || payload.payload.type === 'ERROR'
       ) {

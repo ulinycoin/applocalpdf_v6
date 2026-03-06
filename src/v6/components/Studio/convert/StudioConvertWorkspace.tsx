@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { LinearIcon } from '../../icons/linear-icon';
 import { StudioConvertToolbar } from './StudioConvertToolbar';
+import { StudioExtractImagesSettingsPanel } from './StudioExtractImagesSettingsPanel';
 import { StudioOcrSettingsPanel } from './StudioOcrSettingsPanel';
 import { StudioPdfToJpgSettingsPanel } from './StudioPdfToJpgSettingsPanel';
 import { detectStudioConvertLocale, getStudioConvertMessages } from './studio-convert-i18n';
@@ -25,7 +26,11 @@ export function StudioConvertWorkspace() {
     );
   }
 
-  const runLabel = ctrl.activeTool === 'pdf-to-jpg' ? ui.runPdfToJpg : ui.runOcr;
+  const runLabel = ctrl.activeTool === 'pdf-to-jpg'
+    ? ui.runPdfToJpg
+    : ctrl.activeTool === 'extract-images'
+      ? ui.runExtractImages
+      : ui.runOcr;
 
   return (
     <section className="studio-edit-shell" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
@@ -74,6 +79,16 @@ export function StudioConvertWorkspace() {
                 onChange={ctrl.setPdfToJpgSettings}
               />
             )}
+            {ctrl.activeTool === 'extract-images' && (
+              <StudioExtractImagesSettingsPanel
+                settings={ctrl.extractImagesSettings}
+                onChange={ctrl.setExtractImagesSettings}
+                foundCount={ctrl.extractImageCandidates.length}
+                selectedCount={ctrl.selectedExtractImageCandidates.length}
+                onSelectAllFound={ctrl.selectAllImageCandidates}
+                onClearSelected={ctrl.clearImageCandidateSelection}
+              />
+            )}
             {ctrl.step === 'config' && (
               <div style={{ width: 260, marginTop: 10, display: 'grid', gap: 8 }}>
                 <button type="button" className="studio-edit-btn-cancel" onClick={ctrl.selectAllPages}>{ui.selectAll}</button>
@@ -110,12 +125,58 @@ export function StudioConvertWorkspace() {
                     <span>{page.selected ? 'Selected' : 'Not selected'}</span>
                   </div>
                   {page.thumbnailUrl ? (
-                    <img
-                      src={page.thumbnailUrl}
-                      alt={`Page ${page.pageIndex + 1}`}
-                      style={{ width: '100%', display: 'block', borderRadius: 8, background: '#fff' }}
-                      draggable={false}
-                    />
+                    <div style={{ position: 'relative' }}>
+                      <img
+                        src={page.thumbnailUrl}
+                        alt={`Page ${page.pageIndex + 1}`}
+                        style={{ width: '100%', display: 'block', borderRadius: 8, background: '#fff' }}
+                        draggable={false}
+                      />
+                      {ctrl.activeTool === 'extract-images' && (ctrl.imageCandidatesByPage[page.pageId]?.length ?? 0) > 0 && (
+                        <div style={{ position: 'absolute', inset: 0 }}>
+                          {ctrl.imageCandidatesByPage[page.pageId]!.map((candidate) => {
+                            const isSelected = ctrl.selectedImageIds.includes(candidate.globalId);
+                            return (
+                              <div
+                                key={candidate.globalId}
+                                onClick={(event) => {
+                                  event.preventDefault();
+                                  event.stopPropagation();
+                                  ctrl.toggleImageCandidate(candidate.globalId);
+                                }}
+                                title={`${candidate.pixelWidth}×${candidate.pixelHeight}px`}
+                                role="button"
+                                tabIndex={0}
+                                onKeyDown={(event) => {
+                                  if (event.key === 'Enter' || event.key === ' ') {
+                                    event.preventDefault();
+                                    event.stopPropagation();
+                                    ctrl.toggleImageCandidate(candidate.globalId);
+                                  }
+                                }}
+                                style={{
+                                  position: 'absolute',
+                                  left: `${candidate.xRatio * 100}%`,
+                                  top: `${candidate.yRatio * 100}%`,
+                                  width: `${candidate.widthRatio * 100}%`,
+                                  height: `${candidate.heightRatio * 100}%`,
+                                  borderRadius: 6,
+                                  border: isSelected ? '2px solid rgba(14,165,233,0.95)' : '2px solid rgba(248,250,252,0.85)',
+                                  background: isSelected ? 'rgba(14,165,233,0.18)' : 'rgba(15,23,42,0.08)',
+                                  boxShadow: isSelected ? '0 0 0 1px rgba(2,132,199,0.4)' : 'inset 0 0 0 1px rgba(15,23,42,0.12)',
+                                  cursor: 'pointer',
+                                }}
+                              />
+                            );
+                          })}
+                        </div>
+                      )}
+                      {ctrl.activeTool === 'extract-images' && ctrl.imageScanPendingByPage[page.pageId] && (
+                        <div style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', borderRadius: 8, background: 'rgba(15,23,42,0.18)', fontSize: 12, fontWeight: 600 }}>
+                          Scanning images...
+                        </div>
+                      )}
+                    </div>
                   ) : (
                     <div style={{ height: 320, borderRadius: 8, background: 'rgba(2,6,23,0.55)', display: 'grid', placeItems: 'center', fontSize: 13 }}>
                       Preview unavailable
@@ -141,7 +202,7 @@ export function StudioConvertWorkspace() {
 
           {ctrl.step === 'result' && (
             <div style={{ display: 'grid', gap: 16 }}>
-              {ctrl.activeTool === 'pdf-to-jpg' && (
+              {(ctrl.activeTool === 'pdf-to-jpg' || ctrl.activeTool === 'extract-images') && (
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 14 }}>
                   {ctrl.jpgResults.map((item) => (
                     <div key={item.outputId} className="tool-config-card" style={{ padding: 10 }}>
@@ -186,7 +247,7 @@ export function StudioConvertWorkspace() {
             type="button"
             className="studio-edit-btn-apply studio-edit-fixed-save-btn"
             onClick={() => { void ctrl.runTool(); }}
-            disabled={ctrl.activeTool === null || ctrl.selectedPages.length === 0}
+            disabled={ctrl.activeTool === null || ctrl.selectedPages.length === 0 || (ctrl.activeTool === 'extract-images' && ctrl.selectedExtractImageCandidates.length === 0)}
           >
             {runLabel}
           </button>

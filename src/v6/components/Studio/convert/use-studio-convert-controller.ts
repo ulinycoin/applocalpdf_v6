@@ -5,9 +5,12 @@ import { DEFAULT_TOOL_CONTEXT } from '../../../hooks/useWizardFlow';
 import { defaultFilePreviewService } from '../../../preview/preview-service';
 import { PipelineRunner } from '../../../studio/pipeline/PipelineRunner';
 import type { IPipelineRecipe } from '../../../studio/pipeline/types';
+import { requestPdfImageCandidates } from '../../../pdf/image-candidate-client';
+import type { WorkerPdfImageCandidate } from '../../../../core/public/contracts';
+import { createZipBlob } from '../../../utils/zip';
 import { type PageItem, type StudioDocument, type StudioState, useStudioStore } from '../studio-store';
 
-export type StudioConvertToolId = 'ocr-pdf' | 'pdf-to-jpg';
+export type StudioConvertToolId = 'ocr-pdf' | 'pdf-to-jpg' | 'extract-images';
 export type StudioConvertStep = 'config' | 'processing' | 'result';
 
 export interface StudioOcrSettings {
@@ -23,6 +26,15 @@ export interface StudioOcrSettings {
 export interface StudioPdfToJpgSettings {
   quality: number;
   dpi: number;
+}
+
+export interface StudioExtractImagesSettings {
+  format: 'png' | 'jpeg';
+  jpegQuality: number;
+  minWidth: number;
+  minHeight: number;
+  includeInlineImages: boolean;
+  dedupe: boolean;
 }
 
 interface StudioConvertPageRef {
@@ -46,6 +58,13 @@ interface StudioOcrResult {
   content: string | null;
   pdfUrl: string | null;
   fileName: string;
+}
+
+export interface StudioExtractImageCandidate extends WorkerPdfImageCandidate {
+  fileId: string;
+  pageId: string;
+  pageIndex: number;
+  globalId: string;
 }
 
 function clampZoom(scale: number): number {
@@ -144,6 +163,14 @@ export function useStudioConvertController() {
     quality: 92,
     dpi: 150,
   });
+  const [extractImagesSettings, setExtractImagesSettings] = useState<StudioExtractImagesSettings>({
+    format: 'png',
+    jpegQuality: 0.92,
+    minWidth: 32,
+    minHeight: 32,
+    includeInlineImages: true,
+    dedupe: true,
+  });
   const [selectedPageIds, setSelectedPageIds] = useState<string[]>([]);
   const [thumbnailOverrides, setThumbnailOverrides] = useState<Record<string, string>>({});
   const [zoomLevel, setZoomLevel] = useState(() => clampZoom(studioViewScale || 1));
@@ -152,7 +179,11 @@ export function useStudioConvertController() {
   const [outputIds, setOutputIds] = useState<string[]>([]);
   const [ocrResult, setOcrResult] = useState<StudioOcrResult | null>(null);
   const [jpgResults, setJpgResults] = useState<StudioJpgResultItem[]>([]);
+  const [imageCandidatesByPage, setImageCandidatesByPage] = useState<Record<string, StudioExtractImageCandidate[]>>({});
+  const [selectedImageIds, setSelectedImageIds] = useState<string[]>([]);
+  const [imageScanPendingByPage, setImageScanPendingByPage] = useState<Record<string, boolean>>({});
   const objectUrlsRef = useRef<string[]>([]);
+  const imageScanPendingRef = useRef<Record<string, boolean>>({});
 
   const isRunning = step === 'processing';
 
@@ -185,6 +216,10 @@ export function useStudioConvertController() {
   }, []);
 
   useEffect(() => {
+    imageScanPendingRef.current = imageScanPendingByPage;
+  }, [imageScanPendingByPage]);
+
+  useEffect(() => {
     setInteractionMode('convert');
   }, [setInteractionMode]);
 
@@ -197,6 +232,8 @@ export function useStudioConvertController() {
   useEffect(() => {
     if (targetPages.length === 0) {
       setSelectedPageIds([]);
+      setImageCandidatesByPage({});
+      setSelectedImageIds([]);
       return;
     }
     setSelectedPageIds((current) => {
@@ -210,8 +247,23 @@ export function useStudioConvertController() {
   }, [targetPages]);
 
   useEffect(() => {
+    const allowedPageIds = new Set(targetPages.map((page) => page.pageId));
+    setImageCandidatesByPage((current) => {
+      const nextEntries = Object.entries(current).filter(([pageId]) => allowedPageIds.has(pageId));
+      return nextEntries.length === Object.keys(current).length ? current : Object.fromEntries(nextEntries);
+    });
+    setSelectedImageIds((current) => current.filter((globalId) => allowedPageIds.has(globalId.split('::', 1)[0] ?? '')));
+  }, [targetPages]);
+
+  useEffect(() => {
     setStudioViewport(zoomLevel, studioViewPosition);
   }, [setStudioViewport, studioViewPosition, zoomLevel]);
+
+  useEffect(() => {
+    if (activeTool === 'extract-images' && step === 'config') {
+      setZoomLevel((current) => (Math.abs(current - 2) < 0.001 ? current : 2));
+    }
+  }, [activeTool, step]);
 
   useEffect(() => {
     let cancelled = false;
@@ -261,6 +313,18 @@ export function useStudioConvertController() {
     }));
   }, [selectedPageIds, targetPages, thumbnailOverrides]);
 
+  const extractImageCandidates = useMemo(
+    () => Object.values(imageCandidatesByPage).flat(),
+    [imageCandidatesByPage],
+  );
+  const selectedExtractImageCandidates = useMemo(() => {
+    if (selectedImageIds.length === 0) {
+      return [];
+    }
+    const selected = new Set(selectedImageIds);
+    return extractImageCandidates.filter((candidate) => selected.has(candidate.globalId));
+  }, [extractImageCandidates, selectedImageIds]);
+
   const togglePage = useCallback((pageId: string) => {
     setSelectedPageIds((current) => (
       current.includes(pageId)
@@ -275,6 +339,22 @@ export function useStudioConvertController() {
 
   const clearPageSelection = useCallback(() => {
     setSelectedPageIds([]);
+  }, []);
+
+  const toggleImageCandidate = useCallback((globalId: string) => {
+    setSelectedImageIds((current) => (
+      current.includes(globalId)
+        ? current.filter((id) => id !== globalId)
+        : [...current, globalId]
+    ));
+  }, []);
+
+  const selectAllImageCandidates = useCallback(() => {
+    setSelectedImageIds(extractImageCandidates.map((candidate) => candidate.globalId));
+  }, [extractImageCandidates]);
+
+  const clearImageCandidateSelection = useCallback(() => {
+    setSelectedImageIds([]);
   }, []);
 
   const zoomIn = useCallback(() => {
@@ -321,7 +401,7 @@ export function useStudioConvertController() {
     setOcrResult(null);
     setJpgResults([]);
 
-    if (tool === 'pdf-to-jpg') {
+    if (tool === 'pdf-to-jpg' || tool === 'extract-images') {
       const previews = await Promise.all(ids.map(async (outputId) => {
         const entry = await runtime.vfs.read(outputId);
         const preview = await defaultFilePreviewService.getPreview(runtime, outputId);
@@ -377,7 +457,63 @@ export function useStudioConvertController() {
     setOutputIds([]);
     setOcrResult(null);
     setJpgResults([]);
+    setImageScanPendingByPage({});
   }, [releaseResultUrls]);
+
+  useEffect(() => {
+    if (activeTool !== 'extract-images' || step !== 'config') {
+      return;
+    }
+    const pagesToScan = selectedPages.filter((page) => (
+      !imageCandidatesByPage[page.pageId]
+      && !imageScanPendingRef.current[page.pageId]
+    ));
+    if (pagesToScan.length === 0) {
+      return;
+    }
+    for (const page of pagesToScan) {
+      const abortController = new AbortController();
+      imageScanPendingRef.current = { ...imageScanPendingRef.current, [page.pageId]: true };
+      setImageScanPendingByPage((current) => ({ ...current, [page.pageId]: true }));
+      void (async () => {
+        try {
+          const candidates = await requestPdfImageCandidates(runtime, page.fileId, page.pageIndex + 1, abortController.signal);
+          if (abortController.signal.aborted) {
+            return;
+          }
+          const mapped = candidates.map((candidate) => ({
+            ...candidate,
+            fileId: page.fileId,
+            pageId: page.pageId,
+            pageIndex: page.pageIndex,
+            globalId: `${page.pageId}::${candidate.id}`,
+          }));
+          setImageCandidatesByPage((current) => ({ ...current, [page.pageId]: mapped }));
+        } catch (scanError) {
+          if (!abortController.signal.aborted) {
+            setError(scanError instanceof Error ? scanError.message : 'Failed to scan PDF images.');
+          }
+        } finally {
+          imageScanPendingRef.current = Object.fromEntries(
+            Object.entries(imageScanPendingRef.current).filter(([pageId]) => pageId !== page.pageId),
+          );
+          setImageScanPendingByPage((current) => {
+            const next = { ...current };
+            delete next[page.pageId];
+            return next;
+          });
+        }
+      })();
+    }
+  }, [activeTool, imageCandidatesByPage, runtime, selectedPages, step]);
+
+  useEffect(() => {
+    if (activeTool !== 'extract-images') {
+      return;
+    }
+    const selectedPageSet = new Set(selectedPageIds);
+    setSelectedImageIds((current) => current.filter((globalId) => selectedPageSet.has(globalId.split('::', 1)[0] ?? '')));
+  }, [activeTool, selectedPageIds]);
 
   const runTool = useCallback(async () => {
     if (!activeTool || selectedPages.length === 0 || isRunning) {
@@ -388,9 +524,16 @@ export function useStudioConvertController() {
     setStep('processing');
 
     try {
-      const inputIds = await buildInputForPages(selectedPages);
+      const inputIds = activeTool === 'extract-images'
+        ? Array.from(new Set(selectedPages.map((page) => page.fileId)))
+        : await buildInputForPages(selectedPages);
       if (inputIds.length === 0) {
         setError('No pages selected for conversion.');
+        setStep('config');
+        return;
+      }
+      if (activeTool === 'extract-images' && selectedExtractImageCandidates.length === 0) {
+        setError('No images selected for extraction.');
         setStep('config');
         return;
       }
@@ -405,10 +548,24 @@ export function useStudioConvertController() {
           detectTables: ocrSettings.detectTables,
           recognizeHandwriting: ocrSettings.recognizeHandwriting,
         }
-        : {
-          quality: pdfToJpgSettings.quality,
-          dpi: pdfToJpgSettings.dpi,
-        };
+        : activeTool === 'pdf-to-jpg'
+          ? {
+            quality: pdfToJpgSettings.quality,
+            dpi: pdfToJpgSettings.dpi,
+          }
+          : {
+            format: extractImagesSettings.format,
+            jpegQuality: extractImagesSettings.jpegQuality,
+            minWidth: extractImagesSettings.minWidth,
+            minHeight: extractImagesSettings.minHeight,
+            includeInlineImages: extractImagesSettings.includeInlineImages,
+            dedupe: extractImagesSettings.dedupe,
+            selectedCandidates: selectedExtractImageCandidates.map((candidate) => ({
+              fileId: candidate.fileId,
+              pageNumber: candidate.pageNumber,
+              candidateId: candidate.id,
+            })),
+          };
 
       const result = await runtime.runner.execute(
         activeTool,
@@ -435,7 +592,13 @@ export function useStudioConvertController() {
       setProgress(100);
       setOutputIds(result.outputIds);
       await loadResultView(activeTool, result.outputIds, ocrSettings.outputFormat);
-      setMessage(activeTool === 'ocr-pdf' ? 'OCR completed.' : 'PDF to JPG completed.');
+      setMessage(
+        activeTool === 'ocr-pdf'
+          ? 'OCR completed.'
+          : activeTool === 'pdf-to-jpg'
+            ? 'PDF to JPG completed.'
+            : 'Image extraction completed.',
+      );
       setStep('result');
     } catch (runError) {
       const runMessage = runError instanceof Error ? runError.message : 'Conversion failed.';
@@ -454,10 +617,17 @@ export function useStudioConvertController() {
     ocrSettings.outputFormat,
     ocrSettings.preserveFormatting,
     ocrSettings.recognizeHandwriting,
+    extractImagesSettings.dedupe,
+    extractImagesSettings.format,
+    extractImagesSettings.includeInlineImages,
+    extractImagesSettings.jpegQuality,
+    extractImagesSettings.minHeight,
+    extractImagesSettings.minWidth,
     pdfToJpgSettings.dpi,
     pdfToJpgSettings.quality,
     resetWorkspace,
     runtime.runner,
+    selectedExtractImageCandidates,
     selectedPages,
   ]);
 
@@ -479,11 +649,34 @@ export function useStudioConvertController() {
       return;
     }
 
+    if (activeTool === 'extract-images' && outputIds.length > 2) {
+      const zipEntries = await Promise.all(outputIds.map(async (outputId) => {
+        const entry = await runtime.vfs.read(outputId);
+        return {
+          name: entry.getName(),
+          blob: await entry.getBlob(),
+        };
+      }));
+      const zipBlob = await createZipBlob(zipEntries);
+      const url = URL.createObjectURL(zipBlob);
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = `${baseDocName || 'images'}.zip`;
+      document.body.appendChild(anchor);
+      anchor.click();
+      document.body.removeChild(anchor);
+      URL.revokeObjectURL(url);
+      return;
+    }
+
     for (let i = 0; i < outputIds.length; i++) {
       const outputId = outputIds[i];
       const suffix = outputIds.length > 1 ? `_${i + 1}` : '';
-      const extension = activeTool === 'pdf-to-jpg' ? '.jpg' : '.pdf';
-      await downloadFileById(runtime, outputId, `${baseDocName}${suffix}${extension}`);
+      const entry = await runtime.vfs.read(outputId);
+      const preferredName = activeTool === 'extract-images'
+        ? entry.getName()
+        : `${baseDocName}${suffix}${activeTool === 'pdf-to-jpg' ? '.jpg' : '.pdf'}`;
+      await downloadFileById(runtime, outputId, preferredName);
     }
   }, [activeDocument?.name, activeTool, ocrResult, outputIds, runtime]);
 
@@ -502,13 +695,23 @@ export function useStudioConvertController() {
     setOcrSettings,
     pdfToJpgSettings,
     setPdfToJpgSettings,
+    extractImagesSettings,
+    setExtractImagesSettings,
     operationScope,
     previewPages,
+    imageCandidatesByPage,
+    selectedImageIds,
+    extractImageCandidates,
+    selectedExtractImageCandidates,
+    imageScanPendingByPage,
     selectedPageIds,
     selectedPages,
     togglePage,
     selectAllPages,
     clearPageSelection,
+    toggleImageCandidate,
+    selectAllImageCandidates,
+    clearImageCandidateSelection,
     zoomLevel,
     setZoomLevel,
     zoomIn,
