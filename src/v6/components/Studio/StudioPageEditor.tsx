@@ -440,15 +440,19 @@ export const StudioPageEditor = forwardRef<StudioPageEditorHandle, StudioPageEdi
                         }}
                         onPointerDown={(e) => {
                             e.stopPropagation();
-                            e.preventDefault();
                             setSelectedElementId(el.id);
+                            const isActiveTextEditor = textEditor?.id === el.id && el.type === 'text';
+                            if (isActiveTextEditor) {
+                                return;
+                            }
+                            e.preventDefault();
                             if (!textEditor || textEditor.id !== el.id) {
                                 dragSessionRef.current = {
                                     mode: el.type === 'text'
                                         ? 'move-text'
                                         : (el.type === 'watermark'
                                             ? 'move-watermark'
-                                            : (el.type === 'image'
+                                                : (el.type === 'image'
                                                 ? 'move-image'
                                                 : (el.type === 'rect' || el.type === 'form-field' ? 'move-rect' : 'move-stroke'))),
                                     id: el.id,
