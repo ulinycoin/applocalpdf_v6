@@ -73,18 +73,74 @@ export const StudioDocument: React.FC<StudioDocumentProps> = ({ doc }) => {
                 fillLinearGradientColorStops={
                     isDropTarget
                         ? [0, 'rgba(255, 255, 255, 0.12)', 1, 'rgba(28, 52, 74, 0.3)']
-                        : isActiveDocument
-                            ? [0, 'rgba(255, 255, 255, 0.1)', 1, 'rgba(28, 52, 74, 0.24)']
-                            : [0, 'rgba(255, 255, 255, 0.08)', 1, 'rgba(28, 52, 74, 0.18)']
+                        : [0, 'rgba(255, 255, 255, 0.08)', 1, 'rgba(28, 52, 74, 0.18)']
                 }
-                stroke={isDropTarget ? "rgba(255, 255, 255, 0.28)" : (isActiveDocument ? "rgba(255, 255, 255, 0.2)" : "rgba(255, 255, 255, 0.12)")}
-                strokeWidth={isDropTarget || isActiveDocument ? 2 : 1}
+                stroke={isDropTarget ? "rgba(255, 255, 255, 0.28)" : "rgba(255, 255, 255, 0.12)"}
+                strokeWidth={isDropTarget ? 2 : 1}
                 cornerRadius={16}
-                shadowBlur={isDropTarget || isActiveDocument ? 24 : 14}
+                shadowBlur={isDropTarget ? 24 : 14}
                 shadowColor="rgba(4, 12, 20, 0.9)"
-                shadowOpacity={isDropTarget || isActiveDocument ? 0.3 : 0.18}
+                shadowOpacity={isDropTarget ? 0.3 : 0.18}
                 shadowOffset={{ x: 0, y: 12 }}
             />
+            {isActiveDocument && !isDropTarget && (
+                <>
+                    <Rect
+                        width={width + 52}
+                        height={height + 72}
+                        x={-26}
+                        y={-46}
+                        fillRadialGradientStartPoint={{ x: width / 2, y: height / 2 }}
+                        fillRadialGradientStartRadius={24}
+                        fillRadialGradientEndPoint={{ x: width / 2, y: height / 2 }}
+                        fillRadialGradientEndRadius={Math.max(width, height) * 0.78}
+                        fillRadialGradientColorStops={[
+                            0,
+                            'rgba(96, 165, 250, 0.2)',
+                            0.45,
+                            'rgba(59, 130, 246, 0.12)',
+                            1,
+                            'rgba(59, 130, 246, 0)',
+                        ]}
+                        listening={false}
+                    />
+                    <Rect
+                        width={width + 20}
+                        height={height + 40}
+                        x={-10}
+                        y={-30}
+                        fillLinearGradientStartPoint={{ x: -10, y: -30 }}
+                        fillLinearGradientEndPoint={{ x: width + 10, y: height + 10 }}
+                        fillLinearGradientColorStops={[
+                            0,
+                            'rgba(255, 255, 255, 0.08)',
+                            0.2,
+                            'rgba(125, 211, 252, 0.18)',
+                            1,
+                            'rgba(28, 52, 74, 0.12)',
+                        ]}
+                        stroke="rgba(147, 197, 253, 0.98)"
+                        strokeWidth={2.5}
+                        cornerRadius={16}
+                        shadowColor="rgba(96, 165, 250, 0.95)"
+                        shadowBlur={34}
+                        shadowOpacity={0.5}
+                        shadowOffset={{ x: 0, y: 0 }}
+                        listening={false}
+                    />
+                    <Rect
+                        width={width + 8}
+                        height={height + 28}
+                        x={-4}
+                        y={-24}
+                        fill="transparent"
+                        stroke="rgba(255, 255, 255, 0.22)"
+                        strokeWidth={1}
+                        cornerRadius={12}
+                        listening={false}
+                    />
+                </>
+            )}
             {/* Document Label */}
             <Group
                 y={-25}

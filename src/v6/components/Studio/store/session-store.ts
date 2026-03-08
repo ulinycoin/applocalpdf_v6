@@ -11,9 +11,9 @@ export interface EditSessionState {
     commandRedoStack: AnyCommand[];
 
     startEditSession: (session: {
-        docId: string; pageId: string; pageIndex: number; fileId: string; initialTool?: StudioEditToolId;
+        docId: string; pageId: string; pageIndex: number; fileId: string; initialTool?: StudioEditToolId | null;
     }) => void;
-    updateEditSessionTool: (tool: StudioEditToolId) => void;
+    updateEditSessionTool: (tool: StudioEditToolId | null) => void;
     syncEditSessionTarget: (target: { docId: string; pageId: string; pageIndex: number; workingFileId: string }) => void;
     clearEditSession: () => void;
 
@@ -38,7 +38,7 @@ export const useEditSessionStore = create<EditSessionState>((set) => ({
     commandUndoStack: [],
     commandRedoStack: [],
 
-    startEditSession: ({ docId, pageId, pageIndex, fileId, initialTool = 'text' }) => set({
+    startEditSession: ({ docId, pageId, pageIndex, fileId, initialTool = null }) => set({
         editSession: {
             docId, pageId, pageIndex, sourceFileId: fileId, workingFileId: fileId, activeTool: initialTool, startedAt: Date.now(),
         },

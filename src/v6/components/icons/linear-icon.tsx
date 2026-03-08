@@ -41,7 +41,8 @@ import {
   PenTool,
   Highlighter,
   FileSignature,
-  Copy
+  Copy,
+  Stamp
 } from 'lucide-react';
 
 export type LinearIconName =
@@ -88,6 +89,7 @@ export type LinearIconName =
   | 'pen-tool'
   | 'file-input'
   | 'feather'
+  | 'stamp'
   | 'copy';
 
 interface LinearIconProps extends Omit<SVGProps<SVGSVGElement>, 'children'> {
@@ -139,6 +141,7 @@ const iconMap: Record<LinearIconName, React.FC<any>> = {
   'pen-tool': PenTool,
   'file-input': FileText, // Alias
   feather: PenTool, // Alias
+  stamp: Stamp,
   copy: Copy
 };
 

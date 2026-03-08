@@ -189,7 +189,7 @@ export function StudioFloatingMenu() {
             pageId: page.id,
             pageIndex: page.pageIndex,
             fileId: page.fileId,
-            initialTool: 'text' as const
+            initialTool: null
         };
 
         const params = new URLSearchParams(window.location.search);

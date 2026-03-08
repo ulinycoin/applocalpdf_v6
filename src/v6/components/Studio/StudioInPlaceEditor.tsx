@@ -169,7 +169,7 @@ export function StudioInPlaceEditor({ stageRef }: StudioInPlaceEditorProps) {
                     page={activePage}
                     width={overlayRect.w}
                     height={overlayRect.h}
-                    activeTool={editSession?.activeTool ?? 'text'}
+                    activeTool={editSession?.activeTool ?? null}
                     onActiveToolChange={(_newTool) => {
                         // Optionally sync back to session if needed
                     }}

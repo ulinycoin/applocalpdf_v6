@@ -239,6 +239,14 @@ export function StudioEditWorkspace() {
         void ctrl.applyChanges();
     }, [commitPendingAnnotatePenIfNeeded, commitPendingSignIfNeeded, ctrl.applyChanges]);
 
+    const handleBackToCanvas = useCallback(() => {
+        if (ctrl.hasDirtyChanges && !window.confirm(ui.unsavedConfirm)) {
+            return;
+        }
+        ctrl.clearEditSession();
+        ctrl.navigate('/studio');
+    }, [ctrl, ui.unsavedConfirm]);
+
     useEffect(() => {
         const onKeyDown = (event: KeyboardEvent) => {
             const key = event.key.toLowerCase();
@@ -505,12 +513,15 @@ export function StudioEditWorkspace() {
             {/* Header Area */}
             <div className="studio-edit-meta" style={{ padding: '8px 16px', background: 'rgba(15,23,42,0.4)', borderRadius: '0 0 12px 12px', marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div style={{ display: 'flex', gap: 12, flex: 1, alignItems: 'center' }}>
-                    <button type="button" className="studio-edit-back-btn" onClick={() => {
-                        if (ctrl.hasDirtyChanges && !window.confirm(ui.unsavedConfirm)) return;
-                        ctrl.clearEditSession();
-                        ctrl.navigate('/studio');
-                    }} title={ui.backToCanvas} style={{ background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: '4px' }}>
+                    <button
+                        type="button"
+                        className="studio-edit-back-btn"
+                        onClick={handleBackToCanvas}
+                        title={ui.backToCanvas}
+                        style={{ padding: '6px 12px' }}
+                    >
                         <LinearIcon name="chevron-left" size={18} />
+                        <span>{ui.backToCanvas}</span>
                     </button>
 
                     <div style={{ display: 'flex', gap: 8, padding: '0 8px', borderLeft: '1px solid rgba(255,255,255,0.1)', borderRight: '1px solid rgba(255,255,255,0.1)' }}>

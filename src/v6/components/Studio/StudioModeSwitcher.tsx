@@ -74,7 +74,7 @@ export function StudioModeSwitcher() {
                             pageId: targetPage.id,
                             pageIndex: targetPage.pageIndex,
                             fileId: targetPage.fileId,
-                            initialTool: 'text' as const,
+                            initialTool: null,
                         };
 
                         const params = new URLSearchParams(window.location.search);

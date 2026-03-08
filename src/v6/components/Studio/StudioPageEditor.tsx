@@ -35,7 +35,7 @@ export interface StudioPageEditorProps {
     page: PageItem;
     width: number;
     height: number;
-    activeTool?: StudioEditToolId;
+    activeTool?: StudioEditToolId | null;
     elements: EditElement[];
     onElementsChange: (elements: EditElement[]) => void;
     onPushHistory?: (elements: EditElement[]) => void;
@@ -98,7 +98,7 @@ export const StudioPageEditor = forwardRef<StudioPageEditorHandle, StudioPageEdi
     page: _page,
     width,
     height,
-    activeTool: externalActiveTool = 'text',
+    activeTool: externalActiveTool = null,
     elements,
     onElementsChange,
     onPushHistory,
@@ -300,32 +300,41 @@ export const StudioPageEditor = forwardRef<StudioPageEditorHandle, StudioPageEdi
 
     // Pointer Handlers
     const onCanvasPointerDown = (event: React.PointerEvent) => {
+        if (!activeTool) {
+            return;
+        }
         const rect = canvasRef.current!.getBoundingClientRect();
         const worldPos = {
             x: clamp01((event.clientX - rect.left) / rect.width),
             y: clamp01((event.clientY - rect.top) / rect.height)
         };
-        const tool = TOOLS[activeTool] ?? TOOLS['text'];
+        const tool = TOOLS[activeTool];
         tool.onPointerDown(buildToolContext(), event, worldPos);
     };
 
     const onCanvasPointerMove = (event: React.PointerEvent) => {
+        if (!activeTool) {
+            return;
+        }
         const rect = canvasRef.current!.getBoundingClientRect();
         const worldPos = {
             x: clamp01((event.clientX - rect.left) / rect.width),
             y: clamp01((event.clientY - rect.top) / rect.height)
         };
-        const tool = TOOLS[activeTool] ?? TOOLS['text'];
+        const tool = TOOLS[activeTool];
         tool.onPointerMove(buildToolContext(), event, worldPos);
     };
 
     const onCanvasPointerUp = (event: React.PointerEvent) => {
+        if (!activeTool) {
+            return;
+        }
         const rect = canvasRef.current!.getBoundingClientRect();
         const worldPos = {
             x: clamp01((event.clientX - rect.left) / rect.width),
             y: clamp01((event.clientY - rect.top) / rect.height)
         };
-        const tool = TOOLS[activeTool] ?? TOOLS['text'];
+        const tool = TOOLS[activeTool];
         tool.onPointerUp(buildToolContext(), event, worldPos);
     };
 

@@ -177,7 +177,7 @@ export function useStudioEditController(ui: any) {
     const popCommandRedo = useStudioStore((s) => s.popCommandRedo);
 
     // Local State
-    const [tool, setTool] = useState<EditorToolId>(editSession?.activeTool ?? 'text');
+    const [tool, setTool] = useState<EditorToolId | null>(editSession?.activeTool ?? null);
     const [elements, setElements] = useState<EditElement[]>([]);
     const elementsRef = useRef<EditElement[]>([]);
     const [history, setHistory] = useState<EditElement[][]>([[]]);

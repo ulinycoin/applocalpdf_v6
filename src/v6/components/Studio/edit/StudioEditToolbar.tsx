@@ -3,7 +3,7 @@ import type { EditorToolId } from '../editor-types';
 
 interface StudioEditToolbarProps {
     ui: any;
-    tool: EditorToolId;
+    tool: EditorToolId | null;
     onSelectTool: (tool: EditorToolId) => void;
 }
 
@@ -21,13 +21,6 @@ export function StudioEditToolbar({ ui, tool, onSelectTool }: StudioEditToolbarP
                 <LinearIcon name="text" size={22} />
             </button>
             <button
-                className={`studio-edit-tool-btn ${tool === 'sign' ? 'active' : ''}`}
-                onClick={() => { onSelectTool('sign'); }}
-                title={ui.sign}
-            >
-                <LinearIcon name="signature" size={22} />
-            </button>
-            <button
                 className={`studio-edit-tool-btn ${tool === 'annotate' ? 'active' : ''}`}
                 onClick={() => { onSelectTool('annotate'); }}
                 title={ui.annotate}
@@ -42,7 +35,20 @@ export function StudioEditToolbar({ ui, tool, onSelectTool }: StudioEditToolbarP
             >
                 <LinearIcon name="eraser" size={22} />
             </button>
-            <div style={{ width: 24, height: 1, background: 'rgba(255,255,255,0.1)', margin: '4px auto' }} />
+            <button
+                className={`studio-edit-tool-btn ${tool === 'watermark' ? 'active' : ''}`}
+                onClick={() => onSelectTool('watermark')}
+                title={ui.watermark}
+            >
+                <LinearIcon name="stamp" size={22} />
+            </button>
+            <button
+                className={`studio-edit-tool-btn ${tool === 'sign' ? 'active' : ''}`}
+                onClick={() => { onSelectTool('sign'); }}
+                title={ui.sign}
+            >
+                <LinearIcon name="signature" size={22} />
+            </button>
             <button
                 className={`studio-edit-tool-btn ${tool === 'forms' ? 'active' : ''}`}
                 onClick={() => onSelectTool('forms')}
@@ -51,17 +57,10 @@ export function StudioEditToolbar({ ui, tool, onSelectTool }: StudioEditToolbarP
                 <LinearIcon name="file-input" size={22} />
             </button>
             <button
-                className={`studio-edit-tool-btn ${tool === 'watermark' ? 'active' : ''}`}
-                onClick={() => onSelectTool('watermark')}
-                title={ui.watermark}
-            >
-                <LinearIcon name="text" size={22} />
-            </button>
-            <button
                 className={`studio-edit-tool-btn ${tool === 'protect' ? 'active' : ''}`}
                 onClick={() => onSelectTool('protect')}
                 title={ui.protect}
-            >
+                >
                 <LinearIcon name="lock" size={22} />
             </button>
         </div>

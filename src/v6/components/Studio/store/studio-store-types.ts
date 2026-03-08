@@ -32,7 +32,7 @@ export interface StudioEditSession {
     pageIndex: number;
     sourceFileId: string;
     workingFileId: string;
-    activeTool: StudioEditToolId;
+    activeTool: StudioEditToolId | null;
     startedAt: number;
 }
 
