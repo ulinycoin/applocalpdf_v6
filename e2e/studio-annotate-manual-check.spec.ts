@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { existsSync, mkdirSync, unlinkSync, writeFileSync } from 'node:fs';
+import { existsSync, unlinkSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { PDFDocument, StandardFonts } from 'pdf-lib';
@@ -27,12 +27,9 @@ function safeDelete(path: string): void {
   }
 }
 
-test('manual annotate check: underline + highlight', async ({ page }) => {
+test('annotate adds underline and highlight overlays', async ({ page }) => {
   test.setTimeout(120_000);
   const pdfPath = await createTextPdf('dummy-studio-annotate-check');
-  const screenshotDir = join(process.cwd(), 'output', 'playwright');
-  const screenshotPath = join(screenshotDir, 'annotate-check.png');
-  mkdirSync(screenshotDir, { recursive: true });
 
   try {
     await page.goto('/studio?inplace_edit=0');
@@ -87,7 +84,6 @@ test('manual annotate check: underline + highlight', async ({ page }) => {
     await page.mouse.up();
 
     await expect(page.locator('.studio-editor-element')).toHaveCount(2);
-    await page.screenshot({ path: screenshotPath, fullPage: true });
   } finally {
     safeDelete(pdfPath);
   }

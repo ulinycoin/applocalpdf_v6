@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState, type ChangeEvent, type DragEvent 
 import { usePlatform } from '../../../app/react/platform-context';
 import { LinearIcon } from '../../../v6/components/icons/linear-icon';
 
-type OcrTab = 'text' | 'tables' | 'json' | 'overlay';
+type OcrTab = 'text' | 'json' | 'overlay';
 type OcrViewState = 'idle' | 'running' | 'done' | 'error';
 
 interface OcrPreviewMeta {
@@ -67,6 +67,8 @@ export default function OcrPdfConfig({
   const [activeTab, setActiveTab] = useState<OcrTab>('text');
   const [isTextEditorEnabled, setIsTextEditorEnabled] = useState(false);
   const [editorText, setEditorText] = useState('');
+  const hasJsonResult = Boolean(resultJson);
+  const hasOverlayResult = Boolean(resultPdfUrl);
 
   useEffect(() => {
     if (inputFiles.length > 0) {
@@ -77,28 +79,46 @@ export default function OcrPdfConfig({
   }, [inputFiles, runtime.vfs]);
 
   useEffect(() => {
-    if (outputFormat === 'json') {
+    if (outputFormat === 'json' && hasJsonResult) {
       setActiveTab('json');
       return;
     }
-    if (outputFormat === 'searchable-pdf') {
+    if (outputFormat === 'searchable-pdf' && hasOverlayResult) {
       setActiveTab('overlay');
       return;
     }
     setActiveTab('text');
-  }, [outputFormat]);
+  }, [hasJsonResult, hasOverlayResult, outputFormat]);
 
   const hasInput = inputFiles.length > 0;
   const canRun = hasInput && viewState !== 'running';
   const loadingPercent = Math.max(0, Math.min(100, Math.round(progress)));
 
   const shouldShowResults = useMemo(() => {
-    return viewState === 'done' || Boolean(resultText) || Boolean(resultJson);
-  }, [resultJson, resultText, viewState]);
+    return viewState === 'done' || Boolean(resultText) || hasJsonResult || hasOverlayResult;
+  }, [hasJsonResult, hasOverlayResult, resultText, viewState]);
+
+  const previewTabs = useMemo(() => {
+    const tabs: Array<{ id: OcrTab; label: string }> = [{ id: 'text', label: 'Text' }];
+    if (hasJsonResult) {
+      tabs.push({ id: 'json', label: 'JSON' });
+    }
+    if (hasOverlayResult) {
+      tabs.push({ id: 'overlay', label: 'Overlay' });
+    }
+    return tabs;
+  }, [hasJsonResult, hasOverlayResult]);
 
   useEffect(() => {
     setEditorText(resultText ?? '');
   }, [resultText]);
+
+  useEffect(() => {
+    if (previewTabs.some((tab) => tab.id === activeTab)) {
+      return;
+    }
+    setActiveTab(previewTabs[0]?.id ?? 'text');
+  }, [activeTab, previewTabs]);
 
   const handleFileInput = async (event: ChangeEvent<HTMLInputElement>): Promise<void> => {
     const files = event.target.files ? Array.from(event.target.files) : [];
@@ -364,10 +384,16 @@ export default function OcrPdfConfig({
           {shouldShowResults && viewState !== 'running' && (
             <>
               <div className="ocr-concept-tabs" role="tablist" aria-label="OCR preview tabs">
-                <button type="button" className={`ocr-concept-tab ${activeTab === 'text' ? 'active' : ''}`} onClick={() => setActiveTab('text')}>Text</button>
-                <button type="button" className={`ocr-concept-tab ${activeTab === 'tables' ? 'active' : ''}`} onClick={() => setActiveTab('tables')}>Tables</button>
-                <button type="button" className={`ocr-concept-tab ${activeTab === 'json' ? 'active' : ''}`} onClick={() => setActiveTab('json')}>JSON</button>
-                <button type="button" className={`ocr-concept-tab ${activeTab === 'overlay' ? 'active' : ''}`} onClick={() => setActiveTab('overlay')}>Overlay</button>
+                {previewTabs.map((tab) => (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    className={`ocr-concept-tab ${activeTab === tab.id ? 'active' : ''}`}
+                    onClick={() => setActiveTab(tab.id)}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
               </div>
 
               <div className="ocr-concept-toolbar">
@@ -409,23 +435,20 @@ export default function OcrPdfConfig({
                     <pre className="ocr-concept-editor-copy">{editorText || 'No text preview available for this output format.'}</pre>
                   )
                 )}
-                {activeTab === 'tables' && <p className="ocr-concept-placeholder">Table extraction view is reserved for next OCR release.</p>}
                 {activeTab === 'json' && (
                   <pre className="ocr-concept-editor-copy">{resultJson || 'JSON preview is available when output format = JSON.'}</pre>
                 )}
                 {activeTab === 'overlay' && (
-                  resultPdfUrl
-                    ? (
-                      <div className="ocr-concept-pdf-preview-wrap">
-                        <iframe
-                          className="ocr-concept-pdf-preview"
-                          src={`${resultPdfUrl}#toolbar=0&navpanes=0`}
-                          title="Searchable PDF preview"
-                        />
-                        <div className="ocr-concept-pdf-preview-lock" aria-hidden="true" />
-                      </div>
-                    )
-                    : <p className="ocr-concept-placeholder">Text overlay will be available in studio viewer integration.</p>
+                  resultPdfUrl && (
+                    <div className="ocr-concept-pdf-preview-wrap">
+                      <iframe
+                        className="ocr-concept-pdf-preview"
+                        src={`${resultPdfUrl}#toolbar=0&navpanes=0`}
+                        title="Searchable PDF preview"
+                      />
+                      <div className="ocr-concept-pdf-preview-lock" aria-hidden="true" />
+                    </div>
+                  )
                 )}
               </div>
 

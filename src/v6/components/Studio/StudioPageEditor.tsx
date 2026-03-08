@@ -5,7 +5,7 @@ import {
     sanitizeInlineText,
     type FontFamilyId,
 } from './inline-text-utils';
-import { detectStudioEditLocale, getStudioEditMessages } from './studio-edit-i18n';
+import { getStudioEditMessages } from './studio-edit-i18n';
 import { clamp01, getStrokeBounds, moveStrokePoints } from '../../utils/studio-edit-math';
 import {
     EditElement,
@@ -188,8 +188,7 @@ export const StudioPageEditor = forwardRef<StudioPageEditorHandle, StudioPageEdi
     const hasPendingAnnotatePenDraft = activeTool === 'annotate' && annotateMode === 'pen' && hasAnnotatePenDraft(draftStroke);
     const isPenModeActive = (activeTool === 'annotate' && annotateMode === 'pen') || (activeTool === 'sign' && signMode === 'draw');
 
-    const locale = useMemo(() => detectStudioEditLocale(), []);
-    const ui = useMemo(() => getStudioEditMessages(locale), [locale]);
+    const ui = useMemo(() => getStudioEditMessages(), []);
 
 
     const applyElements = useCallback((next: EditElement[], shouldPushHistory = true) => {

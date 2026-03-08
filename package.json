@@ -7,6 +7,8 @@
     "dev": "vite --host 127.0.0.1 --port 3000",
     "preview:e2e": "vite preview --host 127.0.0.1 --port 4173 --strictPort",
     "build": "tsc -p tsconfig.json && vite build",
+    "release:check": "npm test && npm run build && npm run audit:workerization:strict",
+    "release:check:fast": "npm test && npm run build",
     "test": "node --import tsx --test src/**/*.test.ts",
     "test:watch": "node --import tsx --test --watch src/**/*.test.ts",
     "test:e2e": "playwright test",

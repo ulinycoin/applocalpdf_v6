@@ -1,5 +1,3 @@
-export type StudioEditLocale = 'en' | 'ru' | 'de' | 'es' | 'fr' | 'it' | 'pt' | 'ja' | 'zh';
-
 export interface StudioEditMessages {
   selectPageTitle: string;
   backToCanvas: string;
@@ -124,63 +122,6 @@ const EN_MESSAGES: StudioEditMessages = {
   protectUnavailable: 'Protect PDF requires qpdf (Node/Desktop runtime). Current browser runtime is not supported.',
 };
 
-const RU_MESSAGES: StudioEditMessages = {
-  ...EN_MESSAGES,
-  whiteoutCustomColor: 'Свой цвет',
-  textFontFamily: 'Шрифт',
-  textFontSize: 'Размер',
-  textColor: 'Цвет текста',
-  textBackgroundColor: 'Фон',
-};
-
-const SIMPLE_FALLBACKS: Record<Exclude<StudioEditLocale, 'en' | 'ru'>, StudioEditMessages> = {
-  de: EN_MESSAGES,
-  es: EN_MESSAGES,
-  fr: EN_MESSAGES,
-  it: EN_MESSAGES,
-  pt: EN_MESSAGES,
-  ja: EN_MESSAGES,
-  zh: EN_MESSAGES,
-};
-
-const TRANSLATIONS: Record<StudioEditLocale, StudioEditMessages> = {
-  en: EN_MESSAGES,
-  ru: RU_MESSAGES,
-  ...SIMPLE_FALLBACKS,
-};
-
-export function detectStudioEditLocale(): StudioEditLocale {
-  if (typeof navigator === 'undefined') {
-    return 'en';
-  }
-  const raw = (navigator.language || 'en').trim().toLowerCase();
-  if (raw.startsWith('ru')) {
-    return 'ru';
-  }
-  if (raw.startsWith('de')) {
-    return 'de';
-  }
-  if (raw.startsWith('es')) {
-    return 'es';
-  }
-  if (raw.startsWith('fr')) {
-    return 'fr';
-  }
-  if (raw.startsWith('it')) {
-    return 'it';
-  }
-  if (raw.startsWith('pt')) {
-    return 'pt';
-  }
-  if (raw.startsWith('ja')) {
-    return 'ja';
-  }
-  if (raw.startsWith('zh')) {
-    return 'zh';
-  }
-  return 'en';
-}
-
-export function getStudioEditMessages(locale: StudioEditLocale): StudioEditMessages {
-  return TRANSLATIONS[locale] ?? EN_MESSAGES;
+export function getStudioEditMessages(): StudioEditMessages {
+  return EN_MESSAGES;
 }

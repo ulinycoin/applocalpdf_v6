@@ -7,7 +7,7 @@ import { EditElement, TextLayerSpan } from './editor-types';
 import { usePlatform } from '../../../app/react/platform-context';
 import type { IWorkerCommand, WorkerStudioEditElement } from '../../../core/public/contracts';
 import { defaultFilePreviewService } from '../../preview/preview-service';
-import { detectStudioEditLocale, getStudioEditMessages } from './studio-edit-i18n';
+import { getStudioEditMessages } from './studio-edit-i18n';
 
 interface StudioInPlaceEditorProps {
     stageRef: React.RefObject<Konva.Stage | null>;
@@ -30,8 +30,7 @@ export function StudioInPlaceEditor({ stageRef }: StudioInPlaceEditorProps) {
     const [isSelectMode, setIsSelectMode] = useState(false);
     const [selectedElementId, setSelectedElementId] = useState<string | null>(null);
 
-    const locale = useMemo(() => detectStudioEditLocale(), []);
-    const ui = useMemo(() => getStudioEditMessages(locale), [locale]);
+    const ui = useMemo(() => getStudioEditMessages(), []);
 
     const activePage = useMemo(() => {
         if (!activeEditPageId) return null;

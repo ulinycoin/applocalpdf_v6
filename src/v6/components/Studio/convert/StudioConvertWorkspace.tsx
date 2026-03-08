@@ -5,12 +5,11 @@ import { StudioConvertToolbar } from './StudioConvertToolbar';
 import { StudioExtractImagesSettingsPanel } from './StudioExtractImagesSettingsPanel';
 import { StudioOcrSettingsPanel } from './StudioOcrSettingsPanel';
 import { StudioPdfToJpgSettingsPanel } from './StudioPdfToJpgSettingsPanel';
-import { detectStudioConvertLocale, getStudioConvertMessages } from './studio-convert-i18n';
+import { getStudioConvertMessages } from './studio-convert-i18n';
 import { useStudioConvertController } from './use-studio-convert-controller';
 
 export function StudioConvertWorkspace() {
-  const locale = useMemo(() => detectStudioConvertLocale(), []);
-  const ui = useMemo(() => getStudioConvertMessages(locale), [locale]);
+  const ui = useMemo(() => getStudioConvertMessages(), []);
   const ctrl = useStudioConvertController();
 
   if (!ctrl.activeDocument || ctrl.previewPages.length === 0) {
