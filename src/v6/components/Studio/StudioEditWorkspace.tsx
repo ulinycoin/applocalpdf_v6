@@ -26,6 +26,7 @@ export function StudioEditWorkspace() {
     const imageRef = useRef<HTMLImageElement | null>(null);
     const surfaceRef = useRef<HTMLDivElement | null>(null);
     const editorRef = useRef<StudioPageEditorHandle | null>(null);
+    const autoFitPreviewKeyRef = useRef<string | null>(null);
     const [canvasSize, setCanvasSize] = useState<{ width: number; height: number }>({ width: 620, height: 840 });
     const [floatingPanelLayout, setFloatingPanelLayout] = useState<{ left: number; width: number } | null>(null);
     const [hasPendingDrawnSignature, setHasPendingDrawnSignature] = useState(false);
@@ -72,6 +73,25 @@ export function StudioEditWorkspace() {
         };
         img.src = url;
     }, [ctrl.preview?.page.thumbnailUrl]);
+
+    useEffect(() => {
+        const previewId = ctrl.preview?.page.id;
+        if (!previewId) {
+            autoFitPreviewKeyRef.current = null;
+            return;
+        }
+        const autoFitKey = `${previewId}:${canvasSize.width}`;
+        if (autoFitPreviewKeyRef.current === autoFitKey) {
+            return;
+        }
+        let frameId = window.requestAnimationFrame(() => {
+            zoom.fitToWidth(canvasSize.width);
+            autoFitPreviewKeyRef.current = autoFitKey;
+        });
+        return () => {
+            window.cancelAnimationFrame(frameId);
+        };
+    }, [canvasSize.width, ctrl.preview?.page.id, zoom]);
 
     useEffect(() => {
         let frameId = 0;

@@ -8,6 +8,7 @@ import { useStudioStore, PageItem, StudioDocument as IStudioDocument, StudioStat
 import { StudioDocument } from './StudioDocument';
 import { DetachedPageObject } from './DetachedPageObject';
 import { StudioFloatingMenu } from './StudioFloatingMenu';
+import { StudioModeSwitcher } from './StudioModeSwitcher';
 import { ThumbnailService } from '../../studio/thumbnail/thumbnail-service';
 import type { StudioReturnContext, StudioToolRouteState } from '../../studio/navigation/studio-tool-context';
 import * as pdfjs from 'pdfjs-dist';
@@ -651,16 +652,6 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
         >
-            {!hasFiles && (
-                <div className="studio-void-layer">
-                    <div className="studio-void-blob">
-                        <div className="studio-void-content">
-                            <h2 className="studio-void-title">The Void</h2>
-                            <p className="studio-void-subtitle">Drop files here to start your journey</p>
-                        </div>
-                    </div>
-                </div>
-            )}
             <Stage
                 ref={stageRef}
                 width={dimensions.width}
@@ -688,7 +679,16 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
                         y={-5000}
                         width={10000}
                         height={10000}
-                        fill="#121e29"
+                        fillLinearGradientStartPoint={{ x: -5000, y: -5000 }}
+                        fillLinearGradientEndPoint={{ x: 5000, y: 5000 }}
+                        fillLinearGradientColorStops={[
+                            0,
+                            'rgba(28, 52, 74, 0.72)',
+                            0.45,
+                            'rgba(20, 38, 56, 0.66)',
+                            1,
+                            'rgba(10, 20, 30, 0.58)',
+                        ]}
                     />
                     {hasFiles && (
                         <>
@@ -703,49 +703,56 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
                 </Layer>
             </Stage>
             <div className="studio-viewport-controls animate-fade-in">
-                <button
-                    className="studio-viewport-btn"
-                    onClick={() => { copySelectedPages(); }}
-                    title="Copy selected pages (Ctrl/Cmd+C)"
-                    disabled={selection.length === 0}
-                >
-                    Copy
-                </button>
-                <button
-                    className="studio-viewport-btn"
-                    onClick={() => { pasteSelectedPages(); }}
-                    title="Paste copied pages (Ctrl/Cmd+V)"
-                    disabled={!activeDocumentId || !hasClipboardPages}
-                >
-                    Paste
-                </button>
-                <div className="studio-viewport-divider" />
-                <button className="studio-viewport-btn" onClick={zoomOut} title="Zoom out" disabled={!hasFiles}>-</button>
-                <span className="studio-viewport-scale">{Math.round(viewScale * 100)}%</span>
-                <button className="studio-viewport-btn" onClick={zoomIn} title="Zoom in" disabled={!hasFiles}>+</button>
-                <button className="studio-viewport-btn studio-viewport-btn-fit" onClick={() => fitToDocuments(documents)} title="Fit all documents" disabled={!hasFiles}>
-                    Fit
-                </button>
-                <div className="studio-viewport-divider" />
-                <button
-                    className={`studio-viewport-btn ${gridColumns === 3 ? 'active' : ''}`}
-                    onClick={() => setGridColumns(3)}
-                    title="Grid: 3 columns"
-                    disabled={!hasFiles}
-                >
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect></svg>
-                </button>
-                <button
-                    className={`studio-viewport-btn ${gridColumns === 5 ? 'active' : ''}`}
-                    onClick={() => setGridColumns(5)}
-                    title="Grid: 5 columns overview"
-                    disabled={!hasFiles}
-                >
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="3" y1="15" x2="21" y2="15"></line><line x1="9" y1="3" x2="9" y2="21"></line><line x1="15" y1="3" x2="15" y2="21"></line></svg>
-                </button>
-                <button className="studio-viewport-btn studio-viewport-btn-upload" onClick={openUploadDialog} title="Upload files (U or Ctrl/Cmd+O)">
+                <div className="studio-viewport-section studio-viewport-section-left">
+                    <StudioModeSwitcher />
+                </div>
+                <div className="studio-viewport-section studio-viewport-section-center">
+                    <button
+                        className="studio-viewport-btn"
+                        onClick={() => { copySelectedPages(); }}
+                        title="Copy selected pages (Ctrl/Cmd+C)"
+                        disabled={selection.length === 0}
+                    >
+                        Copy
+                    </button>
+                    <button
+                        className="studio-viewport-btn"
+                        onClick={() => { pasteSelectedPages(); }}
+                        title="Paste copied pages (Ctrl/Cmd+V)"
+                        disabled={!activeDocumentId || !hasClipboardPages}
+                    >
+                        Paste
+                    </button>
+                    <div className="studio-viewport-divider" />
+                    <button className="studio-viewport-btn" onClick={zoomOut} title="Zoom out" disabled={!hasFiles}>-</button>
+                    <span className="studio-viewport-scale">{Math.round(viewScale * 100)}%</span>
+                    <button className="studio-viewport-btn" onClick={zoomIn} title="Zoom in" disabled={!hasFiles}>+</button>
+                    <button className="studio-viewport-btn studio-viewport-btn-fit" onClick={() => fitToDocuments(documents)} title="Fit all documents" disabled={!hasFiles}>
+                        Fit
+                    </button>
+                    <div className="studio-viewport-divider" />
+                    <button
+                        className={`studio-viewport-btn ${gridColumns === 3 ? 'active' : ''}`}
+                        onClick={() => setGridColumns(3)}
+                        title="Grid: 3 columns"
+                        disabled={!hasFiles}
+                    >
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect></svg>
+                    </button>
+                    <button
+                        className={`studio-viewport-btn ${gridColumns === 5 ? 'active' : ''}`}
+                        onClick={() => setGridColumns(5)}
+                        title="Grid: 5 columns overview"
+                        disabled={!hasFiles}
+                    >
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="3" y1="15" x2="21" y2="15"></line><line x1="9" y1="3" x2="9" y2="21"></line><line x1="15" y1="3" x2="15" y2="21"></line></svg>
+                    </button>
+                </div>
+                <div className="studio-viewport-section studio-viewport-section-right">
+                    <button className="studio-viewport-btn studio-viewport-btn-upload" onClick={openUploadDialog} title="Upload files (U or Ctrl/Cmd+O)">
                     Upload
-                </button>
+                    </button>
+                </div>
             </div>
             <input
                 ref={uploadInputRef}

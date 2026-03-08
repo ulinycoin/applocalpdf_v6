@@ -68,13 +68,22 @@ export const StudioDocument: React.FC<StudioDocumentProps> = ({ doc }) => {
                 height={height + 40}
                 x={-10}
                 y={-30}
-                fill={isDropTarget ? "rgba(59, 130, 246, 0.15)" : (isActiveDocument ? "rgba(59, 130, 246, 0.12)" : "rgba(59, 130, 246, 0.05)")}
-                stroke={isDropTarget ? "rgba(59, 130, 246, 0.6)" : (isActiveDocument ? "rgba(96, 165, 250, 0.9)" : "rgba(59, 130, 246, 0.2)")}
+                fillLinearGradientStartPoint={{ x: -10, y: -30 }}
+                fillLinearGradientEndPoint={{ x: width + 10, y: height + 10 }}
+                fillLinearGradientColorStops={
+                    isDropTarget
+                        ? [0, 'rgba(255, 255, 255, 0.12)', 1, 'rgba(28, 52, 74, 0.3)']
+                        : isActiveDocument
+                            ? [0, 'rgba(255, 255, 255, 0.1)', 1, 'rgba(28, 52, 74, 0.24)']
+                            : [0, 'rgba(255, 255, 255, 0.08)', 1, 'rgba(28, 52, 74, 0.18)']
+                }
+                stroke={isDropTarget ? "rgba(255, 255, 255, 0.28)" : (isActiveDocument ? "rgba(255, 255, 255, 0.2)" : "rgba(255, 255, 255, 0.12)")}
                 strokeWidth={isDropTarget || isActiveDocument ? 2 : 1}
-                cornerRadius={12}
-                shadowBlur={isDropTarget || isActiveDocument ? 15 : 0}
-                shadowColor="#3b82f6"
-                shadowOpacity={0.3}
+                cornerRadius={16}
+                shadowBlur={isDropTarget || isActiveDocument ? 24 : 14}
+                shadowColor="rgba(4, 12, 20, 0.9)"
+                shadowOpacity={isDropTarget || isActiveDocument ? 0.3 : 0.18}
+                shadowOffset={{ x: 0, y: 12 }}
             />
             {/* Document Label */}
             <Group
@@ -115,14 +124,17 @@ export const StudioDocument: React.FC<StudioDocumentProps> = ({ doc }) => {
                     <Rect
                         width={CARD_WIDTH}
                         height={CARD_HEIGHT}
-                        stroke="rgba(148, 197, 253, 0.7)"
+                        fillLinearGradientStartPoint={{ x: 10, y: 10 }}
+                        fillLinearGradientEndPoint={{ x: CARD_WIDTH + 10, y: CARD_HEIGHT + 10 }}
+                        fillLinearGradientColorStops={[0, 'rgba(255, 255, 255, 0.06)', 1, 'rgba(28, 52, 74, 0.16)']}
+                        stroke="rgba(255, 255, 255, 0.26)"
                         strokeWidth={1.5}
                         dash={[8, 6]}
-                        cornerRadius={8}
+                        cornerRadius={12}
                     />
                     <Text
                         text="Drop pages here"
-                        fill="rgba(219, 234, 254, 0.92)"
+                        fill="rgba(241, 245, 249, 0.82)"
                         fontSize={14}
                         fontStyle="bold"
                         align="center"
