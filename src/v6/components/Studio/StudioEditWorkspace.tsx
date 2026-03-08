@@ -11,15 +11,14 @@ import { StudioWhiteoutSettingsPanel } from './edit/StudioWhiteoutSettingsPanel'
 import { StudioTextSettingsPanel } from './edit/StudioTextSettingsPanel';
 import { StudioSignSettingsPanel } from './edit/StudioSignSettingsPanel';
 import { LinearIcon } from '../icons/linear-icon';
-import { detectStudioEditLocale, getStudioEditMessages } from './studio-edit-i18n';
+import { getStudioEditMessages } from './studio-edit-i18n';
 import { StudioPageEditor, type StudioPageEditorHandle } from './StudioPageEditor';
 import { useStudioEditZoom } from './edit/use-studio-edit-zoom';
 import type { FormFieldElement, WatermarkElement } from './editor-types';
 import type { FontFamilyId } from './inline-text-utils';
 
 export function StudioEditWorkspace() {
-    const locale = useMemo(() => detectStudioEditLocale(), []);
-    const ui = useMemo(() => getStudioEditMessages(locale), [locale]);
+    const ui = useMemo(() => getStudioEditMessages(), []);
 
     const ctrl = useStudioEditController(ui);
     const zoom = useStudioEditZoom(ctrl.runId || 'unknown', 1);
