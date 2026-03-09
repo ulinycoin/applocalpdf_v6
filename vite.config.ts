@@ -18,6 +18,12 @@ export default defineConfig({
           if (id.includes('/react/') || id.includes('/react-dom/') || id.includes('/react-router')) {
             return 'vendor-react';
           }
+          if (id.includes('/lucide-react/')) {
+            return 'vendor-icons';
+          }
+          if (id.includes('/konva/') || id.includes('/react-konva/') || id.includes('/use-image/')) {
+            return 'vendor-konva';
+          }
           if (id.includes('/pdfjs-dist/')) {
             return 'vendor-pdfjs';
           }

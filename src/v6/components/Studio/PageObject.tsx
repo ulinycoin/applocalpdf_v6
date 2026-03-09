@@ -3,9 +3,9 @@ import { Group, Image, Rect, Text } from 'react-konva';
 import Konva from 'konva';
 import type { KonvaEventObject } from 'konva/lib/Node';
 import useImage from 'use-image';
-import * as pdfjs from 'pdfjs-dist';
 import { PageItem, StudioState, useStudioStore } from './studio-store';
 import { usePlatform } from '../../../app/react/platform-context';
+import { getPdfJs } from '../../services/pdf/pdf-loader';
 
 // --- LRU Cache for High-Res Bitmaps ---
 const HIGH_RES_CACHE_LIMIT = 30; // Max number of high-res canvases to keep in memory (approx 100-300MB depending on resolution)
@@ -211,6 +211,7 @@ export const PageObject: React.FC<PageObjectProps> = ({ page, docId, x, y, curre
             setIsRenderingHighRes(true);
 
             try {
+                const pdfjs = await getPdfJs();
                 // Read from VFS
                 const entry = await runtime.vfs.read(page.fileId);
                 const blob = await entry.getBlob();

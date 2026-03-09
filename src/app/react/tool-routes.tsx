@@ -1,11 +1,31 @@
-import { Suspense } from 'react';
+import { Suspense, lazy } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { usePlatform } from './platform-context';
-import { WizardShell as V6WizardShell } from '../../v6/components/Wizard/WizardShell';
-import { StudioShell } from '../../v6/components/Studio/StudioShell';
-import { StudioEditWorkspace } from '../../v6/components/Studio/StudioEditWorkspace';
-import { StudioConvertWorkspace } from '../../v6/components/Studio/convert/StudioConvertWorkspace';
-import { OcrPdfTestPage } from './ocr-pdf-test-page';
+
+const V6WizardShell = lazy(async () => {
+  const module = await import('../../v6/components/Wizard/WizardShell');
+  return { default: module.WizardShell };
+});
+
+const StudioShell = lazy(async () => {
+  const module = await import('../../v6/components/Studio/StudioShell');
+  return { default: module.StudioShell };
+});
+
+const StudioEditWorkspace = lazy(async () => {
+  const module = await import('../../v6/components/Studio/StudioEditWorkspace');
+  return { default: module.StudioEditWorkspace };
+});
+
+const StudioConvertWorkspace = lazy(async () => {
+  const module = await import('../../v6/components/Studio/convert/StudioConvertWorkspace');
+  return { default: module.StudioConvertWorkspace };
+});
+
+const OcrPdfTestPage = lazy(async () => {
+  const module = await import('./ocr-pdf-test-page');
+  return { default: module.OcrPdfTestPage };
+});
 
 function LoadingScreen() {
   return <div>Loading tool...</div>;

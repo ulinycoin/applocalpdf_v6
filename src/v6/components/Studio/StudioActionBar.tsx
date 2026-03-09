@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { useStudioStore, PageItem, StudioDocument as StudioDoc, StudioState } from './studio-store';
 import { LinearIcon } from '../icons/linear-icon';
 import { IPipelineRecipe } from '../../studio/pipeline/types';
@@ -12,6 +13,7 @@ interface ReorderItem {
 
 export function StudioActionBar() {
     const { runtime } = usePlatform();
+    const [deleteArmedDocId, setDeleteArmedDocId] = useState<string | null>(null);
     const addDocument = useStudioStore((s: StudioState) => s.addDocument);
     const removeDocument = useStudioStore((s: StudioState) => s.removeDocument);
     const setActiveDocument = useStudioStore((s: StudioState) => s.setActiveDocument);
@@ -24,6 +26,15 @@ export function StudioActionBar() {
     const activeDocument = documents.find((doc) => doc.id === activeDocumentId) ?? null;
     const hasDocuments = documents.length > 0;
     const hasActivePages = (activeDocument?.pages.length ?? 0) > 0;
+    const deleteButtonCopy = activeDocument && deleteArmedDocId === activeDocument.id
+        ? 'Confirm Delete'
+        : 'Delete Space';
+
+    useEffect(() => {
+        if (!activeDocument || deleteArmedDocId !== activeDocument.id) {
+            setDeleteArmedDocId(null);
+        }
+    }, [activeDocument, deleteArmedDocId]);
 
     const exportDocuments = async (docs: StudioDoc[], fileName: string) => {
         if (docs.length === 0) {
@@ -73,26 +84,24 @@ export function StudioActionBar() {
         }
     };
 
-    const handleExportActive = async () => {
+    const handleExportActive = () => {
         if (!activeDocument || activeDocument.pages.length === 0) {
             return;
         }
 
-        const userInput = window.prompt('Enter file name for export:', activeDocument.name);
-        if (userInput === null) return;
+        setTimeout(async () => {
+            const userInput = window.prompt('Enter file name for export:', activeDocument.name);
+            if (userInput === null) return;
 
-        const fileName = userInput.trim() || activeDocument.name;
-        const safeName = fileName.replace(/[<>:"/\\|?*]/g, '_').slice(0, 64) || 'Workspace';
-        await exportDocuments([activeDocument], `${safeName}.pdf`);
+            const fileName = userInput.trim() || activeDocument.name;
+            const safeName = fileName.replace(/[<>:"/\\|?*]/g, '_').slice(0, 64) || 'Workspace';
+            await exportDocuments([activeDocument], `${safeName}.pdf`);
+        }, 50);
     };
 
     const handleCreateSpace = () => {
         const maxY = documents.reduce((acc, doc) => Math.max(acc, doc.y + 120), 80);
-
-        const userInput = window.prompt('Enter name for the new workspace:', `Workspace ${documents.length + 1}`);
-        if (userInput === null) return;
-
-        const name = userInput.trim() || `Workspace ${documents.length + 1}`;
+        const name = `Workspace ${documents.length + 1}`;
         const nextDocId = crypto.randomUUID();
         addDocument({
             id: nextDocId,
@@ -109,23 +118,26 @@ export function StudioActionBar() {
 
     const handleRenameActiveSpace = () => {
         if (!activeDocument) return;
-        const userInput = window.prompt('Enter new name for the workspace:', activeDocument.name);
-        if (userInput === null) return;
-
-        const newName = userInput.trim();
-        if (newName) {
-            updateDocument(activeDocument.id, { name: newName });
-        }
+        setTimeout(() => {
+            const userInput = window.prompt('Enter new name for the workspace:', activeDocument.name);
+            if (userInput !== null) {
+                const newName = userInput.trim();
+                if (newName) {
+                    updateDocument(activeDocument.id, { name: newName });
+                }
+            }
+        }, 50);
     };
 
     const handleDeleteActiveSpace = () => {
         if (!activeDocument) {
             return;
         }
-        const confirmed = window.confirm(`Delete workspace "${activeDocument.name}"?`);
-        if (!confirmed) {
+        if (deleteArmedDocId !== activeDocument.id) {
+            setDeleteArmedDocId(activeDocument.id);
             return;
         }
+        setDeleteArmedDocId(null);
         removeDocument(activeDocument.id);
         setSelection([]);
         requestInlineTool(null);
@@ -144,7 +156,7 @@ export function StudioActionBar() {
                 </button>
                 <button className="studio-space-btn studio-space-btn-danger" onClick={handleDeleteActiveSpace} disabled={!activeDocument}>
                     <LinearIcon name="delete-pages" className="linear-icon" />
-                    <span>Delete Space</span>
+                    <span>{deleteButtonCopy}</span>
                 </button>
                 <button className="export-btn" onClick={handleExportActive} disabled={!hasActivePages}>
                     <LinearIcon name="download" className="linear-icon" />

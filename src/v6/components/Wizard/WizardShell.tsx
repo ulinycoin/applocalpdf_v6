@@ -20,8 +20,8 @@ import { DEFAULT_TOOL_CONTEXT, useWizardFlow } from '../../hooks/useWizardFlow';
 import { useFilePreviews } from '../../hooks/use-file-previews';
 import { PreviewPanel } from './PreviewPanel';
 import type { IOAdapter, SmartUploadZoneProps, WizardShellProps } from './types';
-import { PDFDocument } from 'pdf-lib';
 import type { StudioReturnContext, StudioSelectedPageRef, StudioToolRouteState } from '../../studio/navigation/studio-tool-context';
+import { getPdfLib } from '../../services/pdf/pdf-loader';
 
 function classNames(...parts: Array<string | false | null | undefined>): string {
   return parts.filter(Boolean).join(' ');
@@ -193,6 +193,7 @@ async function buildSinglePageInputIdsFromSelection(
       sourceBytesByFileId.set(selected.fileId, sourceBytes);
     }
 
+    const { PDFDocument } = await getPdfLib();
     const sourcePdf = await PDFDocument.load(sourceBytes, { ignoreEncryption: true });
     if (selected.pageIndex >= sourcePdf.getPageCount()) {
       continue;
@@ -453,7 +454,7 @@ export function WizardShell({ toolId, context = DEFAULT_TOOL_CONTEXT, ioAdapter,
         )}
 
         {!isWordSinglePageFlow && state.step === 'upload' && (
-                  isInlineUploadConfigFlow && ConfigComponent ? (
+          isInlineUploadConfigFlow && ConfigComponent ? (
             <div className="animate-fade-in wizard-config-card">
               <ConfigErrorBoundary
                 onRetry={() => {

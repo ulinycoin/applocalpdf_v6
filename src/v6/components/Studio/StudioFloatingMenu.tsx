@@ -7,7 +7,7 @@ import type { IPipelineRecipe } from '../../studio/pipeline/types';
 import { ThumbnailService } from '../../studio/thumbnail/thumbnail-service';
 import { PageItem, StudioDocument, StudioState, useStudioStore } from './studio-store';
 import { LinearIcon } from '../icons/linear-icon';
-import * as pdfjs from 'pdfjs-dist';
+import { getPdfJs } from '../../services/pdf/pdf-loader';
 
 export function StudioFloatingMenu() {
     const { runtime } = usePlatform();
@@ -85,6 +85,7 @@ export function StudioFloatingMenu() {
     };
 
     const buildPagesFromFileId = async (fileId: string): Promise<PageItem[]> => {
+        const pdfjs = await getPdfJs();
         const entry = await runtime.vfs.read(fileId);
         const blob = await entry.getBlob();
         const buffer = await blob.arrayBuffer();

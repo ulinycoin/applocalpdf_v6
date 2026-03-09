@@ -11,8 +11,7 @@ import { StudioFloatingMenu } from './StudioFloatingMenu';
 import { StudioModeSwitcher } from './StudioModeSwitcher';
 import { ThumbnailService } from '../../studio/thumbnail/thumbnail-service';
 import type { StudioReturnContext, StudioToolRouteState } from '../../studio/navigation/studio-tool-context';
-import * as pdfjs from 'pdfjs-dist';
-import { PDFDocument } from 'pdf-lib';
+import { getPdfJs, getPdfLib } from '../../services/pdf/pdf-loader';
 import { StudioInPlaceEditor } from './StudioInPlaceEditor';
 
 export interface StudioShellProps {
@@ -151,6 +150,7 @@ function computeDocumentsBounds(docs: IStudioDocument[], gridColumns: number): {
 }
 
 export function StudioShell({ onFilesDropped }: StudioShellProps) {
+    const uiRunIdRef = useRef(crypto.randomUUID());
     const [dimensions, setDimensions] = useState({ width: window.innerWidth, height: window.innerHeight });
     const studioViewScale = useStudioStore((s: StudioState) => s.studioViewScale);
     const studioViewPosition = useStudioStore((s: StudioState) => s.studioViewPosition);
@@ -185,6 +185,16 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
     useEffect(() => {
         setStudioViewport(viewScale, viewPosition, dimensions);
     }, [setStudioViewport, viewPosition, viewScale, dimensions]);
+
+    const notifyStudioError = useCallback((message: string) => {
+        runtime.telemetry.track({
+            type: 'UI_TOAST_SHOWN',
+            runId: uiRunIdRef.current,
+            toolId: 'studio',
+            message,
+            level: 'error',
+        });
+    }, [runtime.telemetry]);
 
     const fitToDocuments = useCallback((targetDocs: IStudioDocument[]) => {
         if (targetDocs.length === 0) {
@@ -228,6 +238,7 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
     }, [viewPosition.x, viewPosition.y, viewScale]);
 
     const buildPagesFromFileId = useCallback(async (fileId: string): Promise<{ name: string; pages: PageItem[] }> => {
+        const pdfjs = await getPdfJs();
         const entry = await runtime.vfs.read(fileId);
         const blob = await entry.getBlob();
         const buffer = await blob.arrayBuffer();
@@ -316,6 +327,7 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
             try {
                 // If it's an image, wrap it in a PDF on the fly
                 if (file.type.startsWith('image/')) {
+                    const { PDFDocument } = await getPdfLib();
                     const pdfDoc = await PDFDocument.create();
                     const imageBytes = await file.arrayBuffer();
                     let embeddedImage;
@@ -342,6 +354,7 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
                 }
 
                 // 1. Save to VFS
+                const pdfjs = await getPdfJs();
                 const entry = await runtime.vfs.write(file);
                 const buffer = await file.arrayBuffer();
 
@@ -375,6 +388,8 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
                 });
             } catch (error) {
                 console.error('Failed to load file into Studio:', error);
+                const message = error instanceof Error ? error.message : 'Failed to load file into Studio.';
+                notifyStudioError(message);
             }
         }
 
@@ -385,7 +400,7 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
         if (positionedDocs.length > 0) {
             fitToDocuments([...documents, ...positionedDocs]);
         }
-    }, [addDocument, dimensions.width, documents, fitToDocuments, onFilesDropped, runtime.vfs, gridColumns]);
+    }, [addDocument, dimensions.width, documents, fitToDocuments, notifyStudioError, onFilesDropped, runtime.vfs, gridColumns]);
 
     const handleDrop = useCallback(async (e: React.DragEvent) => {
         e.preventDefault();
@@ -616,6 +631,8 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
             } catch (error) {
                 if (!cancelled) {
                     console.error('Failed to apply tool result in Studio:', error);
+                    const message = error instanceof Error ? error.message : 'Failed to apply tool result in Studio.';
+                    notifyStudioError(message);
                 }
             } finally {
                 if (!cancelled) {
@@ -642,6 +659,7 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
         setInteractionMode,
         setSelection,
         gridColumns,
+        notifyStudioError,
     ]);
 
     useEffect(() => {

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useStudioStore, type PageItem, type StudioDocument, type StudioState } from '../../v6/components/Studio/studio-store';
 import { LinearIcon } from '../../v6/components/icons/linear-icon';
 import { usePlatform } from './platform-context';
@@ -32,7 +32,7 @@ function canExportAsSourceFile(pages: PageItem[]): { fileId: string } | null {
 
 export function StudioTopNav({ onToggleTelemetry, telemetryOpen }: StudioTopNavProps) {
   const { runtime } = usePlatform();
-  const [notice, setNotice] = useState<string | null>(null);
+  const [deleteArmedDocId, setDeleteArmedDocId] = useState<string | null>(null);
   const documents = useStudioStore((s: StudioState) => s.documents);
   const activeDocumentId = useStudioStore((s: StudioState) => s.activeDocumentId);
   const addDocument = useStudioStore((s: StudioState) => s.addDocument);
@@ -47,6 +47,15 @@ export function StudioTopNav({ onToggleTelemetry, telemetryOpen }: StudioTopNavP
     [activeDocumentId, documents],
   );
   const hasActivePages = (activeDocument?.pages.length ?? 0) > 0;
+  const deleteButtonCopy = activeDocument && deleteArmedDocId === activeDocument.id
+    ? 'Confirm Delete'
+    : 'Delete Space';
+
+  useEffect(() => {
+    if (!activeDocument || deleteArmedDocId !== activeDocument.id) {
+      setDeleteArmedDocId(null);
+    }
+  }, [activeDocument, deleteArmedDocId]);
 
   const exportDocument = async (doc: StudioDocument, fileName: string): Promise<void> => {
     const directSource = canExportAsSourceFile(doc.pages);
@@ -98,10 +107,7 @@ export function StudioTopNav({ onToggleTelemetry, telemetryOpen }: StudioTopNavP
 
   const handleCreateSpace = (): void => {
     const maxY = documents.reduce((acc, doc) => Math.max(acc, doc.y + 120), 80);
-    const userInput = window.prompt('Enter name for the new workspace:', `Workspace ${documents.length + 1}`);
-    if (userInput === null) return;
-
-    const name = userInput.trim() || `Workspace ${documents.length + 1}`;
+    const name = `Workspace ${documents.length + 1}`;
     const nextDocId = crypto.randomUUID();
     addDocument({
       id: nextDocId,
@@ -120,41 +126,42 @@ export function StudioTopNav({ onToggleTelemetry, telemetryOpen }: StudioTopNavP
     if (!activeDocument) {
       return;
     }
-    const confirmed = window.confirm(`Delete workspace "${activeDocument.name}"?`);
-    if (!confirmed) {
+    if (deleteArmedDocId !== activeDocument.id) {
+      setDeleteArmedDocId(activeDocument.id);
       return;
     }
+    setDeleteArmedDocId(null);
     removeDocument(activeDocument.id);
     setSelection([]);
     requestInlineTool(null);
   };
 
-  const handleDownload = async (): Promise<void> => {
+  const handleDownload = () => {
     if (!activeDocument || activeDocument.pages.length === 0) {
       return;
     }
 
-    const userInput = window.prompt('Enter file name for export:', activeDocument.name);
-    if (userInput === null) return;
+    setTimeout(async () => {
+      const userInput = window.prompt('Enter file name for export:', activeDocument.name);
+      if (userInput === null) return;
 
-    const fileName = userInput.trim() || activeDocument.name;
-    const safeName = fileName.replace(/[<>:"/\\|?*]/g, '_').slice(0, 64) || 'Workspace';
+      const fileName = userInput.trim() || activeDocument.name;
+      const safeName = fileName.replace(/[<>:"/\\|?*]/g, '_').slice(0, 64) || 'Workspace';
 
-    try {
-      await exportDocument(activeDocument, `${safeName}.pdf`);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Export failed';
-      setNotice(message);
-    }
+      try {
+        await exportDocument(activeDocument, `${safeName}.pdf`);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Export failed';
+        console.error(message);
+      }
+    }, 50);
   };
 
   return (
     <header className="studio-top-nav" aria-label="Studio top navigation">
       <div className="studio-top-nav-left" />
 
-      <div className="studio-top-nav-center" aria-live="polite">
-        {notice && <span className="studio-notice-pill">{notice}</span>}
-      </div>
+      <div className="studio-top-nav-center" aria-live="polite" />
 
       <div className="studio-top-nav-right">
         <button
@@ -170,9 +177,9 @@ export function StudioTopNav({ onToggleTelemetry, telemetryOpen }: StudioTopNavP
           className="studio-tab-btn"
           onClick={handleDeleteSpace}
           disabled={!activeDocument}
-          title={!activeDocument ? 'No active workspace' : 'Delete active workspace'}
+          title={!activeDocument ? 'No active workspace' : deleteButtonCopy}
         >
-          <span>Delete Space</span>
+          <span>{deleteButtonCopy}</span>
         </button>
         <button
           type="button"

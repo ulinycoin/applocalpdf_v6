@@ -15,7 +15,6 @@ import {
   InProcessWorkerOrchestrator,
   type WorkerOrchestrator,
 } from '../../core/workers/worker-orchestrator';
-import { executeWorkerCommand } from '../../core/workers/worker-runtime';
 
 export interface PlatformRuntime {
   mode: 'browser-worker' | 'in-process';
@@ -58,7 +57,10 @@ export function createPlatformRuntime(
   const workerOrchestrator =
     mode === 'browser-worker'
       ? createBrowserWorkerOrchestrator()
-      : new InProcessWorkerOrchestrator((command) => executeWorkerCommand(command, { registry, fs }));
+      : new InProcessWorkerOrchestrator(async (command) => {
+        const { executeWorkerCommand } = await import('../../core/workers/worker-runtime');
+        return executeWorkerCommand(command, { registry, fs });
+      });
 
   const runner = new UnifiedToolRunner(registry, workerOrchestrator, fs, runnerTelemetry, {
     pageCountFallbackMode: resolvePageCountFallbackMode(),

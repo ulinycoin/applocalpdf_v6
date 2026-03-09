@@ -1,11 +1,5 @@
-import * as pdfjs from 'pdfjs-dist';
 import type { PDFPageProxy } from 'pdfjs-dist/types/src/display/api';
-
-// Point to the worker source from the package
-pdfjs.GlobalWorkerOptions.workerSrc = new URL(
-    'pdfjs-dist/build/pdf.worker.min.mjs',
-    import.meta.url
-).toString();
+import { getPdfJs } from '../../services/pdf/pdf-loader';
 
 export class ThumbnailService {
     private static readonly MIN_THUMBNAIL_WIDTH_PX = 1400;
@@ -38,6 +32,7 @@ export class ThumbnailService {
     static async generateThumbnail(pdfBuffer: ArrayBuffer, pageIndex: number): Promise<string> {
         // Use a copy to avoid detachment issues if called multiple times, 
         // though calling this in a loop is still inefficient.
+        const pdfjs = await getPdfJs();
         const verbosity = (pdfjs as unknown as { VerbosityLevel?: { ERRORS?: number } }).VerbosityLevel?.ERRORS ?? 0;
         const loadingTask = pdfjs.getDocument({ data: new Uint8Array(pdfBuffer.slice(0)), verbosity });
         const pdf = await loadingTask.promise;
