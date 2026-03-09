@@ -4,8 +4,6 @@ export interface StudioConvertMessages {
   selectionScope: string;
   documentScope: string;
   selectedPages: string;
-  selectAll: string;
-  clearSelection: string;
   runOcr: string;
   runPdfToJpg: string;
   runExtractImages: string;
@@ -18,8 +16,6 @@ const EN_MESSAGES: StudioConvertMessages = {
   selectionScope: 'Selection scope',
   documentScope: 'Document scope',
   selectedPages: 'page(s)',
-  selectAll: 'Select all',
-  clearSelection: 'Clear selection',
   runOcr: 'Run OCR',
   runPdfToJpg: 'Convert to JPG',
   runExtractImages: 'Extract Images',

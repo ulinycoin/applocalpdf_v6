@@ -44,10 +44,25 @@ export function StudioEditWorkspace() {
     }, [ctrl.message, ctrl.setMessage]);
 
     const handleWheel = (e: React.WheelEvent) => {
-        if (e.ctrlKey || e.metaKey) {
-            e.preventDefault();
-            zoom.zoomAtScreenPoint(e.clientX, e.clientY, e.deltaY > 0 ? 'out' : 'in', 'wheel');
+        const surfaceEl = surfaceRef.current;
+        if (!(surfaceEl instanceof HTMLElement)) {
+            return;
         }
+
+        const rect = surfaceEl.getBoundingClientRect();
+        const isOverCanvasSurface = (
+            e.clientX >= rect.left
+            && e.clientX <= rect.right
+            && e.clientY >= rect.top
+            && e.clientY <= rect.bottom
+        );
+
+        if (!isOverCanvasSurface) {
+            return;
+        }
+
+        e.preventDefault();
+        zoom.zoomAtScreenPoint(e.clientX, e.clientY, e.deltaY > 0 ? 'out' : 'in', 'wheel');
     };
 
     useEffect(() => {

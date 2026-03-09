@@ -19,7 +19,6 @@ export interface StudioOcrSettings {
   mode: 'accurate' | 'fast';
   preserveFormatting: boolean;
   detectTables: boolean;
-  recognizeHandwriting: boolean;
   outputFormat: 'txt' | 'searchable-pdf' | 'json';
 }
 
@@ -156,7 +155,6 @@ export function useStudioConvertController() {
     mode: 'accurate',
     preserveFormatting: true,
     detectTables: false,
-    recognizeHandwriting: false,
     outputFormat: 'txt',
   });
   const [pdfToJpgSettings, setPdfToJpgSettings] = useState<StudioPdfToJpgSettings>({
@@ -546,7 +544,6 @@ export function useStudioConvertController() {
           outputFormat: ocrSettings.outputFormat,
           preserveFormatting: ocrSettings.preserveFormatting,
           detectTables: ocrSettings.detectTables,
-          recognizeHandwriting: ocrSettings.recognizeHandwriting,
         }
         : activeTool === 'pdf-to-jpg'
           ? {
@@ -616,7 +613,6 @@ export function useStudioConvertController() {
     ocrSettings.mode,
     ocrSettings.outputFormat,
     ocrSettings.preserveFormatting,
-    ocrSettings.recognizeHandwriting,
     extractImagesSettings.dedupe,
     extractImagesSettings.format,
     extractImagesSettings.includeInlineImages,

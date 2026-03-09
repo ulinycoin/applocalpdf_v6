@@ -494,6 +494,15 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
     }, [copySelectedPages, openUploadDialog, pasteSelectedPages]);
 
     const handleStageWheel = useCallback((event: KonvaEventObject<WheelEvent>) => {
+        const targetNode = event.target;
+        const isOverDocument = Boolean(targetNode?.findAncestor('.document', true));
+        const isOverPage = Boolean(targetNode?.findAncestor('.page-object', true));
+        const isOverDetachedPage = Boolean(targetNode?.findAncestor('.detached-page-object', true));
+
+        if (!isOverDocument && !isOverPage && !isOverDetachedPage) {
+            return;
+        }
+
         event.evt.preventDefault();
         const stage = stageRef.current;
         if (!stage) {

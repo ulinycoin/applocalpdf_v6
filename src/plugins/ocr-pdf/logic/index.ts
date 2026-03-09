@@ -3,6 +3,7 @@ import { createOcrEngine, type OcrWord } from '../../../services/ocr/ocr-engine'
 import { OcrPipelineError } from '../../../services/ocr/ocr-errors';
 import { buildFontSupportProfile } from '../../../services/ocr/font-profile';
 import { detectDocumentLanguage, selectAutoOcrLanguagePack, type SupportedOcrLanguage } from '../../../services/ocr/language-detector';
+import { detectTablesFromWords, renderDetectedTablesAsMarkdown, type DetectedTable } from '../../../services/ocr/table-detector';
 import { buildSearchablePdfFromImages } from '../../../services/ocr/searchable-pdf';
 import { preprocessImageForOcr } from '../../../services/ocr/image-preprocess';
 import { createPdfRasterizer } from '../../../services/pdf/pdf-rasterizer';
@@ -17,6 +18,14 @@ interface OcrRunOptions {
   language: string;
   outputFormat: OcrOutputFormat;
   mode: OcrMode;
+  preserveFormatting: boolean;
+  detectTables: boolean;
+}
+
+interface PageAnalysis {
+  text: string;
+  words: OcrWord[];
+  tables: DetectedTable[];
 }
 
 interface OcrChunkResult {
@@ -128,7 +137,26 @@ function parseOptions(input: Record<string, unknown> | undefined): OcrRunOptions
       ? 'searchable-pdf'
       : 'txt';
   const mode = input?.mode === 'fast' ? 'fast' : 'accurate';
-  return { languageMode, language, outputFormat, mode };
+  const preserveFormatting = input?.preserveFormatting !== false;
+  const detectTables = input?.detectTables === true;
+  return { languageMode, language, outputFormat, mode, preserveFormatting, detectTables };
+}
+
+function analyzePages(results: Array<{ text: string; words: OcrWord[] }>, options: OcrRunOptions): PageAnalysis[] {
+  return results.map((result) => {
+    const tables = options.detectTables ? detectTablesFromWords(result.words) : [];
+    const tableMarkdown = tables.length > 0 ? renderDetectedTablesAsMarkdown(tables) : '';
+    const text = options.detectTables && tableMarkdown
+      ? options.preserveFormatting
+        ? [result.text.trim(), tableMarkdown].filter(Boolean).join('\n\n')
+        : [result.text.trim(), tableMarkdown.replace(/\|/g, '\t').replace(/^\s*---.*$/gm, '').replace(/\n{3,}/g, '\n\n').trim()].filter(Boolean).join('\n\n')
+      : result.text;
+    return {
+      text,
+      words: result.words,
+      tables,
+    };
+  });
 }
 
 function isLowConfidence(result: OcrChunkResult): boolean {
@@ -207,6 +235,7 @@ export const run: ToolLogicFunction = async ({ inputIds, options: runOptions, fs
     let languageFallbackUsed = false;
     let languageDetection = detectDocumentLanguage('');
     let pageLayers: Array<{ imageBlob: Blob; words: OcrChunkResult['words'] }> = [];
+    let pageAnalysis: PageAnalysis[] = [];
     let usedEmbeddedText = false;
 
     if (mime === 'application/pdf') {
@@ -215,6 +244,11 @@ export const run: ToolLogicFunction = async ({ inputIds, options: runOptions, fs
       if (hasEmbeddedText) {
         updateFileProgress(26);
         recognizedText = embedded?.text ?? '';
+        pageAnalysis = [{
+          text: recognizedText,
+          words: [],
+          tables: [],
+        }];
         languageDetection = detectDocumentLanguage(recognizedText);
         usedEmbeddedText = true;
         updateFileProgress(78);
@@ -286,7 +320,8 @@ export const run: ToolLogicFunction = async ({ inputIds, options: runOptions, fs
             }
           }
 
-          recognizedText = pageResults.map((item) => item.text).join('\n\n');
+          pageAnalysis = analyzePages(pageResults.map((item) => ({ text: item.text, words: item.words })), options);
+          recognizedText = pageAnalysis.map((item) => item.text).join('\n\n');
           // Keep original page render for final Searchable PDF visuals;
           // preprocess variants are used only for OCR recognition quality.
           const remappedLayers: Array<{ imageBlob: Blob; words: OcrWord[] }> = [];
@@ -338,7 +373,8 @@ export const run: ToolLogicFunction = async ({ inputIds, options: runOptions, fs
         }
 
         updateFileProgress(80);
-        recognizedText = finalResult.text;
+        pageAnalysis = analyzePages([{ text: finalResult.text, words: finalResult.words }], options);
+        recognizedText = pageAnalysis[0]?.text ?? finalResult.text;
         const remappedWords = await remapWordsToRenderBlob(finalResult.words, finalWordsOcrBlob, imageRenderBlob);
         pageLayers = [{ imageBlob: imageRenderBlob, words: remappedWords }];
         languageDetection = detectDocumentLanguage(recognizedText);
@@ -362,7 +398,8 @@ export const run: ToolLogicFunction = async ({ inputIds, options: runOptions, fs
         }
 
         updateFileProgress(80);
-        recognizedText = recognized.text;
+        pageAnalysis = analyzePages([{ text: recognized.text, words: recognized.words }], options);
+        recognizedText = pageAnalysis[0]?.text ?? recognized.text;
         const remappedWords = await remapWordsToRenderBlob(recognized.words, finalWordsOcrBlob, imageRenderBlob);
         pageLayers = [{ imageBlob: imageRenderBlob, words: remappedWords }];
         languageDetection = detectDocumentLanguage(recognizedText);
@@ -386,6 +423,8 @@ export const run: ToolLogicFunction = async ({ inputIds, options: runOptions, fs
       ocr: {
         mode: options.mode,
         languageMode: options.languageMode,
+        preserveFormatting: options.preserveFormatting,
+        detectTables: options.detectTables,
         requestedLanguage: initialLanguagePack,
         suggestedLanguagePack: options.languageMode === 'auto' ? finalLanguagePack : null,
         autoSecondPassApplied: options.languageMode === 'auto' ? autoSecondPassApplied : false,
@@ -399,6 +438,14 @@ export const run: ToolLogicFunction = async ({ inputIds, options: runOptions, fs
       languageDetection,
       fontSupport: fontProfile,
       recognizedText,
+      pages: pageAnalysis.map((page, index) => ({
+        index,
+        text: page.text,
+        tables: page.tables.map((table) => ({
+          columns: table.columns,
+          rows: table.rows.map((row) => row.cells.slice(0, table.columns).map((cell) => cell.text)),
+        })),
+      })),
     };
 
     const txtReport = new Blob([payload.recognizedText], { type: 'text/plain' });

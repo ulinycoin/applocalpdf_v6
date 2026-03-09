@@ -62,7 +62,6 @@ export default function OcrPdfConfig({
   const [ocrMode, setOcrMode] = useState<'accurate' | 'fast'>('accurate');
   const [preserveFormatting, setPreserveFormatting] = useState(true);
   const [detectTables, setDetectTables] = useState(false);
-  const [recognizeHandwriting, setRecognizeHandwriting] = useState(false);
   const [outputFormat, setOutputFormat] = useState<'txt' | 'json' | 'searchable-pdf'>('txt');
   const [activeTab, setActiveTab] = useState<OcrTab>('text');
   const [isTextEditorEnabled, setIsTextEditorEnabled] = useState(false);
@@ -298,14 +297,6 @@ export default function OcrPdfConfig({
                 />
                 Detect tables
               </label>
-              <label className="ocr-concept-check">
-                <input
-                  type="checkbox"
-                  checked={recognizeHandwriting}
-                  onChange={(event) => setRecognizeHandwriting(event.target.checked)}
-                />
-                Handwritten text
-              </label>
             </div>
 
             <label className="tool-config-label" htmlFor="ocr-output">Output format</label>
@@ -338,7 +329,6 @@ export default function OcrPdfConfig({
                 mode: ocrMode,
                 preserveFormatting,
                 detectTables,
-                recognizeHandwriting,
               })}
             >
               <span className="btn-inline">

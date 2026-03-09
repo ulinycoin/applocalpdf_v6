@@ -14,8 +14,6 @@ interface StudioExtractImagesSettingsPanelProps {
   onChange: (settings: StudioExtractImagesSettings) => void;
   foundCount: number;
   selectedCount: number;
-  onSelectAllFound: () => void;
-  onClearSelected: () => void;
 }
 
 export function StudioExtractImagesSettingsPanel({
@@ -23,8 +21,6 @@ export function StudioExtractImagesSettingsPanel({
   onChange,
   foundCount,
   selectedCount,
-  onSelectAllFound,
-  onClearSelected,
 }: StudioExtractImagesSettingsPanelProps) {
   const [local, setLocal] = useState(settings);
 
@@ -122,15 +118,6 @@ export function StudioExtractImagesSettingsPanel({
             <span>Selected images</span>
             <strong>{selectedCount}</strong>
           </div>
-        </div>
-
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '0.5rem' }}>
-          <button type="button" className="btn-ghost" onClick={onSelectAllFound}>
-            Select all
-          </button>
-          <button type="button" className="btn-ghost" onClick={onClearSelected}>
-            Clear
-          </button>
         </div>
 
         <p style={{ margin: 0, fontSize: 12, color: 'rgba(226,232,240,0.72)', lineHeight: 1.5 }}>

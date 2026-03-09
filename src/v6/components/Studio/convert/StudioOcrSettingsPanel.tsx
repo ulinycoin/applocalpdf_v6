@@ -85,14 +85,6 @@ export function StudioOcrSettingsPanel({ settings, onChange }: StudioOcrSettings
           />
           Detect tables
         </label>
-        <label className="tool-config-label" style={{ display: 'flex', alignItems: 'center', gap: 8, margin: 0 }}>
-          <input
-            type="checkbox"
-            checked={settings.recognizeHandwriting}
-            onChange={(event) => onChange({ ...settings, recognizeHandwriting: event.target.checked })}
-          />
-          Handwritten text
-        </label>
 
         <div>
           <label className="tool-config-label" htmlFor="studio-ocr-output-format">Output format</label>

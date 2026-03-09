@@ -84,15 +84,7 @@ export function StudioConvertWorkspace() {
                 onChange={ctrl.setExtractImagesSettings}
                 foundCount={ctrl.extractImageCandidates.length}
                 selectedCount={ctrl.selectedExtractImageCandidates.length}
-                onSelectAllFound={ctrl.selectAllImageCandidates}
-                onClearSelected={ctrl.clearImageCandidateSelection}
               />
-            )}
-            {ctrl.step === 'config' && (
-              <div style={{ width: 260, marginTop: 10, display: 'grid', gap: 8 }}>
-                <button type="button" className="studio-edit-btn-cancel" onClick={ctrl.selectAllPages}>{ui.selectAll}</button>
-                <button type="button" className="studio-edit-btn-cancel" onClick={ctrl.clearPageSelection}>{ui.clearSelection}</button>
-              </div>
             )}
           </div>
         )}
