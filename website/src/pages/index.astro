@@ -2,13 +2,12 @@
 import Header from '../components/Header.astro';
 import BaseLayout from '../layouts/BaseLayout.astro';
 import DeveloperStory from '../components/DeveloperStory.astro';
-import SecureToolsBlock from '../components/SecureToolsBlock.astro';
 import { CATEGORIES, ICONS } from '../data/tools';
 import IndustrySolutions from '../components/IndustrySolutions.astro';
 
 // Redesigned Homepage - v2.0 "Private Sanctuary"
-const title = "LocalPDF Sanctuary | 100% Private PDF Tools (No Uploads)";
-const metaDescription = "Free privacy-first PDF tools. Merge, split, compress, and edit PDFs locally in your browser. No file uploads, no server processing. GDPR compliant & offline-ready.";
+const title = "LocalPDF Sanctuary | 100% Private PDF Studio (No Uploads)";
+const metaDescription = "Experience LocalPDF Sanctuary: The ultimate offline-first PDF Studio. Merge, split, compress, and edit PDFs locally in your browser workspace. No file uploads, no server processing. GDPR compliant.";
 const keywords = "private pdf tools, local pdf processing, no upload pdf editor, free online pdf tools, secure pdf editor, client-side pdf tools, localpdf sanctuary";
 
 // specific structured data removed as it is now in BaseLayout
@@ -41,6 +40,10 @@ const faqData = [
   {
     question: "Is the service truly free and without watermarks?",
     answer: "LocalPDF is currently free with no usage limits, no file size caps, and no watermarks. Since we don't have server costs for file processing, we can maintain high-quality tools without charging user fees."
+  },
+  {
+    question: "What is the new unified Studio interface?",
+    answer: "Our new unified Studio interface brings all PDF tools—from merging to OCR and text editing—into a single, cohesive workspace. You can seamlessly switch between tasks without reloading the page, enjoying a full desktop-grade experience right inside your browser sandbox."
   }
 ];
 
@@ -65,6 +68,7 @@ const langPrefix = '';
     <script type="application/ld+json" set:html={JSON.stringify(websiteSchema)} />
     <script type="application/ld+json" set:html={JSON.stringify(faqSchema)} />
     <style>
+
       .hero {
         position: relative;
         padding: 60px 7vw 100px;
@@ -624,7 +628,7 @@ const langPrefix = '';
     
     <h1 class="hero-h1">
       Your Private PDF Sanctuary.<br/> 
-      <span class="gradient-text">100% Offline. No Uploads.</span>
+      <span class="gradient-text">Studio Edition. Offline & Secure.</span>
     </h1>
     
     <p class="hero-p">
@@ -632,7 +636,7 @@ const langPrefix = '';
     </p>
 
     <a href="/app#" class="btn-main">
-      Launch Studio 🚀
+      Launch Unified Studio 🚀
     </a>
 
     <div class="trust-viz">
@@ -716,18 +720,6 @@ const langPrefix = '';
     </div>
   </section>
 
-  <SecureToolsBlock 
-    title="Quick Access: Secure PDF Tools"
-    links={[
-      { label: "Merge PDF Files Without Uploading", href: `${langPrefix}/merge-pdf` },
-      { label: "Split PDF Locally in Browser", href: `${langPrefix}/split-pdf` },
-      { label: "Compress PDF GDPR Safe", href: `${langPrefix}/compress-pdf` },
-      { label: "Smart Edit PDF Privately", href: `${langPrefix}/edit-text-pdf` },
-      { label: "Secure PDF OCR (No Server)", href: `${langPrefix}/ocr-pdf` },
-      { label: "Extract Images Local Process", href: `${langPrefix}/extract-images-pdf` }
-    ]}
-  />
-
   <section class="faq-section">
     <div class="faq-content">
       <h2 class="faq-h2">Frequently Asked Questions</h2>
@@ -748,7 +740,7 @@ const langPrefix = '';
       <div class="tech-grid">
         <div class="tech-card">
           <h4>WebAssembly (WASM)</h4>
-          <p>We use high-performance C++ and Rust libraries compiled to WASM. This allows us to handle complex PDF operations like merging, OCR, and compression directly at near-native speeds.</p>
+          <p>We use high-performance C++ and Rust libraries compiled to WASM. This allows us to handle complex PDF operations like merging, OCR, and compression directly at near-native speeds. <strong>Even documents with 1000+ pages are processed seamlessly in memory.</strong></p>
         </div>
         <div class="tech-card">
           <h4>Secure Sandboxing</h4>
