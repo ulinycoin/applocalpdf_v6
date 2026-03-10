@@ -46,6 +46,7 @@ export function StudioOcrSettingsPanel({ settings, onChange }: StudioOcrSettings
             <option value="jpn">Japanese</option>
             <option value="chi_sim">Chinese (Simplified)</option>
             <option value="hin">Hindi</option>
+            <option value="ara">Arabic</option>
           </select>
         </div>
 

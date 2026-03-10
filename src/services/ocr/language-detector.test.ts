@@ -32,3 +32,9 @@ test('detectDocumentLanguage identifies Hindi text', () => {
   assert.equal(result.primaryLanguage, 'hin');
   assert.equal(result.dominantScript, 'devanagari');
 });
+
+test('detectDocumentLanguage identifies Arabic text', () => {
+  const result = detectDocumentLanguage('هذا نص عربي ومثال على الفاتورة التي يجب على العميل دفعها في الوقت المحدد.');
+  assert.equal(result.primaryLanguage, 'ara');
+  assert.equal(result.dominantScript, 'arabic');
+});

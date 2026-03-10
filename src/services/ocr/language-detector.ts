@@ -9,9 +9,10 @@ export type SupportedOcrLanguage =
   | 'por'
   | 'jpn'
   | 'chi_sim'
-  | 'hin';
+  | 'hin'
+  | 'ara';
 
-type ScriptKind = 'latin' | 'cyrillic' | 'japanese' | 'han' | 'devanagari';
+type ScriptKind = 'latin' | 'cyrillic' | 'japanese' | 'han' | 'devanagari' | 'arabic';
 
 interface LanguageModel {
   script: ScriptKind;
@@ -30,6 +31,7 @@ const LANGUAGE_MODELS: Record<SupportedOcrLanguage, LanguageModel> = {
   jpn: { script: 'japanese', stopwords: ['の', 'に', 'は', 'を', 'が', 'です', 'ます', 'で', 'て', 'と'] },
   chi_sim: { script: 'han', stopwords: ['的', '是', '了', '在', '和', '有', '为', '与', '及', '本'] },
   hin: { script: 'devanagari', stopwords: ['के', 'में', 'और', 'का', 'है', 'से', 'यह', 'को', 'पर', 'की'] },
+  ara: { script: 'arabic', stopwords: ['في', 'من', 'على', 'إلى', 'لا', 'أن', 'ما', 'هو', 'مع', 'عن'] },
 };
 
 export interface LanguageCandidate {
@@ -54,6 +56,7 @@ function detectDominantScript(text: string): LanguageDetectionResult['dominantSc
   let devanagariCount = 0;
   let hanCount = 0;
   let kanaCount = 0;
+  let arabicCount = 0;
 
   for (const char of text) {
     if (/\p{Script=Latin}/u.test(char)) {
@@ -62,6 +65,8 @@ function detectDominantScript(text: string): LanguageDetectionResult['dominantSc
       cyrillicCount += 1;
     } else if (/\p{Script=Devanagari}/u.test(char)) {
       devanagariCount += 1;
+    } else if (/\p{Script=Arabic}/u.test(char)) {
+      arabicCount += 1;
     } else if (/\p{Script=Han}/u.test(char)) {
       hanCount += 1;
     } else if (/\p{Script=Hiragana}|\p{Script=Katakana}/u.test(char)) {
@@ -69,7 +74,7 @@ function detectDominantScript(text: string): LanguageDetectionResult['dominantSc
     }
   }
 
-  const total = latinCount + cyrillicCount + devanagariCount + hanCount + kanaCount;
+  const total = latinCount + cyrillicCount + devanagariCount + hanCount + kanaCount + arabicCount;
   if (total === 0) {
     return 'unknown';
   }
@@ -78,6 +83,7 @@ function detectDominantScript(text: string): LanguageDetectionResult['dominantSc
   const cyrillicShare = cyrillicCount / total;
   const devanagariShare = devanagariCount / total;
   const hanShare = hanCount / total;
+  const arabicShare = arabicCount / total;
   const japaneseShare = (hanCount + kanaCount) / total;
   const kanaShare = kanaCount / total;
 
@@ -89,6 +95,9 @@ function detectDominantScript(text: string): LanguageDetectionResult['dominantSc
   }
   if (devanagariShare > 0.6) {
     return 'devanagari';
+  }
+  if (arabicShare > 0.6) {
+    return 'arabic';
   }
   if (japaneseShare > 0.7 && kanaShare > 0.04) {
     return 'japanese';

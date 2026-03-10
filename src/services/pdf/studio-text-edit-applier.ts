@@ -140,6 +140,10 @@ function containsArabic(input: string): boolean {
   return /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF]/u.test(input);
 }
 
+function containsCyrillic(input: string): boolean {
+  return /\p{Script=Cyrillic}/u.test(input);
+}
+
 function containsCjk(input: string): boolean {
   return /[\u3040-\u30FF\u3400-\u4DBF\u4E00-\u9FFF\uF900-\uFAFF\uAC00-\uD7AF]/u.test(input);
 }
@@ -609,6 +613,27 @@ export async function applyStudioTextEditsToPdfBytes(params: {
     }
   };
 
+  const getNotoSansCyrillicFont = async (): Promise<PDFFont | null> => {
+    const key = 'noto-sans-cyrillic-400';
+    const cached = fontCache.get(key);
+    if (cached) {
+      return cached;
+    }
+    try {
+      const module = await import('@fontsource/noto-sans/files/noto-sans-cyrillic-ext-400-normal.woff?url') as { default: string };
+      const response = await fetch(module.default);
+      if (!response.ok) {
+        return null;
+      }
+      const bytes = await response.arrayBuffer();
+      const embedded = await pdf.embedFont(bytes, { subset: true });
+      fontCache.set(key, embedded);
+      return embedded;
+    } catch {
+      return null;
+    }
+  };
+
   const getNotoSansLatinFont = async (): Promise<PDFFont | null> => {
     const key = 'noto-sans-latin-400';
     const cached = fontCache.get(key);
@@ -687,6 +712,9 @@ export async function applyStudioTextEditsToPdfBytes(params: {
     }
     if (containsDevanagari(text) || family === 'noto-devanagari') {
       addUnique(await getNotoSansDevanagariFont());
+    }
+    if (containsCyrillic(text)) {
+      addUnique(await getNotoSansCyrillicFont());
     }
 
     addUnique(await getStandardFont('sora', 'normal', 'normal'));
