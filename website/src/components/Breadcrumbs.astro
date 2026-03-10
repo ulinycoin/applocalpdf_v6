@@ -1,0 +1,103 @@
+---
+interface BreadcrumbItem {
+  label: string;
+  href?: string;
+}
+
+interface Props {
+  items: BreadcrumbItem[];
+}
+
+const { items } = Astro.props;
+const currentUrl = Astro.url.href;
+
+// Schema.org BreadcrumbList for SEO
+const breadcrumbSchema = {
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": items.map((item, index) => {
+    // If href is missing, it's usually the current page
+    const itemUrl = item.href
+      ? `https://localpdf.online${item.href.startsWith('/') ? '' : '/'}${item.href}`
+      : currentUrl;
+
+    return {
+      "@type": "ListItem",
+      "position": index + 1,
+      "name": item.label,
+      "item": itemUrl
+    };
+  })
+};
+---
+
+<script type="application/ld+json" set:html={JSON.stringify(breadcrumbSchema)} />
+
+<nav class="breadcrumbs" aria-label="Breadcrumb">
+  <ol>
+    {items.map((item, index) => (
+      <li>
+        {item.href ? (
+          <a href={item.href}>{item.label}</a>
+        ) : (
+          <span aria-current="page">{item.label}</span>
+        )}
+        {index < items.length - 1 && <span class="separator">→</span>}
+      </li>
+    ))}
+  </ol>
+</nav>
+
+<style>
+  .breadcrumbs {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 32px 7vw 0;
+    position: relative;
+    z-index: 10;
+  }
+
+  .breadcrumbs ol {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    font-size: 0.8125rem;
+  }
+
+  .breadcrumbs li {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .breadcrumbs a {
+    color: var(--text-muted);
+    text-decoration: none;
+    transition: color 0.2s;
+  }
+
+  .breadcrumbs a:hover {
+    color: var(--accent-light);
+  }
+
+  .breadcrumbs span[aria-current="page"] {
+    color: var(--text-main);
+    font-weight: 500;
+  }
+
+  .separator {
+    color: rgba(255, 255, 255, 0.1);
+    user-select: none;
+    font-size: 0.75rem;
+  }
+
+  @media (max-width: 768px) {
+    .breadcrumbs {
+      padding: 24px 5vw 0;
+    }
+  }
+</style>

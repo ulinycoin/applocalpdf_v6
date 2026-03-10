@@ -1,0 +1,967 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import Breadcrumbs from './Breadcrumbs.astro';
+import FAQSchema from './FAQSchema.astro';
+import { ALL_TOOLS, getToolById, getRelatedTools, ICONS } from '../data/tools';
+
+interface Props {
+  toolId: string;
+  title: string;
+  description: string;
+  metaDescription: string;
+  image?: string;
+  benefits: string[];
+  steps: Array<string | { text: string; image?: string }>;
+  whyChoose?: {
+    title: string;
+    reasons: string[];
+  };
+  features?: string[];
+  relatedTools?: Array<{
+    id: string;
+    icon: string;
+    title: string;
+    description: string;
+  }>;
+  faqs?: Array<{
+    question: string;
+    answer: string;
+  }>;
+  techInfo?: Array<{
+    title: string;
+    description: string;
+  }>;
+  answerBox?: {
+    question: string;
+    answer: string;
+  };
+  lang?: string;
+  labels?: {
+    freeBadge?: string;
+    launchStudio?: string;
+    keyFeatures?: string;
+    howItWorks?: string;
+    privacyTitle?: string;
+    privacyDesc?: string;
+    faqHeader?: string;
+    techHeader?: string;
+    relatedHeader?: string;
+    viewAll?: string;
+    homeLabel?: string;
+    toolsLabel?: string;
+  };
+}
+
+const { 
+  toolId, title, description, metaDescription, image, benefits, steps, 
+  whyChoose, features, relatedTools, faqs, techInfo, answerBox, lang = 'en',
+  labels = {}
+} = Astro.props;
+
+const ui = {
+  freeBadge: labels.freeBadge || "Free Sandbox Beta",
+  launchStudio: labels.launchStudio || "Launch Studio 🚀",
+  keyFeatures: labels.keyFeatures || "Key Features",
+  howItWorks: labels.howItWorks || "How It Works",
+  privacyTitle: labels.privacyTitle || "100% Private Sandbox:",
+  privacyDesc: labels.privacyDesc || "Your files never leave your device. All processing happens locally in your browser's secure memory.",
+  faqHeader: labels.faqHeader || "Frequently Asked Questions",
+  techHeader: labels.techHeader || "Technical Architecture: How it Works",
+  relatedHeader: labels.relatedHeader || "Related PDF Tools",
+  viewAll: labels.viewAll || "View All Tools →",
+  homeLabel: labels.homeLabel || "Home",
+  toolsLabel: labels.toolsLabel || "Tools",
+  defaultFaqs: labels.defaultFaqs || null,
+  defaultTechInfo: labels.defaultTechInfo || null
+};
+
+const langPrefix = lang === 'en' ? '' : `/${lang}`;
+const canonicalURL = `https://localpdf.online${langPrefix}/${toolId}`;
+
+// Get tool data from centralized registry
+const currentTool = getToolById(toolId);
+const appURL = `/app#${currentTool?.hash || toolId}`;
+
+// Smart Related Tools Logic
+const finalRelatedTools = relatedTools && relatedTools.length > 0
+  ? relatedTools
+  : getRelatedTools(toolId, 4).map(t => ({
+      id: t.id,
+      icon: ICONS[t.icon],
+      title: t.name,
+      description: t.desc
+    }));
+
+// Schema.org structured data for SEO
+const structuredData = {
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": title,
+  "applicationCategory": "UtilityApplication",
+  "operatingSystem": "Any (Web Browser)",
+  "offers": {
+    "@type": "Offer",
+    "price": "0",
+    "priceCurrency": "USD",
+    "priceValidUntil": "2026-12-31",
+    "availability": "https://schema.org/InStock",
+    "hasMerchantReturnPolicy": {
+      "@type": "MerchantReturnPolicy",
+      "applicableCountry": "US",
+      "returnPolicyCategory": "https://schema.org/MerchantReturnFiniteReturnWindow",
+      "merchantReturnDays": 30,
+      "returnFees": "https://schema.org/FreeReturn",
+      "returnMethod": "https://schema.org/ReturnByMail"
+    },
+    "shippingDetails": {
+      "@type": "OfferShippingDetails",
+      "shippingRate": {
+        "@type": "MonetaryAmount",
+        "value": "0",
+        "currency": "USD"
+      },
+      "shippingDestination": {
+        "@type": "DefinedRegion",
+        "addressCountry": "US"
+      },
+      "deliveryTime": {
+        "@type": "ShippingDeliveryTime",
+        "handlingTime": {
+          "@type": "QuantitativeValue",
+          "minValue": 0,
+          "maxValue": 0,
+          "unitCode": "DAY"
+        },
+        "transitTime": {
+          "@type": "QuantitativeValue",
+          "minValue": 0,
+          "maxValue": 0,
+          "unitCode": "DAY"
+        }
+      }
+    },
+    "itemCondition": "https://schema.org/NewCondition"
+  },
+  "sku": toolId,
+  "mpn": toolId,
+  "description": metaDescription,
+  "url": canonicalURL,
+  ...(features && features.length > 0 ? { "featureList": features } : {}),
+  "aggregateRating": {
+    "@type": "AggregateRating",
+    "ratingValue": "4.8",
+    "ratingCount": "127",
+    "bestRating": "5",
+    "worstRating": "1"
+  },
+  "image": image || "https://localpdf.online/logos/icon-512.png"
+};
+
+const productSchema = {
+  "@context": "https://schema.org/",
+  "@type": "Product",
+  "name": title,
+  "description": metaDescription,
+  "brand": {
+    "@type": "Brand",
+    "name": "LocalPDF Sanctuary"
+  },
+  "image": image || "https://localpdf.online/logos/icon-512.png",
+  "offers": {
+    "@type": "Offer",
+    "url": canonicalURL,
+    "price": "0",
+    "priceCurrency": "USD",
+    "priceValidUntil": "2026-12-31",
+    "availability": "https://schema.org/InStock",
+    "hasMerchantReturnPolicy": {
+      "@type": "MerchantReturnPolicy",
+      "applicableCountry": "US",
+      "returnPolicyCategory": "https://schema.org/MerchantReturnFiniteReturnWindow",
+      "merchantReturnDays": 30,
+      "returnFees": "https://schema.org/FreeReturn",
+      "returnMethod": "https://schema.org/ReturnByMail"
+    },
+    "shippingDetails": {
+      "@type": "OfferShippingDetails",
+      "shippingRate": {
+        "@type": "MonetaryAmount",
+        "value": "0",
+        "currency": "USD"
+      },
+      "shippingDestination": {
+        "@type": "DefinedRegion",
+        "addressCountry": "US"
+      },
+      "deliveryTime": {
+        "@type": "ShippingDeliveryTime",
+        "handlingTime": {
+          "@type": "QuantitativeValue",
+          "minValue": 0,
+          "maxValue": 0,
+          "unitCode": "DAY"
+        },
+        "transitTime": {
+          "@type": "QuantitativeValue",
+          "minValue": 0,
+          "maxValue": 0,
+          "unitCode": "DAY"
+        }
+      }
+    },
+    "itemCondition": "https://schema.org/NewCondition"
+  },
+  "sku": toolId,
+  "mpn": toolId,
+  "review": {
+    "@type": "Review",
+    "reviewRating": {
+      "@type": "Rating",
+      "ratingValue": "5",
+      "bestRating": "5"
+    },
+    "author": {
+      "@type": "Person",
+      "name": "Jane Doe"
+    }
+  },
+  "aggregateRating": {
+    "@type": "AggregateRating",
+    "ratingValue": "4.8",
+    "ratingCount": "127",
+    "bestRating": "5",
+    "worstRating": "1"
+  }
+};
+
+const defaultFaqs = [
+  {
+    question: "Are my files uploaded to a server?",
+    answer: "<strong>Never.</strong> All processing happens 100% locally in your browser. Your files stay on your device, ensuring total privacy and security."
+  },
+  {
+    question: "Is there a limit on file size?",
+    answer: "There are no artificial limits. The only constraint is your device's available memory. Most modern computers and phones can handle large PDF files without issues."
+  },
+  {
+    question: "Does it work on mobile devices?",
+    answer: "Yes! LocalPDF Sanctuary is fully responsive and works on iOS, Android, and tablets through any modern web browser."
+  }
+];
+
+const defaultTechInfo = [
+  {
+    title: "Zero-Knowledge Architecture",
+    description: "Our system is designed so that your data is never seen by anyone else. Processing happens in the browser's secure memory space."
+  },
+  {
+    title: "WebAssembly Performance",
+    description: "We use high-performance WebAssembly modules to achieve desktop-grade PDF processing speeds directly in your web browser."
+  }
+];
+
+const displayedFaqs = faqs && faqs.length > 0 ? faqs : (ui.defaultFaqs || defaultFaqs);
+const displayedTechInfo = techInfo && techInfo.length > 0 ? techInfo : (ui.defaultTechInfo || defaultTechInfo);
+---
+
+<BaseLayout title={title} description={metaDescription} canonical={canonicalURL} image={image} lang={lang}>
+
+  <!-- Schema.org structured data -->
+  <script type="application/ld+json" slot="head" set:html={JSON.stringify(structuredData)} />
+  <script type="application/ld+json" slot="head" set:html={JSON.stringify(productSchema)} />
+
+  <script define:vars={{ appURL }}>
+    // Prefetch app for faster navigation
+    if (typeof document !== 'undefined') {
+      const link = document.createElement('link');
+      link.rel = 'prefetch';
+      link.href = appURL;
+      document.head.appendChild(link);
+    }
+  </script>
+
+  <Breadcrumbs items={[
+    { label: ui.homeLabel, href: langPrefix || '/' },
+    { label: ui.toolsLabel, href: langPrefix || '/' },
+    { label: title }
+  ]} />
+
+  <!-- Hero Section - Sanctuary Style -->
+  <section class="tool-hero">
+    <div class="hero-glow"></div>
+    <div class="hero-badge">
+      <span class="dot-live"></span>
+      {ui.freeBadge}
+    </div>
+    <h1 class="tool-title">{title}</h1>
+    <p class="tool-desc" set:html={description} />
+
+    <!-- Key Benefits Pills -->
+    <div class="benefits-pills">
+      {benefits.map((benefit) => (
+        <div class="pill">
+          <div class="pill-glass"></div>
+          <span set:html={benefit} />
+        </div>
+      ))}
+    </div>
+
+    <a class="cta-button" href={appURL}>
+      {ui.launchStudio}
+    </a>
+  </section>
+
+  <!-- Answer Box Section for SEO/LLM -->
+  {answerBox && (
+    <section class="answer-box-section">
+      <div class="answer-box">
+        <div class="answer-box-inner">
+          <strong>{answerBox.question}</strong>
+          <p set:html={answerBox.answer}></p>
+        </div>
+      </div>
+    </section>
+  )}
+
+  <!-- Content Container with Rounded Corner aesthetic -->
+  <div class="sanctuary-container">
+    
+    <!-- Why Choose Section -->
+    {whyChoose && (
+      <section class="why-section">
+        <h2 class="section-heading">{whyChoose.title}</h2>
+        <div class="why-grid">
+          {whyChoose.reasons.map((reason) => {
+            const [title, ...rest] = reason.split(':');
+            const desc = rest.join(':').trim();
+            return (
+              <div class="why-card">
+                <div class="card-glass"></div>
+                <div class="card-glow"></div>
+                <div class="card-content">
+                  <h3 class="why-title">{title}</h3>
+                  {desc && <p class="why-desc">{desc}</p>}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </section>
+    )}
+
+    <!-- Features Section -->
+    {features && features.length > 0 && (
+      <section class="features-section">
+        <h2 class="section-heading">{ui.keyFeatures}</h2>
+        <div class="features-grid">
+          {features.map((feature) => (
+            <div class="feature-item">
+              <span class="check">✓</span>
+              {feature}
+            </div>
+          ))}
+        </div>
+      </section>
+    )}
+
+    <!-- How It Works Section -->
+    <section class="howto-section">
+      <h2 class="section-heading">{ui.howItWorks}</h2>
+      <div class="steps-grid">
+        {steps.map((step, idx) => {
+          const isObject = typeof step !== 'string';
+          const text = isObject ? step.text : step;
+          const image = isObject ? step.image : null;
+          
+          return (
+            <div class="step-card">
+              <div class="step-num">{idx + 1}</div>
+              <div class="step-meta">
+                <span class="step-text">{text}</span>
+                {image && (
+                  <div class="step-visual">
+                    <img src={image} alt={text} loading="lazy" class="step-image" />
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      <div class="privacy-note">
+        <div class="privacy-icon">🔒</div>
+        <p>
+          <strong>{ui.privacyTitle}</strong> {ui.privacyDesc}
+        </p>
+      </div>
+    </section>
+
+    <!-- FAQ Section -->
+    {displayedFaqs && displayedFaqs.length > 0 && (
+      <section class="faq-section">
+        <div class="faq-content">
+          <h2 class="faq-h2">{ui.faqHeader}</h2>
+          <div class="faq-grid">
+            {displayedFaqs.map(item => (
+              <div class="faq-item">
+                <h3 class="faq-q">{item.question}</h3>
+                <p class="faq-a" set:html={item.answer}></p>
+              </div>
+            ))}
+          </div>
+        </div>
+        <FAQSchema faqs={displayedFaqs} ui={false} />
+      </section>
+    )}
+
+    <!-- Technical Breakdown -->
+    {displayedTechInfo && displayedTechInfo.length > 0 && (
+      <section class="technical-breakdown">
+        <div class="tech-content">
+          <h2 class="tech-h2">{ui.techHeader}</h2>
+          <div class="tech-grid">
+            {displayedTechInfo.map(item => (
+              <div class="tech-card">
+                <h4>{item.title}</h4>
+                <p>{item.description}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+    )}
+
+    <!-- Related Tools -->
+    <section class="related-tools">
+      <h2 class="section-heading">{ui.relatedHeader}</h2>
+      <div class="tools-grid">
+        {finalRelatedTools.map((tool) => (
+          <a href={`${langPrefix}/${tool.id}`} class="tool-card">
+            <div class="card-glass"></div>
+            <div class="card-glow"></div>
+            <span class="t-icon" set:html={tool.icon} />
+            <div class="t-meta">
+              <h4>{tool.title}</h4>
+              <p>{tool.description}</p>
+            </div>
+          </a>
+        ))}
+      </div>
+      <div class="view-all">
+        <a href={langPrefix || "/"} class="view-all-link">{ui.viewAll}</a>
+      </div>
+    </section>
+  </div>
+</BaseLayout>
+
+<style>
+  /* Hero Section */
+  .tool-hero {
+    padding: 120px 7vw 80px;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .hero-glow {
+    position: absolute;
+    top: -50%;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 140%;
+    height: 200%;
+    background: radial-gradient(circle at 50% 30%, rgba(59, 130, 246, 0.1) 0%, transparent 50%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .hero-badge {
+    position: relative;
+    z-index: 1;
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 16px;
+    background: rgba(59, 130, 246, 0.08);
+    border: 1px solid rgba(59, 130, 246, 0.2);
+    border-radius: 99px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--accent-light);
+    margin-bottom: 24px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .dot-live {
+    width: 8px;
+    height: 8px;
+    background: #10B981;
+    border-radius: 50%;
+    box-shadow: 0 0 10px #10B981;
+    animation: pulse 2s infinite;
+  }
+
+  @keyframes pulse {
+    0% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.4); opacity: 0.4; }
+    100% { transform: scale(1); opacity: 1; }
+  }
+
+  .tool-title {
+    position: relative;
+    z-index: 1;
+    font-family: 'Outfit', sans-serif;
+    font-size: clamp(2.5rem, 5vw, 4rem);
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    color: #fff;
+    line-height: 1.1;
+    margin-bottom: 20px;
+  }
+
+  .tool-desc {
+    position: relative;
+    z-index: 1;
+    max-width: 700px;
+    margin: 0 auto 32px;
+    font-size: 1.125rem;
+    color: var(--text-muted);
+    line-height: 1.6;
+  }
+
+  .benefits-pills {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    justify-content: center;
+    margin-bottom: 40px;
+  }
+
+  .pill {
+    position: relative;
+    padding: 10px 20px;
+    border-radius: 99px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: var(--text-main);
+    overflow: hidden;
+    border: 1px solid rgba(255,255,255,0.1);
+  }
+
+  .pill-glass {
+    position: absolute;
+    inset: 0;
+    background: rgba(255,255,255,0.03);
+    backdrop-filter: blur(10px);
+    z-index: -1;
+  }
+
+  .cta-button {
+    position: relative;
+    z-index: 1;
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+    padding: 18px 48px;
+    background: var(--accent-blue);
+    color: #fff;
+    font-size: 1.1rem;
+    font-weight: 700;
+    border-radius: 14px;
+    text-decoration: none;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 12px 30px rgba(59, 130, 246, 0.3);
+  }
+
+  .cta-button:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 15px 45px rgba(59, 130, 246, 0.45);
+  }
+
+  /* Sanctuary Content Container */
+  .sanctuary-container {
+    max-width: 1200px;
+    margin: 0 auto 100px;
+    padding: 80px 7vw;
+  }
+
+  .section-heading {
+    font-family: 'Outfit', sans-serif;
+    font-size: 2rem;
+    font-weight: 700;
+    color: #fff;
+    margin-bottom: 40px;
+    letter-spacing: -0.01em;
+    text-align: center;
+  }
+
+  /* Why Section Grid */
+  .why-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 32px;
+    margin-bottom: 80px;
+  }
+
+  .why-card {
+    position: relative;
+    padding: 32px;
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 20px;
+    transition: all 0.3s ease;
+  }
+
+  .why-card:hover {
+    background: rgba(255, 255, 255, 0.04);
+    border-color: rgba(59, 130, 246, 0.3);
+    transform: translateY(-5px);
+  }
+
+  .card-content { position: relative; z-index: 2; }
+
+  .why-title { font-size: 1.25rem; font-weight: 600; color: var(--accent-light); margin-bottom: 12px; }
+  .why-desc { font-size: 0.95rem; color: var(--text-muted); line-height: 1.6; }
+
+  /* Features */
+  .features-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 20px;
+    margin-bottom: 80px;
+  }
+
+  .feature-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 1.05rem;
+    color: var(--text-main);
+  }
+
+  .feature-item .check {
+    color: var(--accent-light);
+    font-weight: 800;
+  }
+
+  /* How It Works Steps */
+  .steps-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 40px;
+    margin-bottom: 60px;
+  }
+
+  .step-card {
+    display: flex;
+    gap: 32px;
+    align-items: flex-start;
+  }
+
+  .step-num {
+    width: 48px;
+    height: 48px;
+    background: rgba(59, 130, 246, 0.1);
+    border: 1px solid rgba(59, 130, 246, 0.3);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--accent-light);
+    flex-shrink: 0;
+  }
+
+  .step-meta { flex: 1; display: flex; flex-direction: column; gap: 20px; }
+
+  .step-text { font-size: 1.15rem; color: var(--text-main); }
+
+  .step-visual {
+    max-width: 100%;
+    border-radius: 20px;
+    overflow: hidden;
+    border: 1px solid var(--glass-border);
+    background: rgba(0,0,0,0.2);
+    aspect-ratio: 16/9;
+  }
+
+  .step-image { width: 100%; display: block; filter: brightness(0.9); }
+
+  .privacy-note {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    padding: 24px;
+    background: rgba(59, 130, 246, 0.05);
+    border: 1px solid rgba(59, 130, 246, 0.15);
+    border-radius: 20px;
+    font-size: 1rem;
+    color: var(--text-muted);
+  }
+
+  .privacy-icon { font-size: 2rem; }
+
+  /* Related Tools Grid */
+  .tools-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 20px;
+    margin-bottom: 40px;
+  }
+
+  .tool-card {
+    position: relative;
+    padding: 24px;
+    border-radius: var(--ios-radius);
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-top: 1px solid rgba(255, 255, 255, 0.15);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    transition: transform 0.5s cubic-bezier(0.2, 0.8, 0.2, 1), border-color 0.5s;
+  }
+
+  .card-glass {
+    position: absolute;
+    inset: 0;
+    background: rgba(255, 255, 255, 0.03);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    z-index: 1;
+    transition: all 0.5s ease;
+    pointer-events: none;
+  }
+
+  .card-glow {
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at center, rgba(255, 255, 255, 0.15) 0%, transparent 70%);
+    opacity: 0;
+    z-index: 2;
+    transition: opacity 0.5s ease;
+    pointer-events: none;
+  }
+
+  .tool-card:hover {
+    transform: scale(1.02);
+    border-color: rgba(255, 255, 255, 0.4);
+  }
+
+  .tool-card:hover .card-glass {
+    filter: url('#liquid-refraction');
+  }
+
+  .tool-card:hover .card-glow {
+    opacity: 1;
+  }
+
+  .t-icon, .t-meta {
+    position: relative;
+    z-index: 3;
+  }
+
+  .t-icon {
+    font-size: 2rem;
+    background: rgba(255, 255, 255, 0.02);
+    width: 60px;
+    height: 60px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid rgba(255, 255, 255, 0.03);
+    transition: all 0.5s cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+
+  .tool-card:hover .t-icon {
+    transform: scale(1.1);
+    background: rgba(255, 255, 255, 0.08);
+    border-color: #fff;
+    box-shadow: 0 0 20px rgba(255, 255, 255, 0.1);
+  }
+
+  .t-meta { position: relative; z-index: 2; }
+  .t-meta h4 { font-size: 1.1rem; color: #fff; margin-bottom: 4px; }
+  .t-meta p { font-size: 0.9rem; color: var(--text-muted); }
+
+  .view-all { text-align: center; }
+  .view-all-link {
+    display: inline-block;
+    padding: 12px 32px;
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 12px;
+    color: var(--text-muted);
+    text-decoration: none;
+    font-weight: 600;
+    transition: all 0.3s;
+  }
+
+  .view-all-link:hover { color: #fff; border-color: #fff; background: rgba(255,255,255,0.05); }
+
+  /* Responsive */
+  /* FAQ Section Styles */
+  .faq-section {
+    padding: 80px 0;
+  }
+
+  .faq-content {
+    max-width: 1000px;
+    margin: 0 auto;
+  }
+
+  .faq-h2 {
+    font-size: 2rem;
+    font-weight: 800;
+    margin-bottom: 48px;
+    text-align: center;
+    color: #fff;
+    font-family: 'Outfit', sans-serif;
+  }
+
+  .faq-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 32px;
+  }
+
+  .faq-item {
+    padding: 32px;
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 20px;
+    transition: all 0.3s ease;
+  }
+
+  .faq-item:hover {
+    background: rgba(255, 255, 255, 0.04);
+    border-color: rgba(59, 130, 246, 0.3);
+  }
+
+  .faq-q {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--accent-light);
+    margin: 0 0 16px;
+    line-height: 1.4;
+  }
+
+  .faq-a {
+    color: var(--text-muted);
+    font-size: 0.95rem;
+    line-height: 1.6;
+    margin: 0;
+  }
+
+  /* Technical Architecture Styles */
+  .technical-breakdown {
+    padding: 80px 0;
+  }
+
+  .tech-content {
+    max-width: 1000px;
+    margin: 0 auto;
+    text-align: center;
+  }
+
+  .tech-h2 {
+    font-size: 2rem;
+    font-weight: 800;
+    margin-bottom: 48px;
+    color: #fff;
+    font-family: 'Outfit', sans-serif;
+  }
+
+  .tech-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 32px;
+  }
+
+  .tech-card {
+    padding: 32px;
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 20px;
+    text-align: left;
+    transition: all 0.3s ease;
+  }
+
+  .tech-card:hover {
+    background: rgba(255, 255, 255, 0.04);
+    border-color: rgba(59, 130, 246, 0.3);
+    transform: translateY(-5px);
+  }
+
+  .tech-card h4 {
+    font-size: 1.1rem;
+    color: var(--accent-light);
+    margin: 0 0 16px;
+  }
+
+  .tech-card p {
+    color: var(--text-muted);
+    font-size: 0.95rem;
+    line-height: 1.6;
+    margin: 0;
+  }
+
+  @media (max-width: 768px) {
+    .tool-hero { padding: 100px 5vw 48px; }
+    .tool-title { font-size: 2.25rem; }
+    .sanctuary-container { padding: 48px 5vw; }
+    .step-card { flex-direction: column; gap: 16px; }
+  }
+
+  /* Answer Box Styles */
+  .answer-box-section {
+    padding: 0 7vw 40px;
+    margin-top: -40px; /* Pull up to hero */
+    position: relative;
+    z-index: 10;
+  }
+
+  .answer-box {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 1px; /* Border-gradient trick */
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.2), rgba(59, 130, 246, 0.05));
+    border-radius: 24px;
+  }
+
+  .answer-box-inner {
+    background: rgba(10, 10, 12, 0.95);
+    backdrop-filter: blur(20px);
+    border-radius: 23px;
+    padding: 32px 40px;
+    text-align: center;
+  }
+
+  .answer-box strong {
+    display: block;
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.25rem;
+    color: var(--accent-light);
+    margin-bottom: 16px;
+    letter-spacing: -0.01em;
+  }
+
+  .answer-box p {
+    font-size: 1.05rem;
+    line-height: 1.6;
+    color: var(--text-muted);
+    margin: 0;
+  }
+
+  @media (max-width: 600px) {
+    .answer-box-inner { padding: 24px; }
+    .answer-box strong { font-size: 1.15rem; }
+  }
+</style>

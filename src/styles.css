@@ -2305,7 +2305,7 @@ textarea:focus-visible {
   z-index: 0;
 }
 
-.studio-shell-container > * {
+.studio-shell-container>* {
   position: relative;
   z-index: 1;
 }
@@ -2548,7 +2548,7 @@ textarea:focus-visible {
   z-index: 0;
 }
 
-.studio-viewport-controls > * {
+.studio-viewport-controls>* {
   position: relative;
   z-index: 1;
 }
@@ -3203,11 +3203,46 @@ textarea:focus-visible {
   flex-wrap: wrap;
 }
 
+.studio-logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+  transition: transform 0.2s ease;
+  padding-left: 4px;
+}
+
+.studio-logo:hover {
+  transform: scale(1.02);
+}
+
+.studio-logo-text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1;
+}
+
+.studio-logo-title {
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: #fff;
+  letter-spacing: -0.01em;
+}
+
+.studio-logo-subtitle {
+  font-size: 0.6rem;
+  font-weight: 700;
+  color: #60a5fa;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-top: 1px;
+}
+
 .studio-top-nav-right {
   justify-content: flex-end;
 }
 
-.studio-top-nav > * {
+.studio-top-nav>* {
   position: relative;
   z-index: 1;
 }
@@ -3408,7 +3443,7 @@ textarea:focus-visible {
   z-index: 0;
 }
 
-.studio-main-shell > * {
+.studio-main-shell>* {
   position: relative;
   z-index: 1;
 }

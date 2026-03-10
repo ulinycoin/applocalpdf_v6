@@ -159,7 +159,14 @@ export function StudioTopNav({ onToggleTelemetry, telemetryOpen }: StudioTopNavP
 
   return (
     <header className="studio-top-nav" aria-label="Studio top navigation">
-      <div className="studio-top-nav-left" />
+      <div className="studio-top-nav-left">
+        <a href="/" className="studio-logo">
+          <div className="studio-logo-text">
+            <div className="studio-logo-title">LocalPDF</div>
+            <div className="studio-logo-subtitle">Sanctuary</div>
+          </div>
+        </a>
+      </div>
 
       <div className="studio-top-nav-center" aria-live="polite" />
 

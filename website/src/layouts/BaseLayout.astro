@@ -1,0 +1,452 @@
+---
+import Header from '../components/Header.astro';
+import { CATEGORIES } from '../data/tools';
+import { CATEGORIES_DE } from '../data/tools_de';
+import { CATEGORIES_JA } from '../data/tools_ja';
+
+
+interface Props {
+  title: string;
+  description: string;
+  image?: string;
+  canonical?: string;
+  keywords?: string;
+  lang?: string;
+}
+
+const { title, description, image, canonical, keywords, lang = 'en' } = Astro.props;
+const currentUrl = canonical || Astro.url.href;
+const siteName = 'LocalPDF Reference';
+const defaultKeywords = "PDF tools, merge PDF, split PDF, compress PDF, edit PDF, free PDF editor, online PDF, privacy PDF, client-side PDF";
+const ogImage = image || 'https://localpdf.online/logos/localpdf-social-1200x630.png';
+
+// Generate SoftwareApplication Schema automatically for all pages to show "Free" pricing in snippets
+const softwareSchema = {
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "LocalPDF Sanctuary",
+  "operatingSystem": "Any",
+  "applicationCategory": "UtilityApplication",
+  "url": currentUrl,
+  "image": "https://localpdf.online/logos/icon-512.png",
+  "offers": {
+    "@type": "Offer",
+    "price": "0",
+    "priceCurrency": "USD",
+    "priceValidUntil": "2026-12-31",
+    "availability": "https://schema.org/InStock",
+    "hasMerchantReturnPolicy": {
+      "@type": "MerchantReturnPolicy",
+      "applicableCountry": "US",
+      "returnPolicyCategory": "https://schema.org/MerchantReturnFiniteReturnWindow",
+      "merchantReturnDays": 30,
+      "returnFees": "https://schema.org/FreeReturn",
+      "returnMethod": "https://schema.org/ReturnByMail"
+    },
+    "shippingDetails": {
+      "@type": "OfferShippingDetails",
+      "shippingRate": {
+        "@type": "MonetaryAmount",
+        "value": "0",
+        "currency": "USD"
+      },
+      "shippingDestination": {
+        "@type": "DefinedRegion",
+        "addressCountry": "US"
+      },
+      "deliveryTime": {
+        "@type": "ShippingDeliveryTime",
+        "handlingTime": {
+          "@type": "QuantitativeValue",
+          "minValue": 0,
+          "maxValue": 0,
+          "unitCode": "DAY"
+        },
+        "transitTime": {
+          "@type": "QuantitativeValue",
+          "minValue": 0,
+          "maxValue": 0,
+          "unitCode": "DAY"
+        }
+      }
+    },
+    "itemCondition": "https://schema.org/NewCondition"
+  },
+  "description": description,
+  "aggregateRating": {
+    "@type": "AggregateRating",
+    "ratingValue": "4.9",
+    "ratingCount": "1250",
+    "bestRating": "5",
+    "worstRating": "1"
+  }
+};
+
+const currentCategories = {
+  en: CATEGORIES,
+  de: CATEGORIES_DE,
+  ja: CATEGORIES_JA
+}[lang] || CATEGORIES;
+
+const footerLabels = {
+  en: { 
+    resources: 'Resources', learn: 'Learning Center', blog: 'Blog', about: 'About Sanctuary', compare: 'Compare Tools', extension: 'Extension',
+    legal: 'Legal', privacy: 'Privacy Policy', terms: 'Terms of Service',
+    solutions: 'Solutions', legalSolutions: 'Legal Professionals', financeSolutions: 'Finance & Banking', medicalSolutions: 'Healthcare',
+    copyright: '© 2025 LocalPDF Sanctuary. All files processed locally in your browser sandbox.'
+  },
+  de: {
+    resources: 'Ressourcen', learn: 'Lernzentrum', blog: 'Blog', about: 'Über Sanctuary', compare: 'Tools vergleichen', extension: 'Erweiterung',
+    legal: 'Rechtliches', privacy: 'Datenschutzrichtlinie', terms: 'Nutzungsbedingungen',
+    solutions: 'Branchenlösungen', legalSolutions: 'Juristische Berufe', financeSolutions: 'Finanzen & Banking', medicalSolutions: 'Gesundheitswesen',
+    copyright: '© 2025 LocalPDF Sanctuary. Alle Dateien werden lokal in Ihrer Browser-Sandbox verarbeitet.'
+  },
+  ja: {
+    resources: 'リソース', learn: 'ラーニングセンター', blog: 'ブログ', about: 'Sanctuaryについて', compare: 'ツールを比較する', extension: '拡張機能',
+    legal: '法的情報', privacy: 'プライバシーポリシー', terms: '利用規約',
+    solutions: '業界別ソリューション', legalSolutions: '法務プロフェッショナル', financeSolutions: '金融・銀行業務', medicalSolutions: '医療・ヘルスケア',
+    copyright: '© 2025 LocalPDF Sanctuary. すべてのファイルはブラウザのサンドボックス内でローカルに処理されます。'
+  }
+}[lang] || { 
+  resources: 'Resources', learn: 'Learning Center', blog: 'Blog', about: 'About Sanctuary', compare: 'Compare Tools', extension: 'Extension',
+  legal: 'Legal', privacy: 'Privacy Policy', terms: 'Terms of Service',
+  copyright: '© 2025 LocalPDF Sanctuary. All files processed locally in your browser sandbox.'
+};
+
+const basePath = Astro.url.pathname.replace(/^\/(de|ja)/, '') || '/';
+const localizedPages = [
+  '/', 
+  '/merge-pdf', '/ocr-pdf', '/compress-pdf', '/split-pdf', '/edit-text-pdf',
+  '/sign-pdf', '/protect-pdf', '/watermark-pdf', '/flatten-pdf',
+  '/word-to-pdf', '/pdf-to-word', '/images-to-pdf', '/pdf-to-images',
+  '/organize-pdf', '/rotate-pdf', '/delete-pages-pdf', '/extract-pages-pdf',
+  '/tables-pdf', '/add-form-fields-pdf', '/extract-images-pdf', '/add-text-pdf',
+  '/legal-privacy-pdf', '/finance-privacy-pdf', '/medical-privacy-pdf', '/extension'
+];
+const isLocalizedPath = localizedPages.includes(basePath);
+---
+
+<!DOCTYPE html>
+<html lang={lang}>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+
+  <!-- Primary Meta Tags -->
+  <title>{title}</title>
+  <meta name="title" content={title}>
+  <meta name="description" content={description}>
+  <meta name="keywords" content={keywords || defaultKeywords}>
+  <meta name="author" content="LocalPDF">
+  <meta name="robots" content="index, follow">
+
+  <link rel="canonical" href={currentUrl}>
+  
+  <link rel="alternate" hreflang="en" href={`https://localpdf.online${basePath}`} />
+  {isLocalizedPath && (
+    <>
+      <link rel="alternate" hreflang="de" href={`https://localpdf.online/de${basePath === '/' ? '' : basePath}`} />
+      <link rel="alternate" hreflang="ja" href={`https://localpdf.online/ja${basePath === '/' ? '' : basePath}`} />
+    </>
+  )}
+  <link rel="alternate" hreflang="x-default" href={`https://localpdf.online${basePath}`} />
+
+  <!-- Google Search Console verification -->
+  <meta name="google-site-verification" content="34adca022b79f1a0">
+
+  <!-- Open Graph / Facebook -->
+  <meta property="og:type" content="website">
+  <meta property="og:url" content={currentUrl}>
+  <meta property="og:title" content={title}>
+  <meta property="og:description" content={description}>
+  <meta property="og:image" content={ogImage}>
+  <meta property="og:site_name" content={siteName}>
+  <meta property="og:locale" content={lang === 'de' ? 'de_DE' : 'en_US'}>
+
+  <!-- Twitter -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:url" content={currentUrl}>
+  <meta name="twitter:title" content={title}>
+  <meta name="twitter:description" content={description}>
+  <meta name="twitter:image" content={ogImage}>
+
+  <!-- Additional SEO -->
+  <meta name="theme-color" content="#18181b">
+  <meta name="application-name" content={siteName}>
+  <meta name="language" content={lang === 'de' ? 'German' : 'English'}>
+  <meta name="geo.region" content={lang === 'de' ? 'DE' : 'US'}>
+  <meta name="geo.placename" content="United States">
+  <meta name="rating" content="General">
+  <meta name="referrer" content="no-referrer-when-downgrade">
+  <meta name="format-detection" content="telephone=no">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content={siteName}>
+
+  <!-- Favicons and Icons -->
+  <link rel="icon" type="image/png" sizes="16x16" href="/logos/localpdf-favicon-16x16.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/logos/localpdf-header-32x32.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="/logos/localpdf-apple-180x180.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="/logos/localpdf-pwa-192x192.png">
+  <link rel="icon" type="image/png" sizes="512x512" href="/logos/localpdf-pwa-512x512.png">
+
+  <!-- PWA Manifest -->
+  <link rel="manifest" href="/manifest.json">
+
+  <script type="application/ld+json" set:html={JSON.stringify(softwareSchema)} />
+  <slot name="head" />
+
+  <!-- Fonts - Optimized -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Outfit:wght@600;700;800&display=swap" rel="stylesheet">
+
+  <!-- Google Analytics - Ultra-deferred loading (after page is idle) -->
+  <link rel="dns-prefetch" href="https://www.googletagmanager.com">
+  <link rel="dns-prefetch" href="https://www.google-analytics.com">
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-MS36WTHPCZ', {
+      anonymize_ip: true,
+      allow_google_signals: false,
+      allow_ad_personalization_signals: false
+    });
+
+    // Ultra-deferred: Load GA only after page is fully idle (requestIdleCallback)
+    // This ensures GA doesn't compete with LCP/FCP rendering
+    function loadGA() {
+      var script = document.createElement('script');
+      script.async = true;
+      script.src = 'https://www.googletagmanager.com/gtag/js?id=G-MS36WTHPCZ';
+      document.head.appendChild(script);
+    }
+
+    if ('requestIdleCallback' in window) {
+      // Modern browsers - load when browser is idle
+      requestIdleCallback(loadGA, { timeout: 3000 });
+    } else {
+      // Fallback - load after 3 seconds
+      setTimeout(loadGA, 3000);
+    }
+
+    // Register Service Worker for PWA
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js').then(registration => {
+          console.log('SW registered: ', registration);
+        }).catch(registrationError => {
+          console.log('SW registration failed: ', registrationError);
+        });
+      });
+    }
+  </script>
+
+  <!-- Vercel Analytics -->
+  <script is:inline>
+    window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };
+  </script>
+  <script is:inline async src="/_vercel/insights/script.js"></script>
+
+  <!-- PostHog Analytics -->
+  <script is:inline>
+    !function(t,e){var o,n,p,r;e.__SV||(window.posthog=e,e._i=[],e.init=function(i,s,a){function g(t,e){var o=e.split(".");2==o.length&&(t=t[o[0]],e=o[1]),t[e]=function(){t.push([e].concat(Array.prototype.slice.call(arguments,0)))}}(p=t.createElement("script")).type="text/javascript",p.async=!0,p.src=s.api_host+"/static/array.js",(r=t.getElementsByTagName("script")[0]).parentNode.insertBefore(p,r);var u=e;for(void 0!==a?u=e[a]=[]:a="posthog",u.people=u.people||[],u.toString=function(t){var e="posthog";return"posthog"!==a&&(e+="."+a),t||(e+=" (stub)"),e},u.people.toString=function(){return u.toString(1)+".people (stub)"},o="capture identify alias people.set people.set_once set_config register register_once unregister opt_out_capturing has_opted_out_capturing opt_in_capturing reset isFeatureEnabled onFeatureFlags getFeatureFlag getFeatureFlagPayload reloadFeatureFlags group updateEarlyAccessFeatureEnrollment getGroups get_group_property set_group_property get_distinct_id getGroups get_session_id".split(" "),n=0;n<o.length;n++)g(u,o[n]);e._i.push([i,s,a])},e.__SV=1)}(document,window.posthog||[]);
+    
+    // Using current origin + /ingest for reverse proxy to bypass adblockers
+    const host = window.location.origin + '/ingest';
+    
+    if ("phc_6iTpA8vFIxlQ8HxmPsoMmtj4sqgCUWiZQMOpfSfyvxe") {
+      posthog.init('phc_6iTpA8vFIxlQ8HxmPsoMmtj4sqgCUWiZQMOpfSfyvxe', {
+        api_host: host,
+        ui_host: 'https://eu.posthog.com',
+        autocapture: false, // Leaner production configuration
+        capture_pageview: true,
+        debug: false, // Disable debug logs in production
+        session_recording: {
+          maskAllInputs: true,
+          maskTextSelector: ".ph-no-capture",
+          blockSelector: ".ph-no-capture, canvas"
+        }
+      });
+    }
+  </script>
+
+  <style is:global>
+    :root {
+      --accent-blue: #3b82f6;
+      --accent-light: #60a5fa;
+      --deep-bg: #18181b;
+      --glass-bg: rgba(255, 255, 255, 0.02);
+      --glass-border: rgba(255, 255, 255, 0.08);
+      --text-main: #f5f5f7;
+      --text-muted: #8e8e93;
+      --ios-blur: blur(20px) saturate(200%);
+      --ios-radius: 24px;
+      --inner-glow: inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      padding: 0;
+      background: var(--deep-bg);
+      color: var(--text-main);
+      font-family: 'Inter', system-ui, sans-serif;
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
+    }
+
+
+    /* Footer - Sanctuary Modern */
+    footer {
+      padding: 80px 7vw 40px;
+      background: #000000;
+      border-top: 1px solid var(--glass-border);
+      text-align: center;
+    }
+    .footer-content {
+      max-width: 1200px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 48px;
+    }
+    .footer-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 40px;
+      width: 100%;
+      text-align: left;
+    }
+    .footer-section {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .footer-section strong {
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: #fff;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      margin-bottom: 8px;
+    }
+    .footer-section a {
+      font-size: 0.9375rem;
+      color: var(--text-muted);
+      text-decoration: none;
+      transition: color 0.2s;
+    }
+    .footer-section a:hover { color: var(--accent-light); }
+
+    .footer-bottom {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+      align-items: center;
+      font-size: 0.85rem;
+      color: #666;
+      padding-top: 40px;
+      border-top: 1px solid rgba(255,255,255,0.05);
+    }
+    .social-links { display: flex; gap: 20px; }
+    .social-link {
+      width: 44px;
+      height: 44px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      color: var(--text-muted);
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      text-decoration: none;
+    }
+    .social-link:hover {
+      background: #fff;
+      color: #000;
+      transform: translateY(-3px);
+      box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+    }
+
+    @media (max-width: 768px) {
+      header { padding: 16px 5vw; }
+      nav { display: none; }
+      .logo-subtitle { display: none; }
+      .footer-grid { grid-template-columns: 1fr; text-align: center; }
+    }
+  </style>
+</head>
+<body>
+  <Header lang={lang} />
+
+  <main style="padding-top: 100px;">
+    <slot />
+  </main>
+
+  <footer>
+    <div class="footer-content">
+      <div class="footer-grid">
+        <div class="footer-section">
+          <strong>{footerLabels.resources}</strong>
+          <a href="/learn">{footerLabels.learn}</a>
+          <a href="/blog">{footerLabels.blog}</a>
+          <a href="/about">{footerLabels.about}</a>
+          <a href="/comparison">{footerLabels.compare}</a>
+          <a href={(lang === 'en') ? '/extension' : `/${lang}/extension`}>{footerLabels.extension}</a>
+        </div>
+        <div class="footer-section">
+          <strong>{footerLabels.solutions}</strong>
+          <a href={(lang === 'en') ? '/legal-privacy-pdf' : `/${lang}/legal-privacy-pdf`}>{footerLabels.legalSolutions}</a>
+          <a href={(lang === 'en') ? '/finance-privacy-pdf' : `/${lang}/finance-privacy-pdf`}>{footerLabels.financeSolutions}</a>
+          <a href={(lang === 'en') ? '/medical-privacy-pdf' : `/${lang}/medical-privacy-pdf`}>{footerLabels.medicalSolutions}</a>
+        </div>
+        {currentCategories.map(cat => (
+          <div class="footer-section">
+            <strong>{cat.name}</strong>
+            {cat.tools.map(tool => {
+              const toolSlug = `/${tool.id}`;
+              const isToolLocalized = localizedPages.includes(toolSlug);
+              return (
+                <a href={(isToolLocalized && lang !== 'en') ? `/${lang}${toolSlug}` : toolSlug}>{tool.name}</a>
+              );
+            })}
+          </div>
+        ))}
+        <div class="footer-section">
+          <strong>{footerLabels.legal}</strong>
+          <a href="/privacy">{footerLabels.privacy}</a>
+          <a href="/terms">{footerLabels.terms}</a>
+        </div>
+      </div>
+      
+      <div class="footer-bottom">
+        <div class="social-links">
+          <a href="https://github.com/ulinycoin/clientpdf-pro" target="_blank" rel="noopener noreferrer" class="social-link" aria-label="GitHub">
+            <svg viewBox="0 0 24 24" fill="currentColor" style="width: 24px; height: 24px;">
+              <path d="M12,2A10,10 0 0,0 2,12C2,16.42 4.87,20.17 8.84,21.5C9.34,21.58 9.5,21.27 9.5,21C9.5,20.77 9.5,20.14 9.5,19.31C6.73,19.91 6.14,17.97 6.14,17.97C5.68,16.81 5.03,16.5 5.03,16.5C4.12,15.88 5.1,15.9 5.1,15.9C6.1,15.97 6.63,16.93 6.63,16.93C7.5,18.45 8.97,18 9.54,17.76C9.63,17.11 9.89,16.67 10.17,16.42C7.95,16.17 5.62,15.31 5.62,11.5C5.62,10.39 6,9.5 6.65,8.79C6.55,8.54 6.2,7.5 6.75,6.15C6.75,6.15 7.59,5.88 9.5,7.17C10.29,6.95 11.15,6.84 12,6.84C12.85,6.84 13.71,6.95 14.5,7.17C16.41,5.88 17.25,6.15 17.25,6.15C17.8,7.5 17.45,8.54 17.35,8.79C18,9.5 18.38,10.39 18.38,11.5C18.38,15.32 16.04,16.16 13.81,16.41C14.17,16.72 14.5,17.33 14.5,18.26C14.5,19.6 14.5,20.68 14.5,21C14.5,21.27 14.66,21.59 15.17,21.5C19.14,20.16 22,16.42 22,12A10,10 0 0,0 12,2Z" />
+            </svg>
+          </a>
+          <a href="https://x.com/LocalPDF" target="_blank" rel="noopener noreferrer" class="social-link" aria-label="Twitter/X">
+            <svg viewBox="0 0 24 24" fill="currentColor" style="width: 20px; height: 20px;">
+              <path d="M18.901 1.153h3.68l-8.04 9.19L24 22.846h-7.406l-5.8-7.584-6.638 7.584H.474l8.6-9.83L0 1.154h7.594l5.243 6.932ZM17.61 20.644h2.039L6.486 3.24H4.298Z"/>
+            </svg>
+          </a>
+        </div>
+        <div>
+          {footerLabels.copyright}
+        </div>
+      </div>
+    </div>
+  </footer>
+
+</body>
+</html>

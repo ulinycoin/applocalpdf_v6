@@ -1,0 +1,59 @@
+---
+interface Props {
+  allTags: string[];
+  selectedTag?: string;
+}
+
+const { allTags, selectedTag } = Astro.props;
+const sortedTags = [...allTags].sort();
+---
+
+<div class="tag-filter mb-12">
+  <div class="flex flex-wrap gap-3 items-center">
+    <span class="text-sm font-bold text-muted mr-3 uppercase letter-spacing-wider">Filter by tag:</span>
+
+    <a
+      href="/blog"
+      class={`px-5 py-2.5 rounded-xl text-sm font-semibold transition-all border ${
+        !selectedTag
+          ? 'bg-accent-blue text-white border-accent-blue shadow-lg shadow-blue-900/20'
+          : 'bg-glass border-glass-border text-muted hover:border-white/20 hover:text-main'
+      }`}
+    >
+      All Posts
+    </a>
+
+    {sortedTags.map(tag => (
+      <a
+        href={`/blog?tag=${encodeURIComponent(tag)}`}
+        class={`px-5 py-2.5 rounded-xl text-sm font-semibold transition-all border ${
+          selectedTag === tag
+            ? 'bg-accent-blue text-white border-accent-blue shadow-lg shadow-blue-900/20'
+            : 'bg-glass border-glass-border text-muted hover:border-white/20 hover:text-main'
+        }`}
+      >
+        #{tag}
+      </a>
+    ))}
+  </div>
+</div>
+
+<style>
+  .tag-filter a {
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .tag-filter a:hover {
+    transform: translateY(-2px);
+  }
+
+  .tag-filter a:active {
+    transform: translateY(0);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    .tag-filter {
+      color-scheme: dark;
+    }
+  }
+</style>

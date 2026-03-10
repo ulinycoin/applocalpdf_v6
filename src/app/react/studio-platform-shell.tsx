@@ -10,7 +10,7 @@ export function StudioPlatformShell() {
   const [telemetryOpen, setTelemetryOpen] = useState(false);
 
   return (
-    <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+    <BrowserRouter basename="/app" future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <PlatformProvider>
         <UxFeedbackOverlay />
         <div className="studio-app-layout">

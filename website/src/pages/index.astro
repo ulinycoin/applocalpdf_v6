@@ -1,0 +1,764 @@
+---
+import Header from '../components/Header.astro';
+import BaseLayout from '../layouts/BaseLayout.astro';
+import DeveloperStory from '../components/DeveloperStory.astro';
+import SecureToolsBlock from '../components/SecureToolsBlock.astro';
+import { CATEGORIES, ICONS } from '../data/tools';
+import IndustrySolutions from '../components/IndustrySolutions.astro';
+
+// Redesigned Homepage - v2.0 "Private Sanctuary"
+const title = "LocalPDF Sanctuary | 100% Private PDF Tools (No Uploads)";
+const metaDescription = "Free privacy-first PDF tools. Merge, split, compress, and edit PDFs locally in your browser. No file uploads, no server processing. GDPR compliant & offline-ready.";
+const keywords = "private pdf tools, local pdf processing, no upload pdf editor, free online pdf tools, secure pdf editor, client-side pdf tools, localpdf sanctuary";
+
+// specific structured data removed as it is now in BaseLayout
+
+
+const websiteSchema = {
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  "name": "LocalPDF Sanctuary",
+  "url": "https://localpdf.online"
+};
+
+const faqData = [
+  {
+    question: "Is LocalPDF safe for sensitive documents?",
+    answer: "Yes. **LocalPDF** is the only PDF toolkit that guarantees **100% privacy** because all processing (merging, joining, OCR) happens **locally in your browser** using WebAssembly. Your files are never uploaded to any server, ensuring a **zero-knowledge, GDPR-safe** workflow perfect for sensitive legal or financial documents."
+  },
+  {
+    question: "How is LocalPDF different from other online PDF editors?",
+    answer: "Most PDF tools upload your files to their servers for processing. LocalPDF works 100% client-side. This means zero upload time, zero latency, and absolute privacy as your data never leaves your machine."
+  },
+  {
+    question: "Does LocalPDF work without an internet connection?",
+    answer: "Yes. Once the LocalPDF application is loaded in your browser, the processing engine runs locally. You can disconnect from the internet and continue editing, merging, or splitting your PDFs securely."
+  },
+  {
+    question: "What technology powers LocalPDF?",
+    answer: "LocalPDF utilizes modern browser technologies including WebAssembly (WASM), Web Workers, and specialized client-side libraries like pdf-lib and Tesseract.js to achieve desktop-grade performance inside a web sandbox."
+  },
+  {
+    question: "Is the service truly free and without watermarks?",
+    answer: "LocalPDF is currently free with no usage limits, no file size caps, and no watermarks. Since we don't have server costs for file processing, we can maintain high-quality tools without charging user fees."
+  }
+];
+
+const faqSchema = {
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": faqData.map(item => ({
+    "@type": "Question",
+    "name": item.question,
+    "acceptedAnswer": {
+      "@type": "Answer",
+      "text": item.answer
+    }
+  }))
+};
+
+const langPrefix = '';
+---
+
+<BaseLayout title={title} description={metaDescription} keywords={keywords}>
+  <Fragment slot="head">
+    <script type="application/ld+json" set:html={JSON.stringify(websiteSchema)} />
+    <script type="application/ld+json" set:html={JSON.stringify(faqSchema)} />
+    <style>
+      .hero {
+        position: relative;
+        padding: 60px 7vw 100px;
+        text-align: center;
+        min-height: 80vh;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+      }
+  
+      .hero-glow {
+        position: absolute;
+        top: 0;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 100vw;
+        height: 100vh;
+        background: radial-gradient(circle at 50% 30%, rgba(59, 130, 246, 0.12) 0%, transparent 60%);
+        pointer-events: none;
+        z-index: 0;
+      }
+  
+      .pill-info {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        padding: 8px 16px;
+        background: rgba(59, 130, 246, 0.08);
+        border: 1px solid rgba(59, 130, 246, 0.2);
+        border-radius: 99px;
+        font-size: 0.85rem;
+        color: var(--accent-light);
+        margin-bottom: 32px;
+        backdrop-filter: blur(10px);
+        position: relative;
+        z-index: 1;
+      }
+  
+      .dot-live {
+        width: 8px;
+        height: 8px;
+        background: #10B981;
+        border-radius: 50%;
+        box-shadow: 0 0 10px #10B981;
+        animation: pulse 2s infinite;
+      }
+  
+      @keyframes pulse {
+        0% { transform: scale(1); opacity: 1; }
+        50% { transform: scale(1.4); opacity: 0.4; }
+        100% { transform: scale(1); opacity: 1; }
+      }
+  
+      .hero-h1 {
+        font-family: 'Outfit', sans-serif;
+        font-size: clamp(3rem, 8vw, 5.5rem);
+        font-weight: 800;
+        line-height: 1;
+        letter-spacing: -0.02em;
+        margin: 0 0 24px;
+        position: relative;
+        z-index: 1;
+        color: #fff;
+      }
+  
+      .gradient-text {
+        background: linear-gradient(135deg, #60a5fa 0%, #3b82f6 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+      }
+  
+      .hero-p {
+        font-size: clamp(1rem, 2vw, 1.4rem);
+        color: var(--text-muted);
+        max-width: 650px;
+        margin: 0 0 48px;
+        position: relative;
+        z-index: 1;
+      }
+  
+      .btn-main {
+        padding: 18px 48px;
+        background: var(--accent-blue);
+        color: #fff;
+        text-decoration: none;
+        border-radius: 14px;
+        font-weight: 700;
+        font-size: 1.15rem;
+        box-shadow: 0 12px 30px rgba(59, 130, 246, 0.3);
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        position: relative;
+        z-index: 1;
+      }
+  
+      .btn-main:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 15px 45px rgba(59, 130, 246, 0.45);
+      }
+  
+      .trust-viz {
+        margin-top: 60px;
+        width: 100%;
+        max-width: 800px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        position: relative;
+        z-index: 1;
+      }
+  
+      .node {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 20px;
+        position: relative;
+        z-index: 2;
+      }
+  
+      .node-icon {
+        width: 96px;
+        height: 96px;
+        background: linear-gradient(145deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.02) 100%);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-top: 1px solid rgba(255, 255, 255, 0.2);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        border-radius: 30px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #fff;
+        font-size: 2.5rem;
+        box-shadow: 0 20px 40px -10px rgba(0,0,0,0.3);
+        backdrop-filter: blur(20px);
+        transition: transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
+      }
+  
+      .node:hover .node-icon {
+        transform: translateY(-8px);
+      }
+  
+      .node.special .node-icon {
+        width: 120px;
+        height: 120px;
+        font-size: 3.5rem;
+        background: linear-gradient(145deg, rgba(37, 99, 235, 0.15) 0%, rgba(37, 99, 235, 0.05) 100%);
+        border: 1px solid rgba(96, 165, 250, 0.3);
+        box-shadow: 0 30px 60px -12px rgba(59, 130, 246, 0.4);
+      }
+  
+      .node span {
+        font-size: 0.95rem;
+        font-weight: 500;
+        color: #9CA3AF;
+      }
+  
+      .node.special span {
+        color: #fff;
+        font-weight: 600;
+      }
+  
+      .con-line {
+        flex: 1;
+        height: 1px;
+        background: linear-gradient(90deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.2) 50%, rgba(255,255,255,0.05) 100%);
+        margin: 0 32px;
+        position: relative;
+      }
+  
+      .con-line::after {
+        content: '';
+        position: absolute;
+        top: 50%;
+        left: 0;
+        width: 40%;
+        height: 3px;
+        background: linear-gradient(90deg, transparent, #3B82F6, transparent);
+        transform: translateY(-50%);
+        opacity: 0.6;
+        filter: blur(4px);
+        animation: elegant-flow 4s infinite ease-in-out;
+      }
+  
+      @keyframes elegant-flow {
+        0% { left: 0%; opacity: 0; }
+        20% { opacity: 0.8; }
+        80% { opacity: 0.8; }
+        100% { left: 60%; opacity: 0; }
+      }
+  
+      .tools-section {
+        padding: 100px 7vw;
+      }
+  
+      .tools-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+        gap: 24px;
+        max-width: 1200px;
+        margin: 64px auto 0;
+      }
+  
+      .tool-group {
+        margin-bottom: 80px;
+      }
+  
+      .group-header {
+        display: flex;
+        align-items: center;
+        gap: 20px;
+        margin-bottom: 40px;
+      }
+  
+      .group-label {
+        padding: 10px 24px;
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 99px;
+        font-family: 'Outfit', sans-serif;
+        font-size: 1rem;
+        font-weight: 700;
+        color: #fff;
+        backdrop-filter: blur(12px);
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+        display: inline-flex;
+        align-items: center;
+        gap: 12px;
+        white-space: nowrap;
+        letter-spacing: 0.02em;
+      }
+  
+      .group-line {
+        flex: 1;
+        height: 1px;
+        background: linear-gradient(90deg, rgba(255, 255, 255, 0.2) 0%, transparent 100%);
+      }
+  
+      .g-icon {
+        color: var(--accent-light);
+        display: flex;
+        align-items: center;
+        filter: drop-shadow(0 0 4px rgba(59, 130, 246, 0.5));
+      }
+  
+      .tool-card {
+        position: relative;
+        padding: 24px;
+        border-radius: var(--ios-radius);
+        text-decoration: none;
+        display: flex;
+        align-items: center;
+        gap: 20px;
+        overflow: hidden;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-top: 1px solid rgba(255, 255, 255, 0.15);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        transition: transform 0.5s cubic-bezier(0.2, 0.8, 0.2, 1), border-color 0.5s;
+      }
+  
+      .card-glass {
+        position: absolute;
+        inset: 0;
+        background: rgba(255, 255, 255, 0.03);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        z-index: 1;
+        transition: all 0.5s ease;
+        pointer-events: none;
+      }
+  
+      .card-glow {
+        position: absolute;
+        inset: 0;
+        background: radial-gradient(circle at center, rgba(255, 255, 255, 0.15) 0%, transparent 70%);
+        opacity: 0;
+        z-index: 2;
+        transition: opacity 0.5s ease;
+        pointer-events: none;
+      }
+  
+      .tool-card:hover {
+        transform: scale(1.02);
+        border-color: rgba(255, 255, 255, 0.4);
+      }
+  
+      .tool-card:hover .card-glass {
+        filter: url('#liquid-refraction');
+      }
+  
+      .tool-card:hover .card-glow {
+        opacity: 1;
+      }
+  
+      .t-icon, .t-meta {
+        position: relative;
+        z-index: 3;
+      }
+  
+      .t-icon {
+        font-size: 2.2rem;
+        background: rgba(255, 255, 255, 0.02);
+        padding: 12px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid rgba(255, 255, 255, 0.03);
+        transition: all 0.5s cubic-bezier(0.2, 0.8, 0.2, 1);
+      }
+  
+      .tool-card:hover .t-icon {
+        transform: scale(1.1);
+        background: rgba(255, 255, 255, 0.08);
+        border-color: #fff;
+        box-shadow: 0 0 20px rgba(255, 255, 255, 0.1);
+      }
+  
+      .t-meta h4 { margin: 0 0 4px; font-size: 1.1rem; color: #fff; text-align: left; }
+      .t-meta p { margin: 0; font-size: 0.9rem; color: var(--text-muted); line-height: 1.4; text-align: left; }
+  
+      .seo-glass-section { padding: 0 7vw 100px; position: relative; z-index: 10; }
+  
+      .seo-h2 {
+        font-size: 2rem;
+        font-weight: 800;
+        margin: 0 0 48px;
+        text-align: center;
+        color: #fff;
+        font-family: 'Outfit', sans-serif;
+      }
+  
+      .seo-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 40px;
+        margin-bottom: 64px;
+      }
+  
+      .seo-item {
+        padding: 32px;
+        background: rgba(255, 255, 255, 0.02);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        border-radius: 20px;
+        transition: all 0.3s ease;
+      }
+  
+      .seo-item:hover {
+        background: rgba(255, 255, 255, 0.04);
+        border-color: rgba(59, 130, 246, 0.3);
+        transform: translateY(-5px);
+      }
+  
+      .seo-item h3 { font-size: 1.25rem; color: #60A5FA; margin: 0 0 16px; }
+      .seo-item p { color: var(--text-muted); font-size: 1rem; line-height: 1.7; margin: 0; }
+      .seo-item strong { color: #60A5FA; }
+  
+      .faq-section {
+        padding: 0 7vw 100px;
+      }
+  
+      .faq-content {
+        max-width: 1000px;
+        margin: 0 auto;
+      }
+  
+      .faq-h2 {
+        font-size: 2rem;
+        font-weight: 800;
+        margin-bottom: 48px;
+        text-align: center;
+        color: #fff;
+        font-family: 'Outfit', sans-serif;
+      }
+  
+      .faq-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 32px;
+      }
+  
+      .faq-item {
+        padding: 32px;
+        background: rgba(255, 255, 255, 0.02);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        border-radius: 20px;
+        transition: all 0.3s ease;
+      }
+  
+      .faq-item:hover {
+        background: rgba(255, 255, 255, 0.04);
+        border-color: rgba(59, 130, 246, 0.3);
+      }
+  
+      .faq-q {
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: #60A5FA;
+        margin: 0 0 16px;
+        line-height: 1.4;
+      }
+  
+      .faq-a {
+        color: var(--text-muted);
+        font-size: 0.95rem;
+        line-height: 1.6;
+        margin: 0;
+      }
+  
+      .technical-breakdown {
+        padding: 0 7vw 100px;
+      }
+  
+      .tech-content {
+        max-width: 1000px;
+        margin: 0 auto;
+        text-align: center;
+      }
+  
+      .tech-h2 {
+        font-size: 2rem;
+        font-weight: 800;
+        margin-bottom: 48px;
+        color: #fff;
+        font-family: 'Outfit', sans-serif;
+      }
+  
+      .tech-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 32px;
+      }
+  
+      .tech-card {
+        padding: 32px;
+        background: rgba(255, 255, 255, 0.02);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        border-radius: 20px;
+        text-align: left;
+        transition: all 0.3s ease;
+      }
+  
+      .tech-card:hover {
+        background: rgba(255, 255, 255, 0.04);
+        border-color: rgba(59, 130, 246, 0.3);
+        transform: translateY(-5px);
+      }
+  
+      .tech-card h4 {
+        font-size: 1.1rem;
+        color: #60A5FA;
+        margin: 0 0 16px;
+      }
+  
+      .tech-card p {
+        color: var(--text-muted);
+        font-size: 0.95rem;
+        line-height: 1.6;
+        margin: 0;
+      }
+
+      .extension-cta {
+        margin: 48px auto 64px;
+        max-width: 980px;
+        padding: 28px 32px;
+        border-radius: 24px;
+        border: 1px solid var(--glass-border);
+        background: rgba(255, 255, 255, 0.03);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 24px;
+        backdrop-filter: blur(12px);
+      }
+
+      .extension-cta-title {
+        font-family: 'Outfit', sans-serif;
+        font-size: 1.4rem;
+        font-weight: 700;
+        color: #fff;
+        margin-bottom: 6px;
+      }
+
+      .extension-cta-text p {
+        color: var(--text-muted);
+        margin: 0;
+      }
+
+      .extension-cta-button {
+        flex-shrink: 0;
+        padding: 12px 20px;
+        border-radius: 999px;
+        background: linear-gradient(135deg, #3b82f6, #60a5fa);
+        color: #fff;
+        font-weight: 700;
+        text-decoration: none;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+      }
+
+      .extension-cta-button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 12px 24px rgba(59, 130, 246, 0.25);
+      }
+  
+      @media (max-width: 768px) {
+        .hero-h1 { font-size: 3rem; }
+        .trust-viz { display: none; }
+        .tools-grid { grid-template-columns: 1fr; }
+        .extension-cta { flex-direction: column; align-items: flex-start; }
+        .extension-cta-button { width: 100%; text-align: center; }
+      }
+    </style>
+  </Fragment>
+
+  <svg style="position: fixed; top: -100%; left: -100%; width: 0; height: 0;">
+    <filter id="liquid-refraction" x="-10%" y="-10%" width="120%" height="120%">
+      <feTurbulence type="turbulence" baseFrequency="0.003" numOctaves="2" result="noise" seed="2" />
+      <feDisplacementMap in="SourceGraphic" in2="noise" scale="3" xChannelSelector="R" yChannelSelector="G" result="distorted" />
+      <feColorMatrix in="distorted" type="matrix" values="1 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0" result="red" />
+      <feOffset in="red" dx="0.6" dy="0" result="red_offset" />
+      <feColorMatrix in="distorted" type="matrix" values="0 0 0 0 0  0 1 0 0 0  0 0 0 0 0  0 0 0 1 0" result="green" />
+      <feColorMatrix in="distorted" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 1 0 0  0 0 0 1 0" result="blue" />
+      <feOffset in="blue" dx="-0.6" dy="0" result="blue_offset" />
+      <feBlend in="red_offset" in2="green" mode="screen" result="rg" />
+      <feBlend in="rg" in2="blue_offset" mode="screen" />
+    </filter>
+  </svg>
+
+  <div class="hero">
+    <div class="hero-glow"></div>
+    <div class="pill-info">
+      <span class="dot-live"></span>
+      <span id="pill-text">Secure Browser Sandbox</span>
+    </div>
+    
+    <script is:inline>
+      const texts = ["Secure Browser Sandbox", "GDPR Compliant by design", "Works Offline"];
+      let index = 0;
+      const el = document.getElementById('pill-text');
+      if (el) {
+        setInterval(() => {
+          el.style.opacity = '0';
+          el.style.transform = 'translateY(5px)';
+          setTimeout(() => {
+            index = (index + 1) % texts.length;
+            el.textContent = texts[index];
+            el.style.opacity = '1';
+            el.style.transform = 'translateY(0)';
+          }, 300);
+        }, 3000);
+      }
+    </script>
+    
+    <h1 class="hero-h1">
+      Your Private PDF Sanctuary.<br/> 
+      <span class="gradient-text">100% Offline. No Uploads.</span>
+    </h1>
+    
+    <p class="hero-p">
+      The only PDF toolkit that works 100% in your browser. No uploads, no servers, no traces. Just professional tools, powered by your device.
+    </p>
+
+    <a href="/app#" class="btn-main">
+      Launch Studio 🚀
+    </a>
+
+    <div class="trust-viz">
+      <div class="node">
+        <div class="node-icon">📄</div>
+        <span>Import</span>
+      </div>
+      <div class="con-line"></div>
+      <div class="node special">
+        <div class="node-icon">🔒</div>
+        <span>Local RAM</span>
+      </div>
+      <div class="con-line"></div>
+      <div class="node">
+        <div class="node-icon">💾</div>
+        <span>Pure Output</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="extension-cta">
+    <div class="extension-cta-text">
+      <div class="extension-cta-title">Get the Chrome Extension</div>
+      <p>Open LocalPDF instantly after downloads. Privacy-first, no uploads.</p>
+    </div>
+    <a class="extension-cta-button" href={`${langPrefix}/extension`}>Get Chrome Extension</a>
+  </div>
+
+  <DeveloperStory />
+
+  <section class="tools-section">
+    {CATEGORIES.map((category) => (
+      <div class="tool-group">
+        <div class="group-header">
+           <div class="group-label">
+             <span class="g-icon" set:html={ICONS[category.icon]} />
+             {category.name}
+           </div>
+           <div class="group-line"></div>
+        </div>
+        <div class="tools-grid">
+          {category.tools.map((tool) => (
+            <a href={`${langPrefix}/${tool.id}`} class="tool-card">
+              <div class="card-glass"></div>
+              <div class="card-glow"></div>
+              <div class="t-icon" set:html={ICONS[tool.icon]} />
+              <div class="t-meta">
+                <h4>{tool.name}</h4>
+                <p>{tool.desc}</p>
+              </div>
+            </a>
+          ))}
+        </div>
+      </div>
+    ))}
+  </section>
+
+  <IndustrySolutions />
+
+  <section class="seo-glass-section">
+    <div class="faq-content">
+      <h2 class="seo-h2">Why Choose LocalPDF Sanctuary?</h2>
+      <div class="faq-grid">
+        <div class="seo-item">
+          <h3>Absolute Privacy</h3>
+          <p>Unlike cloud tools, <strong>LocalPDF</strong> never sees your files. Everything is processed in a secure WebAssembly sandbox on your own device.</p>
+        </div>
+        <div class="seo-item">
+          <h3>Unmatched Speed</h3>
+          <p>Zero upload time. Zero download wait. Processing happens at the speed of your local CPU, effectively instant for most documents.</p>
+        </div>
+        <div class="seo-item">
+          <h3>100% Offline</h3>
+          <p>Once loaded, you can disconnect. Perfect for secure environments where data leakage is the primary concern.</p>
+        </div>
+        <div class="seo-item">
+          <h3>GDPR by Design</h3>
+          <p>We don't need to comply because we never collect. No storage, no tracking, no risk of data breaches.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <SecureToolsBlock 
+    title="Quick Access: Secure PDF Tools"
+    links={[
+      { label: "Merge PDF Files Without Uploading", href: `${langPrefix}/merge-pdf` },
+      { label: "Split PDF Locally in Browser", href: `${langPrefix}/split-pdf` },
+      { label: "Compress PDF GDPR Safe", href: `${langPrefix}/compress-pdf` },
+      { label: "Smart Edit PDF Privately", href: `${langPrefix}/edit-text-pdf` },
+      { label: "Secure PDF OCR (No Server)", href: `${langPrefix}/ocr-pdf` },
+      { label: "Extract Images Local Process", href: `${langPrefix}/extract-images-pdf` }
+    ]}
+  />
+
+  <section class="faq-section">
+    <div class="faq-content">
+      <h2 class="faq-h2">Frequently Asked Questions</h2>
+      <div class="faq-grid">
+        {faqData.map(item => (
+          <div class="faq-item">
+            <h3 class="faq-q">{item.question}</h3>
+            <p class="faq-a">{item.answer}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <section class="technical-breakdown">
+    <div class="tech-content">
+      <h2 class="tech-h2">Technical Architecture: How LocalPDF Works</h2>
+      <div class="tech-grid">
+        <div class="tech-card">
+          <h4>WebAssembly (WASM)</h4>
+          <p>We use high-performance C++ and Rust libraries compiled to WASM. This allows us to handle complex PDF operations like merging, OCR, and compression directly at near-native speeds.</p>
+        </div>
+        <div class="tech-card">
+          <h4>Secure Sandboxing</h4>
+          <p>Each document is processed within a transient Web Worker. Once the worker is terminated, all document data is purged from your browser's RAM, leaving zero digital footprints.</p>
+        </div>
+        <div class="tech-card">
+          <h4>Client-Side OCR</h4>
+          <p>For text recognition, we utilize Tesseract.js, running the entire neural network engine on your local CPU. Your scans never touch a remote server.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+</BaseLayout>

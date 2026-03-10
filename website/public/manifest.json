@@ -1,0 +1,50 @@
+{
+  "name": "LocalPDF Sanctuary",
+  "short_name": "LocalPDF",
+  "description": "100% Private Local PDF Tools. No uploads, total privacy.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#18181b",
+  "theme_color": "#18181b",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "/logos/localpdf-pwa-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/logos/localpdf-pwa-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": [
+    "utilities",
+    "productivity"
+  ],
+  "shortcuts": [
+    {
+      "name": "Merge PDF",
+      "url": "/app#merge-pdf",
+      "icons": [
+        {
+          "src": "/logos/localpdf-favicon-16x16.png",
+          "sizes": "16x16"
+        }
+      ]
+    },
+    {
+      "name": "Split PDF",
+      "url": "/app#split-pdf",
+      "icons": [
+        {
+          "src": "/logos/localpdf-favicon-16x16.png",
+          "sizes": "16x16"
+        }
+      ]
+    }
+  ]
+}

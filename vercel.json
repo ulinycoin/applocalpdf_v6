@@ -1,0 +1,155 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "buildCommand": "npm run build:all",
+  "outputDirectory": "dist",
+  "framework": null,
+  "installCommand": "npm install",
+  "devCommand": "npm run dev:all",
+  "redirects": [
+    {
+      "source": "/:path*",
+      "has": [
+        {
+          "type": "host",
+          "value": "www.localpdf.online"
+        }
+      ],
+      "destination": "https://localpdf.online/:path*",
+      "statusCode": 301
+    }
+  ],
+  "rewrites": [
+    {
+      "source": "/ingest/static/:path*",
+      "destination": "https://eu-assets.i.posthog.com/static/:path*"
+    },
+    {
+      "source": "/ingest/:path*",
+      "destination": "https://eu.i.posthog.com/:path*"
+    },
+    {
+      "source": "/app",
+      "destination": "/app/index.html"
+    },
+    {
+      "source": "/blog",
+      "destination": "/blog.html"
+    },
+    {
+      "source": "/blog/:slug",
+      "destination": "/blog/:slug.html"
+    },
+    {
+      "source": "/(de|ja)",
+      "destination": "/$1.html"
+    },
+    {
+      "source": "/(de|ja)/:path",
+      "destination": "/$1/:path.html"
+    },
+    {
+      "source": "/learn/:slug",
+      "destination": "/learn/:slug.html"
+    },
+    {
+      "source": "/(add-form-fields-pdf|add-text-pdf|compress-pdf|delete-pages-pdf|edit-text-pdf|extract-images-pdf|extract-pages-pdf|finance-privacy-pdf|flatten-pdf|images-to-pdf|legal-privacy-pdf|medical-privacy-pdf|merge-pdf|ocr-pdf|organize-pdf|pdf-to-images|pdf-to-word|protect-pdf|rotate-pdf|sign-pdf|split-pdf|tables-pdf|watermark-pdf|word-to-pdf)",
+      "destination": "/$1.html"
+    },
+    {
+      "source": "/(about|privacy|terms|comparison|learn|extension)",
+      "destination": "/$1.html"
+    }
+  ],
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "X-Frame-Options",
+          "value": "DENY"
+        },
+        {
+          "key": "X-XSS-Protection",
+          "value": "1; mode=block"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "strict-origin-when-cross-origin"
+        },
+        {
+          "key": "Permissions-Policy",
+          "value": "camera=(), microphone=(), geolocation=()"
+        }
+      ]
+    },
+    {
+      "source": "/assets/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=31536000, immutable"
+        }
+      ]
+    },
+    {
+      "source": "/logos/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=31536000, immutable"
+        }
+      ]
+    },
+    {
+      "source": "/fonts/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=31536000, immutable"
+        }
+      ]
+    },
+    {
+      "source": "/(add-form-fields-pdf|add-text-pdf|compress-pdf|delete-pages-pdf|edit-text-pdf|extract-images-pdf|extract-pages-pdf|finance-privacy-pdf|flatten-pdf|images-to-pdf|legal-privacy-pdf|medical-privacy-pdf|merge-pdf|ocr-pdf|organize-pdf|pdf-to-images|pdf-to-word|protect-pdf|rotate-pdf|sign-pdf|split-pdf|tables-pdf|watermark-pdf|word-to-pdf|extension)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=3600, s-maxage=86400"
+        }
+      ]
+    },
+    {
+      "source": "/(de|ja)/(add-form-fields-pdf|add-text-pdf|compress-pdf|delete-pages-pdf|edit-text-pdf|extract-images-pdf|extract-pages-pdf|finance-privacy-pdf|flatten-pdf|images-to-pdf|legal-privacy-pdf|medical-privacy-pdf|merge-pdf|ocr-pdf|organize-pdf|pdf-to-images|pdf-to-word|protect-pdf|rotate-pdf|sign-pdf|split-pdf|tables-pdf|watermark-pdf|word-to-pdf)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=3600, s-maxage=86400"
+        }
+      ]
+    },
+    {
+      "source": "/blog/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=3600, s-maxage=86400"
+        }
+      ]
+    },
+    {
+      "source": "/blog-images/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=31536000, immutable"
+        }
+      ]
+    }
+  ],
+  "trailingSlash": false,
+  "cleanUrls": true
+}
