@@ -1,0 +1,15 @@
+- generic [ref=e3]:
+  - banner "Studio top navigation" [ref=e4]:
+    - generic [ref=e5]:
+      - button "New Space" [ref=e6] [cursor=pointer]:
+        - generic [ref=e7]: New Space
+      - button "Delete Space" [disabled] [ref=e8]:
+        - generic [ref=e9]: Delete Space
+      - button "Download" [disabled] [ref=e10]:
+        - img [ref=e11]
+        - generic [ref=e14]: Download
+      - button "Telemetry" [ref=e15] [cursor=pointer]:
+        - img [ref=e16]
+        - generic [ref=e18]: Telemetry
+  - main [ref=e19]:
+    - generic [ref=e20]: Loading tool...
