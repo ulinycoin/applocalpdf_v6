@@ -1,37 +1,39 @@
 ---
 import LanguagePicker from './LanguagePicker.astro';
+import { getAppUrl } from '../utils/app-url';
 
 const { lang = 'en' } = Astro.props; // Receive lang prop from Layout -> Header
 const langPrefix = lang === 'en' ? '' : `/${lang}`;
 
 const navLabels = {
-  en: { tools: 'Tools', blog: 'Blog', learn: 'Learn', compare: 'Compare', about: 'About', extension: 'Extension' },
-  de: { tools: 'Tools', blog: 'Blog', learn: 'Lernen', compare: 'Vergleichen', about: 'Über uns', extension: 'Erweiterung' },
-  ja: { tools: 'ツール', blog: 'ブログ', learn: '学ぶ', compare: '比較', about: 'ツールについて', extension: '拡張機能' }
-}[lang] || { tools: 'Tools', blog: 'Blog', learn: 'Learn', compare: 'Compare', about: 'About', extension: 'Extension' };
+  en: { edit: 'Edit', merge: 'Merge', ocr: 'OCR', security: 'Security', faq: 'FAQ', about: 'About', open: 'Open LocalPDF' },
+  de: { edit: 'Edit', merge: 'Merge', ocr: 'OCR', security: 'Security', faq: 'FAQ', about: 'About', open: 'Open LocalPDF' },
+  ja: { edit: 'Edit', merge: 'Merge', ocr: 'OCR', security: 'Security', faq: 'FAQ', about: 'About', open: 'Open LocalPDF' }
+}[lang] || { edit: 'Edit', merge: 'Merge', ocr: 'OCR', security: 'Security', faq: 'FAQ', about: 'About', open: 'Open LocalPDF' };
+const appUrl = getAppUrl();
 ---
 <header>
   <a href={langPrefix || "/"} class="logo">
     <img src="/logos/localpdf-header-64x64.png" alt="LocalPDF" class="logo-image" width="40" height="40" />
     <div class="logo-text">
       <div class="logo-title">LocalPDF</div>
-      <div class="logo-subtitle">Sanctuary</div>
+      <div class="logo-subtitle">Local</div>
     </div>
   </a>
   <nav>
-    <a href={langPrefix || "/"}>{navLabels.tools}</a>
-    <a href="/blog">{navLabels.blog}</a>
-    <a href="/learn">{navLabels.learn}</a>
-    <a href="/comparison">{navLabels.compare}</a>
+    <a href="/features/edit-pdf">{navLabels.edit}</a>
+    <a href="/features/merge-pdf">{navLabels.merge}</a>
+    <a href="/features/ocr-pdf">{navLabels.ocr}</a>
+    <a href="/security">{navLabels.security}</a>
+    <a href="/faq">{navLabels.faq}</a>
     <a href="/about">{navLabels.about}</a>
-    <a href={(langPrefix || "") + "/extension"}>{navLabels.extension}</a>
     <LanguagePicker lang={lang} />
   </nav>
   
   <!-- Mobile actions (Visible only on mobile) -->
   <div class="mobile-actions">
-    <a href={(langPrefix || "") + "/extension"} class="mobile-extension-cta">
-      {navLabels.extension}
+    <a href={appUrl} class="mobile-extension-cta">
+      {navLabels.open}
     </a>
     <div class="mobile-lang-picker">
        <LanguagePicker lang={lang} />

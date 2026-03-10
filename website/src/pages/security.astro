@@ -1,0 +1,257 @@
+---
+import MarketingLayout from '../layouts/MarketingLayout.astro';
+import { getAppUrl } from '../utils/app-url';
+
+const title = 'Security | LocalPDF';
+const description = 'Security and privacy context for LocalPDF: local-first workflows, claim discipline, trust boundaries, and what the product should state publicly.';
+const canonical = 'https://localpdf.online/security';
+const image = 'https://localpdf.online/og/home.svg';
+const appUrl = getAppUrl();
+
+const securitySchema = {
+  '@context': 'https://schema.org',
+  '@type': 'WebPage',
+  name: 'LocalPDF Security',
+  description,
+  url: canonical,
+};
+
+const pillars = [
+  {
+    title: 'Local-first workflow',
+    body: 'The product story should begin with the workflow boundary: PDF work is intended to start on the user device, especially when the document is sensitive, internal, or operationally important.',
+  },
+  {
+    title: 'Claim discipline',
+    body: 'The site should only make statements that survive scrutiny. If a privacy, competitor, or technical claim cannot be defended clearly, it should not appear in the headline layer.',
+  },
+  {
+    title: 'Honest trust model',
+    body: 'Trust improves when the site explains the real product boundary instead of pretending every surrounding system is invisible. Security copy should stay narrow, factual, and testable.',
+  },
+];
+
+const rules = [
+  ['Say this', 'Privacy-first PDF app, local processing, runs on your device, sensitive-document workflow, clear feature pages, direct path into the app.'],
+  ['Do not say this', 'Sanctuary language, synthetic trust signals, fake review markup, impossible security absolutes, or unverified “no competitor does this” claims.'],
+  ['What trust copy should do', 'Explain where the workflow starts, what the user can expect before clicking, and why the product is structured around a small number of strong routes.'],
+];
+
+const boundaryItems = [
+  'The app should explain its local-first workflow clearly before the user is asked to act.',
+  'Trust pages should describe product behavior, not invent proof.',
+  'Security positioning should support the app, not replace it with abstract branding.',
+  'If analytics or hosting realities affect the trust model, the copy should stay honest about that boundary.',
+];
+---
+
+<MarketingLayout
+  title={title}
+  description={description}
+  canonical={canonical}
+  image={image}
+  schema={securitySchema}
+>
+  <div class="page-shell">
+    <section class="section intro">
+      <div class="intro-grid">
+        <div>
+          <span class="eyebrow">Security</span>
+          <h1>Security copy should be precise enough to survive scrutiny</h1>
+          <p class="section-intro">
+            This page is the factual trust layer for LocalPDF. It is here to explain product
+            boundaries, stop vague privacy language, and keep future copy disciplined.
+          </p>
+          <div class="cta-row">
+            <a class="btn-primary" href={appUrl}>Open LocalPDF</a>
+            <a class="btn-secondary" href="/faq">Read FAQ</a>
+          </div>
+        </div>
+
+        <div class="boundary-panel">
+          <small>Security page goals</small>
+          <ul class="bullet-list">
+            <li>Explain the local-first workflow in plain terms</li>
+            <li>Set a defendable trust boundary</li>
+            <li>Stop exaggerated privacy marketing before it reaches the homepage</li>
+            <li>Give users a factual page to verify before they open the app</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="section pillar-grid">
+      {pillars.map((item) => (
+        <article class="card pillar-card">
+          <h2>{item.title}</h2>
+          <p>{item.body}</p>
+        </article>
+      ))}
+    </section>
+
+    <section class="section split-layout">
+      <div>
+        <span class="eyebrow">Trust boundary</span>
+        <h2 class="section-title">What the security layer must make clear</h2>
+        <p class="section-intro">
+          Security is not a mood board. It is a set of boundaries the product can explain clearly.
+          This page should make it easier for a user to trust the workflow and harder for the site
+          to drift into vague claims later.
+        </p>
+        <ul class="bullet-list boundary-list">
+          {boundaryItems.map((item) => <li>{item}</li>)}
+        </ul>
+      </div>
+
+      <div class="boundary-box">
+        <strong>Good security copy sounds like product behavior</strong>
+        <p>
+          It explains what the workflow is for, where local handling matters, what the user should expect,
+          and where the site deliberately avoids overclaiming.
+        </p>
+        <div class="cta-row">
+          <a class="btn-primary" href={appUrl}>Open LocalPDF</a>
+          <a class="btn-secondary" href="/faq">See Common Questions</a>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2 class="section-title">Rules for future copy</h2>
+      <div class="rules">
+        {rules.map(([label, body]) => (
+          <div class="rule">
+            <strong>{label}</strong>
+            <p>{body}</p>
+          </div>
+        ))}
+      </div>
+    </section>
+
+    <section class="section final-band">
+      <div>
+        <span class="eyebrow">Decision point</span>
+        <h2 class="section-title">If the trust boundary is credible, the product path stays simple</h2>
+        <p class="section-intro">
+          The site should not need decorative language to get the click. It should make the workflow,
+          the trust logic, and the next step understandable enough that the user can judge the app directly.
+        </p>
+      </div>
+      <div class="cta-row">
+        <a class="btn-primary" href={appUrl}>Open LocalPDF</a>
+        <a class="btn-secondary" href="/faq">Read FAQ</a>
+      </div>
+    </section>
+  </div>
+</MarketingLayout>
+
+<style>
+  .intro h1 {
+    font-size: clamp(3rem, 5vw, 5rem);
+    margin-top: 18px;
+    margin-bottom: 18px;
+    max-width: 11ch;
+  }
+
+  .intro-grid {
+    display: grid;
+    grid-template-columns: 1.1fr 0.9fr;
+    gap: 22px;
+    align-items: start;
+  }
+
+  .boundary-panel,
+  .boundary-box {
+    padding: 24px;
+    border: 1px solid var(--line);
+    border-radius: 24px;
+  }
+
+  .boundary-panel {
+    background: linear-gradient(180deg, rgba(217, 235, 225, 0.72), rgba(255, 253, 249, 0.98));
+  }
+
+  .boundary-box {
+    background: linear-gradient(180deg, rgba(243, 201, 146, 0.24), rgba(255, 253, 249, 0.98));
+  }
+
+  .boundary-panel small {
+    display: block;
+    margin-bottom: 12px;
+    color: #8a572d;
+    font-size: 0.82rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+
+  .pillar-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 18px;
+  }
+
+  .pillar-card h2 {
+    font-size: 1.45rem;
+    margin-bottom: 12px;
+  }
+
+  .split-layout {
+    display: grid;
+    grid-template-columns: 1fr 0.95fr;
+    gap: 22px;
+    align-items: start;
+  }
+
+  .boundary-list {
+    max-width: 760px;
+  }
+
+  .boundary-box strong {
+    display: block;
+    margin-bottom: 12px;
+    font-size: 1.08rem;
+    color: var(--text);
+  }
+
+  .boundary-box p {
+    margin-bottom: 18px;
+  }
+
+  .rules {
+    display: grid;
+    gap: 14px;
+  }
+
+  .rule {
+    padding: 18px 20px;
+    border-radius: 20px;
+    border: 1px solid var(--line);
+    background: var(--surface);
+  }
+
+  .rule strong {
+    display: block;
+    margin-bottom: 8px;
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #8a572d;
+  }
+
+  .final-band {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+  }
+
+  @media (max-width: 900px) {
+    .intro-grid,
+    .pillar-grid,
+    .split-layout {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>

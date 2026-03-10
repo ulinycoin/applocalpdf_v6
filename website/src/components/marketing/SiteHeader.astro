@@ -1,0 +1,122 @@
+---
+import { getAppUrl } from '../../utils/app-url';
+
+const navItems = [
+  { href: '/features/edit-pdf', label: 'Edit' },
+  { href: '/features/merge-pdf', label: 'Merge' },
+  { href: '/features/ocr-pdf', label: 'OCR' },
+  { href: '/security', label: 'Security' },
+  { href: '/faq', label: 'FAQ' },
+];
+
+const appUrl = getAppUrl();
+---
+
+<header class="site-header">
+  <div class="header-shell">
+    <a href="/" class="brand">
+      <img src="/logos/localpdf-header-64x64.png" alt="LocalPDF" width="36" height="36" />
+      <span>LocalPDF</span>
+    </a>
+
+    <nav class="nav">
+      {navItems.map((item) => (
+        <a href={item.href}>{item.label}</a>
+      ))}
+    </nav>
+
+    <a href={appUrl} class="header-cta">Open LocalPDF</a>
+  </div>
+</header>
+
+<style>
+  .site-header {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    padding: 16px 20px 0;
+  }
+
+  .header-shell {
+    max-width: 1200px;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+    padding: 14px 18px;
+    border: 1px solid rgba(24, 28, 32, 0.08);
+    border-radius: 20px;
+    background: rgba(250, 247, 242, 0.84);
+    backdrop-filter: blur(18px);
+    box-shadow: 0 8px 30px rgba(26, 34, 39, 0.06);
+  }
+
+  .brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    color: #142028;
+    text-decoration: none;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+  }
+
+  .brand span {
+    font-size: 1.1rem;
+  }
+
+  .nav {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 18px;
+  }
+
+  .nav a {
+    color: #425361;
+    text-decoration: none;
+    font-size: 0.95rem;
+    font-weight: 600;
+  }
+
+  .nav a:hover,
+  .nav a:focus-visible {
+    color: #142028;
+  }
+
+  .header-cta {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    padding: 0 18px;
+    border-radius: 999px;
+    background: #142028;
+    color: #f8f5ef;
+    text-decoration: none;
+    font-weight: 700;
+  }
+
+  @media (max-width: 960px) {
+    .header-shell {
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+  }
+
+  @media (max-width: 720px) {
+    .nav {
+      display: none;
+    }
+
+    .site-header {
+      padding: 12px 12px 0;
+    }
+
+    .header-shell {
+      border-radius: 16px;
+      justify-content: space-between;
+    }
+  }
+</style>

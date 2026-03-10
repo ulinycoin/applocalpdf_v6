@@ -1,0 +1,237 @@
+---
+import MarketingLayout from '../layouts/MarketingLayout.astro';
+import { getAppUrl } from '../utils/app-url';
+
+const title = 'FAQ | LocalPDF';
+const description = 'Clear answers about LocalPDF, local processing, uploads, privacy, supported workflows, and what users should expect before opening the app.';
+const canonical = 'https://localpdf.online/faq';
+const image = 'https://localpdf.online/og/home.svg';
+const appUrl = getAppUrl();
+
+const faqGroups = [
+  {
+    title: 'Before you open the app',
+    intro: 'These are the questions the landing should resolve before asking the user to click into LocalPDF.',
+    items: [
+      ['What is LocalPDF?', 'LocalPDF is a privacy-first PDF app built around practical document workflows. It is meant to handle real PDF jobs inside one product path instead of spreading them across unrelated utility pages.'],
+      ['What is LocalPDF built for?', 'The core workflows are editing, merging, OCR, compression, splitting, signing, and conversion. These are the jobs the new site architecture is designed to support clearly.'],
+      ['Who is it for?', 'Users who handle internal, sensitive, operational, or simply important PDF documents and want a workflow that starts closer to the file instead of with an upload-first assumption.'],
+    ],
+  },
+  {
+    title: 'Local processing and uploads',
+    intro: 'This is the trust layer users care about most. The copy here needs to be factual and narrow.',
+    items: [
+      ['Do I have to upload my PDF before using LocalPDF?', 'The product direction is centered on local-first handling for practical PDF work. The intent is to let sensitive-document workflows begin on the user device rather than inside a throwaway upload tool.'],
+      ['Why is “local-first” important here?', 'Because many PDF jobs involve contracts, invoices, scans, drafts, forms, or records that users do not want to treat as disposable uploads. Local-first handling reduces friction and is easier to justify operationally.'],
+      ['Does the site promise “zero risk”?', 'No. The trust model should be precise, not theatrical. LocalPDF can explain its workflow boundary, but it should not make broad security claims it cannot defend.'],
+    ],
+  },
+  {
+    title: 'Product boundaries',
+    intro: 'Trust improves when the site explains what the product is and what it is not.',
+    items: [
+      ['Is this a product or just a set of marketing pages?', 'The app is the center of gravity. The landing exists to explain why the workflow is worth opening, not to replace the app with copy.'],
+      ['Why are there fewer pages now?', 'Because demand is concentrated around a short list of real PDF jobs. One strong canonical page per workflow is better than a long tail of weak routes that say nearly the same thing.'],
+      ['Why is there one conversion page instead of many?', 'Because conversion intent is better handled as one clear product entry point than as several low-signal pages competing with each other.'],
+    ],
+  },
+  {
+    title: 'Trust, privacy, and proof',
+    intro: 'These are the objections that affect conversion most directly.',
+    items: [
+      ['Why does LocalPDF have a separate security page?', 'Because trust claims need a factual explanation. The security page explains workflow boundaries, claim discipline, and what should or should not be promised publicly.'],
+      ['Does LocalPDF make competitor claims?', 'Only when they can be verified. Unverified statements, including absolute claims about competitors or unique capabilities, should not be published as marketing truth.'],
+      ['Why are FAQ and Security visible in the main architecture?', 'Because trust is not footer clutter for this product. It is part of the acquisition logic and should be accessible before the user commits to the app.'],
+    ],
+  },
+];
+
+const faqSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'FAQPage',
+  mainEntity: faqGroups.flatMap((group) =>
+    group.items.map(([question, answer]) => ({
+      '@type': 'Question',
+      name: question,
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: answer,
+      },
+    })),
+  ),
+};
+---
+
+<MarketingLayout
+  title={title}
+  description={description}
+  canonical={canonical}
+  image={image}
+  schema={faqSchema}
+>
+  <div class="page-shell">
+    <section class="section intro">
+      <div class="intro-grid">
+        <div>
+          <span class="eyebrow">FAQ</span>
+          <h1>Answers users should get before they are asked to trust the workflow</h1>
+          <p class="section-intro">
+            This page exists to remove hesitation. It should explain what LocalPDF is, where the
+            trust boundary starts, what the product actually covers, and why the site architecture
+            now stays compact.
+          </p>
+          <div class="cta-row">
+            <a class="btn-primary" href={appUrl}>Open LocalPDF</a>
+            <a class="btn-secondary" href="/security">Read Security Details</a>
+          </div>
+        </div>
+
+        <div class="intro-panel">
+          <small>What this page should resolve</small>
+          <ul class="bullet-list">
+            <li>Whether LocalPDF is a real product or just a marketing shell</li>
+            <li>Why local-first handling matters for practical PDF work</li>
+            <li>What claims the site should and should not make</li>
+            <li>Why trust pages are part of the main product path</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="section trust-summary">
+      <div class="summary-card">
+        <strong>Local-first by intent</strong>
+        <p>Trust starts with how the workflow begins. For this product, the value is in keeping the first step close to the file.</p>
+      </div>
+      <div class="summary-card">
+        <strong>Product before page sprawl</strong>
+        <p>The app is the center. Feature pages explain the workflows, and FAQ/Security remove uncertainty before the click.</p>
+      </div>
+      <div class="summary-card">
+        <strong>Claims must survive scrutiny</strong>
+        <p>If a privacy or competitor claim cannot be defended clearly, it should not appear in marketing copy.</p>
+      </div>
+    </section>
+
+    {faqGroups.map((group) => (
+      <section class="section">
+        <div class="group-head">
+          <h2 class="section-title">{group.title}</h2>
+          <p class="section-intro">{group.intro}</p>
+        </div>
+        <div class="faq-list">
+          {group.items.map(([question, answer]) => (
+            <article class="faq-item">
+              <h3>{question}</h3>
+              <p>{answer}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+    ))}
+
+    <section class="section final-band">
+      <div>
+        <span class="eyebrow">Next step</span>
+        <h2 class="section-title">If the answers are clear enough, the next step should be obvious</h2>
+        <p class="section-intro">
+          Open the app when the workflow fits. Read the security page when the user needs a more
+          factual explanation of the trust boundary before acting.
+        </p>
+      </div>
+      <div class="cta-row">
+        <a class="btn-primary" href={appUrl}>Open LocalPDF</a>
+        <a class="btn-secondary" href="/security">Read Security</a>
+      </div>
+    </section>
+  </div>
+</MarketingLayout>
+
+<style>
+  .intro h1 {
+    font-size: clamp(3rem, 5vw, 5.2rem);
+    margin-top: 18px;
+    margin-bottom: 18px;
+    max-width: 11ch;
+  }
+
+  .intro-grid {
+    display: grid;
+    grid-template-columns: 1.1fr 0.9fr;
+    gap: 22px;
+    align-items: start;
+  }
+
+  .intro-panel {
+    padding: 24px;
+    border: 1px solid var(--line);
+    border-radius: 24px;
+    background: linear-gradient(180deg, rgba(243, 201, 146, 0.24), rgba(255, 253, 249, 0.98));
+  }
+
+  .intro-panel small {
+    display: block;
+    margin-bottom: 12px;
+    color: #8a572d;
+    font-size: 0.82rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+
+  .trust-summary {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 18px;
+  }
+
+  .summary-card {
+    padding: 22px;
+    border: 1px solid var(--line);
+    border-radius: 24px;
+    background: var(--surface);
+  }
+
+  .summary-card strong {
+    display: block;
+    margin-bottom: 10px;
+    font-size: 1.08rem;
+  }
+
+  .group-head {
+    margin-bottom: 8px;
+  }
+
+  .faq-list {
+    display: grid;
+    gap: 16px;
+  }
+
+  .faq-item {
+    padding: 22px;
+    border: 1px solid var(--line);
+    border-radius: 22px;
+    background: var(--surface);
+  }
+
+  .faq-item h3 {
+    font-size: 1.35rem;
+    margin-bottom: 12px;
+  }
+
+  .final-band {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+  }
+
+  @media (max-width: 900px) {
+    .intro-grid,
+    .trust-summary {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>

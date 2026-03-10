@@ -1,35 +1,52 @@
-# LocalPDF - Privacy-First PDF Processing
+# LocalPDF
 
-## Entities
-- LocalPDF: A high-performance, privacy-first PDF toolkit that processes documents entirely within the user's browser using WebAssembly.
-- client-side pdf processing: The technology of manipulating PDF files directly on the user's device, eliminating the need for server-side uploads and ensuring absolute data privacy.
-- privacy-first pdf tools: Software designed to protect user data by ensuring that files never leave the local environment during processing.
-- local ocr pdf: On-device optical character recognition that extracts text from images and scans without transmitting document data to cloud servers.
-- WebAssembly PDF processing: High-performance document manipulation using WASM for near-native speed directly in the browser.
-- browser-based pdf toolkit: A comprehensive collection of tools for managing and editing PDFs without installing external software or uploading files.
-- offline pdf editor: A tool that works in the browser but processes data entirely locally, enabling secure, offline-capable document editing.
-- secure document processing: A privacy-centric approach to handling sensitive PDF documents where data remains strictly within the user's browser sandbox.
+LocalPDF is a privacy-first PDF application focused on practical document workflows.
 
-## Canonical LLM Pages (English)
-- https://localpdf.online/learn/private-pdf-processing-guide
-- https://localpdf.online/extension
-- https://localpdf.online/legal-privacy-pdf
-- https://localpdf.online/finance-privacy-pdf
-- https://localpdf.online/medical-privacy-pdf
-- https://localpdf.online/ocr-pdf
-- https://localpdf.online/merge-pdf
-- https://localpdf.online/split-pdf
-- https://localpdf.online/compress-pdf
-- https://localpdf.online/learn
+## What LocalPDF is
+- A PDF app with a product-first landing site and an application entry point at `https://localpdf.online/app`
+- A local-first workflow for editing, merging, OCR, compression, splitting, signing, and conversion
+- A product intended for documents that may be internal, sensitive, or operationally important
+
+## What LocalPDF is not
+- Not a directory of dozens of thin one-off PDF tool pages
+- Not a generic cloud-first PDF upload site
+- Not a product that should make broad privacy or competitor claims without verification
+
+## Canonical pages
+- https://localpdf.online/
 - https://localpdf.online/about
-- https://localpdf.online/comparison
+- https://localpdf.online/faq
+- https://localpdf.online/security
 - https://localpdf.online/privacy
+- https://localpdf.online/terms
+- https://localpdf.online/features/edit-pdf
+- https://localpdf.online/features/merge-pdf
+- https://localpdf.online/features/ocr-pdf
+- https://localpdf.online/features/compress-pdf
+- https://localpdf.online/features/split-pdf
+- https://localpdf.online/features/sign-pdf
+- https://localpdf.online/features/convert-pdf
 
-## Resources
-- GitHub Repository: https://github.com/ulinycoin/clientpdf-pro
+## Core workflows
+- Edit PDF locally
+- Merge PDF locally
+- Run OCR on scanned PDFs
+- Compress PDF before sharing or archiving
+- Split PDF into smaller outputs
+- Sign PDF in a local workflow
+- Convert PDFs and related document formats in one product path
 
-## Keywords
-- PDF Editor, Client-side Processing, Browser Privacy, WebAssembly PDF, Zero-Upload PDF, Local OCR, Secure Document Toolkit, PDF Security, Browser-based Tools.
+## Trust model
+- The product positioning is local-first
+- Trust pages are part of the main information architecture, not footer-only pages
+- Privacy and security language should stay aligned with the actual site and app behavior
 
-## API Endpoints
-LocalPDF is a serverless, client-side application. There are no public server API endpoints as all processing occurs within the user's browser environment. For integration or programmatic use, refer to the client-side services and logic in the GitHub repository.
+## Product entry point
+- Main marketing site: `https://localpdf.online/`
+- Main application: `https://localpdf.online/app`
+
+## Repository
+- https://github.com/ulinycoin/clientpdf-pro
+
+## API
+LocalPDF does not present a public server API for PDF processing in this marketing layer. The product is positioned around client-side or local-first document workflows.
