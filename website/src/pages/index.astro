@@ -6,7 +6,8 @@ import { getAppUrl } from '../utils/app-url';
 const title = 'Private PDF workflows that stay on your device | LocalPDF';
 const description = 'LocalPDF helps you edit, merge, OCR, compress, split, sign, and convert PDFs in one local-first workflow without an upload-first handoff.';
 const canonical = 'https://localpdf.online/';
-const image = 'https://localpdf.online/og/home.svg';
+const image = 'https://localpdf.online/screenshots/v6-workspace-1.png';
+const imageAlt = 'LocalPDF workspace showing local PDF editing and document workflow tools';
 const appUrl = getAppUrl();
 
 const websiteSchema = [
@@ -51,6 +52,10 @@ const websiteSchema = [
       price: '0',
       priceCurrency: 'USD',
     },
+    screenshot: [
+      'https://localpdf.online/screenshots/v6-workspace-1.png',
+      'https://localpdf.online/screenshots/v6-workspace-2.png',
+    ],
   },
 ];
 
@@ -82,7 +87,14 @@ const popularGuides = [
 ];
 ---
 
-<MarketingLayout title={title} description={description} canonical={canonical} image={image} schema={websiteSchema}>
+<MarketingLayout
+  title={title}
+  description={description}
+  canonical={canonical}
+  image={image}
+  imageAlt={imageAlt}
+  schema={websiteSchema}
+>
   <div class="page-shell">
     <section class="hero section">
       <div class="hero-copy">
@@ -437,11 +449,11 @@ const popularGuides = [
     object-position: top;
     display: block;
     cursor: zoom-in;
-    transition: filter 0.2s ease;
+    transition: opacity 0.2s ease;
   }
 
   .app-screenshot-wrapper:hover .app-screenshot {
-    filter: brightness(0.95);
+    opacity: 0.96;
   }
 
   /* Image Modal Styles */
@@ -452,7 +464,6 @@ const popularGuides = [
     width: 100vw;
     height: 100vh;
     background: rgba(10, 15, 20, 0.9);
-    backdrop-filter: blur(8px);
     z-index: 9999;
     display: flex;
     justify-content: center;

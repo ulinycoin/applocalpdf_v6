@@ -27,7 +27,6 @@
     "@astrojs/mdx": "^5.0.0",
     "@astrojs/rss": "^4.0.16",
     "@astrojs/sitemap": "^3.7.1",
-    "@astrojs/tailwind": "^6.0.2",
     "@fontsource/noto-sans": "^5.2.10",
     "@pdf-lib/fontkit": "^1.1.1",
     "astro": "^6.0.0",

@@ -9,11 +9,12 @@ interface Props {
   description: string;
   canonical?: string;
   image?: string;
+  imageAlt?: string;
   schema?: Record<string, unknown> | Array<Record<string, unknown>>;
   noindex?: boolean;
 }
 
-const { title, description, canonical, image, schema, noindex = false } = Astro.props;
+const { title, description, canonical, image, imageAlt, schema, noindex = false } = Astro.props;
 ---
 
 <!DOCTYPE html>
@@ -24,6 +25,7 @@ const { title, description, canonical, image, schema, noindex = false } = Astro.
       description={description}
       canonical={canonical}
       image={image}
+      imageAlt={imageAlt}
       schema={schema}
       noindex={noindex}
     />
