@@ -27,7 +27,7 @@ export function StudioWatermarkSettingsPanel({ options, onOptionsChange }: Studi
     };
 
     return (
-        <div className="studio-text-style-panel" style={{ marginTop: 12, maxWidth: 900 }}>
+        <div className="studio-text-style-panel" style={{ marginTop: 12 }}>
             <label className="studio-text-style-field" style={{ minWidth: 210 }}>
                 <span>Watermark text</span>
                 <input
@@ -120,11 +120,6 @@ export function StudioWatermarkSettingsPanel({ options, onOptionsChange }: Studi
                     <option value="off">Off</option>
                 </select>
             </label>
-            {options.repeatEnabled && (
-                <span style={{ fontSize: 12, color: 'rgba(226,232,240,0.78)' }}>
-                    Auto cover: full-page staggered pattern
-                </span>
-            )}
         </div>
     );
 }

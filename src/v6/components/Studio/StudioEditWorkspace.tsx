@@ -13,7 +13,7 @@ import { StudioSignSettingsPanel } from './edit/StudioSignSettingsPanel';
 import { LinearIcon } from '../icons/linear-icon';
 import { getStudioEditMessages } from './studio-edit-i18n';
 import { StudioPageEditor, type StudioPageEditorHandle } from './StudioPageEditor';
-import { useStudioEditZoom } from './edit/use-studio-edit-zoom';
+import { clampScale, useStudioEditZoom } from './edit/use-studio-edit-zoom';
 import type { FormFieldElement, WatermarkElement } from './editor-types';
 import type { FontFamilyId } from './inline-text-utils';
 
@@ -30,6 +30,8 @@ export function StudioEditWorkspace() {
     const [floatingPanelLayout, setFloatingPanelLayout] = useState<{ left: number; width: number } | null>(null);
     const [hasPendingDrawnSignature, setHasPendingDrawnSignature] = useState(false);
     const [hasPendingAnnotatePenDraft, setHasPendingAnnotatePenDraft] = useState(false);
+    const hasFloatingTopPanel = ctrl.tool !== null
+        && ['text', 'forms', 'sign', 'protect', 'watermark', 'whiteout', 'annotate'].includes(ctrl.tool);
 
     useEffect(() => {
         if (!ctrl.message) {
@@ -42,28 +44,6 @@ export function StudioEditWorkspace() {
             window.clearTimeout(timeoutId);
         };
     }, [ctrl.message, ctrl.setMessage]);
-
-    const handleWheel = (e: React.WheelEvent) => {
-        const surfaceEl = surfaceRef.current;
-        if (!(surfaceEl instanceof HTMLElement)) {
-            return;
-        }
-
-        const rect = surfaceEl.getBoundingClientRect();
-        const isOverCanvasSurface = (
-            e.clientX >= rect.left
-            && e.clientX <= rect.right
-            && e.clientY >= rect.top
-            && e.clientY <= rect.bottom
-        );
-
-        if (!isOverCanvasSurface) {
-            return;
-        }
-
-        e.preventDefault();
-        zoom.zoomAtScreenPoint(e.clientX, e.clientY, e.deltaY > 0 ? 'out' : 'in', 'wheel');
-    };
 
     useEffect(() => {
         const url = ctrl.preview?.page.thumbnailUrl;
@@ -108,6 +88,11 @@ export function StudioEditWorkspace() {
     }, [canvasSize.width, ctrl.preview?.page.id, zoom]);
 
     useEffect(() => {
+        if (!hasFloatingTopPanel) {
+            setFloatingPanelLayout(null);
+            return;
+        }
+
         let frameId = 0;
         const refreshLayout = () => {
             if (frameId) {
@@ -122,7 +107,15 @@ export function StudioEditWorkspace() {
                 const rect = surfaceEl.getBoundingClientRect();
                 const viewportWidth = window.innerWidth || document.documentElement.clientWidth || 0;
                 const safeViewportWidth = Math.max(0, viewportWidth - 24);
-                const desiredWidth = Math.max(280, Math.min(rect.width, safeViewportWidth));
+                const containerRect = zoom.containerRef.current?.getBoundingClientRect();
+                const fitWidthScale = containerRect
+                    ? clampScale(Math.max(1, containerRect.width - 96) / canvasSize.width)
+                    : zoom.zoomLevel;
+                const fitWidthWidth = Math.max(280, Math.min(canvasSize.width * fitWidthScale, safeViewportWidth));
+                const desiredWidth = Math.min(
+                    safeViewportWidth,
+                    fitWidthWidth,
+                );
                 const centerX = rect.left + rect.width / 2;
                 const minCenter = desiredWidth / 2 + 12;
                 const maxCenter = Math.max(minCenter, viewportWidth - desiredWidth / 2 - 12);
@@ -151,7 +144,7 @@ export function StudioEditWorkspace() {
             window.removeEventListener('resize', onResize);
             scrollHost?.removeEventListener('scroll', onScroll);
         };
-    }, [zoom.containerRef, zoom.zoomLevel, canvasSize.width, canvasSize.height, ctrl.tool, ctrl.preview?.page.id]);
+    }, [hasFloatingTopPanel, zoom.containerRef, zoom.zoomLevel, canvasSize.width, canvasSize.height, ctrl.tool, ctrl.preview?.page.id]);
 
     const selectedFormField = ctrl.selectedElementId
         ? ctrl.elements.find(
@@ -599,7 +592,6 @@ export function StudioEditWorkspace() {
                 <div
                     ref={zoom.containerRef}
                     className="studio-edit-canvas-wrap custom-scrollbar"
-                    onWheel={handleWheel}
                     style={{ flex: 1, overflow: 'auto', display: 'flex', justifyContent: 'center', alignItems: 'flex-start', position: 'relative' }}
                 >
                     <div style={{

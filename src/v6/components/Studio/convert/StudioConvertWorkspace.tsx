@@ -35,8 +35,15 @@ export function StudioConvertWorkspace() {
     <section className="studio-edit-shell" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       <div className="studio-edit-meta" style={{ padding: '8px 16px', background: 'rgba(15,23,42,0.4)', borderRadius: '0 0 12px 12px', marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div style={{ display: 'flex', gap: 12, flex: 1, alignItems: 'center' }}>
-          <button type="button" className="studio-edit-back-btn" onClick={ctrl.navigateBack} title={ui.backToStudio} style={{ background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: '4px' }}>
+          <button
+            type="button"
+            className="studio-edit-back-btn"
+            onClick={ctrl.navigateBack}
+            title={ui.backToStudio}
+            style={{ padding: '6px 12px', whiteSpace: 'nowrap' }}
+          >
             <LinearIcon name="chevron-left" size={18} />
+            <span>{ui.backToStudio}</span>
           </button>
           <span className="studio-edit-page-badge">{ctrl.activeDocument.name}</span>
           <span className="studio-edit-page-badge">{ctrl.operationScope === 'selection' ? ui.selectionScope : ui.documentScope}</span>

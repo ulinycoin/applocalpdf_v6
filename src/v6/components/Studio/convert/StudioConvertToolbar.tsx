@@ -7,32 +7,26 @@ interface StudioConvertToolbarProps {
 }
 
 export function StudioConvertToolbar({ activeTool, onSelectTool }: StudioConvertToolbarProps) {
+  const items: Array<{ tool: StudioConvertToolId; title: string; icon: 'ocr' | 'file-input' | 'image' }> = [
+    { tool: 'ocr-pdf', title: 'OCR PDF', icon: 'ocr' },
+    { tool: 'pdf-to-jpg', title: 'PDF to JPG', icon: 'file-input' },
+    { tool: 'extract-images', title: 'Extract Images', icon: 'image' },
+  ];
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 12, padding: '12px 6px', pointerEvents: 'auto' }}>
-      <button
-        type="button"
-        className={`studio-edit-tool-btn ${activeTool === 'ocr-pdf' ? 'active' : ''}`}
-        title="OCR"
-        onClick={() => onSelectTool('ocr-pdf')}
-      >
-        <LinearIcon name="ocr" size={22} />
-      </button>
-      <button
-        type="button"
-        className={`studio-edit-tool-btn ${activeTool === 'pdf-to-jpg' ? 'active' : ''}`}
-        title="PDF to JPG"
-        onClick={() => onSelectTool('pdf-to-jpg')}
-      >
-        <LinearIcon name="image" size={22} />
-      </button>
-      <button
-        type="button"
-        className={`studio-edit-tool-btn ${activeTool === 'extract-images' ? 'active' : ''}`}
-        title="Extract Images"
-        onClick={() => onSelectTool('extract-images')}
-      >
-        <LinearIcon name="image" size={22} />
-      </button>
+    <div className="studio-convert-toolbar">
+      {items.map((item) => (
+        <button
+          key={item.tool}
+          type="button"
+          className={`studio-edit-tool-btn studio-convert-tool-btn ${activeTool === item.tool ? 'active' : ''}`}
+          title={item.title}
+          onClick={() => onSelectTool(item.tool)}
+        >
+          <LinearIcon name={item.icon} size={18} />
+          <span className="studio-convert-tool-label">{item.title}</span>
+        </button>
+      ))}
     </div>
   );
 }

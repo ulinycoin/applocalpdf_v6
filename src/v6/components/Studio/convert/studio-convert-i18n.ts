@@ -12,7 +12,7 @@ export interface StudioConvertMessages {
 
 const EN_MESSAGES: StudioConvertMessages = {
   emptyTitle: 'Select a document or pages to start Convert mode',
-  backToStudio: 'Back to Studio',
+  backToStudio: 'Back to Canvas',
   selectionScope: 'Selection scope',
   documentScope: 'Document scope',
   selectedPages: 'page(s)',

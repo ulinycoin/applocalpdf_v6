@@ -163,7 +163,7 @@ export function StudioTopNav({ onToggleTelemetry, telemetryOpen }: StudioTopNavP
         <a href="/" className="studio-logo">
           <div className="studio-logo-text">
             <div className="studio-logo-title">LocalPDF</div>
-            <div className="studio-logo-subtitle">Sanctuary</div>
+            <div className="studio-logo-subtitle">Studio</div>
           </div>
         </a>
       </div>
