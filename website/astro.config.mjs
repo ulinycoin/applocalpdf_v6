@@ -6,6 +6,7 @@ const sitemapAllowList = new Set([
   'https://localpdf.online',
   'https://localpdf.online/',
   'https://localpdf.online/about',
+  'https://localpdf.online/blog',
   'https://localpdf.online/privacy',
   'https://localpdf.online/terms',
   'https://localpdf.online/faq',
@@ -25,7 +26,7 @@ export default defineConfig({
   integrations: [
     mdx(),
     sitemap({
-      filter: (page) => sitemapAllowList.has(page),
+      filter: (page) => sitemapAllowList.has(page) || page.startsWith('https://localpdf.online/blog/'),
     })
   ],
   output: 'static',

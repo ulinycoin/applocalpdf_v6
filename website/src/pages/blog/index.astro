@@ -1,0 +1,178 @@
+---
+import MarketingLayout from '../../layouts/MarketingLayout.astro';
+
+type BlogModule = {
+  frontmatter: {
+    title: string;
+    description: string;
+    pubDate: Date;
+    draft?: boolean;
+    featured?: boolean;
+    category: string;
+  };
+};
+
+const postModules = import.meta.glob('../../content/blog/*.mdx', { eager: true }) as Record<string, BlogModule>;
+const allPosts = Object.entries(postModules)
+  .map(([path, module]) => ({
+    slug: path.split('/').pop()?.replace(/\.mdx$/, '') ?? '',
+    data: {
+      ...module.frontmatter,
+      pubDate: new Date(module.frontmatter.pubDate),
+    },
+  }))
+  .filter((post) => !post.data.draft)
+  .sort((a, b) => b.data.pubDate.getTime() - a.data.pubDate.getTime());
+
+const featuredPosts = allPosts.filter((post) => post.data.featured).slice(0, 6);
+const recentPosts = allPosts.slice(0, 12);
+const title = 'PDF Guides and Workflow Articles | LocalPDF Blog';
+const description = 'Guides for editing, merging, OCR, compression, splitting, signing, conversion, and PDF privacy workflows.';
+const canonical = 'https://localpdf.online/blog';
+const image = 'https://localpdf.online/og/home.svg';
+
+const schema = [
+  {
+    '@context': 'https://schema.org',
+    '@type': 'Blog',
+    name: 'LocalPDF Blog',
+    description,
+    url: canonical,
+    publisher: {
+      '@type': 'Organization',
+      name: 'LocalPDF',
+      logo: 'https://localpdf.online/logos/localpdf-header-96x96.png',
+    },
+  },
+  {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      {
+        '@type': 'ListItem',
+        position: 1,
+        name: 'Home',
+        item: 'https://localpdf.online/',
+      },
+      {
+        '@type': 'ListItem',
+        position: 2,
+        name: 'Blog',
+        item: canonical,
+      },
+    ],
+  },
+];
+---
+
+<MarketingLayout title={title} description={description} canonical={canonical} image={image} schema={schema}>
+  <div class="page-shell">
+    <section class="section intro">
+      <span class="eyebrow">Blog</span>
+      <h1>Guides for practical PDF work</h1>
+      <p class="section-intro">
+        Read guides on editing, merging, OCR, compression, splitting, signing, conversion, and PDF privacy workflows.
+        Then move into the product when you are ready to finish the job.
+      </p>
+    </section>
+
+    <section class="section">
+      <h2 class="section-title">Featured guides</h2>
+      <div class="card-grid blog-grid">
+        {featuredPosts.map((post) => (
+          <a class="feature-card" href={`/blog/${post.slug}`}>
+            <span class="feature-label">{post.data.category}</span>
+            <h3>{post.data.title}</h3>
+            <p>{post.data.description}</p>
+          </a>
+        ))}
+      </div>
+    </section>
+
+    <section class="section">
+      <h2 class="section-title">Recent articles</h2>
+      <div class="list-grid">
+        {recentPosts.map((post) => (
+          <a class="list-card" href={`/blog/${post.slug}`}>
+            <div>
+              <strong>{post.data.title}</strong>
+              <p>{post.data.description}</p>
+            </div>
+            <span>{post.data.pubDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+          </a>
+        ))}
+      </div>
+    </section>
+  </div>
+</MarketingLayout>
+
+<style>
+  .intro h1 {
+    font-size: clamp(3rem, 5vw, 5rem);
+    margin-top: 18px;
+    margin-bottom: 18px;
+    max-width: 11ch;
+  }
+
+  .blog-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .feature-card,
+  .list-card {
+    display: block;
+    padding: 22px;
+    border: 1px solid var(--line);
+    border-radius: 24px;
+    background: var(--surface);
+    text-decoration: none;
+  }
+
+  .feature-label {
+    display: inline-block;
+    margin-bottom: 12px;
+    color: #8a572d;
+    font-weight: 800;
+    font-size: 0.82rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+
+  .feature-card h3,
+  .list-card strong {
+    display: block;
+    margin-bottom: 10px;
+    font-size: 1.28rem;
+    color: var(--text);
+  }
+
+  .list-grid {
+    display: grid;
+    gap: 14px;
+  }
+
+  .list-card {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 18px;
+  }
+
+  .list-card span {
+    white-space: nowrap;
+    color: #536674;
+    font-size: 0.9rem;
+  }
+
+  @media (max-width: 900px) {
+    .blog-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  @media (max-width: 640px) {
+    .list-card {
+      flex-direction: column;
+    }
+  }
+</style>

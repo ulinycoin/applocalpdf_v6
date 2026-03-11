@@ -20,16 +20,20 @@ export interface FeaturePageData {
     question: string;
     answer: string;
   }>;
+  blogLinks?: Array<{
+    href: string;
+    title: string;
+  }>;
 }
 
 export const featurePages: FeaturePageData[] = [
   {
     slug: 'edit-pdf',
     title: 'Edit PDF locally without handing the file to a cloud tool',
-    metaTitle: 'Edit PDF locally | LocalPDF',
-    metaDescription: 'Edit PDF text, overlays, and sensitive sections locally with LocalPDF. Keep document handling on your device.',
+    metaTitle: 'Edit PDF Locally Without Uploading Files | LocalPDF',
+    metaDescription: 'Edit PDF text, overlays, and sensitive sections locally with LocalPDF. Change PDFs without sending the document through an upload-first editor.',
     socialImage: 'https://localpdf.online/og/edit-pdf.svg',
-    intro: 'Use LocalPDF when you need direct PDF changes without turning a sensitive document into an upload workflow.',
+    intro: 'Use LocalPDF when you need to change a PDF directly without sending a sensitive file through an upload-first editor.',
     appHash: 'edit-text',
     eyebrow: 'Edit PDF',
     capabilities: [
@@ -38,7 +42,7 @@ export const featurePages: FeaturePageData[] = [
       'Work on sensitive documents without pushing files to a remote editor',
     ],
     whyLocal: [
-      'Contracts, invoices, and internal PDFs often should not be routed through cloud editors.',
+      'Contracts, invoices, and internal PDFs often are better kept out of cloud editors.',
       'Starting locally removes upload delay and narrows exposure for sensitive files.',
       'The workflow feels closer to an app than a disposable browser utility.',
     ],
@@ -52,10 +56,10 @@ export const featurePages: FeaturePageData[] = [
       'Cover sensitive fields before sharing a PDF externally',
       'Add internal review notes to a draft document',
     ],
-    proofTitle: 'Editing is one of the clearest privacy workflows',
-    proofBody: 'When a document contains names, addresses, pricing, or legal text, local editing is easier to justify than upload-first editing.',
-    objectionTitle: 'What users need to believe before they click',
-    objectionBody: 'They need to understand that LocalPDF is for direct PDF work, not for exporting them into a maze of one-off utilities or forcing them into a cloud handoff first.',
+    proofTitle: 'Edit sensitive PDFs with more control',
+    proofBody: 'When a document contains names, addresses, pricing, or legal text, local editing is easier to justify and easier to trust than an upload-first editor.',
+    objectionTitle: 'Why users choose local editing',
+    objectionBody: 'People want a direct way to change the PDF itself without sending the file through extra tools or an upload-first handoff.',
     ctaNote: 'Open the editor when the job is to change the PDF itself, not to re-route the document into another stack.',
     quickAnswers: [
       {
@@ -68,15 +72,19 @@ export const featurePages: FeaturePageData[] = [
       },
       {
         question: 'What should the page avoid promising?',
-        answer: 'It should avoid vague “AI editor” language and focus on concrete editing jobs that users actually need to finish.',
+        answer: 'A clear editing workflow for changing, covering, or annotating a PDF directly.',
       },
+    ],
+    blogLinks: [
+      { href: '/blog/edit-text-in-pdf-guide', title: 'How to Edit Text in PDF Files' },
+      { href: '/blog/pdf-security-best-practices', title: 'PDF Security Best Practices' },
     ],
   },
   {
     slug: 'merge-pdf',
     title: 'Merge PDF files locally and keep ordering work fast',
-    metaTitle: 'Merge PDF locally | LocalPDF',
-    metaDescription: 'Merge PDF files locally with LocalPDF. Combine documents without upload-first processing or scattered browser tools.',
+    metaTitle: 'Merge PDF Files Locally and Keep Order Under Control | LocalPDF',
+    metaDescription: 'Merge PDF files locally with LocalPDF. Combine documents quickly without upload-first processing or scattered browser tools.',
     socialImage: 'https://localpdf.online/og/merge-pdf.svg',
     intro: 'Merge is one of the highest-usage PDF jobs. It should be immediate, not gated by upload time and queueing.',
     appHash: 'merge',
@@ -101,10 +109,10 @@ export const featurePages: FeaturePageData[] = [
       'Assemble a client handoff packet',
       'Merge batch scans into a single review file',
     ],
-    proofTitle: 'Merge should feel like file handling, not cloud submission',
-    proofBody: 'This is a core utility flow. The product should make it obvious that the operation starts from your device and stays under your control.',
-    objectionTitle: 'What this page must remove',
-    objectionBody: 'Users should not have to wonder whether merge is a throwaway web tool or part of a stable app workflow. The page should resolve that immediately.',
+    proofTitle: 'Merge files quickly without extra waiting',
+    proofBody: 'This is a core utility flow. The operation starts from your device and stays under your control.',
+    objectionTitle: 'Why users choose LocalPDF for merge',
+    objectionBody: 'People want merge to feel immediate, dependable, and easy to repeat inside one app workflow.',
     ctaNote: 'Open Merge PDF when the task is bundling source files quickly without wasting time on upload delay and queueing.',
     quickAnswers: [
       {
@@ -117,14 +125,18 @@ export const featurePages: FeaturePageData[] = [
       },
       {
         question: 'What should make this page convert?',
-        answer: 'It should feel immediate. The user needs to believe they can add files, set order, and export the result quickly inside one product path.',
+        answer: 'A fast path from source files to one clean output with clear ordering and export.',
       },
+    ],
+    blogLinks: [
+      { href: '/blog/how-to-merge-pdf-files', title: 'How to Merge PDF Files' },
+      { href: '/blog/smart-merge-ai-pdf-sorting', title: 'Smart Merge: AI-Powered PDF Sorting' },
     ],
   },
   {
     slug: 'ocr-pdf',
     title: 'Run OCR on PDF documents locally for searchable text',
-    metaTitle: 'OCR PDF locally | LocalPDF',
+    metaTitle: 'OCR PDF Locally for Searchable Scanned Documents | LocalPDF',
     metaDescription: 'Run OCR on PDF files locally with LocalPDF and turn scans into searchable documents without sending them away first.',
     socialImage: 'https://localpdf.online/og/ocr-pdf.svg',
     intro: 'OCR is a trust-heavy workflow because scanned PDFs often contain legal, medical, or financial information.',
@@ -138,7 +150,7 @@ export const featurePages: FeaturePageData[] = [
     whyLocal: [
       'Scanned records are often the documents users least want to upload.',
       'OCR already takes time; upload overhead makes the flow worse.',
-      'A local-first OCR story is easier to explain and easier for AI/search to summarize.',
+      'A local-first OCR workflow is easier to trust when scanned files contain sensitive information.',
     ],
     howItWorks: [
       'Open OCR PDF in LocalPDF.',
@@ -150,10 +162,10 @@ export const featurePages: FeaturePageData[] = [
       'Extract text from archive documents',
       'Prepare image-heavy PDFs for internal search and reuse',
     ],
-    proofTitle: 'OCR is where privacy claims need to sound concrete',
-    proofBody: 'This page should stay technical and factual. Avoid hype. Emphasize what the user can do and why the local workflow matters.',
+    proofTitle: 'Turn scans into searchable PDFs with less exposure',
+    proofBody: 'OCR is a trust-heavy workflow because scanned documents often contain sensitive information. Users need a clear path from scan to searchable output.',
     objectionTitle: 'What users are worried about',
-    objectionBody: 'Scanned PDFs are often the files users most hesitate to upload. This page needs to answer that concern directly, without decorative language.',
+    objectionBody: 'Scanned PDFs are often the files users most hesitate to upload. That concern needs a direct answer, without decorative language.',
     ctaNote: 'Open OCR PDF when a scanned document needs to become usable, searchable, and easier to work with.',
     quickAnswers: [
       {
@@ -162,18 +174,22 @@ export const featurePages: FeaturePageData[] = [
       },
       {
         question: 'What should the user understand fast?',
-        answer: 'That OCR here is a practical step to make a scanned PDF searchable and usable, not a black-box promise wrapped in buzzwords.',
+        answer: 'That OCR here is a practical step to make a scanned PDF searchable and usable.',
       },
       {
         question: 'What should this page emphasize?',
         answer: 'Searchable output, local workflow, and the fact that scanned documents are often sensitive by default.',
       },
     ],
+    blogLinks: [
+      { href: '/blog/ocr-pdf-extract-text', title: 'OCR PDF: Extract Text from Scanned Documents' },
+      { href: '/blog/pdf-security-best-practices', title: 'PDF Security Best Practices' },
+    ],
   },
   {
     slug: 'compress-pdf',
     title: 'Compress PDF files locally before sending or archiving them',
-    metaTitle: 'Compress PDF locally | LocalPDF',
+    metaTitle: 'Compress PDF Files Locally Before Sending or Uploading | LocalPDF',
     metaDescription: 'Compress PDF files locally with LocalPDF before sharing, uploading, or archiving large documents.',
     socialImage: 'https://localpdf.online/og/compress-pdf.svg',
     intro: 'Compression is a practical workflow. It should be fast, predictable, and not require an upload loop before you can send a file.',
@@ -199,10 +215,10 @@ export const featurePages: FeaturePageData[] = [
       'Prepare documents for strict upload portals',
       'Trim archive copies before storing them internally',
     ],
-    proofTitle: 'Compression should be operational, not theatrical',
-    proofBody: 'Users care about fit-for-purpose output. Message the result, not magic claims.',
-    objectionTitle: 'What this page should avoid',
-    objectionBody: 'Compression pages often drift into vague promises about “quality” and “AI.” The page should stay practical: smaller file, cleaner handoff, local workflow.',
+    proofTitle: 'Make PDFs smaller before the next handoff',
+    proofBody: 'Users care about a smaller file that is easier to send, upload, or archive without adding another waiting loop.',
+    objectionTitle: 'Why users open Compress PDF',
+    objectionBody: 'The value is practical: reduce file size, keep the workflow moving, and prepare the document for the next step.',
     ctaNote: 'Open Compress PDF when the document is ready but still too heavy for the next step in the workflow.',
     quickAnswers: [
       {
@@ -218,14 +234,18 @@ export const featurePages: FeaturePageData[] = [
         answer: 'Overclaiming around image quality, AI, or impossible size reduction promises.',
       },
     ],
+    blogLinks: [
+      { href: '/blog/compress-pdf-without-losing-quality', title: 'How to Compress PDF Files Without Losing Quality' },
+      { href: '/blog/how-to-merge-pdf-files', title: 'How to Merge PDF Files' },
+    ],
   },
   {
     slug: 'split-pdf',
     title: 'Split PDF files locally when one document needs to become several',
-    metaTitle: 'Split PDF locally | LocalPDF',
+    metaTitle: 'Split PDF Files Locally by Pages or Ranges | LocalPDF',
     metaDescription: 'Split PDF files locally with LocalPDF for cleaner handoffs, extraction, and document reuse.',
     socialImage: 'https://localpdf.online/og/split-pdf.svg',
-    intro: 'Split workflows are common in operations and document review. The product should make them feel direct and controlled.',
+    intro: 'Split workflows are common in operations and document review. They should feel direct and controlled.',
     appHash: 'split',
     eyebrow: 'Split PDF',
     capabilities: [
@@ -248,10 +268,10 @@ export const featurePages: FeaturePageData[] = [
       'Break a long report into sections',
       'Extract only the pages needed for external review',
     ],
-    proofTitle: 'Split pages before they leave your machine',
-    proofBody: 'This is a clean trust argument and a strong message for both SEO and product clarity.',
-    objectionTitle: 'Why this route matters',
-    objectionBody: 'Users often split documents to share less information, not more. The page should make that trust logic obvious.',
+    proofTitle: 'Split pages before you share them',
+    proofBody: 'Splitting is often about control: separate what needs to be sent, keep the rest private, and export only the pages that matter.',
+    objectionTitle: 'Why users choose local splitting',
+    objectionBody: 'Users often split documents to share less information, not more. That makes control and clarity more important than flashy messaging.',
     ctaNote: 'Open Split PDF when one large document needs to become several smaller outputs under your control.',
     quickAnswers: [
       {
@@ -267,11 +287,15 @@ export const featurePages: FeaturePageData[] = [
         answer: 'That the job is selective extraction and cleaner sharing, not just mechanical page separation.',
       },
     ],
+    blogLinks: [
+      { href: '/blog/how-to-split-pdf-files', title: 'How to Split PDF Files' },
+      { href: '/blog/smart-organize-ai-page-analysis', title: 'Smart Organize: AI-Powered PDF Page Analysis' },
+    ],
   },
   {
     slug: 'sign-pdf',
     title: 'Sign PDF documents locally and keep approval flows simple',
-    metaTitle: 'Sign PDF locally | LocalPDF',
+    metaTitle: 'Sign PDF Documents Locally for Faster Approvals | LocalPDF',
     metaDescription: 'Sign PDF documents locally with LocalPDF for quick approvals and lightweight document workflows.',
     socialImage: 'https://localpdf.online/og/sign-pdf.svg',
     intro: 'Signing is a trust-sensitive workflow because signatures are personal, reusable, and easy to mishandle in weak tools.',
@@ -297,10 +321,10 @@ export const featurePages: FeaturePageData[] = [
       'Approve a simple internal document',
       'Complete a PDF workflow without printing and rescanning',
     ],
-    proofTitle: 'Signing pages need calm trust signals',
-    proofBody: 'Avoid legal overclaiming. Focus on the local workflow, the reduced friction, and the product experience.',
-    objectionTitle: 'What the page should not do',
-    objectionBody: 'It should not overstate legality or turn trust into hype. The value is a simple signing flow that remains close to the document.',
+    proofTitle: 'Sign PDFs with a shorter path to approval',
+    proofBody: 'Signing works best when the workflow stays simple: open the document, place the signature, and export the result without bouncing between tools.',
+    objectionTitle: 'Why users choose LocalPDF for signing',
+    objectionBody: 'The value is a simple signing flow that stays close to the document and removes unnecessary steps between review and completion.',
     ctaNote: 'Open Sign PDF when the job is quick approval, lightweight signature placement, and a shorter path from document to completion.',
     quickAnswers: [
       {
@@ -309,32 +333,36 @@ export const featurePages: FeaturePageData[] = [
       },
       {
         question: 'Why stay careful with the copy?',
-        answer: 'Signature workflows can easily drift into legal overclaiming. The page should stay grounded in product behavior, not legal theater.',
+        answer: 'Signature workflows can easily drift into legal overclaiming. Keep the page grounded in product behavior, not legal theater.',
       },
       {
         question: 'What should make users trust it?',
         answer: 'A direct local flow, clear limits, and less bouncing between unrelated PDF utilities.',
       },
     ],
+    blogLinks: [
+      { href: '/blog/how-to-sign-pdf-digitally', title: 'How to Sign PDF Documents Digitally' },
+      { href: '/blog/pdf-security-best-practices', title: 'PDF Security Best Practices' },
+    ],
   },
   {
     slug: 'convert-pdf',
     title: 'Convert PDFs and related document formats in one local workflow',
-    metaTitle: 'Convert PDF locally | LocalPDF',
+    metaTitle: 'Convert PDF and Document Formats in One Local Workflow | LocalPDF',
     metaDescription: 'Convert PDFs and related document formats in one LocalPDF workflow instead of jumping between separate one-off tools.',
     socialImage: 'https://localpdf.online/og/convert-pdf.svg',
-    intro: 'Conversion should be one canonical feature page, not a spread of weak near-duplicate landing pages.',
+    intro: 'Use Convert PDF when you need to move a document into the right format without leaving the main workflow.',
     appHash: 'pdf-to-word',
     eyebrow: 'Convert PDF',
     capabilities: [
       'Handle common PDF conversion workflows in one place',
-      'Reduce page sprawl across similar conversion jobs',
-      'Give users one conversion entry point inside the app',
+      'Move between formats without leaving the product workflow',
+      'Start conversion from one clear entry point inside the app',
     ],
     whyLocal: [
-      'Conversion pages often create SEO noise and duplicate intent.',
-      'A single strong conversion page is easier to maintain and easier to trust.',
-      'The product should feel like one workspace, not a maze of thin routes.',
+      'Conversion is often part of a larger document workflow, not a one-off task.',
+      'A clear conversion entry point helps users choose the right next step faster.',
+      'The product should feel like one workspace, not a maze of separate tools.',
     ],
     howItWorks: [
       'Open Convert PDF.',
@@ -346,24 +374,28 @@ export const featurePages: FeaturePageData[] = [
       'Generate a PDF from a document source',
       'Move between document and image-based workflows',
     ],
-    proofTitle: 'One conversion hub is stronger than four weak landing pages',
-    proofBody: 'This page should centralize the conversion story and reduce route duplication.',
-    objectionTitle: 'Why this is one page',
-    objectionBody: 'Conversion intent was previously spread across weak routes. A single stronger page is easier to maintain, easier to understand, and easier to trust.',
+    proofTitle: 'Choose the right format and keep moving',
+    proofBody: 'Conversion works best when users can pick the right path quickly and continue the broader document workflow without starting over.',
+    objectionTitle: 'Why users open Convert PDF',
+    objectionBody: 'Users want one clear place to start when the next step depends on changing the document format.',
     ctaNote: 'Open Convert PDF when the workflow is about moving between document formats without leaving the main LocalPDF product path.',
     quickAnswers: [
       {
         question: 'Why unify conversion into one page?',
-        answer: 'Because users are choosing a product path, not browsing a directory of near-duplicate conversion routes.',
+        answer: 'Because users are choosing the right workflow for the job, not browsing a directory of lookalike conversion pages.',
       },
       {
         question: 'What does this help explain?',
-        answer: 'That LocalPDF handles conversion as part of a wider document workflow rather than as isolated SEO fragments.',
+        answer: 'That LocalPDF handles conversion as part of a wider document workflow rather than as an isolated task.',
       },
       {
         question: 'What should the page make easy?',
         answer: 'Choosing the right conversion path and moving straight into the app without second-guessing where to start.',
       },
+    ],
+    blogLinks: [
+      { href: '/blog/convert-word-pdf-guide', title: 'How to Convert Word to PDF and PDF to Word' },
+      { href: '/blog/convert-pdf-to-images-guide', title: 'How to Convert PDF to Images' },
     ],
   },
 ];

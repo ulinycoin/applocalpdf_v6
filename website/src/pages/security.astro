@@ -3,7 +3,7 @@ import MarketingLayout from '../layouts/MarketingLayout.astro';
 import { getAppUrl } from '../utils/app-url';
 
 const title = 'Security | LocalPDF';
-const description = 'Security and privacy context for LocalPDF: local-first workflows, claim discipline, trust boundaries, and what the product should state publicly.';
+const description = 'Security and privacy details for LocalPDF: local-first workflows, practical trust boundaries, and clear expectations before you open the app.';
 const canonical = 'https://localpdf.online/security';
 const image = 'https://localpdf.online/og/home.svg';
 const appUrl = getAppUrl();
@@ -19,29 +19,29 @@ const securitySchema = {
 const pillars = [
   {
     title: 'Local-first workflow',
-    body: 'The product story should begin with the workflow boundary: PDF work is intended to start on the user device, especially when the document is sensitive, internal, or operationally important.',
+    body: 'PDF work is meant to start on the user device, especially when the document is sensitive, internal, or operationally important.',
   },
   {
     title: 'Claim discipline',
-    body: 'The site should only make statements that survive scrutiny. If a privacy, competitor, or technical claim cannot be defended clearly, it should not appear in the headline layer.',
+    body: 'LocalPDF keeps privacy messaging specific to the workflow so users can understand what the product does without vague or inflated claims.',
   },
   {
     title: 'Honest trust model',
-    body: 'Trust improves when the site explains the real product boundary instead of pretending every surrounding system is invisible. Security copy should stay narrow, factual, and testable.',
+    body: 'Trust improves when the product explains where local handling matters, what happens before the app opens, and where the workflow has clear boundaries.',
   },
 ];
 
 const rules = [
-  ['Say this', 'Privacy-first PDF app, local processing, runs on your device, sensitive-document workflow, clear feature pages, direct path into the app.'],
-  ['Do not say this', 'Sanctuary language, synthetic trust signals, fake review markup, impossible security absolutes, or unverified “no competitor does this” claims.'],
-  ['What trust copy should do', 'Explain where the workflow starts, what the user can expect before clicking, and why the product is structured around a small number of strong routes.'],
+  ['What LocalPDF is built for', 'Sensitive documents, practical PDF tasks, and workflows that should begin on the user device instead of in an upload queue.'],
+  ['What this page avoids', 'Broad absolutes, vague trust theater, and promises that go beyond what the product can explain clearly.'],
+  ['What users should expect', 'A local-first workflow, practical explanations, and an easy path into the app once the trust questions are answered.'],
 ];
 
 const boundaryItems = [
-  'The app should explain its local-first workflow clearly before the user is asked to act.',
-  'Trust pages should describe product behavior, not invent proof.',
-  'Security positioning should support the app, not replace it with abstract branding.',
-  'If analytics or hosting realities affect the trust model, the copy should stay honest about that boundary.',
+  'The local-first workflow is explained before the user is asked to act.',
+  'Trust pages describe product behavior in plain language.',
+  'Security positioning supports the app instead of replacing it with abstract branding.',
+  'Website and app boundaries are easier to trust when they are explained directly.',
 ];
 ---
 
@@ -57,10 +57,10 @@ const boundaryItems = [
       <div class="intro-grid">
         <div>
           <span class="eyebrow">Security</span>
-          <h1>Security copy should be precise enough to survive scrutiny</h1>
+          <h1>How LocalPDF handles privacy for sensitive PDF work</h1>
           <p class="section-intro">
-            This page is the factual trust layer for LocalPDF. It is here to explain product
-            boundaries, stop vague privacy language, and keep future copy disciplined.
+            This page explains where local processing matters, how LocalPDF frames privacy in practical
+            terms, and what users should understand before they open the app.
           </p>
           <div class="cta-row">
             <a class="btn-primary" href={appUrl}>Open LocalPDF</a>
@@ -69,12 +69,12 @@ const boundaryItems = [
         </div>
 
         <div class="boundary-panel">
-          <small>Security page goals</small>
+          <small>What you can verify here</small>
           <ul class="bullet-list">
-            <li>Explain the local-first workflow in plain terms</li>
-            <li>Set a defendable trust boundary</li>
-            <li>Stop exaggerated privacy marketing before it reaches the homepage</li>
-            <li>Give users a factual page to verify before they open the app</li>
+            <li>How local-first handling fits into the workflow</li>
+            <li>What privacy claims LocalPDF does and does not make</li>
+            <li>Where trust questions matter before the click</li>
+            <li>What to verify before opening the app</li>
           </ul>
         </div>
       </div>
@@ -92,11 +92,10 @@ const boundaryItems = [
     <section class="section split-layout">
       <div>
         <span class="eyebrow">Trust boundary</span>
-        <h2 class="section-title">What the security layer must make clear</h2>
+        <h2 class="section-title">A practical trust model</h2>
         <p class="section-intro">
-          Security is not a mood board. It is a set of boundaries the product can explain clearly.
-          This page should make it easier for a user to trust the workflow and harder for the site
-          to drift into vague claims later.
+          Security is useful when it helps users understand the workflow clearly. The goal is simple:
+          explain where local handling matters and give users enough confidence to choose the right tool.
         </p>
         <ul class="bullet-list boundary-list">
           {boundaryItems.map((item) => <li>{item}</li>)}
@@ -104,10 +103,10 @@ const boundaryItems = [
       </div>
 
       <div class="boundary-box">
-        <strong>Good security copy sounds like product behavior</strong>
+        <strong>What matters most before the click</strong>
         <p>
-          It explains what the workflow is for, where local handling matters, what the user should expect,
-          and where the site deliberately avoids overclaiming.
+          Users need to know what LocalPDF is for, why local handling matters for sensitive files,
+          and what they can expect before they start working on a document.
         </p>
         <div class="cta-row">
           <a class="btn-primary" href={appUrl}>Open LocalPDF</a>
@@ -117,7 +116,7 @@ const boundaryItems = [
     </section>
 
     <section class="section">
-      <h2 class="section-title">Rules for future copy</h2>
+      <h2 class="section-title">What you can expect from LocalPDF</h2>
       <div class="rules">
         {rules.map(([label, body]) => (
           <div class="rule">
@@ -131,10 +130,10 @@ const boundaryItems = [
     <section class="section final-band">
       <div>
         <span class="eyebrow">Decision point</span>
-        <h2 class="section-title">If the trust boundary is credible, the product path stays simple</h2>
+        <h2 class="section-title">A clear trust model makes the next step easier</h2>
         <p class="section-intro">
-          The site should not need decorative language to get the click. It should make the workflow,
-          the trust logic, and the next step understandable enough that the user can judge the app directly.
+          A clear workflow and a believable trust story make the decision easier. The next step should
+          feel simple once the user understands how LocalPDF fits the job.
         </p>
       </div>
       <div class="cta-row">

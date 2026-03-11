@@ -3,8 +3,8 @@ import MarketingLayout from '../layouts/MarketingLayout.astro';
 import { featurePages } from '../data/featurePages';
 import { getAppUrl } from '../utils/app-url';
 
-const title = 'Private PDF editing that stays on your device | LocalPDF';
-const description = 'LocalPDF is a privacy-first PDF app for editing, merging, OCR, compression, signing, splitting, and conversion without an upload-first workflow.';
+const title = 'Private PDF workflows that stay on your device | LocalPDF';
+const description = 'LocalPDF helps you edit, merge, OCR, compress, split, sign, and convert PDFs in one local-first workflow without an upload-first handoff.';
 const canonical = 'https://localpdf.online/';
 const image = 'https://localpdf.online/og/home.svg';
 const appUrl = getAppUrl();
@@ -15,6 +15,12 @@ const websiteSchema = [
     '@type': 'WebSite',
     name: 'LocalPDF',
     url: canonical,
+    description,
+    potentialAction: {
+      '@type': 'SearchAction',
+      target: 'https://localpdf.online/features/{feature}',
+      'query-input': 'required name=feature',
+    },
   },
   {
     '@context': 'https://schema.org',
@@ -22,6 +28,29 @@ const websiteSchema = [
     name: 'LocalPDF',
     url: canonical,
     logo: 'https://localpdf.online/logos/localpdf-header-96x96.png',
+  },
+  {
+    '@context': 'https://schema.org',
+    '@type': 'SoftwareApplication',
+    name: 'LocalPDF',
+    applicationCategory: 'BusinessApplication',
+    operatingSystem: 'Web',
+    url: canonical,
+    description,
+    featureList: [
+      'Edit PDF locally',
+      'Merge PDF locally',
+      'Run OCR on scanned PDFs',
+      'Compress PDF files',
+      'Split PDF pages',
+      'Sign PDF documents',
+      'Convert PDF and document formats',
+    ],
+    offers: {
+      '@type': 'Offer',
+      price: '0',
+      priceCurrency: 'USD',
+    },
   },
 ];
 
@@ -33,6 +62,24 @@ const primaryFeatures = featurePages.filter((page) => [
   'split-pdf',
   'convert-pdf',
 ].includes(page.slug));
+
+const popularGuides = [
+  {
+    href: '/blog/how-to-merge-pdf-files',
+    title: 'How to Merge PDF Files',
+    description: 'A practical guide to combining PDFs, keeping order under control, and exporting one clean file.',
+  },
+  {
+    href: '/blog/edit-text-in-pdf-guide',
+    title: 'How to Edit Text in PDF Files',
+    description: 'Learn when to replace text, cover sensitive sections, and handle direct PDF edits with more control.',
+  },
+  {
+    href: '/blog/ocr-pdf-extract-text',
+    title: 'OCR PDF: Extract Text from Scanned Documents',
+    description: 'Turn scanned PDFs into searchable files and understand when OCR should be the next step in the workflow.',
+  },
+];
 ---
 
 <MarketingLayout title={title} description={description} canonical={canonical} image={image} schema={websiteSchema}>
@@ -40,19 +87,19 @@ const primaryFeatures = featurePages.filter((page) => [
     <section class="hero section">
       <div class="hero-copy">
         <span class="eyebrow">Privacy-first PDF app</span>
-        <h1>Private PDF editing that stays on your device</h1>
+        <h1>Private PDF workflows that stay on your device</h1>
         <p class="hero-text">
-          LocalPDF gives you one place to edit, merge, OCR, compress, split, sign, and
-          convert PDFs without turning every document into an upload-first workflow.
+          Edit, merge, OCR, compress, split, sign, and convert PDFs in one place without
+          turning every document into an upload-first workflow.
         </p>
         <div class="cta-row">
           <a class="btn-primary" href={appUrl}>Open LocalPDF</a>
           <a class="btn-secondary" href="/security">See How Local Processing Works</a>
         </div>
         <div class="hero-notes">
-          <span>No upload workflow for sensitive documents</span>
-          <span>Workspace flow instead of disconnected one-off tools</span>
-          <span>Built for practical PDF jobs, not decorative claims</span>
+          <span>Local-first handling for sensitive files</span>
+          <span>One workspace for real PDF jobs</span>
+          <span>Clear path from file to finished result</span>
         </div>
       </div>
 
@@ -103,30 +150,30 @@ const primaryFeatures = featurePages.filter((page) => [
     <section class="section trust-strip">
       <div class="trust-item">
         <strong>No upload workflow</strong>
-        <p>Designed for jobs where documents should stay close to the user.</p>
+        <p>Built for jobs where documents need to stay close to the user.</p>
       </div>
       <div class="trust-item">
-        <strong>One product path</strong>
+        <strong>One workspace</strong>
         <p>Open the app and continue the job instead of bouncing across utility pages.</p>
       </div>
       <div class="trust-item">
-        <strong>Trust surfaced early</strong>
-        <p>Security and FAQ are part of the acquisition path because this product depends on trust.</p>
+        <strong>Trust up front</strong>
+        <p>Security and FAQ are easy to find because trust matters before the first click.</p>
       </div>
     </section>
 
     <section class="section decision-strip">
       <div class="decision-copy">
-        <h2 class="section-title">What LocalPDF should make obvious in the first screen</h2>
+        <h2 class="section-title">When LocalPDF is the better fit</h2>
         <p class="section-intro">
-          Users should not have to decode the product. The homepage needs to resolve what LocalPDF is,
-          why local processing matters, and when this workflow is a better fit than an upload-first tool.
+          LocalPDF is a better fit when the document matters, the task is clear, and you want to
+          start working on the file immediately instead of sending it into an upload queue.
         </p>
       </div>
       <div class="decision-box">
         <strong>Use LocalPDF when</strong>
         <ul class="bullet-list">
-          <li>You want one product path instead of many disconnected utility pages</li>
+          <li>You want one workspace instead of many disconnected utility pages</li>
           <li>The document is internal, sensitive, or operationally important</li>
           <li>The task is editing, merging, OCR, splitting, signing, compression, or conversion</li>
         </ul>
@@ -136,8 +183,7 @@ const primaryFeatures = featurePages.filter((page) => [
     <section class="section">
       <h2 class="section-title">Core workflows inside the app</h2>
       <p class="section-intro">
-        Most product demand concentrates around a short list of real PDF jobs. These are the workflows
-        that deserve dedicated pages, stronger messaging, and a direct path into the app.
+        These are the main PDF jobs people come to LocalPDF to finish.
       </p>
       <div class="card-grid feature-grid">
         {primaryFeatures.map((feature) => (
@@ -154,9 +200,9 @@ const primaryFeatures = featurePages.filter((page) => [
       <div>
         <h2 class="section-title">Why local processing changes the decision</h2>
         <p class="section-intro">
-          The point is not to sound mystical about privacy. The point is to give users a practical
-          reason to choose a different workflow when the document is sensitive or simply too important
-          to treat as a disposable upload.
+          Local processing matters most when the document is sensitive, operational, or simply too
+          important for an upload-first flow. The value is practical: less exposure, less waiting,
+          and a faster path to the result.
         </p>
       </div>
       <div class="callout-list">
@@ -166,11 +212,11 @@ const primaryFeatures = featurePages.filter((page) => [
         </div>
         <div class="callout">
           <strong>Less friction before action</strong>
-          <p>Open the app, load the document, finish the job, export the result. No queue-shaped marketing loop.</p>
+          <p>Open the app, load the document, finish the job, and export the result without extra waiting loops.</p>
         </div>
         <div class="callout">
           <strong>Less route sprawl</strong>
-          <p>One strong feature page per core workflow is easier to trust than a directory of thin pages saying nearly the same thing.</p>
+          <p>Core workflows are easy to understand, compare, and open without digging through dozens of lookalike tool pages.</p>
         </div>
       </div>
     </section>
@@ -194,32 +240,48 @@ const primaryFeatures = featurePages.filter((page) => [
     </section>
 
     <section class="section">
-      <h2 class="section-title">What LocalPDF is and what it is not</h2>
+      <h2 class="section-title">A better fit for sensitive and practical PDF work</h2>
       <div class="card-grid comparison-grid">
         <div class="card">
-          <h3>What it is</h3>
+          <h3>What you get</h3>
           <ul class="bullet-list">
             <li>A PDF app built around core document workflows</li>
             <li>A privacy-first product for users who want processing closer to the file</li>
-            <li>A compact landing architecture with clear routes into the app</li>
+            <li>Clear routes into editing, merging, OCR, compression, signing, splitting, and conversion</li>
           </ul>
         </div>
         <div class="card">
-          <h3>What it is not</h3>
+          <h3>What you avoid</h3>
           <ul class="bullet-list">
-            <li>Not a maze of one-purpose pages pretending to be different products</li>
-            <li>Not a decorative “privacy” brand without a usable app behind it</li>
-            <li>Not a workflow that starts by assuming every file should be uploaded first</li>
+            <li>No maze of disconnected one-purpose tool pages</li>
+            <li>No privacy messaging without a usable product behind it</li>
+            <li>No assumption that every file should be uploaded first</li>
           </ul>
         </div>
         <div class="card">
-          <h3>What a strong landing must prove</h3>
+          <h3>Why people choose it</h3>
           <ul class="bullet-list">
-            <li>The app is real and central to the experience</li>
-            <li>The trust story is specific, not theatrical</li>
-            <li>The next step is clear before the user reaches the fold</li>
+            <li>The app is central to the experience</li>
+            <li>The trust story is concrete and easy to verify</li>
+            <li>The next step is clear before you have to commit</li>
           </ul>
         </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2 class="section-title">Popular guides before you open the app</h2>
+      <p class="section-intro">
+        Start with a guide if you want to compare approaches first, then move into LocalPDF when the workflow is clear.
+      </p>
+      <div class="card-grid feature-grid">
+        {popularGuides.map((guide) => (
+          <a class="feature-card" href={guide.href}>
+            <span class="feature-label">Guide</span>
+            <h3>{guide.title}</h3>
+            <p>{guide.description}</p>
+          </a>
+        ))}
       </div>
     </section>
 
@@ -231,15 +293,15 @@ const primaryFeatures = featurePages.filter((page) => [
       <div class="faq-list">
         <div class="faq-item">
           <strong>Do I have to upload my PDF first?</strong>
-          <p>No. The product direction is centered on local-first handling for practical PDF jobs.</p>
+          <p>No. LocalPDF is built around local-first handling for practical PDF work.</p>
         </div>
         <div class="faq-item">
           <strong>What jobs does LocalPDF actually cover?</strong>
-          <p>Edit, merge, OCR, compress, split, sign, and conversion workflows are the current core.</p>
+          <p>Edit, merge, OCR, compress, split, sign, and conversion workflows are the current core jobs.</p>
         </div>
         <div class="faq-item">
           <strong>Where should I verify the trust model?</strong>
-          <p>Security and FAQ are first-class pages because trust is part of the product decision, not footer clutter.</p>
+          <p>Start with Security and FAQ. They explain how LocalPDF handles local processing and privacy in practical terms.</p>
         </div>
       </div>
     </section>
@@ -249,8 +311,8 @@ const primaryFeatures = featurePages.filter((page) => [
         <span class="eyebrow">Next step</span>
         <h2 class="section-title">Open the app, then judge the workflow directly</h2>
         <p class="section-intro">
-          The landing only needs to do one job well: explain why LocalPDF is worth opening for practical PDF work
-          that should stay closer to the user and the file.
+          If LocalPDF is the right fit, the value is already clear: practical PDF work, a faster path
+          to the result, and local-first handling for important documents.
         </p>
       </div>
       <div class="cta-row">

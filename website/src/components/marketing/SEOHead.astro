@@ -28,6 +28,8 @@ const schemaItems = schema ? (Array.isArray(schema) ? schema : [schema]) : [];
 <title>{title}</title>
 <meta name="description" content={description} />
 <meta name="robots" content={robots} />
+<meta name="application-name" content="LocalPDF" />
+<meta name="apple-mobile-web-app-title" content="LocalPDF" />
 <link rel="canonical" href={canonical} />
 
 <meta property="og:type" content={type} />
@@ -48,10 +50,6 @@ const schemaItems = schema ? (Array.isArray(schema) ? schema : [schema]) : [];
 <link rel="icon" type="image/png" sizes="16x16" href="/logos/localpdf-favicon-16x16.png" />
 <link rel="icon" type="image/png" sizes="32x32" href="/logos/localpdf-header-32x32.png" />
 <link rel="apple-touch-icon" sizes="180x180" href="/logos/localpdf-apple-180x180.png" />
-
-<link rel="preconnect" href="https://fonts.googleapis.com" />
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Fraunces:opsz,wght@9..144,600;9..144,700&display=swap" rel="stylesheet" />
 
 {schemaItems.map((item) => (
   <script type="application/ld+json" set:html={JSON.stringify(item)} />

@@ -5,6 +5,11 @@ const navItems = [
   { href: '/features/edit-pdf', label: 'Edit' },
   { href: '/features/merge-pdf', label: 'Merge' },
   { href: '/features/ocr-pdf', label: 'OCR' },
+  { href: '/features/compress-pdf', label: 'Compress' },
+  { href: '/features/split-pdf', label: 'Split' },
+  { href: '/features/sign-pdf', label: 'Sign' },
+  { href: '/features/convert-pdf', label: 'Convert' },
+  { href: '/blog', label: 'Blog' },
   { href: '/security', label: 'Security' },
   { href: '/faq', label: 'FAQ' },
 ];
@@ -106,17 +111,26 @@ const appUrl = getAppUrl();
   }
 
   @media (max-width: 720px) {
-    .nav {
-      display: none;
-    }
-
     .site-header {
       padding: 12px 12px 0;
     }
 
     .header-shell {
       border-radius: 16px;
-      justify-content: space-between;
+      justify-content: center;
+    }
+
+    .nav {
+      width: 100%;
+      flex-wrap: nowrap;
+      justify-content: flex-start;
+      overflow-x: auto;
+      padding-bottom: 2px;
+      scrollbar-width: none;
+    }
+
+    .nav::-webkit-scrollbar {
+      display: none;
     }
   }
 </style>
