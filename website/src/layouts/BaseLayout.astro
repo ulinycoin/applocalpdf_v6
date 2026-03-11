@@ -16,7 +16,7 @@ interface Props {
 const { title, description, image, canonical, keywords, lang = 'en', noindex = true } = Astro.props;
 const currentUrl = canonical || Astro.url.href;
 const appUrl = getAppUrl();
-const siteName = 'LocalPDF Reference';
+const siteName = 'LocalPDF';
 const defaultKeywords = "PDF tools, merge PDF, split PDF, compress PDF, edit PDF, free PDF editor, online PDF, privacy PDF, client-side PDF";
 const ogImage = image || 'https://localpdf.online/logos/localpdf-social-1200x630.png';
 
@@ -24,7 +24,7 @@ const ogImage = image || 'https://localpdf.online/logos/localpdf-social-1200x630
 const softwareSchema = {
   "@context": "https://schema.org",
   "@type": "SoftwareApplication",
-  "name": "LocalPDF Sanctuary",
+  "name": "LocalPDF",
   "operatingSystem": "Any",
   "applicationCategory": "BusinessApplication",
   "url": currentUrl,
@@ -87,25 +87,25 @@ const footerLabels = {
     product: 'Product', edit: 'Edit PDF', merge: 'Merge PDF', ocr: 'OCR PDF', convert: 'Convert PDF',
     trust: 'Trust', faq: 'FAQ', security: 'Security', privacy: 'Privacy', terms: 'Terms',
     company: 'Company', about: 'About', open: 'Open LocalPDF',
-    copyright: '© 2025 LocalPDF. Legacy marketing pages are being consolidated into a smaller product architecture.'
+    copyright: '© 2026 LocalPDF. Private PDF workflows with a local-first product surface.'
   },
   de: {
     product: 'Product', edit: 'Edit PDF', merge: 'Merge PDF', ocr: 'OCR PDF', convert: 'Convert PDF',
     trust: 'Trust', faq: 'FAQ', security: 'Security', privacy: 'Privacy', terms: 'Terms',
     company: 'Company', about: 'About', open: 'Open LocalPDF',
-    copyright: '© 2025 LocalPDF. Legacy marketing pages are being consolidated into a smaller product architecture.'
+    copyright: '© 2026 LocalPDF. Private PDF workflows with a local-first product surface.'
   },
   ja: {
     product: 'Product', edit: 'Edit PDF', merge: 'Merge PDF', ocr: 'OCR PDF', convert: 'Convert PDF',
     trust: 'Trust', faq: 'FAQ', security: 'Security', privacy: 'Privacy', terms: 'Terms',
     company: 'Company', about: 'About', open: 'Open LocalPDF',
-    copyright: '© 2025 LocalPDF. Legacy marketing pages are being consolidated into a smaller product architecture.'
+    copyright: '© 2026 LocalPDF. Private PDF workflows with a local-first product surface.'
   }
 }[lang] || { 
   product: 'Product', edit: 'Edit PDF', merge: 'Merge PDF', ocr: 'OCR PDF', convert: 'Convert PDF',
   trust: 'Trust', faq: 'FAQ', security: 'Security', privacy: 'Privacy', terms: 'Terms',
   company: 'Company', about: 'About', open: 'Open LocalPDF',
-  copyright: '© 2025 LocalPDF. Legacy marketing pages are being consolidated into a smaller product architecture.'
+  copyright: '© 2026 LocalPDF. Private PDF workflows with a local-first product surface.'
 };
 
 ---
@@ -221,7 +221,7 @@ const footerLabels = {
     }
 
 
-    /* Footer - Sanctuary Modern */
+    /* Footer */
     footer {
       padding: 80px 7vw 40px;
       background: #000000;
@@ -332,17 +332,11 @@ const footerLabels = {
           <strong>{footerLabels.company}</strong>
           <a href="/about">{footerLabels.about}</a>
           <a href={appUrl}>{footerLabels.open}</a>
-          <a href="https://github.com/ulinycoin/clientpdf-pro" target="_blank" rel="noopener noreferrer">GitHub</a>
         </div>
       </div>
       
       <div class="footer-bottom">
         <div class="social-links">
-          <a href="https://github.com/ulinycoin/clientpdf-pro" target="_blank" rel="noopener noreferrer" class="social-link" aria-label="GitHub">
-            <svg viewBox="0 0 24 24" fill="currentColor" style="width: 24px; height: 24px;">
-              <path d="M12,2A10,10 0 0,0 2,12C2,16.42 4.87,20.17 8.84,21.5C9.34,21.58 9.5,21.27 9.5,21C9.5,20.77 9.5,20.14 9.5,19.31C6.73,19.91 6.14,17.97 6.14,17.97C5.68,16.81 5.03,16.5 5.03,16.5C4.12,15.88 5.1,15.9 5.1,15.9C6.1,15.97 6.63,16.93 6.63,16.93C7.5,18.45 8.97,18 9.54,17.76C9.63,17.11 9.89,16.67 10.17,16.42C7.95,16.17 5.62,15.31 5.62,11.5C5.62,10.39 6,9.5 6.65,8.79C6.55,8.54 6.2,7.5 6.75,6.15C6.75,6.15 7.59,5.88 9.5,7.17C10.29,6.95 11.15,6.84 12,6.84C12.85,6.84 13.71,6.95 14.5,7.17C16.41,5.88 17.25,6.15 17.25,6.15C17.8,7.5 17.45,8.54 17.35,8.79C18,9.5 18.38,10.39 18.38,11.5C18.38,15.32 16.04,16.16 13.81,16.41C14.17,16.72 14.5,17.33 14.5,18.26C14.5,19.6 14.5,20.68 14.5,21C14.5,21.27 14.66,21.59 15.17,21.5C19.14,20.16 22,16.42 22,12A10,10 0 0,0 12,2Z" />
-            </svg>
-          </a>
           <a href="https://x.com/LocalPDF" target="_blank" rel="noopener noreferrer" class="social-link" aria-label="Twitter/X">
             <svg viewBox="0 0 24 24" fill="currentColor" style="width: 20px; height: 20px;">
               <path d="M18.901 1.153h3.68l-8.04 9.19L24 22.846h-7.406l-5.8-7.584-6.638 7.584H.474l8.6-9.83L0 1.154h7.594l5.243 6.932ZM17.61 20.644h2.039L6.486 3.24H4.298Z"/>

@@ -151,7 +151,7 @@ export function ToolSidebar({ collapsed, onToggleCollapsed }: ToolSidebarProps) 
     <>
       <div className="brand-header">
         <div className="brand-main">
-          <div className="brand-name">{collapsed ? 'LP' : 'LocalPDF V6'}</div>
+          <div className="brand-name">{collapsed ? 'LP' : 'LocalPDF'}</div>
           <div className="brand-tagline">Worker-native toolkit</div>
         </div>
         <button

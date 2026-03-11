@@ -1,10 +1,14 @@
-export function getAppUrl(hash?: string) {
-  const configuredBase = import.meta.env.PUBLIC_APP_URL?.trim();
-  const base = configuredBase || (import.meta.env.DEV ? 'http://127.0.0.1:3000/app' : '/app');
+import { APP_BASE_PATH, buildAppPath, getAppOriginUrl, resolveAppRoute } from '../../../shared/app-routes';
 
-  if (!hash) {
-    return base;
+export function getAppUrl(target?: string) {
+  const configuredBase = import.meta.env.PUBLIC_APP_URL?.trim();
+  if (configuredBase) {
+    const base = configuredBase.endsWith('/') ? configuredBase.slice(0, -1) : configuredBase;
+    if (base.endsWith(APP_BASE_PATH)) {
+      return `${base}${resolveAppRoute(target)}`;
+    }
+    return `${base}${buildAppPath(target)}`;
   }
 
-  return `${base}#${hash}`;
+  return import.meta.env.DEV ? getAppOriginUrl(target) : buildAppPath(target);
 }

@@ -1,8 +1,16 @@
 node_modules
 .DS_Store
 dist
+website/dist
 coverage
 .vite
 playwright-report
 test-results
+test-output
+.playwright-cli
+.astro
+.vercel
+.cache
+.idea
+.vscode
 .env

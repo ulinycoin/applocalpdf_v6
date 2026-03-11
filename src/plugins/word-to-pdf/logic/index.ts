@@ -804,7 +804,7 @@ export async function runWordToPdf(
     const renderAttempt = async (profile: QualityProfile): Promise<{ blob: Blob; pageCount: number }> => {
       const doc = await PDFDocument.create();
       doc.setTitle(`${entry.getName().replace(/\.[^.]+$/, '') || 'Document'} (Converted)`);
-      doc.setCreator('LocalPDF V6');
+      doc.setCreator('LocalPDF');
       doc.setSubject(parsedOptions.pdfA ? 'Archive conversion profile (best-effort)' : 'Word to PDF conversion');
       doc.setKeywords(parsedOptions.pdfA ? ['word', 'pdf', 'pdfa', 'best-effort'] : ['word', 'pdf', 'conversion']);
 

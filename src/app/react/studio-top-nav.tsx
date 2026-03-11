@@ -1,11 +1,15 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import { useStudioStore, type PageItem, type StudioDocument, type StudioState } from '../../v6/components/Studio/studio-store';
 import { LinearIcon } from '../../v6/components/icons/linear-icon';
 import { usePlatform } from './platform-context';
 import { PipelineRunner } from '../../v6/studio/pipeline/PipelineRunner';
 import type { IPipelineRecipe } from '../../v6/studio/pipeline/types';
 
+const DEFAULT_MARKETING_SITE_URL = 'http://127.0.0.1:4321';
+
 interface StudioTopNavProps {
+  telemetryEnabled: boolean;
   onToggleTelemetry: () => void;
   telemetryOpen: boolean;
 }
@@ -30,10 +34,13 @@ function canExportAsSourceFile(pages: PageItem[]): { fileId: string } | null {
   return { fileId: sourceFileId };
 }
 
-export function StudioTopNav({ onToggleTelemetry, telemetryOpen }: StudioTopNavProps) {
+export function StudioTopNav({ telemetryEnabled, onToggleTelemetry, telemetryOpen }: StudioTopNavProps) {
+  const location = useLocation();
   const { runtime } = usePlatform();
   const [deleteArmedDocId, setDeleteArmedDocId] = useState<string | null>(null);
   const documents = useStudioStore((s: StudioState) => s.documents);
+  const workspaceVersion = useStudioStore((s: StudioState) => s.workspaceVersion);
+  const lastExportedVersion = useStudioStore((s: StudioState) => s.lastExportedVersion);
   const activeDocumentId = useStudioStore((s: StudioState) => s.activeDocumentId);
   const addDocument = useStudioStore((s: StudioState) => s.addDocument);
   const removeDocument = useStudioStore((s: StudioState) => s.removeDocument);
@@ -47,6 +54,11 @@ export function StudioTopNav({ onToggleTelemetry, telemetryOpen }: StudioTopNavP
     [activeDocumentId, documents],
   );
   const hasActivePages = (activeDocument?.pages.length ?? 0) > 0;
+  const hasWorkspaceChanges = documents.some((doc: StudioDocument) => Boolean(doc.isModified))
+    || workspaceVersion !== lastExportedVersion;
+  const marketingSiteUrl = import.meta.env.DEV
+    ? (import.meta.env.VITE_MARKETING_SITE_URL?.trim() || DEFAULT_MARKETING_SITE_URL)
+    : '/';
   const deleteButtonCopy = activeDocument && deleteArmedDocId === activeDocument.id
     ? 'Confirm Delete'
     : 'Delete Space';
@@ -157,10 +169,19 @@ export function StudioTopNav({ onToggleTelemetry, telemetryOpen }: StudioTopNavP
     }, 50);
   };
 
+  const handleBackToSite = (): void => {
+    const leavingEditWorkspace = location.pathname === '/studio/edit';
+    const shouldConfirm = hasWorkspaceChanges || leavingEditWorkspace;
+    if (shouldConfirm && !window.confirm('Leave LocalPDF and return to the website? Unsaved changes may be lost.')) {
+      return;
+    }
+    window.location.assign(marketingSiteUrl);
+  };
+
   return (
     <header className="studio-top-nav" aria-label="Studio top navigation">
       <div className="studio-top-nav-left">
-        <a href="/" className="studio-logo">
+        <a href={marketingSiteUrl} className="studio-logo">
           <div className="studio-logo-text">
             <div className="studio-logo-title">LocalPDF</div>
             <div className="studio-logo-subtitle">Studio</div>
@@ -171,6 +192,14 @@ export function StudioTopNav({ onToggleTelemetry, telemetryOpen }: StudioTopNavP
       <div className="studio-top-nav-center" aria-live="polite" />
 
       <div className="studio-top-nav-right">
+        <button
+          type="button"
+          className="studio-tab-btn"
+          onClick={handleBackToSite}
+          title="Website"
+        >
+          <span>Website</span>
+        </button>
         <button
           type="button"
           className="studio-tab-btn"
@@ -198,15 +227,17 @@ export function StudioTopNav({ onToggleTelemetry, telemetryOpen }: StudioTopNavP
           <LinearIcon name="download" className="linear-icon" />
           <span>Download</span>
         </button>
-        <button
-          type="button"
-          className="studio-tab-btn"
-          onClick={onToggleTelemetry}
-          aria-expanded={telemetryOpen}
-        >
-          <LinearIcon name={telemetryOpen ? 'chevron-up' : 'chevron-down'} className="linear-icon" />
-          <span>Telemetry</span>
-        </button>
+        {telemetryEnabled && (
+          <button
+            type="button"
+            className="studio-tab-btn"
+            onClick={onToggleTelemetry}
+            aria-expanded={telemetryOpen}
+          >
+            <LinearIcon name={telemetryOpen ? 'chevron-up' : 'chevron-down'} className="linear-icon" />
+            <span>Telemetry</span>
+          </button>
+        )}
       </div>
     </header >
   );

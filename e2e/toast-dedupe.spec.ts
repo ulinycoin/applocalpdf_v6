@@ -3,7 +3,7 @@ import { expect, test } from '@playwright/test';
 test.describe('UX Toast Dedupe', () => {
   test('deduplicates repeated error toasts and emits dedupe telemetry', async ({ page }) => {
     await page.goto('/');
-    await expect(page.getByText('LocalPDF V6')).toBeVisible();
+    await expect(page.getByText('LocalPDF')).toBeVisible();
 
     await page.evaluate(() => {
       const api = (window as any).__LOCALPDF_V6_TEST_API;

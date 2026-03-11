@@ -81,7 +81,7 @@ async function runWithNoFilesRecovery(
   await runButton.click();
 }
 
-test.describe('LocalPDF V6 Smoke (V6 Wizard)', () => {
+test.describe('LocalPDF Smoke (Wizard)', () => {
   test('rotate-pdf: upload -> config -> processing -> result', async ({ page }) => {
     const dummyPdfPath = await createDummyPdf('rotate');
     try {

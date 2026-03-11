@@ -148,16 +148,6 @@
       "statusCode": 308
     },
     {
-      "source": "/blog",
-      "destination": "/faq",
-      "statusCode": 308
-    },
-    {
-      "source": "/blog/:slug",
-      "destination": "/faq",
-      "statusCode": 308
-    },
-    {
       "source": "/(de|ja)",
       "destination": "/",
       "statusCode": 308
@@ -214,6 +204,10 @@
     },
     {
       "source": "/app",
+      "destination": "/app/index.html"
+    },
+    {
+      "source": "/app/:path*",
       "destination": "/app/index.html"
     },
     {

@@ -136,21 +136,13 @@ const popularGuides = [
               src="/screenshots/v6-workspace-1.png" 
               alt="LocalPDF Studio Workspace V6" 
               class="app-screenshot"
-              loading="lazy"
+              loading="eager"
+              decoding="async"
               width="1800"
               height="1125"
             />
           </div>
-          <div class="app-screenshot-wrapper">
-            <img 
-              src="/screenshots/v6-workspace-2.png" 
-              alt="LocalPDF Studio Editor V6" 
-              class="app-screenshot"
-              loading="lazy"
-              width="1800"
-              height="1125"
-            />
-          </div>
+          <p class="panel-caption">Studio keeps document work in one local-first workspace instead of splitting it across utility pages.</p>
         </div>
       </div>
     </section>
@@ -330,10 +322,6 @@ const popularGuides = [
     </section>
   </div>
 
-  <div id="image-modal" class="image-modal" aria-hidden="true">
-    <button id="modal-close" class="modal-close" aria-label="Close image">&times;</button>
-    <img id="modal-image" src="" alt="Expanded screenshot" />
-  </div>
 </MarketingLayout>
 
 <style>
@@ -342,7 +330,7 @@ const popularGuides = [
     grid-template-columns: 1.1fr 0.9fr;
     gap: 24px;
     align-items: stretch;
-    margin-top: 28px;
+    margin-top: 12px;
   }
 
   .hero-copy {
@@ -353,8 +341,9 @@ const popularGuides = [
   }
 
   .hero h1 {
-    font-size: clamp(3.4rem, 7vw, 6.4rem);
+    font-size: clamp(2.8rem, 5.8vw, 5rem);
     max-width: 9ch;
+    line-height: 0.92;
   }
 
   .hero-text {
@@ -407,6 +396,11 @@ const popularGuides = [
     gap: 18px;
   }
 
+  .panel-caption {
+    font-size: 0.96rem;
+    color: #536674;
+  }
+
   .metric-row {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -448,71 +442,6 @@ const popularGuides = [
     object-fit: cover;
     object-position: top;
     display: block;
-    cursor: zoom-in;
-    transition: opacity 0.2s ease;
-  }
-
-  .app-screenshot-wrapper:hover .app-screenshot {
-    opacity: 0.96;
-  }
-
-  /* Image Modal Styles */
-  .image-modal {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100vw;
-    height: 100vh;
-    background: rgba(10, 15, 20, 0.9);
-    z-index: 9999;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    opacity: 0;
-    visibility: hidden;
-    transition: all 0.3s ease;
-    padding: 40px;
-  }
-
-  .image-modal.open {
-    opacity: 1;
-    visibility: visible;
-  }
-
-  .image-modal img {
-    max-width: 100%;
-    max-height: 100%;
-    object-fit: contain;
-    border-radius: 12px;
-    box-shadow: 0 24px 64px rgba(0, 0, 0, 0.4);
-    transform: scale(0.95);
-    transition: transform 0.3s cubic-bezier(0.2, 0, 0.2, 1);
-  }
-
-  .image-modal.open img {
-    transform: scale(1);
-  }
-
-  .modal-close {
-    position: absolute;
-    top: 24px;
-    right: 24px;
-    background: rgba(255, 255, 255, 0.1);
-    border: none;
-    color: white;
-    font-size: 2rem;
-    width: 48px;
-    height: 48px;
-    border-radius: 50%;
-    cursor: pointer;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    transition: background 0.2s ease;
-  }
-
-  .modal-close:hover {
-    background: rgba(255, 255, 255, 0.2);
   }
 
   .trust-strip {
@@ -665,56 +594,12 @@ const popularGuides = [
       margin-top: 16px;
     }
 
+    .hero h1 {
+      font-size: clamp(2.4rem, 11vw, 3.6rem);
+    }
+
     .metric-row {
       grid-template-columns: 1fr;
     }
   }
 </style>
-
-<script>
-  const modal = document.getElementById('image-modal');
-  const modalImg = document.getElementById('modal-image');
-  const closeBtn = document.getElementById('modal-close');
-  const screenshots = document.querySelectorAll('.app-screenshot');
-
-  screenshots.forEach((img) => {
-    img.addEventListener('click', (e) => {
-      const src = e.target.src;
-      if (modalImg && src && modal) {
-        modalImg.src = src;
-        modal.classList.add('open');
-        document.body.style.overflow = 'hidden'; 
-      }
-    });
-  });
-
-  const closeModal = () => {
-    if (modal) {
-      modal.classList.remove('open');
-      document.body.style.overflow = '';
-      setTimeout(() => {
-        if (modalImg && !modal.classList.contains('open')) {
-          modalImg.src = '';
-        }
-      }, 300);
-    }
-  };
-
-  if (closeBtn) {
-    closeBtn.addEventListener('click', closeModal);
-  }
-  
-  if (modal) {
-    modal.addEventListener('click', (e) => {
-      if (e.target === modal) {
-        closeModal();
-      }
-    });
-  }
-
-  document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && modal && modal.classList.contains('open')) {
-      closeModal();
-    }
-  });
-</script>
