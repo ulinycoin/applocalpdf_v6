@@ -119,29 +119,25 @@ const popularGuides = [
               <strong>Keep PDF work close to the file</strong>
             </div>
           </div>
-          <div class="workspace-preview" aria-hidden="true">
-            <div class="preview-rail">
-              <span>Edit</span>
-              <span>Merge</span>
-              <span>OCR</span>
-              <span>Convert</span>
-            </div>
-            <div class="preview-canvas">
-              <div class="canvas-sheet">
-                <div class="canvas-status-row">
-                  <span>Local file added</span>
-                  <span>Ready to export</span>
-                </div>
-                <div class="canvas-line wide"></div>
-                <div class="canvas-line"></div>
-                <div class="canvas-line short"></div>
-                <div class="canvas-card-row">
-                  <div class="canvas-card mint"></div>
-                  <div class="canvas-card sand"></div>
-                </div>
-                <div class="canvas-line wide"></div>
-              </div>
-            </div>
+          <div class="app-screenshot-wrapper">
+            <img 
+              src="/screenshots/v6-workspace-1.png" 
+              alt="LocalPDF Studio Workspace V6" 
+              class="app-screenshot"
+              loading="lazy"
+              width="1800"
+              height="1125"
+            />
+          </div>
+          <div class="app-screenshot-wrapper">
+            <img 
+              src="/screenshots/v6-workspace-2.png" 
+              alt="LocalPDF Studio Editor V6" 
+              class="app-screenshot"
+              loading="lazy"
+              width="1800"
+              height="1125"
+            />
           </div>
         </div>
       </div>
@@ -321,6 +317,11 @@ const popularGuides = [
       </div>
     </section>
   </div>
+
+  <div id="image-modal" class="image-modal" aria-hidden="true">
+    <button id="modal-close" class="modal-close" aria-label="Close image">&times;</button>
+    <img id="modal-image" src="" alt="Expanded screenshot" />
+  </div>
 </MarketingLayout>
 
 <style>
@@ -416,108 +417,91 @@ const popularGuides = [
     color: var(--text);
   }
 
-  .panel-body img {
-    display: none;
-  }
 
-  .workspace-preview {
-    display: grid;
-    grid-template-columns: 118px 1fr;
-    gap: 14px;
-    min-height: 290px;
-  }
-
-  .preview-rail {
-    display: grid;
-    align-content: start;
-    gap: 10px;
-    padding: 14px;
-    border-radius: 18px;
-    background: rgba(255, 253, 249, 0.8);
-    border: 1px solid var(--line);
-  }
-
-  .preview-rail span {
-    display: inline-flex;
-    align-items: center;
-    min-height: 36px;
-    padding: 0 12px;
+  .app-screenshot-wrapper {
+    margin-top: 4px;
     border-radius: 12px;
-    background: rgba(217, 235, 225, 0.6);
-    color: #27404c;
-    font-size: 0.88rem;
-    font-weight: 700;
-  }
-
-  .preview-canvas {
-    padding: 14px;
-    border-radius: 18px;
-    background: rgba(255, 253, 249, 0.8);
-    border: 1px solid var(--line);
-  }
-
-  .canvas-sheet {
-    height: 100%;
-    min-height: 248px;
-    padding: 18px;
-    border-radius: 16px;
-    background: linear-gradient(180deg, #fffdf9 0%, #fcf9f3 100%);
-    border: 1px solid rgba(20, 32, 40, 0.08);
-  }
-
-  .canvas-status-row {
+    overflow: hidden;
+    border: 1px solid rgba(24, 32, 40, 0.08);
+    box-shadow: 0 12px 32px rgba(26, 34, 39, 0.08);
+    background: #fff;
     display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    margin-bottom: 14px;
+    justify-content: center;
+    align-items: flex-start;
   }
 
-  .canvas-status-row span {
-    display: inline-flex;
+  .app-screenshot {
+    width: 100%;
+    height: auto;
+    object-fit: cover;
+    object-position: top;
+    display: block;
+    cursor: zoom-in;
+    transition: filter 0.2s ease;
+  }
+
+  .app-screenshot-wrapper:hover .app-screenshot {
+    filter: brightness(0.95);
+  }
+
+  /* Image Modal Styles */
+  .image-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(10, 15, 20, 0.9);
+    backdrop-filter: blur(8px);
+    z-index: 9999;
+    display: flex;
+    justify-content: center;
     align-items: center;
-    min-height: 28px;
-    padding: 0 10px;
-    border-radius: 999px;
-    background: rgba(217, 235, 225, 0.9);
-    color: #244153;
-    font-size: 0.74rem;
-    font-weight: 800;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s ease;
+    padding: 40px;
   }
 
-  .canvas-line {
-    height: 10px;
-    margin-bottom: 12px;
-    border-radius: 999px;
-    background: rgba(20, 32, 40, 0.12);
+  .image-modal.open {
+    opacity: 1;
+    visibility: visible;
   }
 
-  .canvas-line.wide {
-    width: 88%;
+  .image-modal img {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+    border-radius: 12px;
+    box-shadow: 0 24px 64px rgba(0, 0, 0, 0.4);
+    transform: scale(0.95);
+    transition: transform 0.3s cubic-bezier(0.2, 0, 0.2, 1);
   }
 
-  .canvas-line.short {
-    width: 48%;
+  .image-modal.open img {
+    transform: scale(1);
   }
 
-  .canvas-card-row {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 12px;
-    margin: 18px 0;
+  .modal-close {
+    position: absolute;
+    top: 24px;
+    right: 24px;
+    background: rgba(255, 255, 255, 0.1);
+    border: none;
+    color: white;
+    font-size: 2rem;
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    transition: background 0.2s ease;
   }
 
-  .canvas-card {
-    min-height: 92px;
-    border-radius: 14px;
-    border: 1px solid rgba(20, 32, 40, 0.08);
-  }
-
-  .canvas-card.mint {
-    background: rgba(217, 235, 225, 0.8);
-  }
-
-  .canvas-card.sand {
-    background: rgba(243, 201, 146, 0.55);
+  .modal-close:hover {
+    background: rgba(255, 255, 255, 0.2);
   }
 
   .trust-strip {
@@ -673,13 +657,53 @@ const popularGuides = [
     .metric-row {
       grid-template-columns: 1fr;
     }
-
-    .workspace-preview {
-      grid-template-columns: 1fr;
-    }
-
-    .preview-rail {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
   }
 </style>
+
+<script>
+  const modal = document.getElementById('image-modal');
+  const modalImg = document.getElementById('modal-image');
+  const closeBtn = document.getElementById('modal-close');
+  const screenshots = document.querySelectorAll('.app-screenshot');
+
+  screenshots.forEach((img) => {
+    img.addEventListener('click', (e) => {
+      const src = e.target.src;
+      if (modalImg && src && modal) {
+        modalImg.src = src;
+        modal.classList.add('open');
+        document.body.style.overflow = 'hidden'; 
+      }
+    });
+  });
+
+  const closeModal = () => {
+    if (modal) {
+      modal.classList.remove('open');
+      document.body.style.overflow = '';
+      setTimeout(() => {
+        if (modalImg && !modal.classList.contains('open')) {
+          modalImg.src = '';
+        }
+      }, 300);
+    }
+  };
+
+  if (closeBtn) {
+    closeBtn.addEventListener('click', closeModal);
+  }
+  
+  if (modal) {
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) {
+        closeModal();
+      }
+    });
+  }
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && modal && modal.classList.contains('open')) {
+      closeModal();
+    }
+  });
+</script>

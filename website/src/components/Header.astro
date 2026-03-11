@@ -2,14 +2,34 @@
 import LanguagePicker from './LanguagePicker.astro';
 import { getAppUrl } from '../utils/app-url';
 
-const { lang = 'en' } = Astro.props; // Receive lang prop from Layout -> Header
+const { lang = 'en' } = Astro.props;
 const langPrefix = lang === 'en' ? '' : `/${lang}`;
 
 const navLabels = {
-  en: { edit: 'Edit', merge: 'Merge', ocr: 'OCR', security: 'Security', faq: 'FAQ', about: 'About', open: 'Open LocalPDF' },
-  de: { edit: 'Edit', merge: 'Merge', ocr: 'OCR', security: 'Security', faq: 'FAQ', about: 'About', open: 'Open LocalPDF' },
-  ja: { edit: 'Edit', merge: 'Merge', ocr: 'OCR', security: 'Security', faq: 'FAQ', about: 'About', open: 'Open LocalPDF' }
-}[lang] || { edit: 'Edit', merge: 'Merge', ocr: 'OCR', security: 'Security', faq: 'FAQ', about: 'About', open: 'Open LocalPDF' };
+  en: { 
+    studio: 'Studio', edit: 'Edit PDF', merge: 'Merge PDF', split: 'Split PDF', sign: 'Sign PDF',
+    convert: 'Convert', ocr: 'OCR PDF', compress: 'Compress PDF', toPdf: 'Convert to PDF',
+    resources: 'Resources', security: 'Security', faq: 'FAQ', about: 'About', blog: 'Blog',
+    open: 'Open LocalPDF' 
+  },
+  de: { 
+    studio: 'Studio', edit: 'Edit PDF', merge: 'Merge PDF', split: 'Split PDF', sign: 'Sign PDF',
+    convert: 'Convert', ocr: 'OCR PDF', compress: 'Compress PDF', toPdf: 'Convert to PDF',
+    resources: 'Resources', security: 'Security', faq: 'FAQ', about: 'About', blog: 'Blog',
+    open: 'Open LocalPDF' 
+  },
+  ja: { 
+    studio: 'Studio', edit: 'Edit PDF', merge: 'Merge PDF', split: 'Split PDF', sign: 'Sign PDF',
+    convert: 'Convert', ocr: 'OCR PDF', compress: 'Compress PDF', toPdf: 'Convert to PDF',
+    resources: 'Resources', security: 'Security', faq: 'FAQ', about: 'About', blog: 'Blog',
+    open: 'Open LocalPDF' 
+  }
+}[lang] || { 
+  studio: 'Studio', edit: 'Edit PDF', merge: 'Merge PDF', split: 'Split PDF', sign: 'Sign PDF',
+  convert: 'Convert', ocr: 'OCR PDF', compress: 'Compress PDF', toPdf: 'Convert to PDF',
+  resources: 'Resources', security: 'Security', faq: 'FAQ', about: 'About', blog: 'Blog',
+  open: 'Open LocalPDF' 
+};
 const appUrl = getAppUrl();
 ---
 <header>
@@ -21,16 +41,46 @@ const appUrl = getAppUrl();
     </div>
   </a>
   <nav>
-    <a href="/features/edit-pdf">{navLabels.edit}</a>
-    <a href="/features/merge-pdf">{navLabels.merge}</a>
-    <a href="/features/ocr-pdf">{navLabels.ocr}</a>
-    <a href="/security">{navLabels.security}</a>
-    <a href="/faq">{navLabels.faq}</a>
-    <a href="/about">{navLabels.about}</a>
+    <a href={appUrl} class="nav-link main-link">{navLabels.studio}</a>
+    
+    <div class="dropdown" tabindex="0">
+      <span class="nav-link dropdown-toggle">
+        {navLabels.edit} <span class="caret">▾</span>
+      </span>
+      <div class="dropdown-menu">
+        <a href="/features/edit-pdf" class="dropdown-item">{navLabels.edit}</a>
+        <a href="/features/merge-pdf" class="dropdown-item">{navLabels.merge}</a>
+        <a href="/features/split-pdf" class="dropdown-item">{navLabels.split}</a>
+        <a href="/features/sign-pdf" class="dropdown-item">{navLabels.sign}</a>
+      </div>
+    </div>
+
+    <div class="dropdown" tabindex="0">
+      <span class="nav-link dropdown-toggle">
+        {navLabels.convert} <span class="caret">▾</span>
+      </span>
+      <div class="dropdown-menu">
+        <a href="/features/ocr-pdf" class="dropdown-item">{navLabels.ocr}</a>
+        <a href="/features/compress-pdf" class="dropdown-item">{navLabels.compress}</a>
+        <a href="/features/convert-pdf" class="dropdown-item">{navLabels.toPdf}</a>
+      </div>
+    </div>
+
+    <div class="dropdown" tabindex="0">
+      <span class="nav-link dropdown-toggle">
+        {navLabels.resources} <span class="caret">▾</span>
+      </span>
+      <div class="dropdown-menu">
+        <a href="/blog" class="dropdown-item">{navLabels.blog}</a>
+        <a href="/security" class="dropdown-item">{navLabels.security}</a>
+        <a href="/faq" class="dropdown-item">{navLabels.faq}</a>
+        <a href="/about" class="dropdown-item">{navLabels.about}</a>
+      </div>
+    </div>
+
     <LanguagePicker lang={lang} />
   </nav>
   
-  <!-- Mobile actions (Visible only on mobile) -->
   <div class="mobile-actions">
     <a href={appUrl} class="mobile-extension-cta">
       {navLabels.open}
@@ -54,7 +104,7 @@ const appUrl = getAppUrl();
     backdrop-filter: blur(16px);
     z-index: 1000;
     border-bottom: 1px solid var(--glass-border);
-    gap: 20px; /* added gap for handling mobile layout better */
+    gap: 20px;
   }
 
   .logo {
@@ -115,27 +165,113 @@ const appUrl = getAppUrl();
     border: 1px solid rgba(255, 255, 255, 0.2);
     white-space: nowrap;
   }
-  nav a {
-    color: var(--text-muted);
-    text-decoration: none;
+
+  .nav-link {
+    color: var(--text-muted) !important;
+    text-decoration: none !important;
     font-weight: 500;
     font-size: 0.9rem;
     transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-    padding: 6px 0;
+    padding: 6px 8px;
     position: relative;
+    background: transparent !important;
+    border: none !important;
+    outline: none !important;
+    cursor: pointer;
+    font-family: inherit;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    border-radius: 8px;
   }
-  nav a::after {
+
+  .main-link::after {
     content: '';
     position: absolute;
-    bottom: 0;
+    bottom: -4px;
     left: 0;
     width: 0;
     height: 2px;
     background: var(--accent-blue);
     transition: width 0.3s ease;
   }
-  nav a:hover { color: #fff; }
-  nav a:hover::after { width: 100%; }
+  .main-link:hover::after { width: 100%; }
+  
+  .nav-link:hover, 
+  .nav-link:focus-within,
+  .dropdown:hover .dropdown-toggle,
+  .dropdown:focus-within .dropdown-toggle { 
+    color: #fff !important; 
+    background: rgba(255, 255, 255, 0.05) !important;
+  }
+
+  .dropdown {
+    position: relative;
+    outline: none;
+  }
+
+  .caret {
+    font-size: 0.75rem;
+    transition: transform 0.2s ease;
+    display: inline-block;
+  }
+
+  .dropdown:hover .caret,
+  .dropdown:focus-within .caret {
+    transform: rotate(180deg);
+  }
+
+  .dropdown-menu {
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%) translateY(10px);
+    background: rgba(24, 24, 27, 0.95) !important;
+    backdrop-filter: blur(12px);
+    border: 1px solid var(--glass-border) !important;
+    border-radius: 12px;
+    padding: 8px;
+    min-width: 180px;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4) !important;
+    pointer-events: none;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    z-index: 2000;
+  }
+
+  .dropdown:hover .dropdown-menu,
+  .dropdown:focus-within .dropdown-menu {
+    opacity: 1;
+    visibility: visible;
+    transform: translateX(-50%) translateY(0);
+    pointer-events: auto;
+  }
+
+  .dropdown-item {
+    display: block !important;
+    padding: 8px 16px !important;
+    color: var(--text-muted) !important;
+    text-decoration: none !important;
+    font-size: 0.85rem !important;
+    font-weight: 500 !important;
+    border-radius: 8px;
+    transition: all 0.2s ease !important;
+    white-space: nowrap;
+    width: 100%;
+    box-sizing: border-box;
+    text-align: left;
+  }
+
+  .dropdown-item:hover,
+  .dropdown-item:focus-visible {
+    background: rgba(255, 255, 255, 0.08) !important;
+    color: #fff !important;
+    transform: translateX(4px);
+  }
 
   @media (max-width: 768px) {
     header { padding: 16px 5vw; }
@@ -145,3 +281,4 @@ const appUrl = getAppUrl();
     .mobile-lang-picker { display: block; }
   }
 </style>
+

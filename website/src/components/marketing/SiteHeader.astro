@@ -1,19 +1,6 @@
 ---
 import { getAppUrl } from '../../utils/app-url';
 
-const navItems = [
-  { href: '/features/edit-pdf', label: 'Edit' },
-  { href: '/features/merge-pdf', label: 'Merge' },
-  { href: '/features/ocr-pdf', label: 'OCR' },
-  { href: '/features/compress-pdf', label: 'Compress' },
-  { href: '/features/split-pdf', label: 'Split' },
-  { href: '/features/sign-pdf', label: 'Sign' },
-  { href: '/features/convert-pdf', label: 'Convert' },
-  { href: '/blog', label: 'Blog' },
-  { href: '/security', label: 'Security' },
-  { href: '/faq', label: 'FAQ' },
-];
-
 const appUrl = getAppUrl();
 ---
 
@@ -25,9 +12,41 @@ const appUrl = getAppUrl();
     </a>
 
     <nav class="nav">
-      {navItems.map((item) => (
-        <a href={item.href}>{item.label}</a>
-      ))}
+      <a href={appUrl} class="nav-link main-link">Studio</a>
+
+      <div class="dropdown" tabindex="0">
+        <span class="nav-link dropdown-toggle">
+          Edit <span class="caret">▾</span>
+        </span>
+        <div class="dropdown-menu">
+          <a href="/features/edit-pdf" class="dropdown-item">Edit PDF</a>
+          <a href="/features/merge-pdf" class="dropdown-item">Merge PDF</a>
+          <a href="/features/split-pdf" class="dropdown-item">Split PDF</a>
+          <a href="/features/sign-pdf" class="dropdown-item">Sign PDF</a>
+        </div>
+      </div>
+
+      <div class="dropdown" tabindex="0">
+        <span class="nav-link dropdown-toggle">
+          Convert <span class="caret">▾</span>
+        </span>
+        <div class="dropdown-menu">
+          <a href="/features/ocr-pdf" class="dropdown-item">OCR PDF</a>
+          <a href="/features/compress-pdf" class="dropdown-item">Compress PDF</a>
+          <a href="/features/convert-pdf" class="dropdown-item">Convert to PDF</a>
+        </div>
+      </div>
+
+      <div class="dropdown" tabindex="0">
+        <span class="nav-link dropdown-toggle">
+          Resources <span class="caret">▾</span>
+        </span>
+        <div class="dropdown-menu">
+          <a href="/blog" class="dropdown-item">Blog</a>
+          <a href="/security" class="dropdown-item">Security</a>
+          <a href="/faq" class="dropdown-item">FAQ</a>
+        </div>
+      </div>
     </nav>
 
     <a href={appUrl} class="header-cta">Open LocalPDF</a>
@@ -38,7 +57,7 @@ const appUrl = getAppUrl();
   .site-header {
     position: sticky;
     top: 0;
-    z-index: 50;
+    z-index: 1000;
     padding: 16px 20px 0;
   }
 
@@ -76,18 +95,100 @@ const appUrl = getAppUrl();
     flex-wrap: wrap;
     justify-content: center;
     gap: 18px;
+    align-items: center;
   }
 
-  .nav a {
-    color: #425361;
-    text-decoration: none;
+  .nav-link {
+    color: #425361 !important;
+    text-decoration: none !important;
     font-size: 0.95rem;
     font-weight: 600;
+    background: transparent !important;
+    border: none !important;
+    outline: none !important;
+    padding: 8px 12px;
+    margin: 0;
+    cursor: pointer;
+    font-family: inherit;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: color 0.2s ease, background-color 0.2s;
+    border-radius: 8px;
   }
 
-  .nav a:hover,
-  .nav a:focus-visible {
-    color: #142028;
+  .nav-link:hover,
+  .nav-link:focus-within,
+  .dropdown:hover .dropdown-toggle,
+  .dropdown:focus-within .dropdown-toggle {
+    color: #142028 !important;
+    background: rgba(24, 32, 40, 0.05) !important;
+  }
+
+  .dropdown {
+    position: relative;
+    outline: none;
+  }
+
+  .caret {
+    font-size: 0.75rem;
+    transition: transform 0.2s ease;
+    display: inline-block;
+  }
+
+  .dropdown:hover .caret,
+  .dropdown:focus-within .caret {
+    transform: rotate(180deg);
+  }
+
+  .dropdown-menu {
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%) translateY(10px);
+    background: #ffffff !important;
+    border: 1px solid rgba(24, 28, 32, 0.12) !important;
+    border-radius: 12px;
+    padding: 8px;
+    min-width: 180px;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 10px 40px rgba(26, 34, 39, 0.08) !important;
+    pointer-events: none;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    z-index: 2000;
+  }
+
+  .dropdown:hover .dropdown-menu,
+  .dropdown:focus-within .dropdown-menu {
+    opacity: 1;
+    visibility: visible;
+    transform: translateX(-50%) translateY(0);
+    pointer-events: auto;
+  }
+
+  .dropdown-item {
+    display: block !important;
+    padding: 10px 16px !important;
+    color: #425361 !important;
+    text-decoration: none !important;
+    font-size: 0.9rem !important;
+    font-weight: 600 !important;
+    border-radius: 8px;
+    transition: all 0.2s ease !important;
+    white-space: nowrap;
+    width: 100%;
+    box-sizing: border-box;
+    text-align: left;
+  }
+
+  .dropdown-item:hover,
+  .dropdown-item:focus-visible {
+    background: #f6f3ee !important;
+    color: #142028 !important;
   }
 
   .header-cta {
