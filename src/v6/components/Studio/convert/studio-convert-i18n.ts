@@ -7,6 +7,7 @@ export interface StudioConvertMessages {
   runOcr: string;
   runPdfToJpg: string;
   runExtractImages: string;
+  runCompressPdf: string;
   running: string;
 }
 
@@ -19,6 +20,7 @@ const EN_MESSAGES: StudioConvertMessages = {
   runOcr: 'Run OCR',
   runPdfToJpg: 'Convert to JPG',
   runExtractImages: 'Extract Images',
+  runCompressPdf: 'Compress PDF',
   running: 'Running...',
 };
 

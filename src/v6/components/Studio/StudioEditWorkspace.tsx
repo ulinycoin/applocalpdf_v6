@@ -46,6 +46,13 @@ export function StudioEditWorkspace() {
     }, [ctrl.message, ctrl.setMessage]);
 
     useEffect(() => {
+        if (!ctrl.preview) {
+            ctrl.clearEditSession();
+            ctrl.navigate('/studio');
+        }
+    }, [ctrl.clearEditSession, ctrl.navigate, ctrl.preview]);
+
+    useEffect(() => {
         const url = ctrl.preview?.page.thumbnailUrl;
         if (!url) {
             setCanvasSize({ width: 620, height: 840 });
@@ -187,19 +194,7 @@ export function StudioEditWorkspace() {
     };
 
     if (!ctrl.preview) {
-        return (
-            <section className="studio-edit-shell">
-                <div className="studio-edit-empty">
-                    <h2 className="studio-edit-empty-title">{ui.selectPageTitle}</h2>
-                    <button type="button" className="studio-edit-back-btn" onClick={() => {
-                        ctrl.clearEditSession();
-                        ctrl.navigate('/studio');
-                    }}>
-                        {ui.backToCanvas}
-                    </button>
-                </div>
-            </section>
-        );
+        return null;
     }
 
     // Calculation for canvas wrapper sizing

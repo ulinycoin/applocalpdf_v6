@@ -1,6 +1,7 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { LinearIcon } from '../../icons/linear-icon';
+import { StudioCompressPdfSettingsPanel } from './StudioCompressPdfSettingsPanel';
 import { StudioConvertToolbar } from './StudioConvertToolbar';
 import { StudioExtractImagesSettingsPanel } from './StudioExtractImagesSettingsPanel';
 import { StudioOcrSettingsPanel } from './StudioOcrSettingsPanel';
@@ -11,25 +12,30 @@ import { useStudioConvertController } from './use-studio-convert-controller';
 export function StudioConvertWorkspace() {
   const ui = useMemo(() => getStudioConvertMessages(), []);
   const ctrl = useStudioConvertController();
+  const compressSavedBytes = ctrl.compressResultSummary
+    ? Math.max(0, ctrl.compressResultSummary.inputBytes - ctrl.compressResultSummary.outputBytes)
+    : 0;
+  const compressSavedPercent = ctrl.compressResultSummary && ctrl.compressResultSummary.inputBytes > 0
+    ? Math.max(0, Math.round((compressSavedBytes / ctrl.compressResultSummary.inputBytes) * 100))
+    : 0;
+
+  useEffect(() => {
+    if (!ctrl.activeDocument || ctrl.previewPages.length === 0) {
+      ctrl.navigateBack();
+    }
+  }, [ctrl.activeDocument, ctrl.navigateBack, ctrl.previewPages.length]);
 
   if (!ctrl.activeDocument || ctrl.previewPages.length === 0) {
-    return (
-      <section className="studio-edit-shell">
-        <div className="studio-edit-empty">
-          <h2 className="studio-edit-empty-title">{ui.emptyTitle}</h2>
-          <button type="button" className="studio-edit-back-btn" onClick={ctrl.navigateBack}>
-            {ui.backToStudio}
-          </button>
-        </div>
-      </section>
-    );
+    return null;
   }
 
   const runLabel = ctrl.activeTool === 'pdf-to-jpg'
     ? ui.runPdfToJpg
     : ctrl.activeTool === 'extract-images'
       ? ui.runExtractImages
-      : ui.runOcr;
+      : ctrl.activeTool === 'compress-pdf'
+        ? ui.runCompressPdf
+        : ui.runOcr;
 
   return (
     <section className="studio-edit-shell" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
@@ -93,6 +99,12 @@ export function StudioConvertWorkspace() {
                 selectedCount={ctrl.selectedExtractImageCandidates.length}
               />
             )}
+            {ctrl.activeTool === 'compress-pdf' && (
+              <StudioCompressPdfSettingsPanel
+                settings={ctrl.compressPdfSettings}
+                onChange={ctrl.setCompressPdfSettings}
+              />
+            )}
           </div>
         )}
 
@@ -106,7 +118,11 @@ export function StudioConvertWorkspace() {
                 <button
                   key={page.pageId}
                   type="button"
-                  onClick={() => ctrl.togglePage(page.pageId)}
+                  onClick={() => {
+                    if (ctrl.activeTool !== 'compress-pdf') {
+                      ctrl.togglePage(page.pageId);
+                    }
+                  }}
                   style={{
                     width: Math.round(420 * ctrl.zoomLevel),
                     borderRadius: 12,
@@ -232,6 +248,29 @@ export function StudioConvertWorkspace() {
                       placeholder="No text content available."
                     />
                   )}
+                </div>
+              )}
+
+              {ctrl.activeTool === 'compress-pdf' && ctrl.compressResultSummary && (
+                <div className="tool-config-card" style={{ display: 'grid', gap: 16, minHeight: 220 }}>
+                  <div style={{ display: 'grid', gap: 6 }}>
+                    <h3 style={{ margin: 0 }}>Compression complete</h3>
+                    <p style={{ margin: 0, opacity: 0.8 }}>{ctrl.compressResultSummary.outputFileName}</p>
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 12 }}>
+                    <div style={{ padding: 12, borderRadius: 10, background: 'rgba(15,23,42,0.28)' }}>
+                      <div style={{ fontSize: 12, opacity: 0.75, marginBottom: 6 }}>Before</div>
+                      <strong>{ctrl.formatBytes(ctrl.compressResultSummary.inputBytes)}</strong>
+                    </div>
+                    <div style={{ padding: 12, borderRadius: 10, background: 'rgba(15,23,42,0.28)' }}>
+                      <div style={{ fontSize: 12, opacity: 0.75, marginBottom: 6 }}>After</div>
+                      <strong>{ctrl.formatBytes(ctrl.compressResultSummary.outputBytes)}</strong>
+                    </div>
+                    <div style={{ padding: 12, borderRadius: 10, background: 'rgba(14,165,233,0.14)' }}>
+                      <div style={{ fontSize: 12, opacity: 0.75, marginBottom: 6 }}>Saved</div>
+                      <strong>{ctrl.formatBytes(compressSavedBytes)} ({compressSavedPercent}%)</strong>
+                    </div>
+                  </div>
                 </div>
               )}
             </div>

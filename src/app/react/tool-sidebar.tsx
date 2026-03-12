@@ -109,29 +109,43 @@ export function ToolSidebar({ collapsed, onToggleCollapsed }: ToolSidebarProps) 
   const selectedInputIds = selectedPages.length > 0
     ? Array.from(new Set(selectedPages.map((page) => page.fileId)))
     : Array.from(new Set((activeDocument?.pages ?? []).map((page: PageItem) => page.fileId)));
-  const studioContext: StudioToolLaunchContext | undefined =
-    location.pathname === '/studio' && selectedInputIds.length > 0
+  const activeDocumentInputIds = Array.from(new Set((activeDocument?.pages ?? []).map((page: PageItem) => page.fileId)));
+  const buildToolNavState = (toolId: string): StudioToolRouteState | undefined => {
+    if (location.pathname !== '/studio') {
+      return undefined;
+    }
+
+    const useDocumentScope = toolId === 'compress-pdf';
+    const preloadedFileIds = useDocumentScope ? activeDocumentInputIds : selectedInputIds;
+    if (preloadedFileIds.length === 0) {
+      return undefined;
+    }
+
+    const studioContext: StudioToolLaunchContext = useDocumentScope
       ? {
+        mode: 'document',
+        documentId: activeDocument?.id ?? null,
+        selectedPages: [],
+      }
+      : {
         mode: selectedPages.length > 0 ? 'page-selection' : 'document',
         documentId: selectedPages.length > 0 ? (selectedPages[0]?.docId ?? null) : (activeDocument?.id ?? null),
         selectedPages,
-      }
-      : undefined;
-  const toolNavState: StudioToolRouteState | undefined =
-    studioContext
-      ? {
-        preloadedFileIds: selectedInputIds,
-        source: 'studio',
-        studioContext,
-        studioReturnContext: {
-          activeDocumentId,
-          selection,
-          interactionMode,
-          viewScale: studioViewScale,
-          viewPosition: studioViewPosition,
-        },
-      }
-      : undefined;
+      };
+
+    return {
+      preloadedFileIds,
+      source: 'studio',
+      studioContext,
+      studioReturnContext: {
+        activeDocumentId,
+        selection,
+        interactionMode,
+        viewScale: studioViewScale,
+        viewPosition: studioViewPosition,
+      },
+    };
+  };
   const orderedMenu = [...menu].sort((a, b) => {
     const aHasOrder = Object.prototype.hasOwnProperty.call(SIDEBAR_TOOL_ORDER, a.toolId);
     const bHasOrder = Object.prototype.hasOwnProperty.call(SIDEBAR_TOOL_ORDER, b.toolId);
@@ -186,7 +200,7 @@ export function ToolSidebar({ collapsed, onToggleCollapsed }: ToolSidebarProps) 
           <div key={item.toolId} className="nav-item">
             <NavLink
               to={item.href}
-              state={toolNavState}
+              state={buildToolNavState(item.toolId)}
               onClick={(event) => {
                 if (location.pathname === '/studio' && item.toolId === 'compress-pdf') {
                   event.preventDefault();

@@ -41,7 +41,7 @@ export class WebFileSystemAdapter implements IFileSystem {
     const record: StoredFileRecord = {
       id,
       blob: data,
-      name: `file-${id}`,
+      name: data instanceof File && data.name ? data.name : `file-${id}`,
     };
 
     if (!this.isIndexedDbAvailable()) {

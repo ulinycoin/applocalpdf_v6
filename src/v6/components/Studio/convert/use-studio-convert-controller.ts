@@ -10,7 +10,7 @@ import type { WorkerPdfImageCandidate } from '../../../../core/public/contracts'
 import { createZipBlob } from '../../../utils/zip';
 import { type PageItem, type StudioDocument, type StudioState, useStudioStore } from '../studio-store';
 
-export type StudioConvertToolId = 'ocr-pdf' | 'pdf-to-jpg' | 'extract-images';
+export type StudioConvertToolId = 'ocr-pdf' | 'pdf-to-jpg' | 'extract-images' | 'compress-pdf';
 export type StudioConvertStep = 'config' | 'processing' | 'result';
 
 export interface StudioOcrSettings {
@@ -36,6 +36,10 @@ export interface StudioExtractImagesSettings {
   dedupe: boolean;
 }
 
+export interface StudioCompressPdfSettings {
+  quality: 'low' | 'medium' | 'high';
+}
+
 interface StudioConvertPageRef {
   docId: string;
   docName: string;
@@ -57,6 +61,22 @@ interface StudioOcrResult {
   content: string | null;
   pdfUrl: string | null;
   fileName: string;
+}
+
+interface StudioCompressResultSummary {
+  inputBytes: number;
+  outputBytes: number;
+  outputFileName: string;
+}
+
+function formatBytes(bytes: number): string {
+  if (bytes < 1024) {
+    return `${bytes} B`;
+  }
+  if (bytes < 1024 * 1024) {
+    return `${(bytes / 1024).toFixed(1)} KB`;
+  }
+  return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
 }
 
 export interface StudioExtractImageCandidate extends WorkerPdfImageCandidate {
@@ -169,6 +189,9 @@ export function useStudioConvertController() {
     includeInlineImages: true,
     dedupe: true,
   });
+  const [compressPdfSettings, setCompressPdfSettings] = useState<StudioCompressPdfSettings>({
+    quality: 'medium',
+  });
   const [selectedPageIds, setSelectedPageIds] = useState<string[]>([]);
   const [thumbnailOverrides, setThumbnailOverrides] = useState<Record<string, string>>({});
   const [zoomLevel, setZoomLevel] = useState(() => clampZoom(studioViewScale || 1));
@@ -176,6 +199,7 @@ export function useStudioConvertController() {
   const [message, setMessage] = useState<string | null>(null);
   const [outputIds, setOutputIds] = useState<string[]>([]);
   const [ocrResult, setOcrResult] = useState<StudioOcrResult | null>(null);
+  const [compressResultSummary, setCompressResultSummary] = useState<StudioCompressResultSummary | null>(null);
   const [jpgResults, setJpgResults] = useState<StudioJpgResultItem[]>([]);
   const [imageCandidatesByPage, setImageCandidatesByPage] = useState<Record<string, StudioExtractImageCandidate[]>>({});
   const [selectedImageIds, setSelectedImageIds] = useState<string[]>([]);
@@ -195,7 +219,11 @@ export function useStudioConvertController() {
     [documents, selection],
   );
 
-  const operationScope: 'selection' | 'document' = selectedScopePages.length > 0 ? 'selection' : 'document';
+  const operationScope: 'selection' | 'document' = activeTool === 'compress-pdf'
+    ? 'document'
+    : selectedScopePages.length > 0
+      ? 'selection'
+      : 'document';
   const targetPages = useMemo<StudioConvertPageRef[]>(() => {
     if (operationScope === 'selection') {
       return selectedScopePages;
@@ -234,6 +262,10 @@ export function useStudioConvertController() {
       setSelectedImageIds([]);
       return;
     }
+    if (activeTool === 'compress-pdf') {
+      setSelectedPageIds(targetPages.map((page) => page.pageId));
+      return;
+    }
     setSelectedPageIds((current) => {
       if (current.length === 0) {
         return targetPages.map((page) => page.pageId);
@@ -242,7 +274,7 @@ export function useStudioConvertController() {
       const filtered = current.filter((pageId) => allowed.has(pageId));
       return filtered.length > 0 ? filtered : targetPages.map((page) => page.pageId);
     });
-  }, [targetPages]);
+  }, [activeTool, targetPages]);
 
   useEffect(() => {
     const allowedPageIds = new Set(targetPages.map((page) => page.pageId));
@@ -296,12 +328,15 @@ export function useStudioConvertController() {
   }, [runtime, targetPages]);
 
   const selectedPages = useMemo(() => {
+    if (activeTool === 'compress-pdf') {
+      return targetPages;
+    }
     if (selectedPageIds.length === 0) {
       return [];
     }
     const selected = new Set(selectedPageIds);
     return targetPages.filter((page) => selected.has(page.pageId));
-  }, [selectedPageIds, targetPages]);
+  }, [activeTool, selectedPageIds, targetPages]);
 
   const previewPages = useMemo(() => {
     return targetPages.map((page) => ({
@@ -399,7 +434,7 @@ export function useStudioConvertController() {
     setOcrResult(null);
     setJpgResults([]);
 
-    if (tool === 'pdf-to-jpg' || tool === 'extract-images') {
+      if (tool === 'pdf-to-jpg' || tool === 'extract-images') {
       const previews = await Promise.all(ids.map(async (outputId) => {
         const entry = await runtime.vfs.read(outputId);
         const preview = await defaultFilePreviewService.getPreview(runtime, outputId);
@@ -454,6 +489,7 @@ export function useStudioConvertController() {
     setMessage(null);
     setOutputIds([]);
     setOcrResult(null);
+    setCompressResultSummary(null);
     setJpgResults([]);
     setImageScanPendingByPage({});
   }, [releaseResultUrls]);
@@ -524,7 +560,9 @@ export function useStudioConvertController() {
     try {
       const inputIds = activeTool === 'extract-images'
         ? Array.from(new Set(selectedPages.map((page) => page.fileId)))
-        : await buildInputForPages(selectedPages);
+        : activeTool === 'compress-pdf'
+          ? Array.from(new Set(targetPages.map((page) => page.fileId)))
+          : await buildInputForPages(selectedPages);
       if (inputIds.length === 0) {
         setError('No pages selected for conversion.');
         setStep('config');
@@ -550,6 +588,10 @@ export function useStudioConvertController() {
             quality: pdfToJpgSettings.quality,
             dpi: pdfToJpgSettings.dpi,
           }
+          : activeTool === 'compress-pdf'
+            ? {
+              quality: compressPdfSettings.quality,
+            }
           : {
             format: extractImagesSettings.format,
             jpegQuality: extractImagesSettings.jpegQuality,
@@ -589,12 +631,25 @@ export function useStudioConvertController() {
       setProgress(100);
       setOutputIds(result.outputIds);
       await loadResultView(activeTool, result.outputIds, ocrSettings.outputFormat);
+      if (activeTool === 'compress-pdf') {
+        const inputEntries = await Promise.all(inputIds.map((inputId) => runtime.vfs.read(inputId)));
+        const outputEntry = result.outputIds[0] ? await runtime.vfs.read(result.outputIds[0]) : null;
+        const inputBytes = (await Promise.all(inputEntries.map((entry) => entry.getSize()))).reduce((sum, value) => sum + value, 0);
+        const outputBytes = outputEntry ? await outputEntry.getSize() : 0;
+        setCompressResultSummary({
+          inputBytes,
+          outputBytes,
+          outputFileName: outputEntry?.getName() ?? 'document-compressed.pdf',
+        });
+      }
       setMessage(
         activeTool === 'ocr-pdf'
           ? 'OCR completed.'
           : activeTool === 'pdf-to-jpg'
             ? 'PDF to JPG completed.'
-            : 'Image extraction completed.',
+            : activeTool === 'compress-pdf'
+              ? 'Compression completed.'
+              : 'Image extraction completed.',
       );
       setStep('result');
     } catch (runError) {
@@ -621,10 +676,12 @@ export function useStudioConvertController() {
     extractImagesSettings.minWidth,
     pdfToJpgSettings.dpi,
     pdfToJpgSettings.quality,
+    compressPdfSettings.quality,
     resetWorkspace,
     runtime.runner,
     selectedExtractImageCandidates,
     selectedPages,
+    targetPages,
   ]);
 
   const downloadResults = useCallback(async () => {
@@ -693,6 +750,8 @@ export function useStudioConvertController() {
     setPdfToJpgSettings,
     extractImagesSettings,
     setExtractImagesSettings,
+    compressPdfSettings,
+    setCompressPdfSettings,
     operationScope,
     previewPages,
     imageCandidatesByPage,
@@ -721,11 +780,13 @@ export function useStudioConvertController() {
     setMessage,
     outputIds,
     ocrResult,
+    compressResultSummary,
     jpgResults,
     updateOcrResultContent,
     runTool,
     downloadResults,
     resetWorkspace,
     navigateBack,
+    formatBytes,
   };
 }

@@ -6,7 +6,7 @@ import { createValidPdfBlob } from '../../../shared/test/create-valid-pdf';
 
 test('compress-pdf logic returns a PDF blob', async () => {
     const fs = new InMemoryFileSystem();
-    const pdf = await createValidPdfBlob(1);
+    const pdf = new File([await createValidPdfBlob(1)], 'sample.pdf', { type: 'application/pdf' });
     fs.seed('f1', pdf);
 
     const result = await run({
@@ -18,6 +18,7 @@ test('compress-pdf logic returns a PDF blob', async () => {
     assert.equal(result.outputIds.length, 1);
     const out = await fs.read(result.outputIds[0]);
     assert.equal(await out.getType(), 'application/pdf');
+    assert.equal(out.getName(), 'sample-compressed.pdf');
 });
 
 test('compress-pdf logic rejects empty input', async () => {

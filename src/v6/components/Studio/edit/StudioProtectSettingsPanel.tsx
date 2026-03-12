@@ -10,6 +10,32 @@ interface StudioProtectSettingsPanelProps {
 type SecurityPreset = 'basic' | 'business' | 'confidential' | 'custom';
 type PrintingPermission = 'none' | 'low' | 'full';
 
+function ProtectToggle({
+  label,
+  checked,
+  onChange,
+}: {
+  label: string;
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+}) {
+  return (
+    <label
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: 8,
+        fontSize: 12,
+        color: 'rgba(255,255,255,0.92)',
+        whiteSpace: 'nowrap',
+      }}
+    >
+      <input type="checkbox" checked={checked} onChange={(event) => onChange(event.target.checked)} />
+      <span>{label}</span>
+    </label>
+  );
+}
+
 export function StudioProtectSettingsPanel({ onOptionsChange, ui }: StudioProtectSettingsPanelProps) {
   const [permissionsOnly, setPermissionsOnly] = useState(true);
   const [userPassword, setUserPassword] = useState('');
@@ -36,8 +62,8 @@ export function StudioProtectSettingsPanel({ onOptionsChange, ui }: StudioProtec
   useEffect(() => {
     onOptionsChange({
       permissionsOnly,
-      userPassword: userPassword.trim(),
-      ownerPassword: ownerPassword.trim(),
+      userPassword: permissionsOnly ? '' : userPassword.trim(),
+      ownerPassword: useOwnerPassword ? ownerPassword.trim() : '',
       keyLength,
       printing,
       copying,
@@ -59,6 +85,7 @@ export function StudioProtectSettingsPanel({ onOptionsChange, ui }: StudioProtec
     ownerPassword,
     permissionsOnly,
     printing,
+    useOwnerPassword,
     userPassword,
   ]);
 
@@ -73,6 +100,8 @@ export function StudioProtectSettingsPanel({ onOptionsChange, ui }: StudioProtec
       setModifying(false);
       setAnnotating(true);
       setFillingForms(true);
+      setContentAccessibility(true);
+      setDocumentAssembly(false);
       setKeyLength(128);
       return;
     }
@@ -82,6 +111,8 @@ export function StudioProtectSettingsPanel({ onOptionsChange, ui }: StudioProtec
       setModifying(false);
       setAnnotating(false);
       setFillingForms(true);
+      setContentAccessibility(true);
+      setDocumentAssembly(false);
       setKeyLength(256);
       return;
     }
@@ -90,128 +121,139 @@ export function StudioProtectSettingsPanel({ onOptionsChange, ui }: StudioProtec
     setModifying(false);
     setAnnotating(false);
     setFillingForms(false);
+    setContentAccessibility(true);
+    setDocumentAssembly(false);
     setKeyLength(256);
   };
 
+  const markCustom = () => setSecurityPreset('custom');
+
   return (
-    <div className="studio-forms-quickbar-wrap" style={{ marginBottom: 8 }}>
-      <div className="tool-config-card" style={{ display: 'grid', gap: '0.75rem' }}>
-        <div style={{ display: 'grid', gap: '0.5rem', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))' }}>
-          <button className={securityPreset === 'basic' ? 'btn-primary' : 'btn-ghost'} onClick={() => applyPreset('basic')}>Basic</button>
-          <button className={securityPreset === 'business' ? 'btn-primary' : 'btn-ghost'} onClick={() => applyPreset('business')}>Business</button>
-          <button className={securityPreset === 'confidential' ? 'btn-primary' : 'btn-ghost'} onClick={() => applyPreset('confidential')}>Confidential</button>
+    <div className="studio-annotate-quickbar-wrap">
+      <div
+        className="studio-annotate-quickbar"
+        style={{
+          display: 'grid',
+          gap: 12,
+          alignItems: 'start',
+          maxWidth: 'min(100%, 1040px)',
+        }}
+      >
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
+          <span className="studio-annotate-quickbar-label" style={{ marginRight: 4 }}>Protect</span>
+          <button type="button" className={securityPreset === 'basic' ? 'btn-primary' : 'btn-ghost'} onClick={() => applyPreset('basic')}>Basic</button>
+          <button type="button" className={securityPreset === 'business' ? 'btn-primary' : 'btn-ghost'} onClick={() => applyPreset('business')}>Business</button>
+          <button type="button" className={securityPreset === 'confidential' ? 'btn-primary' : 'btn-ghost'} onClick={() => applyPreset('confidential')}>Confidential</button>
+          {securityPreset === 'custom' && <span style={{ fontSize: 12, opacity: 0.78 }}>Custom</span>}
+          <button
+            type="button"
+            className="studio-floating-btn"
+            onClick={() => setShowAdvanced((prev) => !prev)}
+            style={{ width: 'auto', height: 32, padding: '0 12px' }}
+          >
+            {showAdvanced ? 'Hide advanced' : 'Advanced'}
+          </button>
         </div>
 
-        <label className="tool-config-label" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <input
-            type="checkbox"
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'center' }}>
+          <ProtectToggle
+            label="Restrictions only"
             checked={permissionsOnly}
-            onChange={(event) => {
-              const next = event.target.checked;
-              setPermissionsOnly(next);
-              if (next) {
+            onChange={(checked) => {
+              setPermissionsOnly(checked);
+              if (checked) {
                 setUserPassword('');
               }
             }}
           />
-          Restrictions only (no password to open)
-        </label>
-
-        {!permissionsOnly && (
-          <div>
-            <label className="tool-config-label">User Password</label>
-            <input
-              className="tool-config-input"
-              type="password"
-              value={userPassword}
-              onChange={(event) => setUserPassword(event.target.value)}
-              placeholder="Required to open the PDF"
-            />
-            {passwordError && <p style={{ color: '#fca5a5', fontSize: 12, marginTop: 4 }}>{passwordError}</p>}
-          </div>
-        )}
-
-        <label className="tool-config-label" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <input type="checkbox" checked={useOwnerPassword} onChange={(event) => setUseOwnerPassword(event.target.checked)} />
-          Use different owner password
-        </label>
-
-        {useOwnerPassword && (
-          <div>
-            <label className="tool-config-label">Owner Password</label>
-            <input
-              className="tool-config-input"
-              type="password"
-              value={ownerPassword}
-              onChange={(event) => setOwnerPassword(event.target.value)}
-              placeholder="Used to change restrictions"
-            />
-          </div>
-        )}
-
-        <div>
-          <label className="tool-config-label">Encryption Strength</label>
-          <select
-            className="tool-config-select"
-            value={keyLength}
-            onChange={(event) => setKeyLength(Number(event.target.value) === 128 ? 128 : 256)}
-          >
-            <option value={256}>AES-256</option>
-            <option value={128}>AES-128</option>
-          </select>
+          <ProtectToggle
+            label="Separate owner password"
+            checked={useOwnerPassword}
+            onChange={setUseOwnerPassword}
+          />
+          <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 12 }}>
+            <span style={{ opacity: 0.8 }}>Encryption</span>
+            <select
+              className="studio-floating-select"
+              value={keyLength}
+              onChange={(event) => {
+                markCustom();
+                setKeyLength(Number(event.target.value) === 128 ? 128 : 256);
+              }}
+              style={{ height: 32, minWidth: 110 }}
+            >
+              <option value={256}>AES-256</option>
+              <option value={128}>AES-128</option>
+            </select>
+          </label>
+          <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 12 }}>
+            <span style={{ opacity: 0.8 }}>Printing</span>
+            <select
+              className="studio-floating-select"
+              value={printing}
+              onChange={(event) => {
+                markCustom();
+                const value = event.target.value;
+                setPrinting(value === 'none' || value === 'low' ? value : 'full');
+              }}
+              style={{ height: 32, minWidth: 144 }}
+            >
+              <option value="none">No printing</option>
+              <option value="low">Low resolution</option>
+              <option value="full">High resolution</option>
+            </select>
+          </label>
         </div>
 
-        <button className="btn-ghost" onClick={() => setShowAdvanced((prev) => !prev)}>
-          {showAdvanced ? 'Hide' : 'Show'} Advanced Restrictions
-        </button>
-
-        {showAdvanced && (
-          <div style={{ display: 'grid', gap: '0.6rem' }}>
-            <div>
-              <label className="tool-config-label">Printing</label>
-              <select
-                className="tool-config-select"
-                value={printing}
-                onChange={(event) => {
-                  setSecurityPreset('custom');
-                  const value = event.target.value;
-                  setPrinting(value === 'none' || value === 'low' ? value : 'full');
-                }}
-              >
-                <option value="none">None</option>
-                <option value="low">Low Resolution</option>
-                <option value="full">High Resolution</option>
-              </select>
-            </div>
-            <label className="tool-config-label" style={{ display: 'flex', justifyContent: 'space-between' }}>
-              Allow copying
-              <input type="checkbox" checked={copying} onChange={(event) => { setSecurityPreset('custom'); setCopying(event.target.checked); }} />
-            </label>
-            <label className="tool-config-label" style={{ display: 'flex', justifyContent: 'space-between' }}>
-              Allow modifying
-              <input type="checkbox" checked={modifying} onChange={(event) => { setSecurityPreset('custom'); setModifying(event.target.checked); }} />
-            </label>
-            <label className="tool-config-label" style={{ display: 'flex', justifyContent: 'space-between' }}>
-              Allow annotations
-              <input type="checkbox" checked={annotating} onChange={(event) => { setSecurityPreset('custom'); setAnnotating(event.target.checked); }} />
-            </label>
-            <label className="tool-config-label" style={{ display: 'flex', justifyContent: 'space-between' }}>
-              Allow filling forms
-              <input type="checkbox" checked={fillingForms} onChange={(event) => { setSecurityPreset('custom'); setFillingForms(event.target.checked); }} />
-            </label>
-            <label className="tool-config-label" style={{ display: 'flex', justifyContent: 'space-between' }}>
-              Allow accessibility
-              <input type="checkbox" checked={contentAccessibility} onChange={(event) => { setSecurityPreset('custom'); setContentAccessibility(event.target.checked); }} />
-            </label>
-            <label className="tool-config-label" style={{ display: 'flex', justifyContent: 'space-between' }}>
-              Allow document assembly
-              <input type="checkbox" checked={documentAssembly} onChange={(event) => { setSecurityPreset('custom'); setDocumentAssembly(event.target.checked); }} />
-            </label>
+        {(!permissionsOnly || useOwnerPassword) && (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'center' }}>
+            {!permissionsOnly && (
+              <label style={{ display: 'grid', gap: 4, minWidth: 220 }}>
+                <span style={{ fontSize: 12, opacity: 0.8 }}>Open password</span>
+                <input
+                  className="tool-config-input"
+                  type="password"
+                  value={userPassword}
+                  onChange={(event) => setUserPassword(event.target.value)}
+                  placeholder="Required to open"
+                  style={{ height: 32 }}
+                />
+              </label>
+            )}
+            {useOwnerPassword && (
+              <label style={{ display: 'grid', gap: 4, minWidth: 220 }}>
+                <span style={{ fontSize: 12, opacity: 0.8 }}>Owner password</span>
+                <input
+                  className="tool-config-input"
+                  type="password"
+                  value={ownerPassword}
+                  onChange={(event) => setOwnerPassword(event.target.value)}
+                  placeholder="Required to change restrictions"
+                  style={{ height: 32 }}
+                />
+              </label>
+            )}
+            {passwordError && <span style={{ color: '#fca5a5', fontSize: 12 }}>{passwordError}</span>}
           </div>
         )}
 
-        {passwordError && (
-          <p style={{ color: '#fca5a5', fontSize: 12, margin: 0 }}>{passwordError}</p>
+        {showAdvanced && (
+          <div
+            style={{
+              display: 'flex',
+              flexWrap: 'wrap',
+              gap: 14,
+              paddingTop: 10,
+              borderTop: '1px solid rgba(255,255,255,0.08)',
+            }}
+          >
+            <ProtectToggle label="Copy" checked={copying} onChange={(checked) => { markCustom(); setCopying(checked); }} />
+            <ProtectToggle label="Modify" checked={modifying} onChange={(checked) => { markCustom(); setModifying(checked); }} />
+            <ProtectToggle label="Annotations" checked={annotating} onChange={(checked) => { markCustom(); setAnnotating(checked); }} />
+            <ProtectToggle label="Forms" checked={fillingForms} onChange={(checked) => { markCustom(); setFillingForms(checked); }} />
+            <ProtectToggle label="Accessibility" checked={contentAccessibility} onChange={(checked) => { markCustom(); setContentAccessibility(checked); }} />
+            <ProtectToggle label="Assembly" checked={documentAssembly} onChange={(checked) => { markCustom(); setDocumentAssembly(checked); }} />
+          </div>
         )}
       </div>
     </div>

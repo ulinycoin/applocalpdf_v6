@@ -25,26 +25,30 @@ class MemoryFileEntry implements IFileEntry {
 }
 
 export class InMemoryFileSystem implements IFileSystem {
-  private readonly store = new Map<string, Blob>();
+  private readonly store = new Map<string, { blob: Blob; name: string }>();
   private idCounter = 0;
 
   seed(id: string, blob: Blob): void {
-    this.store.set(id, blob);
+    this.store.set(id, {
+      blob,
+      name: blob instanceof File && blob.name ? blob.name : id,
+    });
   }
 
   async write(data: Blob): Promise<IFileEntry> {
     this.idCounter += 1;
     const id = `out-${this.idCounter}`;
-    this.store.set(id, data);
-    return new MemoryFileEntry(id, data, id);
+    const name = data instanceof File && data.name ? data.name : id;
+    this.store.set(id, { blob: data, name });
+    return new MemoryFileEntry(id, data, name);
   }
 
   async read(id: string): Promise<IFileEntry> {
-    const blob = this.store.get(id);
-    if (!blob) {
+    const record = this.store.get(id);
+    if (!record) {
       throw new Error(`Missing file: ${id}`);
     }
-    return new MemoryFileEntry(id, blob, id);
+    return new MemoryFileEntry(id, record.blob, record.name);
   }
 
   async delete(id: string): Promise<void> {

@@ -7,10 +7,11 @@ interface StudioConvertToolbarProps {
 }
 
 export function StudioConvertToolbar({ activeTool, onSelectTool }: StudioConvertToolbarProps) {
-  const items: Array<{ tool: StudioConvertToolId; title: string; icon: 'ocr' | 'file-input' | 'image' }> = [
+  const items: Array<{ tool: StudioConvertToolId; title: string; icon: 'ocr' | 'file-input' | 'image' | 'compress' }> = [
     { tool: 'ocr-pdf', title: 'OCR PDF', icon: 'ocr' },
     { tool: 'pdf-to-jpg', title: 'PDF to JPG', icon: 'file-input' },
     { tool: 'extract-images', title: 'Extract Images', icon: 'image' },
+    { tool: 'compress-pdf', title: 'Compress PDF', icon: 'compress' },
   ];
 
   return (
