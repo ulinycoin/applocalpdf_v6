@@ -29,8 +29,8 @@ test.describe('Studio edit text save P0', () => {
   test('saves edited text into output PDF in VFS', async ({ page }) => {
     const pdfPath = await createTextPdf('p0');
     try {
-      await page.goto('/studio');
-      await page.locator('.studio-shell-container input[type="file"]').first().setInputFiles(pdfPath);
+      await page.goto('/app/studio');
+      await page.locator('input[type="file"]').first().setInputFiles(pdfPath);
 
       const initialFileId = await page.waitForFunction(() => {
         const store = (window as Window & { __LOCALPDF_STUDIO_STORE__?: { getState: () => {
@@ -56,18 +56,13 @@ test.describe('Studio edit text save P0', () => {
       await page.getByRole('button', { name: 'Edit', exact: true }).click();
       await expect(page.locator('.studio-edit-shell')).toBeVisible({ timeout: 20000 });
 
-      const sheet = page.locator('.studio-edit-canvas-content').first();
-      await expect(sheet).toBeVisible({ timeout: 15000 });
-      const bounds = await sheet.boundingBox();
-      if (!bounds) {
-        throw new Error('Missing edit sheet bounds');
-      }
-      await sheet.click({
-        position: {
-          x: Math.max(12, Math.floor(bounds.width * 0.15)),
-          y: Math.max(12, Math.floor(bounds.height * 0.12)),
-        },
-      });
+      const selectTextBtn = page.locator('.studio-editor-left-toolbar .studio-edit-tool-btn').first();
+      await selectTextBtn.click();
+      await expect(selectTextBtn).toHaveClass(/active/);
+
+      const highlight = page.locator('.studio-edit-text-highlight').first();
+      await expect(highlight).toBeVisible({ timeout: 15000 });
+      await highlight.click({ force: true });
 
       const textarea = page.locator('.studio-edit-textarea').first();
       await expect(textarea).toBeVisible({ timeout: 10000 });

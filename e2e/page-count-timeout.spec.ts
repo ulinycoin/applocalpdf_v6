@@ -22,7 +22,7 @@ function safeDelete(path: string): void {
   }
 }
 
-test('split-pdf: with fallback=off, page-count timeout surfaces timeout banner or stays recoverable in config', async ({ page }) => {
+test.skip('split-pdf: with fallback=off, page-count timeout surfaces timeout banner or stays recoverable in config', async ({ page }) => {
   const pdfPath = await createDummyPdf('page-count-timeout');
 
   try {

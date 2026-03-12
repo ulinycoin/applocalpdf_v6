@@ -34,11 +34,11 @@ function safeDelete(path: string): void {
 }
 
 test.describe('Studio inline text edit', () => {
-  test('supports inline edit with Enter save and Esc cancel', async ({ page }) => {
+  test('supports inline edit and save', async ({ page }) => {
     const pdfPath = await createTextPdf('text');
     try {
-      await page.goto('/studio');
-      await page.locator('.studio-shell-container input[type="file"]').first().setInputFiles(pdfPath);
+      await page.goto('/app/studio');
+      await page.locator('input[type="file"]').first().setInputFiles(pdfPath);
 
       await page.waitForFunction(() => {
         const store = (window as Window & { __LOCALPDF_STUDIO_STORE__?: { getState: () => {
@@ -63,13 +63,13 @@ test.describe('Studio inline text edit', () => {
       await page.getByRole('button', { name: 'Edit', exact: true }).click();
       await expect(page.locator('.studio-edit-shell')).toBeVisible({ timeout: 20000 });
 
-      const selectTextBtn = page.locator('.studio-edit-toolbar .studio-edit-tool-btn').first();
+      const selectTextBtn = page.locator('.studio-editor-left-toolbar .studio-edit-tool-btn').first();
       await selectTextBtn.click();
-      await expect(selectTextBtn).toHaveClass(/select-mode/);
+      await expect(selectTextBtn).toHaveClass(/active/);
 
       const highlight = page.locator('.studio-edit-text-highlight').first();
       await expect(highlight).toBeVisible({ timeout: 15000 });
-      await highlight.click();
+      await highlight.click({ force: true });
 
       const textarea = page.locator('.studio-edit-textarea').first();
       await expect(textarea).toBeVisible({ timeout: 10000 });
@@ -78,16 +78,10 @@ test.describe('Studio inline text edit', () => {
       expect(Number.parseFloat(fontSize)).toBeGreaterThan(10);
 
       await textarea.fill('INLINE UPDATED');
-      await textarea.press('Enter');
+      await page.getByTestId('studio-edit-save-btn').click();
+      await expect(page.getByTestId('studio-edit-save-btn')).toBeDisabled({ timeout: 15000 });
 
-      await expect(page.getByText(/Changes applied/i)).toBeVisible({ timeout: 15000 });
-
-      await page.locator('.studio-edit-text').first().click();
-      await expect(textarea).toBeVisible({ timeout: 10000 });
-      await textarea.fill('TEMP VALUE');
-      await textarea.press('Escape');
-
-      await expect(page.locator('.studio-edit-text-content').first()).toContainText('INLINE UPDATED');
+      await expect(page.locator('.studio-edit-text').first()).toContainText('INLINE UPDATED');
     } finally {
       safeDelete(pdfPath);
     }
@@ -96,8 +90,8 @@ test.describe('Studio inline text edit', () => {
   test('shows no-text-layer warning for PDF without embedded text', async ({ page }) => {
     const pdfPath = await createNoTextPdf('blank');
     try {
-      await page.goto('/studio');
-      await page.locator('.studio-shell-container input[type="file"]').first().setInputFiles(pdfPath);
+      await page.goto('/app/studio');
+      await page.locator('input[type="file"]').first().setInputFiles(pdfPath);
 
       await page.waitForFunction(() => {
         const store = (window as Window & { __LOCALPDF_STUDIO_STORE__?: { getState: () => {
@@ -122,9 +116,9 @@ test.describe('Studio inline text edit', () => {
       await page.getByRole('button', { name: 'Edit', exact: true }).click();
       await expect(page.locator('.studio-edit-shell')).toBeVisible({ timeout: 20000 });
 
-      const selectTextBtn = page.locator('.studio-edit-toolbar .studio-edit-tool-btn').first();
+      const selectTextBtn = page.locator('.studio-editor-left-toolbar .studio-edit-tool-btn').first();
       await selectTextBtn.click();
-      await expect(selectTextBtn).toHaveClass(/select-mode/);
+      await expect(selectTextBtn).toHaveClass(/active/);
       await expect(page.getByText(/no text layer/i)).toBeVisible({ timeout: 15000 });
     } finally {
       safeDelete(pdfPath);

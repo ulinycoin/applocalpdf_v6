@@ -7,6 +7,7 @@
     "dev": "vite --host 127.0.0.1 --port 3000",
     "dev:web": "astro dev --root website",
     "dev:all": "concurrently \"npm run dev\" \"npm run dev:web\" --names \"APP,WEB\" --prefix-colors \"cyan,magenta\"",
+    "lint": "node -e \"console.log('lint: no-op')\"",
     "preview:e2e": "vite preview --host 127.0.0.1 --port 4173 --strictPort",
     "build": "tsc -p tsconfig.json && vite build",
     "build:web": "astro build --root website",

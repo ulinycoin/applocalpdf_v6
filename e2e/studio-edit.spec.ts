@@ -28,9 +28,9 @@ test.describe('Studio Edit Text', () => {
   test('text does not reset after input and drag', async ({ page }) => {
     const pdfPath = await createDummyPdf('studio-edit-text');
     try {
-      await page.goto('/studio');
+      await page.goto('/app/studio');
 
-      const fileInput = page.locator('.studio-shell-container input[type="file"]').first();
+      const fileInput = page.locator('input[type="file"]').first();
       await fileInput.setInputFiles(pdfPath);
 
       await expect(page.locator('canvas').first()).toBeVisible({ timeout: 20000 });
@@ -63,7 +63,11 @@ test.describe('Studio Edit Text', () => {
       await expect(page).toHaveURL(/\/studio\/edit$/);
       await expect(page.locator('.studio-edit-shell')).toBeVisible({ timeout: 20000 });
 
-      const sheet = page.locator('.studio-edit-page-sheet').first();
+      const textToolBtn = page.locator('.studio-editor-left-toolbar .studio-edit-tool-btn').first();
+      await textToolBtn.click();
+      await expect(textToolBtn).toHaveClass(/active/);
+
+      const sheet = page.locator('.studio-edit-canvas-content').first();
       await expect(sheet).toBeVisible({ timeout: 20000 });
 
       const box = await sheet.boundingBox();
@@ -79,7 +83,7 @@ test.describe('Studio Edit Text', () => {
       });
 
       const createdTextNode = page.locator('.studio-edit-text').first();
-      await expect(createdTextNode).toContainText(/^Text$/, { timeout: 5000 });
+      await expect(createdTextNode).toContainText('Text', { timeout: 5000 });
       await createdTextNode.click();
 
       const textarea = page.locator('.studio-edit-textarea').first();

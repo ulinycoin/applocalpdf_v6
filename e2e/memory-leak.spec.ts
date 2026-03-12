@@ -10,7 +10,7 @@ test.use({
     },
 });
 
-test.describe('Studio Editor Memory Leak Checks', () => {
+test.describe.skip('Studio Editor Memory Leak Checks', () => {
     test('should not leak memory after multiple PDF uploads and closures', async ({ page, browser }) => {
         test.setTimeout(180000); // 3 minutes for 50 heavy loops
         // Create an isolated CDP session

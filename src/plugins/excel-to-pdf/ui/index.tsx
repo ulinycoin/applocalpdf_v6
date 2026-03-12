@@ -62,7 +62,7 @@ export default function ExcelToPdfConfig({
         const blob = await entry.getBlob();
         const arrayBuffer = await blob.arrayBuffer();
         const exceljsModule = await import('exceljs');
-        const WorkbookCtor = ((exceljsModule as any).Workbook ?? (exceljsModule as any).default?.Workbook) as (new () => any) | undefined;
+        const WorkbookCtor = (exceljsModule.default?.Workbook as (new () => any) | undefined);
         if (!WorkbookCtor) {
           setSheetNames([]);
           setSelectedSheets([]);

@@ -504,7 +504,7 @@ export const run: ToolLogicFunction = async ({ inputIds, fs, emitProgress, optio
   }
 
   const exceljsModule = await import('exceljs');
-  const WorkbookCtor = ((exceljsModule as any).Workbook ?? (exceljsModule as any).default?.Workbook) as (new () => any) | undefined;
+  const WorkbookCtor = (exceljsModule.default?.Workbook as (new () => any) | undefined);
   if (!WorkbookCtor) {
     throw new Error('Excel parser is unavailable: Workbook constructor not found');
   }

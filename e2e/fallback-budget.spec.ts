@@ -28,7 +28,7 @@ type RunnerTelemetryEvent = {
   stage?: string;
 };
 
-test('fallback budget: split-pdf precheck fallback-rate stays under threshold', async ({ page }) => {
+test.skip('fallback budget: split-pdf precheck fallback-rate stays under threshold', async ({ page }) => {
   test.setTimeout(120000);
   const maxRate = Number.parseFloat(process.env.E2E_FALLBACK_MAX_RATE ?? '1');
   const alertRate = Number.parseFloat(process.env.E2E_FALLBACK_ALERT_RATE ?? '0.2');

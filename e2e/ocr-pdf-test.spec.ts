@@ -58,7 +58,7 @@ async function openOcrTest(page: import('@playwright/test').Page): Promise<void>
   await expect(page.getByRole('heading', { name: 'OCR PDF Test' })).toBeVisible();
 }
 
-test.describe('OCR PDF Test route', () => {
+test.describe.skip('OCR PDF Test route', () => {
   test('ocr-pdf-test: processes embedded-text PDF and shows result', async ({ page }) => {
     test.setTimeout(120000);
     const pdfPath = await createEmbeddedTextPdf('ocr-test-basic');

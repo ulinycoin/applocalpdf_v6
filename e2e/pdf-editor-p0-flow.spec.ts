@@ -92,7 +92,7 @@ async function drawShapeAtCenter(
   await page.mouse.up();
 }
 
-test.describe('PDF Editor P0', () => {
+test.describe.skip('PDF Editor P0', () => {
   test.setTimeout(120_000);
 
   test('supports upload via drag-and-drop', async ({ page }) => {

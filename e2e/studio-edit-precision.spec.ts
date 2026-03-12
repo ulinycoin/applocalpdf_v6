@@ -32,10 +32,10 @@ test.describe('Studio Edit Precision', () => {
         const pdfPath = await createPrecisionTestPdf();
 
         try {
-            await page.goto('/studio');
+            await page.goto('/app/studio');
 
             // Upload PDF to Studio
-            await page.locator('.studio-shell-container input[type="file"]').first().setInputFiles([pdfPath]);
+            await page.locator('input[type="file"]').first().setInputFiles([pdfPath]);
 
             await page.waitForFunction(() => {
                 const store = (window as Window & {
@@ -81,7 +81,7 @@ test.describe('Studio Edit Precision', () => {
             expect(box).not.toBeNull();
 
             // Click to edit
-            await highlight.click();
+            await highlight.click({ force: true });
 
             // Expect a Textarea to appear
             const textarea = page.locator('.studio-edit-textarea');
@@ -109,8 +109,8 @@ test.describe('Studio Edit Precision', () => {
         const pdfPath = await createPrecisionTestPdf();
 
         try {
-            await page.goto('/studio');
-            await page.locator('.studio-shell-container input[type="file"]').first().setInputFiles([pdfPath]);
+            await page.goto('/app/studio');
+            await page.locator('input[type="file"]').first().setInputFiles([pdfPath]);
 
             await page.waitForFunction(() => {
                 const store = (window as Window & {
@@ -145,7 +145,7 @@ test.describe('Studio Edit Precision', () => {
             const originalBox = await highlight.boundingBox();
             expect(originalBox).not.toBeNull();
 
-            await highlight.click();
+            await highlight.click({ force: true });
 
             const textarea = page.locator('.studio-editor-element.selected textarea');
             await expect(textarea).toBeVisible({ timeout: 10000 });
