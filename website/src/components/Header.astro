@@ -7,25 +7,25 @@ const langPrefix = lang === 'en' ? '' : `/${lang}`;
 
 const navLabels = {
   en: { 
-    studio: 'Studio', edit: 'Edit PDF', merge: 'Merge PDF', split: 'Split PDF', sign: 'Sign PDF',
+    edit: 'Edit PDF', merge: 'Merge PDF', split: 'Split PDF', sign: 'Sign PDF',
     convert: 'Convert', ocr: 'OCR PDF', compress: 'Compress PDF', toPdf: 'Convert to PDF',
     resources: 'Resources', security: 'Security', faq: 'FAQ', about: 'About', blog: 'Blog',
     open: 'Open LocalPDF' 
   },
   de: { 
-    studio: 'Studio', edit: 'Edit PDF', merge: 'Merge PDF', split: 'Split PDF', sign: 'Sign PDF',
+    edit: 'Edit PDF', merge: 'Merge PDF', split: 'Split PDF', sign: 'Sign PDF',
     convert: 'Convert', ocr: 'OCR PDF', compress: 'Compress PDF', toPdf: 'Convert to PDF',
     resources: 'Resources', security: 'Security', faq: 'FAQ', about: 'About', blog: 'Blog',
     open: 'Open LocalPDF' 
   },
   ja: { 
-    studio: 'Studio', edit: 'Edit PDF', merge: 'Merge PDF', split: 'Split PDF', sign: 'Sign PDF',
+    edit: 'Edit PDF', merge: 'Merge PDF', split: 'Split PDF', sign: 'Sign PDF',
     convert: 'Convert', ocr: 'OCR PDF', compress: 'Compress PDF', toPdf: 'Convert to PDF',
     resources: 'Resources', security: 'Security', faq: 'FAQ', about: 'About', blog: 'Blog',
     open: 'Open LocalPDF' 
   }
 }[lang] || { 
-  studio: 'Studio', edit: 'Edit PDF', merge: 'Merge PDF', split: 'Split PDF', sign: 'Sign PDF',
+  edit: 'Edit PDF', merge: 'Merge PDF', split: 'Split PDF', sign: 'Sign PDF',
   convert: 'Convert', ocr: 'OCR PDF', compress: 'Compress PDF', toPdf: 'Convert to PDF',
   resources: 'Resources', security: 'Security', faq: 'FAQ', about: 'About', blog: 'Blog',
   open: 'Open LocalPDF' 
@@ -41,8 +41,6 @@ const appUrl = getAppUrl();
     </div>
   </a>
   <nav>
-    <a href={appUrl} class="nav-link main-link">{navLabels.studio}</a>
-    
     <div class="dropdown" tabindex="0">
       <span class="nav-link dropdown-toggle">
         {navLabels.edit} <span class="caret">▾</span>
@@ -185,18 +183,6 @@ const appUrl = getAppUrl();
     border-radius: 8px;
   }
 
-  .main-link::after {
-    content: '';
-    position: absolute;
-    bottom: -4px;
-    left: 0;
-    width: 0;
-    height: 2px;
-    background: var(--accent-blue);
-    transition: width 0.3s ease;
-  }
-  .main-link:hover::after { width: 100%; }
-  
   .nav-link:hover, 
   .nav-link:focus-within,
   .dropdown:hover .dropdown-toggle,
@@ -281,4 +267,3 @@ const appUrl = getAppUrl();
     .mobile-lang-picker { display: block; }
   }
 </style>
-

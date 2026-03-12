@@ -1,4 +1,5 @@
 ---
+import LegacyArchivePage from '../../components/marketing/LegacyArchivePage.astro';
 import MarketingLayout from '../../layouts/MarketingLayout.astro';
 
 const toolRouteMap: Record<string, { href: string; label: string }> = {
@@ -10,6 +11,63 @@ const toolRouteMap: Record<string, { href: string; label: string }> = {
   'pdf-to-word': { href: '/features/convert-pdf', label: 'Convert PDF' },
   'word-to-pdf': { href: '/features/convert-pdf', label: 'Convert PDF' },
 };
+
+function getLegacyBlogRoutes() {
+  return {
+  'add-text-to-pdf-guide': {
+    title: 'Add Text to PDF Guide Archive | LocalPDF',
+    description: 'This legacy article has been replaced by a current guide.',
+    heading: 'This article moved',
+    body: 'That older guide is no longer published. Use the current PDF editing guide instead.',
+    primaryHref: '/blog/edit-text-in-pdf-guide',
+    primaryLabel: 'Read the edit guide',
+    secondaryHref: '/features/edit-pdf',
+    secondaryLabel: 'Open Edit PDF',
+  },
+  'email-pdf-attachments': {
+    title: 'Email PDF Attachments Archive | LocalPDF',
+    description: 'This legacy article has been replaced by current PDF workflow guides.',
+    heading: 'This article moved',
+    body: 'That older guide is no longer published. Use the current compression guide or browse the blog hub for updated workflows.',
+    primaryHref: '/blog/compress-pdf-without-losing-quality',
+    primaryLabel: 'Read the compression guide',
+    secondaryHref: '/blog',
+    secondaryLabel: 'Browse the blog',
+  },
+  'flatten-pdf-forms': {
+    title: 'Flatten PDF Forms Archive | LocalPDF',
+    description: 'This legacy article has been replaced by a current guide.',
+    heading: 'This article moved',
+    body: 'That older guide is no longer published. Use the current fillable forms guide instead.',
+    primaryHref: '/blog/create-fillable-pdf-forms-guide',
+    primaryLabel: 'Read the form guide',
+    secondaryHref: '/features/edit-pdf',
+    secondaryLabel: 'Open Edit PDF',
+  },
+  'pdf-optimization-guide': {
+    title: 'PDF Optimization Guide Archive | LocalPDF',
+    description: 'This legacy article has been replaced by a current guide.',
+    heading: 'This article moved',
+    body: 'That older guide is no longer published. Use the current compression guide instead.',
+    primaryHref: '/blog/compress-pdf-without-losing-quality',
+    primaryLabel: 'Read the compression guide',
+    secondaryHref: '/features/compress-pdf',
+    secondaryLabel: 'Open Compress PDF',
+  },
+  'protect-pdf-with-password': {
+    title: 'Protect PDF With Password Archive | LocalPDF',
+    description: 'This legacy article has been replaced by a current guide.',
+    heading: 'This article moved',
+    body: 'That older guide is no longer published. Use the current PDF security guide instead.',
+    primaryHref: '/blog/pdf-security-best-practices',
+    primaryLabel: 'Read the security guide',
+    secondaryHref: '/security',
+    secondaryLabel: 'Read Security',
+  },
+  } as const;
+}
+
+const legacyBlogRoutes = getLegacyBlogRoutes();
 
 type BlogModule = {
   frontmatter: {
@@ -27,7 +85,21 @@ type BlogModule = {
   default: unknown;
 };
 
+type LegacyBlogSlug = keyof ReturnType<typeof getLegacyBlogRoutes>;
+type BlogPost = {
+  slug: string;
+  data: BlogModule['frontmatter'] & { pubDate: Date };
+  Content: unknown;
+};
+
 export function getStaticPaths() {
+  const legacyBlogRoutes = {
+    'add-text-to-pdf-guide': true,
+    'email-pdf-attachments': true,
+    'flatten-pdf-forms': true,
+    'pdf-optimization-guide': true,
+    'protect-pdf-with-password': true,
+  } as const;
   const postModules = import.meta.glob('../../content/blog/*.mdx', { eager: true }) as Record<string, BlogModule>;
   const allPosts = Object.entries(postModules)
     .map(([path, module]) => ({
@@ -41,14 +113,26 @@ export function getStaticPaths() {
     .filter((post) => !post.data.draft)
     .sort((a, b) => b.data.pubDate.getTime() - a.data.pubDate.getTime());
 
-  return allPosts.map((post) => ({
-    params: { slug: post.slug },
-    props: { post },
-  }));
+  return [
+    ...allPosts.map((post) => ({
+      params: { slug: post.slug },
+      props: { post },
+    })),
+    ...Object.keys(legacyBlogRoutes).map((slug) => ({
+      params: { slug },
+      props: {
+        legacySlug: slug,
+      },
+    })),
+  ];
 }
 
-const { post } = Astro.props;
-const Content = post.Content;
+const { post, legacySlug } = Astro.props as {
+  post?: BlogPost;
+  legacySlug?: LegacyBlogSlug;
+};
+const legacy = legacySlug ? { slug: legacySlug, ...legacyBlogRoutes[legacySlug] } : undefined;
+
 const postModules = import.meta.glob('../../content/blog/*.mdx', { eager: true }) as Record<string, BlogModule>;
 const allPosts = Object.entries(postModules)
   .map(([path, module]) => ({
@@ -62,33 +146,39 @@ const allPosts = Object.entries(postModules)
   .filter((item) => !item.data.draft)
   .sort((a, b) => b.data.pubDate.getTime() - a.data.pubDate.getTime());
 
-const relatedPosts = allPosts
-  .filter((candidate) => candidate.slug !== post.slug)
-  .filter((candidate) => candidate.data.tags.some((tag) => post.data.tags.includes(tag)))
-  .slice(0, 3);
+const relatedPosts = post
+  ? allPosts
+      .filter((candidate) => candidate.slug !== post.slug)
+      .filter((candidate) => candidate.data.tags.some((tag) => post.data.tags.includes(tag)))
+      .slice(0, 3)
+  : [];
 
-const relatedFeatureLinks = (post.data.relatedTools ?? [])
+const relatedFeatureLinks = (post?.data.relatedTools ?? [])
   .map((tool) => toolRouteMap[tool])
   .filter((item, index, array): item is { href: string; label: string } => Boolean(item) && array.findIndex((entry) => entry?.href === item?.href) === index)
   .slice(0, 3);
 
-const canonical = post.data.canonicalURL || `https://localpdf.online/blog/${post.slug}`;
-const title = `${post.data.title} | LocalPDF Blog`;
-const description = post.data.description;
-const image = post.data.ogImage || 'https://localpdf.online/logos/localpdf-social-1200x630.png';
-const readingTimeSource = JSON.stringify(post.data.title) + JSON.stringify(post.data.description) + post.data.tags.join(' ');
-const readingTime = Math.max(3, Math.ceil(readingTimeSource.split(/\s+/).length / 220));
+const canonical = legacy
+  ? `https://localpdf.online/blog/${legacy.slug}`
+  : (post?.data.canonicalURL || `https://localpdf.online/blog/${post?.slug}`);
+const title = legacy ? legacy.title : `${post?.data.title} | LocalPDF Blog`;
+const description = legacy ? legacy.description : (post?.data.description ?? '');
+const image = post?.data.ogImage || 'https://localpdf.online/logos/localpdf-social-1200x630.png';
+const readingTimeSource = post
+  ? JSON.stringify(post.data.title) + JSON.stringify(post.data.description) + post.data.tags.join(' ')
+  : '';
+const readingTime = post ? Math.max(3, Math.ceil(readingTimeSource.split(/\s+/).length / 220)) : 0;
 
-const schema = [
+const schema = legacy ? [] : [
   {
     '@context': 'https://schema.org',
     '@type': 'BlogPosting',
-    headline: post.data.title,
+    headline: post?.data.title,
     description,
-    datePublished: post.data.pubDate.toISOString(),
+    datePublished: post?.data.pubDate.toISOString(),
     author: {
       '@type': 'Organization',
-      name: post.data.author,
+      name: post?.data.author,
     },
     publisher: {
       '@type': 'Organization',
@@ -107,68 +197,82 @@ const schema = [
     itemListElement: [
       { '@type': 'ListItem', position: 1, name: 'Home', item: 'https://localpdf.online/' },
       { '@type': 'ListItem', position: 2, name: 'Blog', item: 'https://localpdf.online/blog' },
-      { '@type': 'ListItem', position: 3, name: post.data.title, item: canonical },
+      { '@type': 'ListItem', position: 3, name: post?.data.title, item: canonical },
     ],
   },
 ];
 ---
 
-<MarketingLayout title={title} description={description} canonical={canonical} image={image} schema={schema}>
-  <div class="page-shell">
-    <article class="section article-shell">
-      <div class="breadcrumbs">
-        <a href="/">Home</a>
-        <span>/</span>
-        <a href="/blog">Blog</a>
-        <span>/</span>
-        <span>{post.data.title}</span>
-      </div>
-
-      <div class="article-meta">
-        <span class="eyebrow">{post.data.category}</span>
-        <div class="meta-row">
-          <time datetime={post.data.pubDate.toISOString()}>
-            {post.data.pubDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
-          </time>
-          <span>{readingTime} min read</span>
+{legacy ? (
+  <LegacyArchivePage
+    title={legacy.title}
+    description={legacy.description}
+    canonical={canonical}
+    heading={legacy.heading}
+    body={legacy.body}
+    primaryHref={legacy.primaryHref}
+    primaryLabel={legacy.primaryLabel}
+    secondaryHref={legacy.secondaryHref}
+    secondaryLabel={legacy.secondaryLabel}
+  />
+) : (
+  <MarketingLayout title={title} description={description} canonical={canonical} image={image} schema={schema}>
+    <div class="page-shell">
+      <article class="section article-shell">
+        <div class="breadcrumbs">
+          <a href="/">Home</a>
+          <span>/</span>
+          <a href="/blog">Blog</a>
+          <span>/</span>
+          <span>{post?.data.title}</span>
         </div>
-      </div>
 
-      <h1>{post.data.title}</h1>
-      <p class="lead">{post.data.description}</p>
-
-      {relatedFeatureLinks.length > 0 && (
-        <div class="cta-strip">
-          <strong>Related workflows in LocalPDF</strong>
-          <div class="cta-row">
-            {relatedFeatureLinks.map((item) => (
-              <a class="btn-secondary" href={item.href}>{item.label}</a>
-            ))}
+        <div class="article-meta">
+          <span class="eyebrow">{post?.data.category}</span>
+          <div class="meta-row">
+            <time datetime={post?.data.pubDate.toISOString()}>
+              {post?.data.pubDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+            </time>
+            <span>{readingTime} min read</span>
           </div>
         </div>
-      )}
 
-      <div class="content">
-        <Content />
-      </div>
-    </article>
+        <h1>{post?.data.title}</h1>
+        <p class="lead">{post?.data.description}</p>
 
-    {relatedPosts.length > 0 && (
-      <section class="section">
-        <h2 class="section-title">Related articles</h2>
-        <div class="card-grid related-grid">
-          {relatedPosts.map((item) => (
-            <a class="related-card" href={`/blog/${item.slug}`}>
-              <span class="related-label">{item.data.category}</span>
-              <h3>{item.data.title}</h3>
-              <p>{item.data.description}</p>
-            </a>
-          ))}
+        {relatedFeatureLinks.length > 0 && (
+          <div class="cta-strip">
+            <strong>Related workflows in LocalPDF</strong>
+            <div class="cta-row">
+              {relatedFeatureLinks.map((item) => (
+                <a class="btn-secondary" href={item.href}>{item.label}</a>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <div class="content">
+          {post && <post.Content />}
         </div>
-      </section>
-    )}
-  </div>
-</MarketingLayout>
+      </article>
+
+      {relatedPosts.length > 0 && (
+        <section class="section">
+          <h2 class="section-title">Related articles</h2>
+          <div class="card-grid related-grid">
+            {relatedPosts.map((item) => (
+              <a class="related-card" href={`/blog/${item.slug}`}>
+                <span class="related-label">{item.data.category}</span>
+                <h3>{item.data.title}</h3>
+                <p>{item.data.description}</p>
+              </a>
+            ))}
+          </div>
+        </section>
+      )}
+    </div>
+  </MarketingLayout>
+)}
 
 <style>
   .article-shell h1 {
@@ -240,14 +344,14 @@ const schema = [
   }
 
   .content :global(h3) {
-    font-size: 1.45rem;
+    font-size: 1.5rem;
   }
 
   .content :global(p),
   .content :global(li) {
-    color: var(--text-soft);
-    line-height: 1.72;
     font-size: 1.02rem;
+    line-height: 1.75;
+    color: #31434f;
   }
 
   .content :global(ul),
@@ -256,37 +360,28 @@ const schema = [
   }
 
   .content :global(a) {
-    color: #8a572d;
+    color: var(--accent);
   }
 
-  .content :global(code) {
-    padding: 0.12rem 0.35rem;
-    border-radius: 6px;
-    background: rgba(20, 32, 40, 0.06);
-    font-size: 0.92em;
+  .related-grid {
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
   }
 
   .related-card {
-    display: block;
     padding: 22px;
-    border: 1px solid var(--line);
     border-radius: 24px;
-    background: var(--surface);
+    border: 1px solid var(--line);
+    background: rgba(255, 255, 255, 0.9);
     text-decoration: none;
+    color: inherit;
+    display: grid;
+    gap: 10px;
   }
 
   .related-label {
-    display: inline-block;
-    margin-bottom: 12px;
-    color: #8a572d;
-    font-weight: 800;
-    font-size: 0.82rem;
+    font-size: 0.8rem;
+    letter-spacing: 0.08em;
     text-transform: uppercase;
-    letter-spacing: 0.06em;
-  }
-
-  .related-card h3 {
-    font-size: 1.25rem;
-    margin-bottom: 10px;
+    color: var(--accent);
   }
 </style>
