@@ -203,9 +203,6 @@
       "destination": "https://eu.i.posthog.com/:path*"
     },
     {
-      "handle": "filesystem"
-    },
-    {
       "source": "/app",
       "destination": "/app/index.html"
     },
