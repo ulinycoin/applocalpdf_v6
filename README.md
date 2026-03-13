@@ -119,6 +119,7 @@ Key constraints:
 - Vercel serves the marketing site from `/`
 - The SPA is deployed under `/app`
 - SPA deep links under `/app/*` are rewritten to `/app/index.html`
+- For replacing the v4 `clientpdf-pro` production repository with this codebase, use [`docs/CLIENTPDF_PRO_MIGRATION_RUNBOOK.md`](/Users/aleksejs/Desktop/LocalPDF_V6/docs/CLIENTPDF_PRO_MIGRATION_RUNBOOK.md) and [`docs/CLIENTPDF_PRO_CUTOVER_CHECKLIST.md`](/Users/aleksejs/Desktop/LocalPDF_V6/docs/CLIENTPDF_PRO_CUTOVER_CHECKLIST.md)
 
 ## Status
 

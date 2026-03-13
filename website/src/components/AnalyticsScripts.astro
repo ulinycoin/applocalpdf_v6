@@ -1,8 +1,35 @@
 ---
-const gaMeasurementId = import.meta.env.PUBLIC_GA_MEASUREMENT_ID?.trim();
-const posthogKey = import.meta.env.PUBLIC_POSTHOG_KEY?.trim();
-const posthogUiHost = import.meta.env.PUBLIC_POSTHOG_UI_HOST?.trim() || 'https://eu.posthog.com';
+const legacyGaMeasurementId = 'G-MS36WTHPCZ';
+const legacyPosthogKey = 'phc_6iTpA8vFIxlQ8HxmPsoMmtj4sqgCUWiZQMOpfSfyvxe';
+const legacyPosthogUiHost = 'https://eu.posthog.com';
+
+const gaMeasurementId = import.meta.env.PUBLIC_GA_MEASUREMENT_ID?.trim() || legacyGaMeasurementId;
+const posthogKey = import.meta.env.PUBLIC_POSTHOG_KEY?.trim() || legacyPosthogKey;
+const posthogUiHost = import.meta.env.PUBLIC_POSTHOG_UI_HOST?.trim() || legacyPosthogUiHost;
 const enableVercelAnalytics = import.meta.env.PUBLIC_ENABLE_VERCEL_ANALYTICS === 'true';
+const analyticsWarningKey = '__localpdfAnalyticsWarningsLogged';
+
+if (!(globalThis as Record<string, unknown>)[analyticsWarningKey]) {
+  if (!import.meta.env.PUBLIC_GA_MEASUREMENT_ID?.trim()) {
+    console.warn(
+      '[analytics] GA4 PUBLIC_GA_MEASUREMENT_ID is not set during Astro build. Falling back to the Localpdf_v3 measurement ID.'
+    );
+  }
+
+  if (!import.meta.env.PUBLIC_POSTHOG_KEY?.trim()) {
+    console.warn(
+      '[analytics] PostHog PUBLIC_POSTHOG_KEY is not set during Astro build. Falling back to the Localpdf_v3 project key.'
+    );
+  }
+
+  if (!enableVercelAnalytics) {
+    console.warn(
+      '[analytics] Vercel Analytics disabled: PUBLIC_ENABLE_VERCEL_ANALYTICS is not "true" during Astro build.'
+    );
+  }
+
+  (globalThis as Record<string, unknown>)[analyticsWarningKey] = true;
+}
 ---
 
 {gaMeasurementId && (

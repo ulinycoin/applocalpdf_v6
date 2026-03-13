@@ -20,6 +20,7 @@
     "test:e2e": "playwright test",
     "test:e2e:studio-edit": "playwright test e2e/studio-edit-advanced-formatting.spec.ts e2e/studio-edit-batch-save.spec.ts e2e/studio-edit-precision.spec.ts e2e/studio-edit-save-undo-redo.spec.ts e2e/studio-edit-telemetry-actions.spec.ts e2e/studio-edit-telemetry-undo-redo-single.spec.ts e2e/studio-edit-telemetry.spec.ts e2e/studio-edit-text-save.spec.ts",
     "fixtures:pdfs": "node scripts/generate-e2e-pdf-fixtures.mjs",
+    "indexnow:submit": "node scripts/submit-indexnow.mjs",
     "report:fallback-budget": "node scripts/fallback-budget-summary.mjs",
     "audit:workerization": "node scripts/workerization-audit.mjs",
     "audit:workerization:strict": "node scripts/workerization-audit.mjs --strict"

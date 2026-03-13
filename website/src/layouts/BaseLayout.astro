@@ -3,6 +3,8 @@ import Header from '../components/Header.astro';
 import AnalyticsScripts from '../components/AnalyticsScripts.astro';
 import { getAppUrl } from '../utils/app-url';
 
+const bingSiteVerification = '';
+
 interface Props {
   title: string;
   description: string;
@@ -129,6 +131,7 @@ const footerLabels = {
 
   <!-- Google Search Console verification -->
   <meta name="google-site-verification" content="34adca022b79f1a0">
+  {bingSiteVerification && <meta name="msvalidate.01" content={bingSiteVerification} />}
 
   <!-- Open Graph / Facebook -->
   <meta property="og:type" content="website">
