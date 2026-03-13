@@ -1,4 +1,5 @@
 ---
+import Analytics from '@vercel/analytics/astro';
 const legacyGaMeasurementId = 'G-MS36WTHPCZ';
 const legacyPosthogKey = 'phc_6iTpA8vFIxlQ8HxmPsoMmtj4sqgCUWiZQMOpfSfyvxe';
 const legacyPosthogUiHost = 'https://eu.posthog.com';
@@ -66,12 +67,7 @@ if (!(globalThis as Record<string, unknown>)[analyticsWarningKey]) {
 )}
 
 {enableVercelAnalytics && (
-  <>
-    <script is:inline>
-      window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };
-    </script>
-    <script is:inline async src="/_vercel/insights/script.js"></script>
-  </>
+  <Analytics />
 )}
 
 {posthogKey && (
