@@ -74,33 +74,14 @@ try {
     throw new Error('App-spa dist not found!');
   }
 
-  // STEP 1: Move React app to /app subdirectory
-  console.log('  → Moving React app to /app...');
-  const tempAppPath = path.join(__dirname, 'dist_temp_app');
-  
-  // Create /app subdirectory inside dist
-  const appSubdir = path.join(appDistPath, 'app');
-  if (!fs.existsSync(appSubdir)) {
-    fs.mkdirSync(appSubdir, { recursive: true });
-  }
-
-  // Move all files from dist to dist/app
-  const filesToMove = fs.readdirSync(appDistPath);
-  for (const file of filesToMove) {
-    if (file === 'app') continue; // Don't move the app folder into itself
-    
-    const src = path.join(appDistPath, file);
-    const dest = path.join(appSubdir, file);
-    
-    fs.renameSync(src, dest);
-    console.log(`    ✓ Moved ${file} to /app/${file}`);
-  }
-
+  // STEP 1: React app is built directly to dist/app via vite.config.ts
+  console.log('✓ React app already in dist/app');
 
   // STEP 2: Copy website files to root
   console.log('  → Copying website files to root...');
 
   function copyRecursive(src, dest, skipDirs = []) {
+
     const exists = fs.existsSync(src);
     const stats = exists && fs.statSync(src);
     const isDirectory = exists && stats.isDirectory();

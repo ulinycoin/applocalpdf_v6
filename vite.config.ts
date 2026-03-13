@@ -10,7 +10,10 @@ export default defineConfig({
     strictPort: true,
   },
   build: {
+    outDir: 'dist/app',
+    emptyOutDir: true,
     chunkSizeWarningLimit: 550,
+
     rollupOptions: {
       output: {
         manualChunks(id) {
