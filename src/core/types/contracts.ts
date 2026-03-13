@@ -269,10 +269,10 @@ export type RunnerProgressEvent = {
 };
 
 export type RunnerTelemetryEvent =
-  | { type: 'TOOL_RUN_STARTED'; runId: string; toolId: string; inputCount: number }
+  | { type: 'TOOL_RUN_STARTED', runId: string; toolId: string; inputCount: number; totalInputSize?: number }
   | { type: 'TOOL_RUN_PROGRESS'; runId: string; toolId: string; progress: number }
   | { type: 'TOOL_RUN_DENIED'; runId: string; toolId: string; reason: 'ENTITLEMENT_REQUIRED' | 'LIMIT_EXCEEDED' }
-  | { type: 'TOOL_RUN_RESULT'; runId: string; toolId: string; durationMs: number; outputCount: number }
+  | { type: 'TOOL_RUN_RESULT', runId: string; toolId: string; durationMs: number; outputCount: number; totalInputSize?: number }
   | { type: 'TOOL_RUN_ERROR'; runId: string; toolId: string; durationMs: number; code?: string; message: string }
   | { type: 'ACCESS_CHECK_STAGE'; runId: string; toolId: string; stage: string; fileId?: string; durationMs?: number }
   | { type: 'PAGE_COUNT_WORKER_STAGE'; runId: string; toolId: string; fileId: string; stage: string; durationMs?: number; note?: string }

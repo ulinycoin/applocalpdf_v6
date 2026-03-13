@@ -39,9 +39,20 @@ export class UnifiedToolRunner {
     context: ToolRunContext,
     onProgress?: (event: RunnerProgressEvent) => void,
   ): Promise<RunnerExecuteResult> {
+    // Calculate total input size if possible
+    let totalInputSize = 0;
+    try {
+      for (const fileId of input.inputIds) {
+        const entry = await this.fileSystem.read(fileId);
+        totalInputSize += await entry.getSize();
+      }
+    } catch {
+      // Best effort size calculation
+    }
+
     let accessCheck: AccessDeniedResult | null;
     try {
-      accessCheck = await this.validateAccess(toolId, input.inputIds, context);
+      accessCheck = await this.validateAccess(toolId, input.inputIds, context, totalInputSize);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Access check failed';
       const typed = error as { code?: unknown };
@@ -113,6 +124,7 @@ export class UnifiedToolRunner {
         toolId,
         durationMs: Date.now() - startedAt,
         outputCount: event.payload.payload.outputIds.length,
+        totalInputSize,
       });
       return { type: 'TOOL_RESULT', outputIds: event.payload.payload.outputIds };
     }
@@ -220,6 +232,7 @@ export class UnifiedToolRunner {
     toolId: string,
     inputIds: string[],
     context: ToolRunContext,
+    totalInputSize?: number,
   ): Promise<AccessDeniedResult | null> {
     const definition = this.registry.get(toolId);
     const runId = `access-check-${crypto.randomUUID()}`;
@@ -229,7 +242,10 @@ export class UnifiedToolRunner {
       runId,
       toolId,
       inputCount: inputIds.length,
+      totalInputSize,
     });
+
+
 
     const entitlementCheck = this.checkEntitlements(definition.entitlements, context.entitlements);
     if (entitlementCheck) {

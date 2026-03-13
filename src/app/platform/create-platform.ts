@@ -15,6 +15,7 @@ import {
   InProcessWorkerOrchestrator,
   type WorkerOrchestrator,
 } from '../../core/workers/worker-orchestrator';
+import { PostHogTelemetrySink } from '../../core/telemetry/posthog-sink';
 
 export interface PlatformRuntime {
   mode: 'browser-worker' | 'in-process';
@@ -51,6 +52,7 @@ export function createPlatformRuntime(
   const telemetry = new TelemetryBus();
   const runnerTelemetry = new CompositeTelemetrySink([
     telemetry,
+    new PostHogTelemetrySink(),
     options?.telemetrySink ?? (mode === 'browser-worker' ? new ConsoleTelemetrySink() : new NoopTelemetrySink()),
   ]);
 
