@@ -203,13 +203,18 @@
       "destination": "https://eu.i.posthog.com/:path*"
     },
     {
+      "source": "/app/:path*",
+      "destination": "/app/index.html"
+    },
+    {
       "source": "/app",
       "destination": "/app/index.html"
     },
     {
-      "source": "/app/:path*",
+      "source": "/app/",
       "destination": "/app/index.html"
     },
+
     {
       "source": "/(about|privacy|terms|faq|security)",
       "destination": "/$1.html"

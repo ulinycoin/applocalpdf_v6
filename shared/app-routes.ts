@@ -54,8 +54,9 @@ const LEGACY_TARGET_ROUTE_MAP: Record<string, string> = {
 
 export function resolveAppRoute(target?: string): string {
   if (!target) {
-    return APP_STUDIO_ROUTE;
+    return '/';
   }
+
 
   return LEGACY_TARGET_ROUTE_MAP[target] ?? `/${target}`;
 }
