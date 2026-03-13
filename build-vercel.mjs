@@ -76,22 +76,26 @@ try {
 
   // STEP 1: Move React app to /app subdirectory
   console.log('  → Moving React app to /app...');
+  const tempAppPath = path.join(__dirname, 'dist_temp_app');
+  
+  // Create /app subdirectory inside dist
   const appSubdir = path.join(appDistPath, 'app');
-
-  // Create /app directory
   if (!fs.existsSync(appSubdir)) {
     fs.mkdirSync(appSubdir, { recursive: true });
   }
 
-  // Move app-spa index.html to /app/index.html
-  const appIndexSrc = path.join(appDistPath, 'index.html');
-  const appIndexDest = path.join(appSubdir, 'index.html');
-  if (fs.existsSync(appIndexSrc)) {
-    fs.renameSync(appIndexSrc, appIndexDest);
-    console.log('    ✓ Moved index.html to /app/index.html');
+  // Move all files from dist to dist/app
+  const filesToMove = fs.readdirSync(appDistPath);
+  for (const file of filesToMove) {
+    if (file === 'app') continue; // Don't move the app folder into itself
+    
+    const src = path.join(appDistPath, file);
+    const dest = path.join(appSubdir, file);
+    
+    fs.renameSync(src, dest);
+    console.log(`    ✓ Moved ${file} to /app/${file}`);
   }
 
-  // Assets stay in root /assets (shared by both app and website)
 
   // STEP 2: Copy website files to root
   console.log('  → Copying website files to root...');

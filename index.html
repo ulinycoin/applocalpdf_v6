@@ -34,7 +34,16 @@
     </script>
 
     <!-- Vercel Analytics -->
-    <script defer src="/_vercel/insights/script.js"></script>
+    <script>
+      (function() {
+        var s = document.createElement('script');
+        s.src = '/_vercel/insights/script.js';
+        s.defer = true;
+        document.head.appendChild(s);
+      })();
+    </script>
+
+
 
   </head>
   <body>
