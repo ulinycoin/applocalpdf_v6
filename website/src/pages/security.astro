@@ -52,18 +52,6 @@ const securitySchema = [
       { '@type': 'ListItem', position: 2, name: 'Security', item: canonical },
     ],
   },
-  {
-    '@context': 'https://schema.org',
-    '@type': 'FAQPage',
-    mainEntity: trustFaqs.map((item) => ({
-      '@type': 'Question',
-      name: item.question,
-      acceptedAnswer: {
-        '@type': 'Answer',
-        text: item.answer,
-      },
-    })),
-  },
 ];
 
 const pillars = [
