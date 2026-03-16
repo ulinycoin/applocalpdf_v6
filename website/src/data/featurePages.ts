@@ -269,9 +269,9 @@ export const featurePages: FeaturePageData[] = [
     slug: 'split-pdf',
     title: 'Split PDF files locally when one document needs to become several',
     metaTitle: 'Split PDF Files Locally by Pages or Ranges | LocalPDF',
-    metaDescription: 'Split PDF files locally with LocalPDF for cleaner handoffs, extraction, and document reuse.',
+    metaDescription: 'Split PDF files locally with LocalPDF by page, range, or selective extraction for cleaner sharing and document reuse.',
     socialImage: 'https://localpdf.online/og/split-pdf.svg',
-    intro: 'Split workflows are common in operations and document review. They should feel direct and controlled.',
+    intro: 'Use Split PDF when you need to break one document into smaller files, extract only the relevant pages, or prepare separate handoff packages.',
     appHash: 'split',
     eyebrow: 'Split PDF',
     capabilities: [
@@ -313,6 +313,24 @@ export const featurePages: FeaturePageData[] = [
         answer: 'That the job is selective extraction and cleaner sharing, not just mechanical page separation.',
       },
     ],
+    intentSection: {
+      title: 'Split PDF intents covered here',
+      intro: 'This page is meant to satisfy the common split cluster, including the page-range and extraction-style jobs users often search separately.',
+      items: [
+        {
+          title: 'Split PDF by page ranges',
+          body: 'Use this workflow when a long PDF needs to be broken into sections, chapters, packets, or handoff-ready ranges without leaving the main app flow.',
+        },
+        {
+          title: 'Extract pages from a PDF for sharing',
+          body: 'This route also fits selective page extraction when the real need is to send only the relevant pages and keep the rest of the file private.',
+        },
+        {
+          title: 'Create smaller PDFs for review, filing, or upload',
+          body: 'Open Split PDF when the goal is operational control: cleaner review files, easier filing, or smaller outputs for the next step.',
+        },
+      ],
+    },
     blogLinks: [
       { href: '/blog/how-to-split-pdf-files', title: 'How to Split PDF Files' },
       { href: '/blog/smart-organize-ai-page-analysis', title: 'Smart Organize: AI-Powered PDF Page Analysis' },
@@ -374,19 +392,20 @@ export const featurePages: FeaturePageData[] = [
   {
     slug: 'convert-pdf',
     title: 'Convert PDFs and related document formats in one local workflow',
-    metaTitle: 'Convert PDF and Document Formats in One Local Workflow | LocalPDF',
-    metaDescription: 'Convert PDFs and related document formats in one LocalPDF workflow instead of jumping between separate one-off tools.',
+    metaTitle: 'Convert PDF, Word, and Image Formats in One Local Workflow | LocalPDF',
+    metaDescription: 'Convert PDF, Word, and image formats in one LocalPDF workflow, including PDF to Word, Word to PDF, and PDF to image paths.',
     socialImage: 'https://localpdf.online/og/convert-pdf.svg',
-    intro: 'Use Convert PDF when you need to move a document into the right format without leaving the main workflow.',
+    intro: 'Use Convert PDF when you need PDF to Word, Word to PDF, PDF to image, or image to PDF conversion without leaving the main workflow.',
     appHash: 'pdf-to-word',
     eyebrow: 'Convert PDF',
     capabilities: [
-      'Handle common PDF conversion workflows in one place',
+      'Handle common PDF, Word, and image conversion workflows in one place',
       'Move between formats without leaving the product workflow',
       'Start conversion from one clear entry point inside the app',
     ],
     whyLocal: [
       'Conversion is often part of a larger document workflow, not a one-off task.',
+      'Users commonly need to move between PDF, Word, and image formats without re-evaluating a new tool each time.',
       'A clear conversion entry point helps users choose the right next step faster.',
       'The product should feel like one workspace, not a maze of separate tools.',
     ],
@@ -396,9 +415,9 @@ export const featurePages: FeaturePageData[] = [
       'Review and export the converted result.',
     ],
     useCases: [
-      'Prepare a PDF for editable reuse',
-      'Generate a PDF from a document source',
-      'Move between document and image-based workflows',
+      'Convert a PDF to Word for editable reuse',
+      'Generate a PDF from a Word document before sending or signing',
+      'Move between PDF pages and image-based workflows',
     ],
     proofTitle: 'Choose the right format and keep moving',
     proofBody: 'Conversion works best when users can pick the right path quickly and continue the broader document workflow without starting over.',
@@ -425,15 +444,15 @@ export const featurePages: FeaturePageData[] = [
       items: [
         {
           title: 'PDF to Word and Word to PDF',
-          body: 'Use this workflow when the document needs to move between PDF and editable document formats without leaving the main product path.',
+          body: 'Use this workflow when the document needs to move between PDF and editable Word formats, whether the job starts with editing, review, or final export.',
         },
         {
-          title: 'Images to PDF and PDF to images',
-          body: 'This route also covers image-based conversion tasks, including turning image sets into PDFs or exporting PDF pages into image outputs.',
+          title: 'PDF to PNG, PDF to JPG, and image to PDF',
+          body: 'This route also covers image-based conversion tasks, including exporting PDF pages as images or combining images into a PDF for sharing and archive work.',
         },
         {
           title: 'One conversion entry point instead of many thin pages',
-          body: 'The goal is to help users pick the right format path quickly, then continue the broader workflow inside one tool surface.',
+          body: 'The goal is to help users pick the right format path quickly, including common convert PDF searches that would otherwise fragment into separate thin pages.',
         },
       ],
     },
