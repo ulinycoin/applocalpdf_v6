@@ -3,8 +3,8 @@ import MarketingLayout from '../layouts/MarketingLayout.astro';
 import { featurePages } from '../data/featurePages';
 import { getAppUrl } from '../utils/app-url';
 
-const title = 'Private PDF workflows that stay on your device | LocalPDF';
-const description = 'LocalPDF helps you edit, merge, OCR, compress, split, sign, and convert PDFs in one local-first workflow without an upload-first handoff.';
+const title = 'Private PDF editor and local-first PDF tools | LocalPDF';
+const description = 'LocalPDF is a private PDF editor for editing, merging, OCR, compressing, splitting, signing, and converting PDFs in a local-first workflow without an upload-first handoff.';
 const canonical = 'https://localpdf.online/';
 const image = 'https://localpdf.online/screenshots/v6-workspace-1.png';
 const imageAlt = 'LocalPDF workspace showing local PDF editing and document workflow tools';
@@ -29,33 +29,6 @@ const websiteSchema = [
     name: 'LocalPDF',
     url: canonical,
     logo: 'https://localpdf.online/logos/localpdf-header-96x96.png',
-  },
-  {
-    '@context': 'https://schema.org',
-    '@type': 'SoftwareApplication',
-    name: 'LocalPDF',
-    applicationCategory: 'BusinessApplication',
-    operatingSystem: 'Web',
-    url: canonical,
-    description,
-    featureList: [
-      'Edit PDF locally',
-      'Merge PDF locally',
-      'Run OCR on scanned PDFs',
-      'Compress PDF files',
-      'Split PDF pages',
-      'Sign PDF documents',
-      'Convert PDF and document formats',
-    ],
-    offers: {
-      '@type': 'Offer',
-      price: '0',
-      priceCurrency: 'USD',
-    },
-    screenshot: [
-      'https://localpdf.online/screenshots/v6-workspace-1.png',
-      'https://localpdf.online/screenshots/v6-workspace-2.png',
-    ],
   },
 ];
 
@@ -101,17 +74,18 @@ const popularGuides = [
         <span class="eyebrow">Privacy-first PDF app</span>
         <h1>Private PDF workflows that stay on your device</h1>
         <p class="hero-text">
-          Edit, merge, OCR, compress, split, sign, and convert PDFs in one place without
-          turning every document into an upload-first workflow.
+          LocalPDF is a private PDF editor and local-first PDF toolset for editing, merging,
+          OCR, compressing, splitting, signing, and converting PDFs without turning every
+          document into an upload-first workflow.
         </p>
         <div class="cta-row">
           <a class="btn-primary" href={appUrl}>Open LocalPDF</a>
           <a class="btn-secondary" href="/security">See How Local Processing Works</a>
         </div>
         <div class="hero-notes">
-          <span>Local-first handling for sensitive files</span>
-          <span>One workspace for real PDF jobs</span>
-          <span>Clear path from file to finished result</span>
+          <span>Local-first handling for sensitive PDF files</span>
+          <span>One workspace for editing, merging, OCR, and conversion</span>
+          <span>Clear path from secure PDF task to finished result</span>
         </div>
       </div>
 
@@ -150,7 +124,7 @@ const popularGuides = [
     <section class="section trust-strip">
       <div class="trust-item">
         <strong>No upload workflow</strong>
-        <p>Built for jobs where documents need to stay close to the user.</p>
+        <p>Built for PDF jobs where documents need to stay close to the user instead of starting with a remote upload.</p>
       </div>
       <div class="trust-item">
         <strong>One workspace</strong>
@@ -166,16 +140,16 @@ const popularGuides = [
       <div class="decision-copy">
         <h2 class="section-title">When LocalPDF is the better fit</h2>
         <p class="section-intro">
-          LocalPDF is a better fit when the document matters, the task is clear, and you want to
-          start working on the file immediately instead of sending it into an upload queue.
+          LocalPDF is a better fit when you need a secure PDF editor, an offline-feeling browser workflow,
+          or PDF tools without upload pressure before the job can even start.
         </p>
       </div>
       <div class="decision-box">
         <strong>Use LocalPDF when</strong>
         <ul class="bullet-list">
-          <li>You want one workspace instead of many disconnected utility pages</li>
+          <li>You want one PDF workspace instead of many disconnected utility pages</li>
           <li>The document is internal, sensitive, or operationally important</li>
-          <li>The task is editing, merging, OCR, splitting, signing, compression, or conversion</li>
+          <li>The task is editing, merging, OCR, splitting, signing, compression, or conversion without an upload-first handoff</li>
         </ul>
       </div>
     </section>
@@ -198,11 +172,11 @@ const popularGuides = [
 
     <section class="section split-layout">
       <div>
-        <h2 class="section-title">Why local processing changes the decision</h2>
-        <p class="section-intro">
+      <h2 class="section-title">Why local processing changes the decision</h2>
+      <p class="section-intro">
           Local processing matters most when the document is sensitive, operational, or simply too
-          important for an upload-first flow. The value is practical: less exposure, less waiting,
-          and a faster path to the result.
+          important for an upload-first flow. The value is practical: a more private PDF workflow,
+          less waiting, and a faster path to the result.
         </p>
       </div>
       <div class="callout-list">

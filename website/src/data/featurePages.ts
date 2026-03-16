@@ -20,6 +20,14 @@ export interface FeaturePageData {
     question: string;
     answer: string;
   }>;
+  intentSection?: {
+    title: string;
+    intro: string;
+    items: Array<{
+      title: string;
+      body: string;
+    }>;
+  };
   blogLinks?: Array<{
     href: string;
     title: string;
@@ -75,6 +83,24 @@ export const featurePages: FeaturePageData[] = [
         answer: 'A clear editing workflow for changing, covering, or annotating a PDF directly.',
       },
     ],
+    intentSection: {
+      title: 'Common edit PDF jobs this page covers',
+      intro: 'This page is meant to satisfy the broader edit cluster, including common tasks that are often split into separate utility routes.',
+      items: [
+        {
+          title: 'Add text or lightweight overlays',
+          body: 'Use the editing workflow when the job is adding labels, notes, or simple visible changes to the PDF itself.',
+        },
+        {
+          title: 'Cover or revise sensitive sections',
+          body: 'Local editing is a better fit when names, pricing, addresses, or internal notes need to be changed before sharing.',
+        },
+        {
+          title: 'Handle rotate, watermark, and organize-style tasks',
+          body: 'If the real need is adjusting pages or preparing a document for handoff, this route acts as the main entry point instead of scattering users across lookalike edit pages.',
+        },
+      ],
+    },
     blogLinks: [
       { href: '/blog/edit-text-in-pdf-guide', title: 'How to Edit Text in PDF Files' },
       { href: '/blog/pdf-security-best-practices', title: 'PDF Security Best Practices' },
@@ -393,6 +419,24 @@ export const featurePages: FeaturePageData[] = [
         answer: 'Choosing the right conversion path and moving straight into the app without second-guessing where to start.',
       },
     ],
+    intentSection: {
+      title: 'Conversion paths covered here',
+      intro: 'This feature page is the main destination for the most common long-tail conversion intents routed into LocalPDF.',
+      items: [
+        {
+          title: 'PDF to Word and Word to PDF',
+          body: 'Use this workflow when the document needs to move between PDF and editable document formats without leaving the main product path.',
+        },
+        {
+          title: 'Images to PDF and PDF to images',
+          body: 'This route also covers image-based conversion tasks, including turning image sets into PDFs or exporting PDF pages into image outputs.',
+        },
+        {
+          title: 'One conversion entry point instead of many thin pages',
+          body: 'The goal is to help users pick the right format path quickly, then continue the broader workflow inside one tool surface.',
+        },
+      ],
+    },
     blogLinks: [
       { href: '/blog/convert-word-pdf-guide', title: 'How to Convert Word to PDF and PDF to Word' },
       { href: '/blog/convert-pdf-to-images-guide', title: 'How to Convert PDF to Images' },

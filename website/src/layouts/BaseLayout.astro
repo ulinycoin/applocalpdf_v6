@@ -22,68 +22,6 @@ const siteName = 'LocalPDF';
 const defaultKeywords = "PDF tools, merge PDF, split PDF, compress PDF, edit PDF, free PDF editor, online PDF, privacy PDF, client-side PDF";
 const ogImage = image || 'https://localpdf.online/logos/localpdf-social-1200x630.png';
 
-// Generate SoftwareApplication Schema automatically for all pages to show "Free" pricing in snippets
-const softwareSchema = {
-  "@context": "https://schema.org",
-  "@type": "SoftwareApplication",
-  "name": "LocalPDF",
-  "operatingSystem": "Any",
-  "applicationCategory": "BusinessApplication",
-  "url": currentUrl,
-  "image": "https://localpdf.online/logos/icon-512.png",
-  "offers": {
-    "@type": "Offer",
-    "price": "0",
-    "priceCurrency": "USD",
-    "priceValidUntil": "2026-12-31",
-    "availability": "https://schema.org/InStock",
-    "hasMerchantReturnPolicy": {
-      "@type": "MerchantReturnPolicy",
-      "applicableCountry": "US",
-      "returnPolicyCategory": "https://schema.org/MerchantReturnFiniteReturnWindow",
-      "merchantReturnDays": 30,
-      "returnFees": "https://schema.org/FreeReturn",
-      "returnMethod": "https://schema.org/ReturnByMail"
-    },
-    "shippingDetails": {
-      "@type": "OfferShippingDetails",
-      "shippingRate": {
-        "@type": "MonetaryAmount",
-        "value": "0",
-        "currency": "USD"
-      },
-      "shippingDestination": {
-        "@type": "DefinedRegion",
-        "addressCountry": "US"
-      },
-      "deliveryTime": {
-        "@type": "ShippingDeliveryTime",
-        "handlingTime": {
-          "@type": "QuantitativeValue",
-          "minValue": 0,
-          "maxValue": 0,
-          "unitCode": "DAY"
-        },
-        "transitTime": {
-          "@type": "QuantitativeValue",
-          "minValue": 0,
-          "maxValue": 0,
-          "unitCode": "DAY"
-        }
-      }
-    },
-    "itemCondition": "https://schema.org/NewCondition"
-  },
-  "description": description,
-  "aggregateRating": {
-    "@type": "AggregateRating",
-    "ratingValue": "4.9",
-    "ratingCount": "1250",
-    "bestRating": "5",
-    "worstRating": "1"
-  }
-};
-
 const footerLabels = {
   en: { 
     product: 'Product', edit: 'Edit PDF', merge: 'Merge PDF', ocr: 'OCR PDF', convert: 'Convert PDF',
@@ -155,10 +93,8 @@ const footerLabels = {
   <meta name="theme-color" content="#18181b">
   <meta name="application-name" content={siteName}>
   <meta name="language" content={lang === 'de' ? 'German' : 'English'}>
-  <meta name="geo.region" content={lang === 'de' ? 'DE' : 'US'}>
-  <meta name="geo.placename" content="United States">
   <meta name="rating" content="General">
-  <meta name="referrer" content="no-referrer-when-downgrade">
+  <meta name="referrer" content="strict-origin-when-cross-origin">
   <meta name="format-detection" content="telephone=no">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -175,7 +111,6 @@ const footerLabels = {
   <!-- PWA Manifest -->
   <link rel="manifest" href="/manifest.json">
 
-  <script type="application/ld+json" set:html={JSON.stringify(softwareSchema)} />
   <slot name="head" />
 
   <!-- Fonts - Optimized -->

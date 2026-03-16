@@ -160,6 +160,21 @@ const schema = [
       </div>
     </section>
 
+    {page.intentSection && (
+      <section class="section">
+        <h2 class="section-title">{page.intentSection.title}</h2>
+        <p class="section-intro">{page.intentSection.intro}</p>
+        <div class="card-grid">
+          {page.intentSection.items.map((item) => (
+            <div class="card">
+              <h3>{item.title}</h3>
+              <p>{item.body}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+    )}
+
     <section class="section outcome-section">
       <div class="outcome-card">
         <small>Best fit</small>

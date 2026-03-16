@@ -93,147 +93,37 @@ const finalRelatedTools = relatedTools && relatedTools.length > 0
       description: t.desc
     }));
 
-// Schema.org structured data for SEO
-const structuredData = {
-  "@context": "https://schema.org",
-  "@type": "SoftwareApplication",
-  "name": title,
-  "applicationCategory": "UtilityApplication",
-  "operatingSystem": "Any (Web Browser)",
-  "offers": {
-    "@type": "Offer",
-    "price": "0",
-    "priceCurrency": "USD",
-    "priceValidUntil": "2026-12-31",
-    "availability": "https://schema.org/InStock",
-    "hasMerchantReturnPolicy": {
-      "@type": "MerchantReturnPolicy",
-      "applicableCountry": "US",
-      "returnPolicyCategory": "https://schema.org/MerchantReturnFiniteReturnWindow",
-      "merchantReturnDays": 30,
-      "returnFees": "https://schema.org/FreeReturn",
-      "returnMethod": "https://schema.org/ReturnByMail"
-    },
-    "shippingDetails": {
-      "@type": "OfferShippingDetails",
-      "shippingRate": {
-        "@type": "MonetaryAmount",
-        "value": "0",
-        "currency": "USD"
-      },
-      "shippingDestination": {
-        "@type": "DefinedRegion",
-        "addressCountry": "US"
-      },
-      "deliveryTime": {
-        "@type": "ShippingDeliveryTime",
-        "handlingTime": {
-          "@type": "QuantitativeValue",
-          "minValue": 0,
-          "maxValue": 0,
-          "unitCode": "DAY"
-        },
-        "transitTime": {
-          "@type": "QuantitativeValue",
-          "minValue": 0,
-          "maxValue": 0,
-          "unitCode": "DAY"
-        }
-      }
-    },
-    "itemCondition": "https://schema.org/NewCondition"
-  },
-  "sku": toolId,
-  "mpn": toolId,
-  "description": metaDescription,
-  "url": canonicalURL,
-  ...(features && features.length > 0 ? { "featureList": features } : {}),
-  "aggregateRating": {
-    "@type": "AggregateRating",
-    "ratingValue": "4.8",
-    "ratingCount": "127",
-    "bestRating": "5",
-    "worstRating": "1"
-  },
-  "image": image || "https://localpdf.online/logos/icon-512.png"
-};
-
-const productSchema = {
-  "@context": "https://schema.org/",
-  "@type": "Product",
-  "name": title,
-  "description": metaDescription,
-  "brand": {
-    "@type": "Brand",
-    "name": "LocalPDF"
-  },
-  "image": image || "https://localpdf.online/logos/icon-512.png",
-  "offers": {
-    "@type": "Offer",
+// Keep legacy tool routes on a minimal, supportable schema footprint.
+const structuredData = [
+  {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": title,
+    "applicationCategory": "UtilityApplication",
+    "operatingSystem": "Web",
+    "description": metaDescription,
     "url": canonicalURL,
-    "price": "0",
-    "priceCurrency": "USD",
-    "priceValidUntil": "2026-12-31",
-    "availability": "https://schema.org/InStock",
-    "hasMerchantReturnPolicy": {
-      "@type": "MerchantReturnPolicy",
-      "applicableCountry": "US",
-      "returnPolicyCategory": "https://schema.org/MerchantReturnFiniteReturnWindow",
-      "merchantReturnDays": 30,
-      "returnFees": "https://schema.org/FreeReturn",
-      "returnMethod": "https://schema.org/ReturnByMail"
+    ...(features && features.length > 0 ? { "featureList": features } : {}),
+    "offers": {
+      "@type": "Offer",
+      "price": "0",
+      "priceCurrency": "USD"
     },
-    "shippingDetails": {
-      "@type": "OfferShippingDetails",
-      "shippingRate": {
-        "@type": "MonetaryAmount",
-        "value": "0",
-        "currency": "USD"
-      },
-      "shippingDestination": {
-        "@type": "DefinedRegion",
-        "addressCountry": "US"
-      },
-      "deliveryTime": {
-        "@type": "ShippingDeliveryTime",
-        "handlingTime": {
-          "@type": "QuantitativeValue",
-          "minValue": 0,
-          "maxValue": 0,
-          "unitCode": "DAY"
-        },
-        "transitTime": {
-          "@type": "QuantitativeValue",
-          "minValue": 0,
-          "maxValue": 0,
-          "unitCode": "DAY"
-        }
-      }
-    },
-    "itemCondition": "https://schema.org/NewCondition"
+    "image": image || "https://localpdf.online/logos/icon-512.png"
   },
-  "sku": toolId,
-  "mpn": toolId,
-  "review": {
-    "@type": "Review",
-    "reviewRating": {
-      "@type": "Rating",
-      "ratingValue": "5",
-      "bestRating": "5"
-    },
-    "author": {
-      "@type": "Person",
-      "name": "Jane Doe"
+  {
+    "@context": "https://schema.org",
+    "@type": "WebPage",
+    "name": title,
+    "description": metaDescription,
+    "url": canonicalURL,
+    "isPartOf": {
+      "@type": "WebSite",
+      "name": "LocalPDF",
+      "url": "https://localpdf.online/"
     }
-  },
-  "aggregateRating": {
-    "@type": "AggregateRating",
-    "ratingValue": "4.8",
-    "ratingCount": "127",
-    "bestRating": "5",
-    "worstRating": "1"
   }
-};
+];
 
 const defaultFaqs = [
   {
@@ -268,8 +158,9 @@ const displayedTechInfo = techInfo && techInfo.length > 0 ? techInfo : (ui.defau
 <BaseLayout title={title} description={metaDescription} canonical={canonicalURL} image={image} lang={lang}>
 
   <!-- Schema.org structured data -->
-  <script type="application/ld+json" slot="head" set:html={JSON.stringify(structuredData)} />
-  <script type="application/ld+json" slot="head" set:html={JSON.stringify(productSchema)} />
+  {structuredData.map((item) => (
+    <script type="application/ld+json" slot="head" set:html={JSON.stringify(item)} />
+  ))}
 
   <script define:vars={{ appURL }}>
     // Prefetch app for faster navigation

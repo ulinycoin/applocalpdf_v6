@@ -2,14 +2,36 @@
 import MarketingLayout from '../layouts/MarketingLayout.astro';
 import { getAppUrl } from '../utils/app-url';
 
-const title = 'About | LocalPDF';
-const description = 'LocalPDF is a privacy-first PDF app built for clear workflows, local-first handling, and practical document work in one place.';
+const title = 'About LocalPDF | Local-first PDF workspace';
+const description = 'Learn what LocalPDF is, what the product is built for, and how the local-first PDF workspace is structured around practical document workflows.';
 const canonical = 'https://localpdf.online/about';
 const image = 'https://localpdf.online/og/home.svg';
 const appUrl = getAppUrl();
+const aboutSchema = [
+  {
+    '@context': 'https://schema.org',
+    '@type': 'Organization',
+    name: 'LocalPDF',
+    url: 'https://localpdf.online/',
+    logo: 'https://localpdf.online/logos/localpdf-header-96x96.png',
+    description: 'LocalPDF builds private, local-first PDF workflows for practical document tasks.',
+  },
+  {
+    '@context': 'https://schema.org',
+    '@type': 'AboutPage',
+    name: title,
+    description,
+    url: canonical,
+    mainEntity: {
+      '@type': 'Organization',
+      name: 'LocalPDF',
+      url: 'https://localpdf.online/',
+    },
+  },
+];
 ---
 
-<MarketingLayout title={title} description={description} canonical={canonical} image={image}>
+<MarketingLayout title={title} description={description} canonical={canonical} image={image} schema={aboutSchema}>
   <div class="page-shell">
     <section class="section intro">
       <span class="eyebrow">About</span>

@@ -2,8 +2,8 @@
 import MarketingLayout from '../layouts/MarketingLayout.astro';
 import { getAppUrl } from '../utils/app-url';
 
-const title = 'Security | LocalPDF';
-const description = 'Security and privacy details for LocalPDF: local-first workflows, practical trust boundaries, and clear expectations before you open the app.';
+const title = 'Security at LocalPDF | Private PDF workflow and trust model';
+const description = 'Understand the LocalPDF security story: local-first PDF workflows, trust boundaries, and what users should verify before opening the app.';
 const canonical = 'https://localpdf.online/security';
 const image = 'https://localpdf.online/og/home.svg';
 const appUrl = getAppUrl();
@@ -11,7 +11,7 @@ const appUrl = getAppUrl();
 const securitySchema = {
   '@context': 'https://schema.org',
   '@type': 'WebPage',
-  name: 'LocalPDF Security',
+  name: title,
   description,
   url: canonical,
 };

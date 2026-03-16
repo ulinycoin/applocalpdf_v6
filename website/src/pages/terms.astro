@@ -1,13 +1,20 @@
 ---
 import MarketingLayout from '../layouts/MarketingLayout.astro';
 
-const title = 'Terms | LocalPDF';
-const description = 'Basic service terms and usage boundaries for the LocalPDF website and app.';
+const title = 'Terms of Use | LocalPDF website and PDF app';
+const description = 'Review the LocalPDF terms of use, service boundaries, and practical responsibilities for using the website and PDF app.';
 const canonical = 'https://localpdf.online/terms';
 const image = 'https://localpdf.online/og/home.svg';
+const termsSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'WebPage',
+  name: title,
+  description,
+  url: canonical,
+};
 ---
 
-<MarketingLayout title={title} description={description} canonical={canonical} image={image}>
+<MarketingLayout title={title} description={description} canonical={canonical} image={image} schema={termsSchema}>
   <div class="page-shell">
     <section class="section intro">
       <span class="eyebrow">Terms</span>
