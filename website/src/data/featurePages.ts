@@ -154,6 +154,24 @@ export const featurePages: FeaturePageData[] = [
         answer: 'A fast path from source files to one clean output with clear ordering and export.',
       },
     ],
+    intentSection: {
+      title: 'Merge PDF intents covered here',
+      intro: 'This page is the canonical destination for merge-style searches, including adjacent ordering and packet-building jobs that do not need their own thin landing pages.',
+      items: [
+        {
+          title: 'Combine PDF files into one handoff-ready document',
+          body: 'Use this workflow when the real need is to bundle reports, contracts, appendices, scans, or attachments into one clean output without breaking the document order.',
+        },
+        {
+          title: 'Reorder pages before exporting the final file',
+          body: 'This route also covers merge tasks where the key job is sequence control, such as putting exhibits, invoices, or scanned batches into the right order before export.',
+        },
+        {
+          title: 'Prepare merged packets for sharing, review, or archive',
+          body: 'Open Merge PDF when the goal is one dependable output for delivery, filing, or internal review instead of juggling several loosely related files.',
+        },
+      ],
+    },
     blogLinks: [
       { href: '/blog/how-to-merge-pdf-files', title: 'How to Merge PDF Files' },
       { href: '/blog/smart-merge-ai-pdf-sorting', title: 'Smart Merge: AI-Powered PDF Sorting' },
@@ -207,6 +225,24 @@ export const featurePages: FeaturePageData[] = [
         answer: 'Searchable output, local workflow, and the fact that scanned documents are often sensitive by default.',
       },
     ],
+    intentSection: {
+      title: 'OCR PDF intents covered here',
+      intro: 'This page is the main destination for OCR-style searches, including extract-text and searchable-scan intents that are often split into separate utility routes elsewhere.',
+      items: [
+        {
+          title: 'Turn scanned PDFs into searchable documents',
+          body: 'Use this workflow when a scan, photographed document, or image-based PDF needs a text layer so users can search, copy, and reuse the contents.',
+        },
+        {
+          title: 'Extract text from image-based PDFs for editing or reuse',
+          body: 'This route also fits OCR jobs where the real need is to move text out of a scan and into the next document workflow without manually retyping it.',
+        },
+        {
+          title: 'Prepare sensitive scans for review, archive, or accessibility',
+          body: 'Open OCR PDF when the job is making archive files, records, contracts, or forms more usable before later review, search, or compliance work.',
+        },
+      ],
+    },
     blogLinks: [
       { href: '/blog/ocr-pdf-extract-text', title: 'OCR PDF: Extract Text from Scanned Documents' },
       { href: '/blog/pdf-security-best-practices', title: 'PDF Security Best Practices' },
@@ -260,6 +296,24 @@ export const featurePages: FeaturePageData[] = [
         answer: 'Overclaiming around image quality, AI, or impossible size reduction promises.',
       },
     ],
+    intentSection: {
+      title: 'Compress PDF intents covered here',
+      intro: 'This page is the canonical destination for PDF compression and file-size reduction searches, especially when the user is trying to make the next handoff succeed.',
+      items: [
+        {
+          title: 'Reduce PDF size for email and upload limits',
+          body: 'Use this workflow when a PDF is finished but too large for email, customer portals, procurement systems, or other strict upload steps.',
+        },
+        {
+          title: 'Optimize bulky scans and image-heavy PDFs',
+          body: 'This route also fits files that became too heavy because of scans, embedded images, or archive exports and now need a smaller working copy.',
+        },
+        {
+          title: 'Prepare smaller PDFs for sharing or storage',
+          body: 'Open Compress PDF when the outcome is operational: faster sending, easier uploading, or cleaner long-term storage without broad claims about impossible reductions.',
+        },
+      ],
+    },
     blogLinks: [
       { href: '/blog/compress-pdf-without-losing-quality', title: 'How to Compress PDF Files Without Losing Quality' },
       { href: '/blog/how-to-merge-pdf-files', title: 'How to Merge PDF Files' },
@@ -384,6 +438,24 @@ export const featurePages: FeaturePageData[] = [
         answer: 'A direct local flow, clear limits, and less bouncing between unrelated PDF utilities.',
       },
     ],
+    intentSection: {
+      title: 'Sign PDF intents covered here',
+      intro: 'This page is the main destination for simple sign-PDF searches, including lightweight approval and electronic-signature jobs that do not require legal overclaiming.',
+      items: [
+        {
+          title: 'Add a signature to a PDF for approval workflows',
+          body: 'Use this workflow when the job is signing a form, contract, or internal document quickly so the file can move to the next approval step.',
+        },
+        {
+          title: 'Handle electronic signature placement without extra tool switching',
+          body: 'This route also covers e-sign style intent where the practical need is placing a signature in the PDF itself and exporting a completed version.',
+        },
+        {
+          title: 'Complete routine signing jobs with a direct local flow',
+          body: 'Open Sign PDF when the document is already prepared and the remaining task is a straightforward signature step before sending or archiving it.',
+        },
+      ],
+    },
     blogLinks: [
       { href: '/blog/how-to-sign-pdf-digitally', title: 'How to Sign PDF Documents Digitally' },
       { href: '/blog/pdf-security-best-practices', title: 'PDF Security Best Practices' },
