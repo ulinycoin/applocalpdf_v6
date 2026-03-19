@@ -1,5 +1,9 @@
 const DEFAULT_BILLING_PATH = '/pricing';
 
+function isAbsoluteHttpUrl(value: string): boolean {
+  return /^https?:\/\//i.test(value);
+}
+
 export function resolveBillingDestination(rawValue: string | undefined): string {
   const value = rawValue?.trim();
   if (!value) {
@@ -8,14 +12,21 @@ export function resolveBillingDestination(rawValue: string | undefined): string 
   return value;
 }
 
+export function resolveCheckoutUrl(rawValue: string | undefined): string | null {
+  const value = rawValue?.trim();
+  if (!value) {
+    return null;
+  }
+  return isAbsoluteHttpUrl(value) ? value : null;
+}
+
 export function openBillingPlans(rawValue: string | undefined): string {
   const destination = resolveBillingDestination(rawValue);
   if (typeof window === 'undefined') {
     return destination;
   }
 
-  const isAbsoluteUrl = /^https?:\/\//i.test(destination);
-  if (isAbsoluteUrl) {
+  if (isAbsoluteHttpUrl(destination)) {
     window.open(destination, '_blank', 'noopener,noreferrer');
     return destination;
   }
@@ -25,19 +36,21 @@ export function openBillingPlans(rawValue: string | undefined): string {
 }
 
 export function openCheckout(checkoutUrl: string | undefined): void {
-  if (typeof window === 'undefined' || !checkoutUrl) {
+  if (typeof window === 'undefined') {
     return;
   }
-  
-  // Try to use LemonSqueezy overlay if available
+
+  const safeCheckoutUrl = resolveCheckoutUrl(checkoutUrl);
+  if (!safeCheckoutUrl) {
+    return;
+  }
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const ls = (window as any).LemonSqueezy;
   if (ls && ls.Url && typeof ls.Url.Open === 'function') {
-    ls.Url.Open(checkoutUrl);
+    ls.Url.Open(safeCheckoutUrl);
     return;
   }
 
-  // Fallback to strict _blank navigation
-  window.open(checkoutUrl, '_blank', 'noopener,noreferrer');
+  window.open(safeCheckoutUrl, '_blank', 'noopener,noreferrer');
 }
-

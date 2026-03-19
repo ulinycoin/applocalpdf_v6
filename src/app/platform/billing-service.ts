@@ -1,9 +1,16 @@
 import { type ToolRunContext } from '../../core/types/contracts';
+import {
+  getDefaultEntitlementsForPlan,
+  getDefaultTierForPlan,
+  normalizePlan,
+  normalizeTier,
+  sanitizeEntitlements,
+} from './billing-contract';
 
 export const BASIC_CONTEXT: ToolRunContext = {
   userId: 'local-user',
   plan: 'basic',
-  entitlements: [],
+  entitlements: getDefaultEntitlementsForPlan('basic'),
 };
 
 export type BillingListener = (context: ToolRunContext) => void;
@@ -33,7 +40,7 @@ export class BillingService {
 
   constructor(
     private readonly storageKey: string,
-    private readonly jwtPublicKeyMap?: string,
+    private readonly jwtPublicKeyPem?: string,
   ) {}
 
   public getContext(): ToolRunContext {
@@ -98,8 +105,8 @@ export class BillingService {
 
   private async verifyToken(token: string): Promise<{ plan: 'basic' | 'pro', entitlements: string[] } | null> {
     try {
-      if (!this.jwtPublicKeyMap) {
-        return null; // Silent fail if no public key is explicitly provided to verify
+      if (!this.jwtPublicKeyPem?.trim()) {
+        return null;
       }
 
       const parts = token.split('.');
@@ -109,20 +116,22 @@ export class BillingService {
       const payload = JSON.parse(decodeBase64UrlUTF8(parts[1]));
       const signatureBytes = Uint8Array.from(decodeBase64UrlBinary(parts[2]), c => c.charCodeAt(0));
 
-      if (header.alg !== 'RS256') return null;
+      if (header.alg !== 'RS256' || header.typ !== 'JWT') return null;
 
-      // Check Expiry
       const now = Math.floor(Date.now() / 1000);
-      if (typeof payload.exp === 'number' && payload.exp < now) {
-        return null;
-      }
+      if (typeof payload.exp !== 'number' || payload.exp <= now) return null;
+      if (typeof payload.iat !== 'number' || payload.iat > now + 300) return null;
+      if (payload.nbf !== undefined && (typeof payload.nbf !== 'number' || payload.nbf > now + 300)) return null;
+      if (payload.iss !== 'localpdf-billing') return null;
+      if (payload.aud !== 'localpdf-v6') return null;
+      if (typeof payload.sub !== 'string' || payload.sub.trim().length === 0) return null;
 
-      // Verify RS256 Signature
-      const pemContent = this.jwtPublicKeyMap.replace(/(-----(BEGIN|END) (RSA )?PUBLIC KEY-----|\n|\r)/g, '');
+      const pemContent = this.jwtPublicKeyPem.replace(/-----BEGIN PUBLIC KEY-----|-----END PUBLIC KEY-----|\s+/g, '');
+      if (!pemContent) return null;
       const binaryDer = Uint8Array.from(decodeBase64UrlBinary(pemContent, true), c => c.charCodeAt(0));
 
-      // Global web crypto or node polyfilled crypto
-      const cryptoLib = typeof crypto !== 'undefined' ? crypto : (await import('crypto')).webcrypto as unknown as Crypto;
+      const cryptoLib = globalThis.crypto;
+      if (!cryptoLib?.subtle) return null;
       const key = await cryptoLib.subtle.importKey(
         'spki',
         binaryDer,
@@ -132,18 +141,20 @@ export class BillingService {
       );
 
       const signedData = new TextEncoder().encode(`${parts[0]}.${parts[1]}`);
-      const isValid = await cryptoLib.subtle.verify(
-        'RSASSA-PKCS1-v1_5',
-        key,
-        signatureBytes,
-        signedData
-      );
-
+      const isValid = await cryptoLib.subtle.verify('RSASSA-PKCS1-v1_5', key, signatureBytes, signedData);
       if (!isValid) return null;
 
+      const plan = normalizePlan(payload.plan);
+      const tier = normalizeTier(payload.tier, plan);
+      const entitlements = sanitizeEntitlements(payload.entitlements, plan);
+      const defaultEntitlements = getDefaultEntitlementsForPlan(plan);
+
+      if (tier === 'free' && plan !== 'basic') return null;
+      if (tier !== 'free' && plan !== 'pro') return null;
+
       return {
-        plan: payload.plan === 'pro' ? 'pro' : 'basic',
-        entitlements: Array.isArray(payload.entitlements) ? payload.entitlements : [],
+        plan,
+        entitlements: entitlements.length > 0 ? entitlements : defaultEntitlements,
       };
     } catch {
       return null;

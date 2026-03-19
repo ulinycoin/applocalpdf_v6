@@ -224,6 +224,8 @@ export function WizardShell({ toolId, context, ioAdapter, limitService }: Wizard
   const location = useLocation();
   const [configBoundaryKey, setConfigBoundaryKey] = useState(0);
 
+  const effectiveContext = context ?? runtime.billing.getContext();
+
   const {
     state,
     configComponent,
@@ -235,7 +237,7 @@ export function WizardShell({ toolId, context, ioAdapter, limitService }: Wizard
     retryConfigLoad,
     dismissToast,
     dismissUpsell,
-  } = useWizardFlow(toolId, { context: context ?? undefined, limitService });
+  } = useWizardFlow(toolId, { context: effectiveContext, limitService });
 
   const toolDef = runtime.registry.get(toolId);
   const ConfigComponent = configComponent;

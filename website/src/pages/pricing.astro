@@ -13,15 +13,14 @@ import Layout from '../layouts/Layout.astro';
     </header>
 
     <div class="pricing-grid">
-      <!-- Basic Plan -->
       <section class="pricing-card">
         <div class="card-header">
           <h2>Basic</h2>
           <p class="price">$0<span>/forever</span></p>
         </div>
         <ul class="features">
-          <li>Basic PDF Merge & Split</li>
-          <li>Basic PDF Compression</li>
+          <li>PDF Merge & Split</li>
+          <li>Standard PDF Compression</li>
           <li>Limited page count</li>
           <li>Local-only processing</li>
         </ul>
@@ -30,7 +29,6 @@ import Layout from '../layouts/Layout.astro';
         </footer>
       </section>
 
-      <!-- Pro Subscription -->
       <section class="pricing-card featured">
         <div class="card-header">
           <span class="badge">Most Popular</span>
@@ -46,17 +44,12 @@ import Layout from '../layouts/Layout.astro';
           <li>Priority local worker runtime</li>
         </ul>
         <footer class="card-footer">
-          <button 
-            id="buy-pro-sub" 
-            class="btn btn-primary"
-            data-product-id={import.meta.env.VITE_LS_PRODUCT_ID_PRO_SUB}
-          >
+          <button id="buy-pro-sub" class="btn btn-primary" data-checkout-url={import.meta.env.VITE_LS_CHECKOUT_URL_PRO_SUB}>
             Get Pro Monthly
           </button>
         </footer>
       </section>
 
-      <!-- Pro Lifetime -->
       <section class="pricing-card">
         <div class="card-header">
           <h2>Pro Lifetime</h2>
@@ -69,23 +62,18 @@ import Layout from '../layouts/Layout.astro';
           <li>One-time payment</li>
         </ul>
         <footer class="card-footer">
-          <button 
-            id="buy-pro-lifetime" 
-            class="btn btn-secondary"
-            data-product-id={import.meta.env.VITE_LS_PRODUCT_ID_PRO_LIFETIME}
-          >
+          <button id="buy-pro-lifetime" class="btn btn-secondary" data-checkout-url={import.meta.env.VITE_LS_CHECKOUT_URL_PRO_LIFETIME}>
            Buy Once
           </button>
         </footer>
       </section>
     </div>
 
-    <!-- License Restoration -->
     <section class="restore-section">
       <h3>Already have a license?</h3>
       <p>Enter your license key to restore your Pro status.</p>
       <div class="restore-form">
-        <input type="text" id="license-key-input" placeholder="Your LemonSqueezy License Key" />
+        <input type="text" id="license-key-input" placeholder="Your LemonSqueezy License Key" autocomplete="off" spellcheck="false" />
         <button id="restore-license-btn" class="btn btn-outline">Restore</button>
       </div>
       <p id="restore-status" class="status-message"></p>
@@ -94,28 +82,21 @@ import Layout from '../layouts/Layout.astro';
 </Layout>
 
 <script>
-  import { openCheckout } from '../../src/app/react/billing';
+  import { openCheckout, resolveCheckoutUrl } from '../../src/app/react/billing';
   import { BillingService } from '../../src/app/platform/billing-service';
 
-  const billingService = new BillingService(
-    'v6_subscription_jwt',
-    import.meta.env.VITE_PUBLIC_JWT_KEY,
-  );
+  const billingService = new BillingService('v6_subscription_jwt', import.meta.env.VITE_PUBLIC_JWT_KEY);
 
-  // Checkout handling
   function setupCheckout(buttonId: string) {
     const btn = document.getElementById(buttonId);
     if (!btn) return;
-    
-    const productId = btn.getAttribute('data-product-id');
-    const storeId = import.meta.env.VITE_LS_STORE_ID;
-    
+
+    const checkoutUrl = resolveCheckoutUrl(btn.getAttribute('data-checkout-url') ?? undefined);
     btn.addEventListener('click', () => {
-      if (productId && storeId) {
-        const url = `https://localpdf.lemonsqueezy.com/checkout/buy/${productId}?embed=1&enabled=1&media=0&desc=1&discount=0`;
-        openCheckout(url);
+      if (checkoutUrl) {
+        openCheckout(checkoutUrl);
       } else {
-        console.error('Missing LemonSqueezy configuration');
+        console.error('Missing or invalid LemonSqueezy checkout URL');
         alert('Billing configuration is missing. Please contact support.');
       }
     });
@@ -124,7 +105,6 @@ import Layout from '../layouts/Layout.astro';
   setupCheckout('buy-pro-sub');
   setupCheckout('buy-pro-lifetime');
 
-  // Restore logic
   const restoreBtn = document.getElementById('restore-license-btn');
   const licenseInput = document.getElementById('license-key-input') as HTMLInputElement;
   const statusMsg = document.getElementById('restore-status');
@@ -134,7 +114,10 @@ import Layout from '../layouts/Layout.astro';
     if (!key) return;
 
     restoreBtn.toggleAttribute('disabled', true);
-    if (statusMsg) statusMsg.textContent = 'Restoring...';
+    if (statusMsg) {
+      statusMsg.className = 'status-message';
+      statusMsg.textContent = 'Restoring...';
+    }
 
     try {
       const response = await fetch('/api/billing/restore', {
@@ -144,7 +127,6 @@ import Layout from '../layouts/Layout.astro';
       });
 
       const data = await response.json();
-
       if (response.ok && data.token) {
         const saved = await billingService.saveToken(data.token);
         if (!saved) {
@@ -178,187 +160,36 @@ import Layout from '../layouts/Layout.astro';
     padding: 80px 24px;
     font-family: 'Inter', system-ui, sans-serif;
   }
-
-  .pricing-header {
-    text-align: center;
-    margin-bottom: 64px;
-  }
-
-  .pricing-header h1 {
-    font-size: 48px;
-    font-weight: 800;
-    margin-bottom: 16px;
-    background: linear-gradient(135deg, #1a1a1a 0%, #4a4a4a 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-  }
-
-  .subtitle {
-    font-size: 20px;
-    color: #666;
-  }
-
-  .pricing-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 32px;
-    margin-bottom: 80px;
-  }
-
-  @media (max-width: 900px) {
-    .pricing-grid {
-      grid-template-columns: 1fr;
-    }
-  }
-
-  .pricing-card {
-    background: white;
-    border: 1px solid #e5e7eb;
-    border-radius: 24px;
-    padding: 32px;
-    display: flex;
-    flex-direction: column;
-    transition: all 0.3s ease;
-    position: relative;
-  }
-
-  .pricing-card:hover {
-    transform: translateY(-8px);
-    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.05);
-    border-color: #d1d5db;
-  }
-
-  .pricing-card.featured {
-    border: 2px solid #000;
-    box-shadow: 0 30px 60px rgba(0, 0, 0, 0.1);
-  }
-
-  .badge {
-    position: absolute;
-    top: -12px;
-    left: 50%;
-    transform: translateX(-50%);
-    background: #000;
-    color: white;
-    padding: 4px 12px;
-    border-radius: 12px;
-    font-size: 12px;
-    font-weight: 700;
-    text-transform: uppercase;
-  }
-
-  .card-header h2 {
-    font-size: 24px;
-    margin-bottom: 8px;
-  }
-
-  .price {
-    font-size: 40px;
-    font-weight: 800;
-    margin-bottom: 24px;
-  }
-
-  .price span {
-    font-size: 16px;
-    color: #666;
-    font-weight: 400;
-  }
-
-  .features {
-    list-style: none;
-    padding: 0;
-    margin: 0 0 32px 0;
-    flex-grow: 1;
-  }
-
-  .features li {
-    padding: 12px 0;
-    border-bottom: 1px solid #f3f4f6;
-    font-size: 15px;
-    color: #4b5563;
-  }
-
-  .features li strong {
-    color: #111;
-  }
-
-  .btn {
-    display: block;
-    width: 100%;
-    padding: 16px;
-    border-radius: 12px;
-    font-weight: 600;
-    text-align: center;
-    cursor: pointer;
-    transition: all 0.2s;
-    text-decoration: none;
-    border: none;
-  }
-
-  .btn-primary {
-    background: #000;
-    color: white;
-  }
-
-  .btn-primary:hover {
-    background: #333;
-  }
-
-  .btn-secondary {
-    background: #f3f4f6;
-    color: #111;
-  }
-
-  .btn-secondary:hover {
-    background: #e5e7eb;
-  }
-
-  .btn-outline {
-    background: white;
-    border: 1px solid #d1d5db;
-    color: #111;
-  }
-
-  /* Restore section */
-  .restore-section {
-    max-width: 600px;
-    margin: 0 auto;
-    text-align: center;
-    padding: 48px;
-    background: #f9fafb;
-    border-radius: 32px;
-  }
-
-  .restore-section h3 {
-    font-size: 20px;
-    margin-bottom: 8px;
-  }
-
-  .restore-form {
-    display: flex;
-    gap: 12px;
-    margin-top: 24px;
-  }
-
-  @media (max-width: 500px) {
-    .restore-form {
-      flex-direction: column;
-    }
-  }
-
-  #license-key-input {
-    flex-grow: 1;
-    padding: 14px 16px;
-    border-radius: 12px;
-    border: 1px solid #d1d5db;
-    font-size: 16px;
-  }
-
-  .status-message {
-    margin-top: 16px;
-    font-size: 14px;
-  }
-
-  .status-message.success { color: #059669; }
-  .status-message.error { color: #dc2626; }
+  .pricing-header { text-align: center; margin-bottom: 64px; }
+  .pricing-header h1 { font-size: 48px; font-weight: 800; margin-bottom: 16px; background: linear-gradient(135deg, #1a1a1a 0%, #4a4a4a 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  .subtitle { font-size: 20px; color: #666; }
+  .pricing-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 32px; margin-bottom: 80px; }
+  @media (max-width: 900px) { .pricing-grid { grid-template-columns: 1fr; } }
+  .pricing-card { background: white; border: 1px solid #e5e7eb; border-radius: 24px; padding: 32px; display: flex; flex-direction: column; transition: all 0.3s ease; position: relative; }
+  .pricing-card:hover { transform: translateY(-8px); box-shadow: 0 20px 40px rgba(0, 0, 0, 0.05); border-color: #d1d5db; }
+  .pricing-card.featured { border: 2px solid #000; box-shadow: 0 30px 60px rgba(0, 0, 0, 0.1); }
+  .badge { position: absolute; top: -12px; left: 50%; transform: translateX(-50%); background: #000; color: white; padding: 6px 16px; border-radius: 999px; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; }
+  .card-header { margin-bottom: 32px; }
+  .card-header h2 { font-size: 32px; font-weight: 700; margin-bottom: 12px; }
+  .price { font-size: 48px; font-weight: 800; color: #111; }
+  .price span { font-size: 18px; font-weight: 500; color: #6b7280; }
+  .features { list-style: none; padding: 0; margin: 0 0 32px 0; flex: 1; }
+  .features li { padding: 12px 0; border-bottom: 1px solid #f3f4f6; color: #374151; }
+  .features li:last-child { border-bottom: none; }
+  .card-footer { margin-top: auto; }
+  .btn { display: inline-flex; align-items: center; justify-content: center; width: 100%; padding: 14px 24px; border-radius: 14px; font-weight: 600; text-decoration: none; cursor: pointer; transition: all 0.2s ease; border: none; }
+  .btn-primary { background: #111; color: white; }
+  .btn-primary:hover { background: #000; }
+  .btn-secondary { background: #f3f4f6; color: #111; }
+  .btn-secondary:hover { background: #e5e7eb; }
+  .btn-outline { background: transparent; border: 1px solid #d1d5db; color: #111; }
+  .btn-outline:hover { background: #f9fafb; }
+  .restore-section { max-width: 680px; margin: 0 auto; text-align: center; padding: 48px 32px; background: #f9fafb; border-radius: 24px; border: 1px solid #e5e7eb; }
+  .restore-section h3 { font-size: 30px; margin-bottom: 12px; }
+  .restore-form { display: flex; gap: 12px; margin-top: 24px; }
+  @media (max-width: 640px) { .restore-form { flex-direction: column; } }
+  .restore-form input { flex: 1; padding: 14px 16px; border-radius: 14px; border: 1px solid #d1d5db; font-size: 16px; }
+  .status-message { min-height: 24px; margin-top: 16px; }
+  .status-message.success { color: #166534; }
+  .status-message.error { color: #b91c1c; }
 </style>
