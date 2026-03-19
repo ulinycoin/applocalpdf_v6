@@ -16,7 +16,8 @@ import { useLocation } from 'react-router-dom';
 import { useNavigate } from 'react-router-dom';
 import { usePlatform } from '../../../app/react/platform-context';
 import { LinearIcon } from '../icons/linear-icon';
-import { DEFAULT_TOOL_CONTEXT, useWizardFlow } from '../../hooks/useWizardFlow';
+import { useWizardFlow } from '../../hooks/useWizardFlow';
+
 import { useFilePreviews } from '../../hooks/use-file-previews';
 import { PreviewPanel } from './PreviewPanel';
 import type { IOAdapter, SmartUploadZoneProps, WizardShellProps } from './types';
@@ -216,7 +217,8 @@ async function buildSinglePageInputIdsFromSelection(
   return outputIds;
 }
 
-export function WizardShell({ toolId, context = DEFAULT_TOOL_CONTEXT, ioAdapter, limitService }: WizardShellProps): JSX.Element {
+export function WizardShell({ toolId, context, ioAdapter, limitService }: WizardShellProps): JSX.Element {
+
   const { runtime } = usePlatform();
   const navigate = useNavigate();
   const location = useLocation();
@@ -233,7 +235,7 @@ export function WizardShell({ toolId, context = DEFAULT_TOOL_CONTEXT, ioAdapter,
     retryConfigLoad,
     dismissToast,
     dismissUpsell,
-  } = useWizardFlow(toolId, { context, limitService });
+  } = useWizardFlow(toolId, { context: context ?? undefined, limitService });
 
   const toolDef = runtime.registry.get(toolId);
   const ConfigComponent = configComponent;

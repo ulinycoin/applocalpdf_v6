@@ -9,6 +9,8 @@ export function PlatformProvider({ children }: { children: ReactNode }) {
   const value = useMemo(() => bootstrapPlatform('browser-worker'), []);
 
   useEffect(() => {
+    value.runtime.billing.initialize().catch(console.error);
+    
     if (typeof window === 'undefined') {
       return;
     }

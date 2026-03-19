@@ -8,11 +8,20 @@ import type {
   WizardFlowOptions,
 } from '../components/Wizard/types';
 import { INITIAL_WIZARD_STATE, WizardFlowCore } from './wizard-flow-core';
-
 export function useWizardFlow(toolId: string, options: WizardFlowOptions): UseWizardFlowResult {
   const { runtime } = usePlatform();
+
+  const [billingContext, setBillingContext] = useState<ToolRunContext>(() => runtime.billing.getContext());
   const [state, setState] = useState(INITIAL_WIZARD_STATE);
   const [configReloadKey, setConfigReloadKey] = useState(0);
+
+  useEffect(() => {
+    const unsub = runtime.billing.subscribe((ctx) => {
+      setBillingContext(ctx);
+    });
+    return unsub;
+  }, [runtime.billing]);
+
 
   const limitService: LimitService = useMemo(
     () =>
@@ -36,12 +45,13 @@ export function useWizardFlow(toolId: string, options: WizardFlowOptions): UseWi
       new WizardFlowCore({
         runtime,
         toolId,
-        context: options.context,
+        context: options.context ?? billingContext,
         limitService,
         onToast: options.onToast,
       }),
-    [runtime, toolId, options.context, limitService, options.onToast],
+    [runtime, toolId, options.context, billingContext, limitService, options.onToast],
   );
+
 
   useEffect(() => {
     setState(core.getState());
@@ -120,20 +130,3 @@ export function useWizardFlow(toolId: string, options: WizardFlowOptions): UseWi
   };
 }
 
-export const DEFAULT_TOOL_CONTEXT: ToolRunContext = {
-  userId: 'demo-user',
-  plan: 'pro',
-  entitlements: [
-    'pdf.merge',
-    'pdf.split',
-    'pdf.compress',
-    'pdf.ocr',
-    'pdf.rotate',
-    'pdf.delete_pages',
-    'pdf.edit',
-    'pdf.to_image',
-    'office.convert',
-    'pdf.protect.encrypt',
-    'pdf.protect.unlock',
-  ],
-};

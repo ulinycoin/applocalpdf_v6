@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { usePlatform } from '../../../app/react/platform-context';
-import { DEFAULT_TOOL_CONTEXT } from '../../hooks/useWizardFlow';
+
 import { PipelineRunner } from '../../studio/pipeline/PipelineRunner';
 import type { IPipelineRecipe } from '../../studio/pipeline/types';
 import { ThumbnailService } from '../../studio/thumbnail/thumbnail-service';
@@ -143,7 +143,7 @@ export function StudioFloatingMenu() {
             const result = await runtime.runner.execute(
                 'compress-pdf',
                 { inputIds: [mergedEntry.id], options: { quality } },
-                DEFAULT_TOOL_CONTEXT,
+                runtime.billing.getContext(),
             );
 
             if (result.type !== 'TOOL_RESULT' || result.outputIds.length === 0) {

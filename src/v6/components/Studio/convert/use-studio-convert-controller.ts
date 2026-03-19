@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { usePlatform } from '../../../../app/react/platform-context';
-import { DEFAULT_TOOL_CONTEXT } from '../../../hooks/useWizardFlow';
+
 import { defaultFilePreviewService } from '../../../preview/preview-service';
 import { PipelineRunner } from '../../../studio/pipeline/PipelineRunner';
 import type { IPipelineRecipe } from '../../../studio/pipeline/types';
@@ -609,7 +609,7 @@ export function useStudioConvertController() {
       const result = await runtime.runner.execute(
         activeTool,
         { inputIds, options },
-        DEFAULT_TOOL_CONTEXT,
+        runtime.billing.getContext(),
         (event) => {
           if (event.type === 'TOOL_PROGRESS') {
             setProgress(Math.max(0, Math.min(100, Math.round(event.progress))));

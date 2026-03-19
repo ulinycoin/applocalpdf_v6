@@ -16,6 +16,8 @@ import {
   type WorkerOrchestrator,
 } from '../../core/workers/worker-orchestrator';
 import { PostHogTelemetrySink } from '../../core/telemetry/posthog-sink';
+import { BillingService } from './billing-service';
+
 
 export interface PlatformRuntime {
   mode: 'browser-worker' | 'in-process';
@@ -24,7 +26,9 @@ export interface PlatformRuntime {
   runner: UnifiedToolRunner;
   workerOrchestrator: WorkerOrchestrator;
   telemetry: TelemetryBus;
+  billing: BillingService;
 }
+
 
 const DEFAULT_VFS_QUOTA = {
   maxTotalBytes: 512 * 1024 * 1024,
@@ -67,6 +71,12 @@ export function createPlatformRuntime(
   const runner = new UnifiedToolRunner(registry, workerOrchestrator, fs, runnerTelemetry, {
     pageCountFallbackMode: resolvePageCountFallbackMode(),
   });
+
+  const billing = new BillingService(
+    'v6_subscription_jwt',
+    (import.meta as any).env?.VITE_PUBLIC_JWT_KEY
+  );
+
   return {
     mode,
     registry,
@@ -74,5 +84,7 @@ export function createPlatformRuntime(
     runner,
     workerOrchestrator,
     telemetry,
+    billing,
   };
 }
+

@@ -176,10 +176,28 @@ Missing operating layer:
 - Search Console review rhythm
 - ranking/query watchlist
 - page-level SEO KPI tracking
+- PostHog bridge from SEO landing pages into actual tool usage
 
 Without that, work quality may improve while learning speed stays low.
 
 Priority: **High**
+
+### New evidence from PostHog (2026-03-16)
+
+A first analytics pass now exists in:
+- `docs/ANALYTICS_POSTHOG_2026-03-16.md`
+
+What it tells us:
+- traffic is not isolated to the homepage; feature/SEO pages already contribute meaningful demand
+- merge and OCR are the clearest current SEO/product bridge candidates
+- successful tool runs can already be tied to entry URLs in a lightweight way
+- runtime telemetry exists via `duration_ms`, which makes UX/performance issues measurable, especially for OCR
+
+Operating implication:
+- SEO should no longer be managed as impressions-only work
+- for priority clusters, track both:
+  - search visibility / page demand
+  - downstream product outcomes (tool starts, successes, errors, runtime)
 
 ---
 
@@ -300,6 +318,8 @@ Use this lightweight loop:
 - review which canonical pages got new impressions
 - review CTR drops on homepage and feature pages
 - review whether any blog pages are getting impressions without clear conversion links
+- review PostHog entry URLs and successful tool runs for priority pages (`/`, merge, OCR, convert)
+- check whether slow/fragile flows are affecting SEO-backed traffic, especially OCR
 
 ### Every 2 weeks
 - choose one cluster to strengthen
@@ -324,6 +344,7 @@ Before starting a new SEO task, answer:
 3. Is this a canonical page improvement, a supporting article, or route governance work?
 4. What existing article/page should link to it?
 5. How will success be measured?
+6. What PostHog event or downstream product signal should improve if this SEO work succeeds?
 
 If those answers are fuzzy, the task is probably not ready.
 

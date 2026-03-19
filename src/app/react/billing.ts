@@ -23,3 +23,21 @@ export function openBillingPlans(rawValue: string | undefined): string {
   window.location.assign(destination);
   return destination;
 }
+
+export function openCheckout(checkoutUrl: string | undefined): void {
+  if (typeof window === 'undefined' || !checkoutUrl) {
+    return;
+  }
+  
+  // Try to use LemonSqueezy overlay if available
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const ls = (window as any).LemonSqueezy;
+  if (ls && ls.Url && typeof ls.Url.Open === 'function') {
+    ls.Url.Open(checkoutUrl);
+    return;
+  }
+
+  // Fallback to strict _blank navigation
+  window.open(checkoutUrl, '_blank', 'noopener,noreferrer');
+}
+
