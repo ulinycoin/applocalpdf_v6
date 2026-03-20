@@ -5,6 +5,8 @@ import type { KonvaEventObject } from 'konva/lib/Node';
 import useImage from 'use-image';
 import { PageItem, StudioState, useStudioStore } from './studio-store';
 import { usePlatform } from '../../../app/react/platform-context';
+import { canUseDocumentWithPageCount } from '../../../app/platform/plan-limits';
+import { showStudioPaywall } from '../../../app/react/studio-paywall';
 import { getPdfJs } from '../../services/pdf/pdf-loader';
 
 // --- LRU Cache for High-Res Bitmaps ---
@@ -160,6 +162,17 @@ export const PageObject: React.FC<PageObjectProps> = ({ page, docId, x, y, curre
             || worldPos.y > sourceMaxY;
 
         if (targetDocId && targetDocNode && !(targetDocId === docId && droppedOutsideSourceDoc)) {
+            const targetDoc = documents.find((candidate) => candidate.id === targetDocId);
+            if (targetDoc && targetDocId !== docId) {
+                const pageCheck = canUseDocumentWithPageCount(runtime.billing.getContext(), targetDoc.pages.length + 1);
+                if (!pageCheck.allowed) {
+                    showStudioPaywall(
+                        runtime.telemetry,
+                        'Free supports documents up to 25 pages. Upgrade to Pro to keep adding pages.',
+                    );
+                    return;
+                }
+            }
 
             // Get local position relative to the target document
             const transform = targetDocNode.getAbsoluteTransform().copy().invert();

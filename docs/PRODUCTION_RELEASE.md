@@ -7,7 +7,7 @@ Copy `.env.example` into the deployment environment and set values explicitly.
 - `VITE_BILLING_URL`
   - Billing or pricing destination used by the upsell overlay.
   - Default-safe value: `/pricing`
-- `VITE_LS_CHECKOUT_URL_PRO_SUB`, `VITE_LS_CHECKOUT_URL_PRO_LIFETIME`
+- `VITE_LS_CHECKOUT_URL_PRO_MONTHLY`, `VITE_LS_CHECKOUT_URL_PRO_YEARLY`
   - Absolute LemonSqueezy checkout URLs used by the `/pricing` page.
   - Use full hosted checkout URLs from LemonSqueezy. Do not rebuild them in frontend code from hardcoded domains.
 - `VITE_PUBLIC_JWT_KEY`
@@ -18,8 +18,8 @@ Copy `.env.example` into the deployment environment and set values explicitly.
   - `JWT_PRIVATE_KEY` must be the matching RSA private key in PEM format.
 - `LEMON_SQUEEZY_PRO_MONTHLY_PRODUCT_IDS`, `LEMON_SQUEEZY_PRO_MONTHLY_VARIANT_IDS`
   - Comma-separated allowlists for licenses that should map to `plan=pro`, `tier=pro_monthly`.
-- `LEMON_SQUEEZY_PRO_LIFETIME_PRODUCT_IDS`, `LEMON_SQUEEZY_PRO_LIFETIME_VARIANT_IDS`
-  - Comma-separated allowlists for licenses that should map to `plan=pro`, `tier=pro_lifetime`.
+- `LEMON_SQUEEZY_PRO_YEARLY_PRODUCT_IDS`, `LEMON_SQUEEZY_PRO_YEARLY_VARIANT_IDS`
+  - Comma-separated allowlists for licenses that should map to `plan=pro`, `tier=pro_yearly`.
 - `VITE_V6_PAGE_COUNT_FALLBACK_MODE`
   - Accepted values: `off`, `limited`, `on`
   - Recommended value: `limited`

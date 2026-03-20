@@ -1,5 +1,5 @@
 export type BillingPlan = 'basic' | 'pro';
-export type BillingTier = 'free' | 'pro_monthly' | 'pro_lifetime';
+export type BillingTier = 'free' | 'pro_monthly' | 'pro_yearly';
 
 export const BASIC_ENTITLEMENTS = [
   'pdf.merge',
@@ -41,11 +41,17 @@ export function normalizePlan(raw: unknown): BillingPlan {
   return raw === 'pro' ? 'pro' : 'basic';
 }
 
-export function normalizeTier(raw: unknown, plan: BillingPlan): BillingTier {
-  if (raw === 'pro_monthly' || raw === 'pro_lifetime') {
-    return raw;
+export function normalizeTier(raw: unknown, plan: BillingPlan): BillingTier | null {
+  if (raw === 'free') {
+    return plan === 'basic' ? 'free' : null;
   }
-  return plan === 'pro' ? 'pro_monthly' : 'free';
+  if (raw === 'pro_monthly' || raw === 'pro_yearly') {
+    return plan === 'pro' ? raw : null;
+  }
+  if (raw === undefined || raw === null || raw === '') {
+    return getDefaultTierForPlan(plan);
+  }
+  return null;
 }
 
 export function getDefaultTierForPlan(plan: BillingPlan): BillingTier {

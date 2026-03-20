@@ -146,11 +146,9 @@ export class BillingService {
 
       const plan = normalizePlan(payload.plan);
       const tier = normalizeTier(payload.tier, plan);
+      if (!tier) return null;
       const entitlements = sanitizeEntitlements(payload.entitlements, plan);
       const defaultEntitlements = getDefaultEntitlementsForPlan(plan);
-
-      if (tier === 'free' && plan !== 'basic') return null;
-      if (tier !== 'free' && plan !== 'pro') return null;
 
       return {
         plan,

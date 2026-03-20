@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { usePlatform } from '../../../app/react/platform-context';
+import { canUseDocumentWithPageCount } from '../../../app/platform/plan-limits';
+import { showStudioPaywall } from '../../../app/react/studio-paywall';
 
 import { PipelineRunner } from '../../studio/pipeline/PipelineRunner';
 import type { IPipelineRecipe } from '../../studio/pipeline/types';
@@ -135,41 +137,58 @@ export function StudioFloatingMenu() {
 
             const runner = new PipelineRunner(runtime.vfs);
             const merged = await runner.execute(recipe);
-            const mergedBytes = new Uint8Array(merged.buffer.byteLength);
-            mergedBytes.set(merged.buffer);
-            const mergedBlob = new Blob([mergedBytes], { type: 'application/pdf' });
-            const mergedEntry = await runtime.vfs.write(mergedBlob);
+        const mergedBytes = new Uint8Array(merged.buffer.byteLength);
+        mergedBytes.set(merged.buffer);
+        const mergedBlob = new Blob([mergedBytes], { type: 'application/pdf' });
+        const mergedEntry = await runtime.vfs.write(mergedBlob);
 
-            const result = await runtime.runner.execute(
-                'compress-pdf',
-                { inputIds: [mergedEntry.id], options: { quality } },
-                runtime.billing.getContext(),
-            );
+            try {
+                const result = await runtime.runner.execute(
+                    'compress-pdf',
+                    { inputIds: [mergedEntry.id], options: { quality } },
+                    runtime.billing.getContext(),
+                );
 
-            if (result.type !== 'TOOL_RESULT' || result.outputIds.length === 0) {
-                const reason = result.type === 'TOOL_ACCESS_DENIED'
-                    ? (result.details ?? result.reason)
-                    : result.type === 'TOOL_ERROR'
-                        ? result.message
-                        : 'Compression failed';
-                setCompressError(reason || 'Compression failed');
-                return;
+                if (result.type !== 'TOOL_RESULT' || result.outputIds.length === 0) {
+                    const reason = result.type === 'TOOL_ACCESS_DENIED'
+                        ? (result.details ?? result.reason)
+                        : result.type === 'TOOL_ERROR'
+                            ? result.message
+                            : 'Compression failed';
+                    setCompressError(reason || 'Compression failed');
+                    return;
+                }
+
+                const compressedFileId = result.outputIds[0];
+                const compressedPages = await buildPagesFromFileId(compressedFileId);
+                if (compressedPages.length === 0) {
+                    setCompressError('Compressed output is empty.');
+                    await runtime.vfs.delete(compressedFileId).catch(() => undefined);
+                    return;
+                }
+
+                const billingContext = runtime.billing.getContext();
+                const pageCheck = canUseDocumentWithPageCount(billingContext, compressedPages.length);
+                if (!pageCheck.allowed) {
+                    showStudioPaywall(
+                        runtime.telemetry,
+                        'Free supports documents up to 25 pages. Upgrade to Pro to keep larger documents in Studio.',
+                    );
+                    setCompressError('Free supports documents up to 25 pages.');
+                    await runtime.vfs.delete(compressedFileId).catch(() => undefined);
+                    return;
+                }
+
+                updateDocument(activeDocument.id, {
+                    name: `${activeDocument.name} (Compressed)`,
+                    pages: compressedPages,
+                    isModified: true,
+                });
+                setActiveDocument(activeDocument.id);
+                requestInlineTool(null);
+            } finally {
+                await runtime.vfs.delete(mergedEntry.id).catch(() => undefined);
             }
-
-            const compressedFileId = result.outputIds[0];
-            const compressedPages = await buildPagesFromFileId(compressedFileId);
-            if (compressedPages.length === 0) {
-                setCompressError('Compressed output is empty.');
-                return;
-            }
-
-            updateDocument(activeDocument.id, {
-                name: `${activeDocument.name} (Compressed)`,
-                pages: compressedPages,
-                isModified: true,
-            });
-            setActiveDocument(activeDocument.id);
-            requestInlineTool(null);
         } catch (error) {
             const message = error instanceof Error ? error.message : 'Compression failed';
             setCompressError(message);

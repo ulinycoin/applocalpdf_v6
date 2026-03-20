@@ -4,6 +4,8 @@ import { LinearIcon } from '../icons/linear-icon';
 import { IPipelineRecipe } from '../../studio/pipeline/types';
 import { PipelineRunner } from '../../studio/pipeline/PipelineRunner';
 import { usePlatform } from '../../../app/react/platform-context';
+import { canAddDocumentToStudio } from '../../../app/platform/plan-limits';
+import { showStudioPaywall } from '../../../app/react/studio-paywall';
 
 interface ReorderItem {
     sourceFileId: string;
@@ -100,6 +102,17 @@ export function StudioActionBar() {
     };
 
     const handleCreateSpace = () => {
+        const billingContext = runtime.billing.getContext();
+        const limitCheck = canAddDocumentToStudio(billingContext, documents.length, 0);
+        if (!limitCheck.allowed) {
+            showStudioPaywall(
+                runtime.telemetry,
+                limitCheck.reason === 'workspace_limit'
+                    ? 'Free includes up to 3 workspaces. Upgrade to Pro for unlimited workspaces.'
+                    : 'Free supports documents up to 25 pages. Upgrade to Pro to open larger PDFs.',
+            );
+            return;
+        }
         const maxY = documents.reduce((acc, doc) => Math.max(acc, doc.y + 120), 80);
         const name = `Workspace ${documents.length + 1}`;
         const nextDocId = crypto.randomUUID();

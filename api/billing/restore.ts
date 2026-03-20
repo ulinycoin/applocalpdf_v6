@@ -61,14 +61,14 @@ function getMappedLicense(lsData: any): { plan: BillingPlan; tier: BillingTier }
 
   const monthlyProductIds = parseIdSet(process.env.LEMON_SQUEEZY_PRO_MONTHLY_PRODUCT_IDS);
   const monthlyVariantIds = parseIdSet(process.env.LEMON_SQUEEZY_PRO_MONTHLY_VARIANT_IDS);
-  const lifetimeProductIds = parseIdSet(process.env.LEMON_SQUEEZY_PRO_LIFETIME_PRODUCT_IDS);
-  const lifetimeVariantIds = parseIdSet(process.env.LEMON_SQUEEZY_PRO_LIFETIME_VARIANT_IDS);
+  const yearlyProductIds = parseIdSet(process.env.LEMON_SQUEEZY_PRO_YEARLY_PRODUCT_IDS);
+  const yearlyVariantIds = parseIdSet(process.env.LEMON_SQUEEZY_PRO_YEARLY_VARIANT_IDS);
 
   if (monthlyVariantIds.has(variantId) || monthlyProductIds.has(productId)) {
     return { plan: 'pro', tier: 'pro_monthly' };
   }
-  if (lifetimeVariantIds.has(variantId) || lifetimeProductIds.has(productId)) {
-    return { plan: 'pro', tier: 'pro_lifetime' };
+  if (yearlyVariantIds.has(variantId) || yearlyProductIds.has(productId)) {
+    return { plan: 'pro', tier: 'pro_yearly' };
   }
   return null;
 }

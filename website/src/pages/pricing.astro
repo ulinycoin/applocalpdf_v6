@@ -1,89 +1,97 @@
 ---
-import Layout from '../layouts/Layout.astro';
+import MarketingLayout from '../layouts/MarketingLayout.astro';
 ---
 
-<Layout 
-  title="Pricing - LocalPDF" 
-  description="Simple and transparent pricing for LocalPDF. Choose the plan that works for you."
+<MarketingLayout
+  title="Pricing - LocalPDF"
+  description="Simple and transparent pricing for LocalPDF. Free for everyday use, Pro for unlimited Studio work."
 >
-  <main class="pricing-container">
-    <header class="pricing-header">
-      <h1>Pricing</h1>
-      <p class="subtitle">Secure, private, and local-first PDF processing.</p>
-    </header>
+  <main class="pricing-page">
+    <div class="pricing-shell">
+      <header class="pricing-header">
+        <p class="eyebrow">Pricing</p>
+        <h1>Free for basics. Pro for real work.</h1>
+        <p class="subtitle">
+          Keep your files local, stay productive in Studio, and upgrade only when you need unlimited workspaces or larger documents.
+        </p>
+      </header>
 
-    <div class="pricing-grid">
-      <section class="pricing-card">
-        <div class="card-header">
-          <h2>Basic</h2>
-          <p class="price">$0<span>/forever</span></p>
-        </div>
-        <ul class="features">
-          <li>PDF Merge & Split</li>
-          <li>Standard PDF Compression</li>
-          <li>Limited page count</li>
-          <li>Local-only processing</li>
-        </ul>
-        <footer class="card-footer">
-          <a href="/app" class="btn btn-secondary">Use for Free</a>
-        </footer>
+      <section class="plans-grid" aria-label="Pricing plans">
+        <article class="plan-card">
+          <div class="plan-copy">
+            <p class="plan-kicker">Free</p>
+            <h2>$0</h2>
+            <p class="plan-period">Forever</p>
+            <p class="plan-summary">Best for occasional local PDF work.</p>
+          </div>
+          <ul class="feature-list">
+            <li>Up to 3 Studio workspaces</li>
+            <li>Up to 25 pages per document</li>
+            <li>Essential PDF tools</li>
+            <li>Local-first processing</li>
+          </ul>
+          <a class="plan-link plan-link-secondary" href="/app">Use Free</a>
+        </article>
+
+        <article class="plan-card featured">
+          <div class="featured-badge">Recommended</div>
+          <div class="plan-copy">
+            <p class="plan-kicker">Pro</p>
+            <h2>$3.99</h2>
+            <p class="plan-period">per month</p>
+            <p class="plan-summary">Unlimited Studio workspaces and documents.</p>
+          </div>
+          <ul class="feature-list">
+            <li>Unlimited Studio workspaces</li>
+            <li>Unlimited pages per document</li>
+            <li>OCR, editing, conversion, protect/unlock</li>
+            <li>Full Studio access</li>
+          </ul>
+          <div class="checkout-stack">
+            <button
+              id="buy-pro-monthly"
+              class="plan-link plan-link-primary"
+              data-checkout-url={import.meta.env.VITE_LS_CHECKOUT_URL_PRO_MONTHLY}
+            >
+              Get Pro Monthly
+            </button>
+            <button
+              id="buy-pro-yearly"
+              class="plan-link plan-link-secondary"
+              data-checkout-url={import.meta.env.VITE_LS_CHECKOUT_URL_PRO_YEARLY}
+            >
+              Get Pro Yearly
+            </button>
+          </div>
+          <p class="annual-note">$39.99/year billed upfront</p>
+        </article>
       </section>
 
-      <section class="pricing-card featured">
-        <div class="card-header">
-          <span class="badge">Most Popular</span>
-          <h2>Pro Monthly</h2>
-          <p class="price">$9<span>/month</span></p>
+      <section class="restore-panel">
+        <div class="restore-copy">
+          <p class="eyebrow">Restore</p>
+          <h3>Already have a license?</h3>
+          <p>Enter your LemonSqueezy license key to restore Pro access.</p>
         </div>
-        <ul class="features">
-          <li><strong>Everything in Basic</strong></li>
-          <li>Advanced OCR (Multi-language)</li>
-          <li>Full PDF Editing & Redaction</li>
-          <li>High-performance compression</li>
-          <li>Unlimited file size/pages</li>
-          <li>Priority local worker runtime</li>
-        </ul>
-        <footer class="card-footer">
-          <button id="buy-pro-sub" class="btn btn-primary" data-checkout-url={import.meta.env.VITE_LS_CHECKOUT_URL_PRO_SUB}>
-            Get Pro Monthly
-          </button>
-        </footer>
-      </section>
-
-      <section class="pricing-card">
-        <div class="card-header">
-          <h2>Pro Lifetime</h2>
-          <p class="price">$59<span>/once</span></p>
+        <div class="restore-form">
+          <input
+            type="text"
+            id="license-key-input"
+            placeholder="Your LemonSqueezy license key"
+            autocomplete="off"
+            spellcheck="false"
+          />
+          <button id="restore-license-btn" class="plan-link plan-link-primary">Restore</button>
         </div>
-        <ul class="features">
-          <li><strong>Everything in Pro</strong></li>
-          <li>Lifetime updates</li>
-          <li>Special early adopter badge</li>
-          <li>One-time payment</li>
-        </ul>
-        <footer class="card-footer">
-          <button id="buy-pro-lifetime" class="btn btn-secondary" data-checkout-url={import.meta.env.VITE_LS_CHECKOUT_URL_PRO_LIFETIME}>
-           Buy Once
-          </button>
-        </footer>
+        <p id="restore-status" class="status-message"></p>
       </section>
     </div>
-
-    <section class="restore-section">
-      <h3>Already have a license?</h3>
-      <p>Enter your license key to restore your Pro status.</p>
-      <div class="restore-form">
-        <input type="text" id="license-key-input" placeholder="Your LemonSqueezy License Key" autocomplete="off" spellcheck="false" />
-        <button id="restore-license-btn" class="btn btn-outline">Restore</button>
-      </div>
-      <p id="restore-status" class="status-message"></p>
-    </section>
   </main>
-</Layout>
+</MarketingLayout>
 
 <script>
-  import { openCheckout, resolveCheckoutUrl } from '../../src/app/react/billing';
-  import { BillingService } from '../../src/app/platform/billing-service';
+  import { openCheckout, resolveCheckoutUrl } from '../../../src/app/react/billing';
+  import { BillingService } from '../../../src/app/platform/billing-service';
 
   const billingService = new BillingService('v6_subscription_jwt', import.meta.env.VITE_PUBLIC_JWT_KEY);
 
@@ -95,23 +103,25 @@ import Layout from '../layouts/Layout.astro';
     btn.addEventListener('click', () => {
       if (checkoutUrl) {
         openCheckout(checkoutUrl);
-      } else {
-        console.error('Missing or invalid LemonSqueezy checkout URL');
-        alert('Billing configuration is missing. Please contact support.');
+        return;
       }
+      console.error('Missing or invalid LemonSqueezy checkout URL');
+      alert('Billing configuration is missing. Please contact support.');
     });
   }
 
-  setupCheckout('buy-pro-sub');
-  setupCheckout('buy-pro-lifetime');
+  setupCheckout('buy-pro-monthly');
+  setupCheckout('buy-pro-yearly');
 
   const restoreBtn = document.getElementById('restore-license-btn');
-  const licenseInput = document.getElementById('license-key-input') as HTMLInputElement;
+  const licenseInput = document.getElementById('license-key-input') as HTMLInputElement | null;
   const statusMsg = document.getElementById('restore-status');
 
   restoreBtn?.addEventListener('click', async () => {
     const key = licenseInput?.value?.trim();
-    if (!key) return;
+    if (!key) {
+      return;
+    }
 
     restoreBtn.toggleAttribute('disabled', true);
     if (statusMsg) {
@@ -134,18 +144,19 @@ import Layout from '../layouts/Layout.astro';
         }
         if (statusMsg) {
           statusMsg.className = 'status-message success';
-          statusMsg.textContent = 'License restored successfully! Redirecting to app...';
+          statusMsg.textContent = 'License restored successfully. Redirecting to app...';
         }
         setTimeout(() => {
           window.location.assign('/app');
-        }, 2000);
-      } else {
-        throw new Error(data.error || 'Failed to restore license');
+        }, 1800);
+        return;
       }
+
+      throw new Error(data.error || 'Failed to restore license');
     } catch (err: any) {
       if (statusMsg) {
         statusMsg.className = 'status-message error';
-        statusMsg.textContent = err.message;
+        statusMsg.textContent = err?.message || 'Restore failed';
       }
     } finally {
       restoreBtn.toggleAttribute('disabled', false);
@@ -154,42 +165,234 @@ import Layout from '../layouts/Layout.astro';
 </script>
 
 <style>
-  .pricing-container {
-    max-width: 1100px;
-    margin: 0 auto;
-    padding: 80px 24px;
-    font-family: 'Inter', system-ui, sans-serif;
+  .pricing-page {
+    min-height: 100vh;
+    background:
+      radial-gradient(circle at top left, rgba(99, 102, 241, 0.14), transparent 28%),
+      radial-gradient(circle at top right, rgba(14, 165, 233, 0.12), transparent 22%),
+      linear-gradient(180deg, #f8fafc 0%, #eef2ff 100%);
   }
-  .pricing-header { text-align: center; margin-bottom: 64px; }
-  .pricing-header h1 { font-size: 48px; font-weight: 800; margin-bottom: 16px; background: linear-gradient(135deg, #1a1a1a 0%, #4a4a4a 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-  .subtitle { font-size: 20px; color: #666; }
-  .pricing-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 32px; margin-bottom: 80px; }
-  @media (max-width: 900px) { .pricing-grid { grid-template-columns: 1fr; } }
-  .pricing-card { background: white; border: 1px solid #e5e7eb; border-radius: 24px; padding: 32px; display: flex; flex-direction: column; transition: all 0.3s ease; position: relative; }
-  .pricing-card:hover { transform: translateY(-8px); box-shadow: 0 20px 40px rgba(0, 0, 0, 0.05); border-color: #d1d5db; }
-  .pricing-card.featured { border: 2px solid #000; box-shadow: 0 30px 60px rgba(0, 0, 0, 0.1); }
-  .badge { position: absolute; top: -12px; left: 50%; transform: translateX(-50%); background: #000; color: white; padding: 6px 16px; border-radius: 999px; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; }
-  .card-header { margin-bottom: 32px; }
-  .card-header h2 { font-size: 32px; font-weight: 700; margin-bottom: 12px; }
-  .price { font-size: 48px; font-weight: 800; color: #111; }
-  .price span { font-size: 18px; font-weight: 500; color: #6b7280; }
-  .features { list-style: none; padding: 0; margin: 0 0 32px 0; flex: 1; }
-  .features li { padding: 12px 0; border-bottom: 1px solid #f3f4f6; color: #374151; }
-  .features li:last-child { border-bottom: none; }
-  .card-footer { margin-top: auto; }
-  .btn { display: inline-flex; align-items: center; justify-content: center; width: 100%; padding: 14px 24px; border-radius: 14px; font-weight: 600; text-decoration: none; cursor: pointer; transition: all 0.2s ease; border: none; }
-  .btn-primary { background: #111; color: white; }
-  .btn-primary:hover { background: #000; }
-  .btn-secondary { background: #f3f4f6; color: #111; }
-  .btn-secondary:hover { background: #e5e7eb; }
-  .btn-outline { background: transparent; border: 1px solid #d1d5db; color: #111; }
-  .btn-outline:hover { background: #f9fafb; }
-  .restore-section { max-width: 680px; margin: 0 auto; text-align: center; padding: 48px 32px; background: #f9fafb; border-radius: 24px; border: 1px solid #e5e7eb; }
-  .restore-section h3 { font-size: 30px; margin-bottom: 12px; }
-  .restore-form { display: flex; gap: 12px; margin-top: 24px; }
-  @media (max-width: 640px) { .restore-form { flex-direction: column; } }
-  .restore-form input { flex: 1; padding: 14px 16px; border-radius: 14px; border: 1px solid #d1d5db; font-size: 16px; }
-  .status-message { min-height: 24px; margin-top: 16px; }
-  .status-message.success { color: #166534; }
-  .status-message.error { color: #b91c1c; }
+  .pricing-shell {
+    max-width: 1120px;
+    margin: 0 auto;
+    padding: 80px 24px 88px;
+  }
+  .pricing-header {
+    max-width: 760px;
+    margin: 0 auto 40px;
+    text-align: center;
+  }
+  .eyebrow {
+    font-size: 12px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: #475569;
+    margin-bottom: 14px;
+    font-weight: 700;
+  }
+  .pricing-header h1 {
+    font-size: clamp(40px, 6vw, 64px);
+    line-height: 1.02;
+    font-weight: 800;
+    color: #0f172a;
+    margin-bottom: 16px;
+  }
+  .subtitle {
+    font-size: 18px;
+    line-height: 1.6;
+    color: #334155;
+  }
+  .plans-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 24px;
+    align-items: stretch;
+    margin-top: 36px;
+  }
+  @media (max-width: 900px) {
+    .plans-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+  .plan-card {
+    position: relative;
+    border-radius: 28px;
+    padding: 32px;
+    background: rgba(255, 255, 255, 0.8);
+    border: 1px solid rgba(148, 163, 184, 0.3);
+    box-shadow: 0 22px 60px rgba(15, 23, 42, 0.08);
+    backdrop-filter: blur(18px);
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+  }
+  .plan-card.featured {
+    background: linear-gradient(180deg, rgba(15, 23, 42, 0.98) 0%, rgba(30, 41, 59, 0.96) 100%);
+    color: white;
+    border-color: rgba(255, 255, 255, 0.12);
+    transform: translateY(-6px);
+  }
+  .featured-badge {
+    position: absolute;
+    top: -12px;
+    left: 28px;
+    padding: 7px 14px;
+    border-radius: 999px;
+    background: #22c55e;
+    color: #052e16;
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+  .plan-copy h2 {
+    font-size: 58px;
+    line-height: 1;
+    margin: 2px 0 8px;
+    font-weight: 800;
+  }
+  .plan-card.featured .plan-copy h2,
+  .plan-card.featured .plan-period,
+  .plan-card.featured .plan-summary,
+  .plan-card.featured .feature-list li {
+    color: rgba(255, 255, 255, 0.92);
+  }
+  .plan-kicker {
+    font-size: 14px;
+    text-transform: uppercase;
+    letter-spacing: 0.16em;
+    font-weight: 800;
+    color: #0f172a;
+  }
+  .plan-card.featured .plan-kicker {
+    color: rgba(191, 219, 254, 0.95);
+  }
+  .plan-period {
+    font-size: 16px;
+    color: #475569;
+    font-weight: 600;
+  }
+  .plan-summary {
+    margin-top: 14px;
+    font-size: 16px;
+    line-height: 1.65;
+    color: #334155;
+  }
+  .feature-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: grid;
+    gap: 12px;
+  }
+  .feature-list li {
+    position: relative;
+    padding-left: 24px;
+    color: #334155;
+    line-height: 1.5;
+  }
+  .feature-list li::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0.7em;
+    width: 9px;
+    height: 9px;
+    border-radius: 999px;
+    background: #2563eb;
+    transform: translateY(-50%);
+  }
+  .plan-card.featured .feature-list li::before {
+    background: #93c5fd;
+  }
+  .checkout-stack {
+    display: grid;
+    gap: 12px;
+  }
+  .plan-link {
+    appearance: none;
+    border: 0;
+    width: 100%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 50px;
+    border-radius: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    text-decoration: none;
+    transition: transform 160ms ease, box-shadow 160ms ease, background-color 160ms ease;
+  }
+  .plan-link:hover {
+    transform: translateY(-1px);
+  }
+  .plan-link-primary {
+    background: #0f172a;
+    color: #fff;
+    box-shadow: 0 14px 28px rgba(15, 23, 42, 0.18);
+  }
+  .plan-card.featured .plan-link-primary {
+    background: #fff;
+    color: #0f172a;
+  }
+  .plan-link-secondary {
+    background: rgba(15, 23, 42, 0.06);
+    color: #0f172a;
+  }
+  .plan-card.featured .plan-link-secondary {
+    background: rgba(255, 255, 255, 0.08);
+    color: rgba(255, 255, 255, 0.96);
+  }
+  .annual-note {
+    font-size: 14px;
+    color: rgba(148, 163, 184, 0.92);
+    text-align: center;
+  }
+  .restore-panel {
+    margin-top: 34px;
+    padding: 28px;
+    border-radius: 24px;
+    background: rgba(255, 255, 255, 0.78);
+    border: 1px solid rgba(148, 163, 184, 0.26);
+    box-shadow: 0 16px 44px rgba(15, 23, 42, 0.06);
+  }
+  .restore-copy h3 {
+    font-size: 28px;
+    line-height: 1.1;
+    margin-bottom: 8px;
+    color: #0f172a;
+  }
+  .restore-copy p:last-child {
+    color: #475569;
+  }
+  .restore-form {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 170px;
+    gap: 12px;
+    margin-top: 18px;
+  }
+  @media (max-width: 640px) {
+    .restore-form {
+      grid-template-columns: 1fr;
+    }
+  }
+  .restore-form input {
+    height: 50px;
+    border-radius: 14px;
+    border: 1px solid rgba(148, 163, 184, 0.36);
+    padding: 0 14px;
+    font-size: 16px;
+    background: rgba(255, 255, 255, 0.9);
+  }
+  .status-message {
+    min-height: 24px;
+    margin-top: 16px;
+    color: #334155;
+  }
+  .status-message.success {
+    color: #166534;
+  }
+  .status-message.error {
+    color: #b91c1c;
+  }
 </style>

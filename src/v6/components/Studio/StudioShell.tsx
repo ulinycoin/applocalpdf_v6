@@ -13,6 +13,8 @@ import { ThumbnailService } from '../../studio/thumbnail/thumbnail-service';
 import type { StudioReturnContext, StudioToolRouteState } from '../../studio/navigation/studio-tool-context';
 import { getPdfJs, getPdfLib } from '../../services/pdf/pdf-loader';
 import { StudioInPlaceEditor } from './StudioInPlaceEditor';
+import { canAddDocumentToStudio, canCreateWorkspace, canUseDocumentWithPageCount } from '../../../app/platform/plan-limits';
+import { showStudioPaywall } from '../../../app/react/studio-paywall';
 
 export interface StudioShellProps {
     onFilesDropped?: (files: File[]) => void;
@@ -323,8 +325,20 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
             onFilesDropped?.(files);
         }
 
+        const billingContext = runtime.billing.getContext();
+
         for (let file of files) {
+            let writtenFileId: string | null = null;
             try {
+                const workspaceCheck = canCreateWorkspace(billingContext, documents.length + drafts.length);
+                if (!workspaceCheck.allowed) {
+                    showStudioPaywall(
+                        runtime.telemetry,
+                        'Free includes up to 3 workspaces. Upgrade to Pro for unlimited workspaces.',
+                    );
+                    break;
+                }
+
                 // If it's an image, wrap it in a PDF on the fly
                 if (file.type.startsWith('image/')) {
                     const { PDFDocument } = await getPdfLib();
@@ -356,12 +370,25 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
                 // 1. Save to VFS
                 const pdfjs = await getPdfJs();
                 const entry = await runtime.vfs.write(file);
+                writtenFileId = entry.id;
                 const buffer = await file.arrayBuffer();
 
                 // 2. Load PDF once
                 const loadingTask = pdfjs.getDocument({ data: new Uint8Array(buffer) });
                 const pdf = await loadingTask.promise;
                 const numPages = pdf.numPages;
+
+                const documentCheck = canAddDocumentToStudio(billingContext, documents.length + drafts.length, numPages);
+                if (!documentCheck.allowed) {
+                    showStudioPaywall(
+                        runtime.telemetry,
+                        'Free supports documents up to 25 pages. Upgrade to Pro to open larger PDFs.',
+                    );
+                    await pdf.destroy();
+                    await runtime.vfs.delete(entry.id).catch(() => undefined);
+                    writtenFileId = null;
+                    continue;
+                }
 
                 const pages: PageItem[] = [];
 
@@ -387,6 +414,9 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
                     isModified: false,
                 });
             } catch (error) {
+                if (writtenFileId) {
+                    await runtime.vfs.delete(writtenFileId).catch(() => undefined);
+                }
                 console.error('Failed to load file into Studio:', error);
                 const message = error instanceof Error ? error.message : 'Failed to load file into Studio.';
                 notifyStudioError(message);
@@ -400,7 +430,7 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
         if (positionedDocs.length > 0) {
             fitToDocuments([...documents, ...positionedDocs]);
         }
-    }, [addDocument, dimensions.width, documents, fitToDocuments, notifyStudioError, onFilesDropped, runtime.vfs, gridColumns]);
+    }, [addDocument, dimensions.width, documents, fitToDocuments, notifyStudioError, onFilesDropped, runtime.telemetry, runtime.vfs, gridColumns]);
 
     const handleDrop = useCallback(async (e: React.DragEvent) => {
         e.preventDefault();
@@ -448,6 +478,17 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
             return false;
         }
 
+        const billingContext = runtime.billing.getContext();
+        const nextPageCount = targetDoc.pages.length + pageClipboardRef.current.length;
+        const pageCheck = canUseDocumentWithPageCount(billingContext, nextPageCount);
+        if (!pageCheck.allowed) {
+            showStudioPaywall(
+                runtime.telemetry,
+                'Free supports documents up to 25 pages. Upgrade to Pro to keep adding pages.',
+            );
+            return false;
+        }
+
         const clonedPages: PageItem[] = pageClipboardRef.current.map((page) => ({
             ...page,
             id: crypto.randomUUID(),
@@ -465,7 +506,7 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
         setDocuments(nextDocuments);
         setSelection(clonedPages.map((page) => ({ docId: activeDocumentId, pageId: page.id })));
         return true;
-    }, [activeDocumentId, documents, setDocuments, setSelection]);
+    }, [activeDocumentId, documents, runtime.telemetry, runtime.billing, setDocuments, setSelection]);
 
     useEffect(() => {
         const onKeyDown = (event: KeyboardEvent) => {
@@ -552,6 +593,7 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
 
         let cancelled = false;
         void (async () => {
+            const skippedOutputIds: string[] = [];
             try {
                 const { outputIds, studioContext } = toolResult;
                 const sourceDocId = studioContext?.documentId ?? studioContext?.selectedPages[0]?.docId ?? null;
@@ -563,6 +605,7 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
                     : null;
                 const fallbackDoc = sourceDoc ?? returnDoc;
                 const newDocs: IStudioDocument[] = [];
+                const billingContext = runtime.billing.getContext();
 
                 for (let index = 0; index < outputIds.length; index += 1) {
                     let rebuilt: { name: string; pages: PageItem[] };
@@ -574,12 +617,41 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
                         if (isProtectTool && isPasswordProtected && fallbackDoc) {
                             rebuilt = await buildEncryptedFallbackFromSource(outputIds[index], fallbackDoc);
                         } else {
+                            skippedOutputIds.push(outputIds[index]);
                             throw error;
                         }
                     }
                     if (cancelled) {
                         break;
                     }
+
+                    if (sourceDoc && toolResult.toolId === 'protect-pdf' && index > 0) {
+                        skippedOutputIds.push(outputIds[index]);
+                        continue;
+                    }
+
+                    if (!sourceDoc || toolResult.toolId !== 'protect-pdf') {
+                        const workspaceCheck = canCreateWorkspace(billingContext, documents.length + newDocs.length);
+                        if (!workspaceCheck.allowed) {
+                            showStudioPaywall(
+                                runtime.telemetry,
+                                'Free includes up to 3 workspaces. Upgrade to Pro for unlimited workspaces.',
+                            );
+                            skippedOutputIds.push(...outputIds.slice(index));
+                            break;
+                        }
+                    }
+
+                    const pageCheck = canUseDocumentWithPageCount(billingContext, rebuilt.pages.length);
+                    if (!pageCheck.allowed) {
+                        showStudioPaywall(
+                            runtime.telemetry,
+                            'Free supports documents up to 25 pages. Upgrade to Pro to open larger PDFs.',
+                        );
+                        skippedOutputIds.push(outputIds[index]);
+                        continue;
+                    }
+
                     const x = sourceDoc
                         ? sourceDoc.x + estimateDocumentWidth(sourceDoc.pages.length, gridColumns) + DOC_WRAP_GAP_X + index * (CARD_WIDTH + DOC_WRAP_GAP_X)
                         : 100;
@@ -635,6 +707,9 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
                     notifyStudioError(message);
                 }
             } finally {
+                for (const skippedOutputId of skippedOutputIds) {
+                    await runtime.vfs.delete(skippedOutputId).catch(() => undefined);
+                }
                 if (!cancelled) {
                     applyReturnContext(returnContext);
                     navigate('/studio', { replace: true, state: null });
@@ -660,6 +735,8 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
         setSelection,
         gridColumns,
         notifyStudioError,
+        runtime.billing,
+        runtime.telemetry,
     ]);
 
     useEffect(() => {

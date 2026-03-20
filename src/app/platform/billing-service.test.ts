@@ -105,6 +105,14 @@ describe('BillingService', () => {
     assert.deepStrictEqual(context.entitlements, ['pdf.edit', 'pdf.ocr']);
   });
 
+  test('accepts a yearly pro token', async () => {
+    const token = await createValidToken({ tier: 'pro_yearly' });
+    const service = new BillingService('test_storage', publicKeyPem);
+    const result = await service.saveToken(token);
+    assert.strictEqual(result, true);
+    assert.strictEqual(service.getContext().plan, 'pro');
+  });
+
   test('falls back to default basic entitlements for basic plan token', async () => {
     const token = await createValidToken({ plan: 'basic', tier: 'free', entitlements: [] });
     const service = new BillingService('test_storage', publicKeyPem);
@@ -114,7 +122,7 @@ describe('BillingService', () => {
   });
 
   test('rejects token with mismatched tier and plan', async () => {
-    const token = await createValidToken({ plan: 'basic', tier: 'pro_lifetime' });
+    const token = await createValidToken({ tier: 'pro_lifetime' });
     const service = new BillingService('test_storage', publicKeyPem);
     const result = await service.saveToken(token);
     assert.strictEqual(result, false);

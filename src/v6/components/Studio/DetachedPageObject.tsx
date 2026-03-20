@@ -4,12 +4,16 @@ import type Konva from 'konva';
 import type { KonvaEventObject } from 'konva/lib/Node';
 import useImage from 'use-image';
 import { DetachedPageItem, StudioState, useStudioStore } from './studio-store';
+import { usePlatform } from '../../../app/react/platform-context';
+import { canUseDocumentWithPageCount } from '../../../app/platform/plan-limits';
+import { showStudioPaywall } from '../../../app/react/studio-paywall';
 
 interface DetachedPageObjectProps {
     page: DetachedPageItem;
 }
 
 export const DetachedPageObject: React.FC<DetachedPageObjectProps> = ({ page }) => {
+    const { runtime } = usePlatform();
     const [image] = useImage(page.thumbnailUrl);
     const attachDetachedPage = useStudioStore((s: StudioState) => s.attachDetachedPage);
     const moveDetachedPage = useStudioStore((s: StudioState) => s.moveDetachedPage);
@@ -69,6 +73,17 @@ export const DetachedPageObject: React.FC<DetachedPageObjectProps> = ({ page }) 
         }
 
         if (targetDocId && targetDocNode) {
+            const targetDoc = useStudioStore.getState().documents.find((candidate) => candidate.id === targetDocId);
+            if (targetDoc) {
+                const pageCheck = canUseDocumentWithPageCount(runtime.billing.getContext(), targetDoc.pages.length + 1);
+                if (!pageCheck.allowed) {
+                    showStudioPaywall(
+                        runtime.telemetry,
+                        'Free supports documents up to 25 pages. Upgrade to Pro to keep adding pages.',
+                    );
+                    return;
+                }
+            }
             const transform = targetDocNode.getAbsoluteTransform().copy().invert();
             const localPos = transform.point(centerPos);
             const targetCol = Math.max(0, Math.min(gridColumns - 1, Math.round(localPos.x / STEP_X)));
@@ -95,6 +110,17 @@ export const DetachedPageObject: React.FC<DetachedPageObjectProps> = ({ page }) 
                 e.cancelBubble = true;
                 if (!activeDocumentId) {
                     return;
+                }
+                const targetDoc = useStudioStore.getState().documents.find((candidate) => candidate.id === activeDocumentId);
+                if (targetDoc) {
+                    const pageCheck = canUseDocumentWithPageCount(runtime.billing.getContext(), targetDoc.pages.length + 1);
+                    if (!pageCheck.allowed) {
+                        showStudioPaywall(
+                            runtime.telemetry,
+                            'Free supports documents up to 25 pages. Upgrade to Pro to keep adding pages.',
+                        );
+                        return;
+                    }
                 }
                 attachDetachedPage(page.id, activeDocumentId);
             }}

@@ -5,6 +5,9 @@ import { LinearIcon } from '../../v6/components/icons/linear-icon';
 import { usePlatform } from './platform-context';
 import { PipelineRunner } from '../../v6/studio/pipeline/PipelineRunner';
 import type { IPipelineRecipe } from '../../v6/studio/pipeline/types';
+import { openBillingPlans } from './billing';
+import { canAddDocumentToStudio } from '../platform/plan-limits';
+import { showStudioPaywall } from './studio-paywall';
 
 const DEFAULT_MARKETING_SITE_URL = 'http://127.0.0.1:4321';
 
@@ -118,6 +121,17 @@ export function StudioTopNav({ telemetryEnabled, onToggleTelemetry, telemetryOpe
   };
 
   const handleCreateSpace = (): void => {
+    const billingContext = runtime.billing.getContext();
+    const limitCheck = canAddDocumentToStudio(billingContext, documents.length, 0);
+    if (!limitCheck.allowed) {
+      showStudioPaywall(
+        runtime.telemetry,
+        limitCheck.reason === 'workspace_limit'
+          ? 'Free includes up to 3 workspaces. Upgrade to Pro for unlimited workspaces.'
+          : 'Free supports documents up to 25 pages. Upgrade to Pro to open larger PDFs.',
+      );
+      return;
+    }
     const maxY = documents.reduce((acc, doc) => Math.max(acc, doc.y + 120), 80);
     const name = `Workspace ${documents.length + 1}`;
     const nextDocId = crypto.randomUUID();
@@ -178,6 +192,10 @@ export function StudioTopNav({ telemetryEnabled, onToggleTelemetry, telemetryOpe
     window.location.assign(marketingSiteUrl);
   };
 
+  const handleOpenPricing = (): void => {
+    openBillingPlans(import.meta.env.VITE_BILLING_URL);
+  };
+
   return (
     <header className="studio-top-nav" aria-label="Studio top navigation">
       <div className="studio-top-nav-left">
@@ -199,6 +217,14 @@ export function StudioTopNav({ telemetryEnabled, onToggleTelemetry, telemetryOpe
           title="Website"
         >
           <span>Website</span>
+        </button>
+        <button
+          type="button"
+          className="studio-tab-btn"
+          onClick={handleOpenPricing}
+          title="Pricing"
+        >
+          <span>Pricing</span>
         </button>
         <button
           type="button"
