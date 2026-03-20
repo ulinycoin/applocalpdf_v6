@@ -129,6 +129,7 @@ export function StudioTopNav({ telemetryEnabled, onToggleTelemetry, telemetryOpe
         limitCheck.reason === 'workspace_limit'
           ? 'Free includes up to 3 workspaces. Upgrade to Pro for unlimited workspaces.'
           : 'Free supports documents up to 25 pages. Upgrade to Pro to open larger PDFs.',
+        import.meta.env.VITE_BILLING_URL,
       );
       return;
     }

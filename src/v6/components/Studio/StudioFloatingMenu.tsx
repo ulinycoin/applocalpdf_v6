@@ -173,6 +173,7 @@ export function StudioFloatingMenu() {
                     showStudioPaywall(
                         runtime.telemetry,
                         'Free supports documents up to 25 pages. Upgrade to Pro to keep larger documents in Studio.',
+                        import.meta.env.VITE_BILLING_URL,
                     );
                     setCompressError('Free supports documents up to 25 pages.');
                     await runtime.vfs.delete(compressedFileId).catch(() => undefined);

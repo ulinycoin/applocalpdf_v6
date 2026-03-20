@@ -1,7 +1,6 @@
 import { type ToolRunContext } from '../../core/types/contracts';
 import {
   getDefaultEntitlementsForPlan,
-  getDefaultTierForPlan,
   normalizePlan,
   normalizeTier,
   sanitizeEntitlements,

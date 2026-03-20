@@ -80,6 +80,7 @@ export const DetachedPageObject: React.FC<DetachedPageObjectProps> = ({ page }) 
                     showStudioPaywall(
                         runtime.telemetry,
                         'Free supports documents up to 25 pages. Upgrade to Pro to keep adding pages.',
+                        import.meta.env.VITE_BILLING_URL,
                     );
                     return;
                 }
@@ -118,6 +119,7 @@ export const DetachedPageObject: React.FC<DetachedPageObjectProps> = ({ page }) 
                         showStudioPaywall(
                             runtime.telemetry,
                             'Free supports documents up to 25 pages. Upgrade to Pro to keep adding pages.',
+                            import.meta.env.VITE_BILLING_URL,
                         );
                         return;
                     }

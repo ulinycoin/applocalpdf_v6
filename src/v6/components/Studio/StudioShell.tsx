@@ -335,6 +335,7 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
                     showStudioPaywall(
                         runtime.telemetry,
                         'Free includes up to 3 workspaces. Upgrade to Pro for unlimited workspaces.',
+                        import.meta.env.VITE_BILLING_URL,
                     );
                     break;
                 }
@@ -383,6 +384,7 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
                     showStudioPaywall(
                         runtime.telemetry,
                         'Free supports documents up to 25 pages. Upgrade to Pro to open larger PDFs.',
+                        import.meta.env.VITE_BILLING_URL,
                     );
                     await pdf.destroy();
                     await runtime.vfs.delete(entry.id).catch(() => undefined);
@@ -485,6 +487,7 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
             showStudioPaywall(
                 runtime.telemetry,
                 'Free supports documents up to 25 pages. Upgrade to Pro to keep adding pages.',
+                import.meta.env.VITE_BILLING_URL,
             );
             return false;
         }
@@ -636,6 +639,7 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
                             showStudioPaywall(
                                 runtime.telemetry,
                                 'Free includes up to 3 workspaces. Upgrade to Pro for unlimited workspaces.',
+                                import.meta.env.VITE_BILLING_URL,
                             );
                             skippedOutputIds.push(...outputIds.slice(index));
                             break;
@@ -647,6 +651,7 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
                         showStudioPaywall(
                             runtime.telemetry,
                             'Free supports documents up to 25 pages. Upgrade to Pro to open larger PDFs.',
+                            import.meta.env.VITE_BILLING_URL,
                         );
                         skippedOutputIds.push(outputIds[index]);
                         continue;
