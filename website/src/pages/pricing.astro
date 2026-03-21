@@ -72,6 +72,7 @@ import MarketingLayout from '../layouts/MarketingLayout.astro';
           <p class="eyebrow">Restore</p>
           <h3>Already have a license?</h3>
           <p>Enter your LemonSqueezy license key to restore Pro access.</p>
+          <p class="restore-note">After checkout, LemonSqueezy emails your license key. Paste it here on any device to unlock Pro.</p>
         </div>
         <div class="restore-form">
           <input
@@ -113,17 +114,22 @@ import MarketingLayout from '../layouts/MarketingLayout.astro';
   setupCheckout('buy-pro-monthly');
   setupCheckout('buy-pro-yearly');
 
-  const restoreBtn = document.getElementById('restore-license-btn');
+  const restoreBtn = document.getElementById('restore-license-btn') as HTMLButtonElement | null;
   const licenseInput = document.getElementById('license-key-input') as HTMLInputElement | null;
   const statusMsg = document.getElementById('restore-status');
 
-  restoreBtn?.addEventListener('click', async () => {
+  async function restoreLicense() {
     const key = licenseInput?.value?.trim();
     if (!key) {
+      if (statusMsg) {
+        statusMsg.className = 'status-message error';
+        statusMsg.textContent = 'Enter your license key to restore Pro access.';
+      }
+      licenseInput?.focus();
       return;
     }
 
-    restoreBtn.toggleAttribute('disabled', true);
+    restoreBtn?.toggleAttribute('disabled', true);
     if (statusMsg) {
       statusMsg.className = 'status-message';
       statusMsg.textContent = 'Restoring...';
@@ -159,7 +165,15 @@ import MarketingLayout from '../layouts/MarketingLayout.astro';
         statusMsg.textContent = err?.message || 'Restore failed';
       }
     } finally {
-      restoreBtn.toggleAttribute('disabled', false);
+      restoreBtn?.toggleAttribute('disabled', false);
+    }
+  }
+
+  restoreBtn?.addEventListener('click', restoreLicense);
+  licenseInput?.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      void restoreLicense();
     }
   });
 </script>
@@ -364,6 +378,12 @@ import MarketingLayout from '../layouts/MarketingLayout.astro';
   }
   .restore-copy p:last-child {
     color: #475569;
+  }
+  .restore-note {
+    margin-top: 10px;
+    font-size: 14px;
+    line-height: 1.6;
+    color: #64748b;
   }
   .restore-form {
     display: grid;

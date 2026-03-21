@@ -56,6 +56,20 @@ If you need a faster local preflight, use:
 npm run release:check:fast
 ```
 
+If you only want to validate billing readiness and key material before a deploy, use:
+
+```bash
+npm run billing:preflight
+```
+
+The billing preflight verifies:
+- required billing env presence
+- checkout URLs are HTTPS
+- billing destination is safe
+- monthly/yearly LemonSqueezy allowlists are populated and non-overlapping
+- RSA public/private key pair matches
+- `PUBLIC_APP_URL` is production-safe when set
+
 ## Deploy expectations
 
 - Deploy the generated `dist/` directory from a clean `main` checkout.
