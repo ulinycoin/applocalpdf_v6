@@ -14,18 +14,7 @@ export function showStudioPaywall(
     reason,
   });
 
-  if (typeof window !== 'undefined') {
-    const shouldOpenPricing = window.confirm(`${reason}\n\nOpen pricing now?`);
-    if (shouldOpenPricing) {
-      const destination = openBillingPlans(billingUrl);
-      telemetry.track({
-        type: 'UI_UPSELL_CTA_CLICKED',
-        runId,
-        toolId: 'studio',
-        destination,
-      });
-    }
-  }
+
 
   return runId;
 }

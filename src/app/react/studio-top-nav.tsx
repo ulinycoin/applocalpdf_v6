@@ -203,7 +203,12 @@ export function StudioTopNav({ telemetryEnabled, onToggleTelemetry, telemetryOpe
         <a href={marketingSiteUrl} className="studio-logo">
           <div className="studio-logo-text">
             <div className="studio-logo-title">LocalPDF</div>
-            <div className="studio-logo-subtitle">Studio</div>
+            <div className="studio-logo-subtitle">
+              <span>Studio</span>
+              {runtime.billing.getContext().plan === 'pro' && (
+                <div className="studio-badge-pro">PRO</div>
+              )}
+            </div>
           </div>
         </a>
       </div>

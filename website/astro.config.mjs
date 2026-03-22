@@ -34,6 +34,8 @@ export default defineConfig({
     format: 'file'
   },
   vite: {
+    envDir: '..',
+    envPrefix: ['VITE_', 'PUBLIC_'],
     server: {
       fs: {
         allow: ['..']

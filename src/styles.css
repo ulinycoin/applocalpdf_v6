@@ -3236,6 +3236,25 @@ textarea:focus-visible {
   text-transform: uppercase;
   letter-spacing: 0.04em;
   margin-top: 1px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.studio-badge-pro {
+  font-size: 0.55rem;
+  font-weight: 800;
+  color: #fff;
+  background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+  padding: 1px 5px;
+  border-radius: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 4px rgba(59, 130, 246, 0.3);
+  line-height: 1;
 }
 
 .studio-top-nav-right {

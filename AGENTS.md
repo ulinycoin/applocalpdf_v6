@@ -14,6 +14,149 @@ Speed, brevity, or cleverness do not matter if architecture is violated. If you 
 You are operating inside LocalPDF V6. It is a plugin-based, worker-first, declarative cross-platform platform (Web + Tauri).
 **Core principle**: Tool developers write logic only. The platform owns routing, files, execution, limits, and monetization.
 
+## 1.1 Agent Roles For This Repo
+Use a simple two-role workflow when agent delegation helps.
+
+- **Coordinator**:
+  - reads the request
+  - inspects the relevant files first
+  - decides scope and risk
+  - assigns bounded work to a specialist
+  - integrates results and validates the final state
+- **Specialist**:
+  - owns one narrow slice of work
+  - edits only the files assigned to it
+  - keeps changes local and minimal
+  - runs the relevant checks for its slice
+  - reports changed files, behavior changes, and residual risks
+
+Rules:
+
+- The coordinator may create a specialist when the task is larger than a trivial one-liner or when parallel work is useful.
+- The coordinator should keep the critical path local and avoid delegating urgent blocking work.
+- The specialist must not widen scope, redesign architecture, or revert unrelated changes.
+- If only one agent is active, it should act as the coordinator by default and delegate only when the task is clearly separable.
+
+## 1.2 Coordination Patterns
+Prefer these patterns when delegating work in this repo.
+
+- **Coordinator-Specialist**:
+  - Coordinator receives the task, classifies it, and delegates bounded work to a specialist.
+  - Specialist is stateless: it executes one slice, returns results, and exits.
+  - Coordinator aggregates the result and writes the synthesis to `MEMORY.md` when the task benefits from a persistent handoff.
+- **Peer-to-Peer**:
+  - Agents may exchange status directly when that is already part of the surrounding system.
+  - Use this sparingly; it increases coordination complexity and can create recursion if messages bounce back and forth.
+- **Hierarchical**:
+  - A parent agent may spawn child agents for independent subproblems and collect their outputs.
+  - Use this for larger workflows that benefit from parallelism.
+
+Constraints:
+
+- Default to isolation: without explicit delegation or shared files, agents do not see each other's data.
+- Prevent infinite loops:
+  - Do not let a specialist bounce work back to the same coordinator for another identical delegation.
+  - Prefer a one-way handoff: delegate, collect, finalize.
+  - If the platform exposes a depth limit, keep it low for routine work.
+- Improve token efficiency:
+  - Move large intermediate results into workspace files.
+  - Pass file paths instead of copying large text blocks through chat.
+- Sync shared state only when necessary:
+  - Use a shared workspace file or `MEMORY.md` for the coordinator's summary.
+  - Copy only the minimum required context into each specialist spawn.
+
+## 1.3 Ready-Made Roles
+Use these roles as the default delegation targets for LocalPDF work.
+
+### `seo-coordinator`
+
+- **Mission**: own SEO strategy, page architecture, internal linking, metadata, and search-facing messaging.
+- **Owns**:
+  - `docs/SEO_CONTROL_ROOM.md`
+  - `docs/SEO_SPRINT_3_MAP.md`
+  - `docs/ANALYTICS_POSTHOG_2026-03-16.md`
+  - marketing copy, titles, descriptions, canonical strategy, redirects, sitemap scope
+- **Never touches**:
+  - worker internals
+  - PDF processing logic
+  - core runtime plumbing
+  - release secrets or billing keys
+- **Typical output**:
+  - cluster plan
+  - page copy edits
+  - internal-link recommendations
+  - SEO validation notes
+- **Use when**:
+  - the task is about traffic, intent matching, crawlability, or conversion on the marketing surface
+
+### `core-specialist`
+
+- **Mission**: own platform/runtime correctness in the core layer.
+- **Owns**:
+  - `src/core/**`
+  - worker orchestration
+  - registry/VFS/runner/lifecycle code
+  - service boundaries and boundary tests
+- **Never touches**:
+  - marketing content
+  - SEO copy
+  - layout polish unless it is required to preserve a core contract
+  - release or billing docs unless they expose a core contract
+- **Typical output**:
+  - code changes in core/runtime files
+  - targeted tests for contracts and invariants
+  - notes on boundary risks
+- **Use when**:
+  - the task is about architecture, execution, file handling, workerization, or shared platform behavior
+
+### `ui-specialist`
+
+- **Mission**: own presentation and interaction in UI layers without expanding logic into the view.
+- **Owns**:
+  - `src/app/**`
+  - `src/v6/**`
+  - `src/plugins/**/ui/**`
+  - marketing/UI components when the change is mostly visual or interaction-driven
+- **Never touches**:
+  - worker logic
+  - service orchestration
+  - billing/restore logic
+  - hidden runtime invariants
+- **Typical output**:
+  - UI components and styling changes
+  - interaction fixes
+  - accessibility and layout improvements
+  - minimal UI-specific tests if already present in the repo
+- **Use when**:
+  - the task is about screens, flows, copy in the interface, responsiveness, or interaction polish
+
+### `release-specialist`
+
+- **Mission**: own release readiness, deployment hygiene, and production contract checks.
+- **Owns**:
+  - `docs/PRODUCTION_RELEASE.md`
+  - `vercel.json`
+  - `.env.example`
+  - release check scripts and related deployment docs
+  - production-facing contract validation
+- **Never touches**:
+  - feature work that is not release-related
+  - experimental refactors
+  - SEO/content tuning unless it directly affects release gates
+- **Typical output**:
+  - release checklist updates
+  - environment variable contract fixes
+  - deploy hygiene changes
+  - preflight/validation steps
+- **Use when**:
+  - the task is about shipping, production safety, environment setup, or cutover
+
+Delegation rule:
+
+- The coordinator should pick the narrowest role that fully owns the requested change.
+- If a task crosses roles, split it into separate bounded tasks and keep one coordinator responsible for synthesis.
+- When uncertain, start with `core-specialist` for platform behavior, `ui-specialist` for interaction changes, `seo-coordinator` for marketing/search changes, and `release-specialist` for deployment readiness.
+
 ## 2. Non-Negotiable Architecture Rules
 ### 2.1 Layer Separation (STRICT)
 - **UI (`plugins/*/ui`)**: User input, configuration, display. **Forbidden**: Heavy logic, PDF libs, file system.
