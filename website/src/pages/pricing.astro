@@ -53,18 +53,30 @@ import MarketingLayout from '../layouts/MarketingLayout.astro';
               class="plan-link plan-link-primary"
               data-checkout-url={import.meta.env.VITE_LS_CHECKOUT_URL_PRO_MONTHLY}
             >
-              Get Pro Monthly
+              Start Pro Monthly
             </button>
             <button
               id="buy-pro-yearly"
               class="plan-link plan-link-secondary"
               data-checkout-url={import.meta.env.VITE_LS_CHECKOUT_URL_PRO_YEARLY}
             >
-              Get Pro Yearly
+              Start Pro Yearly
             </button>
           </div>
-          <p class="annual-note">$39.99/year billed upfront</p>
+          <p class="annual-note">$39.99/year billed upfront · best value for frequent use</p>
         </article>
+      </section>
+
+      <section class="legal-note-panel" aria-label="Billing terms notice">
+        <p>
+          Pro plans are digital subscriptions. Monthly plans are billed monthly, and yearly plans are billed upfront for one year.
+          Renewals, where applicable, continue automatically until canceled through the payment provider.
+          By purchasing or restoring a paid plan, you agree to the <a href="/terms">Terms of Use</a> and <a href="/privacy">Privacy Policy</a>.
+          Billing, cancellations, and refund handling are described in the <a href="/refund-policy">Refund Policy</a>.
+        </p>
+        <p>
+          Questions? Contact <a href="mailto:support@localpdf.online">support@localpdf.online</a>.
+        </p>
       </section>
 
       <section class="restore-panel">
@@ -361,6 +373,22 @@ import MarketingLayout from '../layouts/MarketingLayout.astro';
     font-size: 14px;
     color: rgba(148, 163, 184, 0.92);
     text-align: center;
+  }
+  .legal-note-panel {
+    margin-top: 24px;
+    padding: 18px 20px;
+    border-radius: 22px;
+    border: 1px solid rgba(148, 163, 184, 0.28);
+    background: rgba(255, 255, 255, 0.78);
+    color: #334155;
+    box-shadow: 0 14px 36px rgba(15, 23, 42, 0.06);
+  }
+  .legal-note-panel p + p {
+    margin-top: 10px;
+  }
+  .legal-note-panel a {
+    color: #0f172a;
+    font-weight: 700;
   }
   .restore-panel {
     margin-top: 34px;

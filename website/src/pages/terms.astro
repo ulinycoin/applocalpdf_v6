@@ -1,8 +1,8 @@
 ---
 import MarketingLayout from '../layouts/MarketingLayout.astro';
 
-const title = 'Terms of Use | LocalPDF website and PDF app';
-const description = 'Review the LocalPDF terms of use, service boundaries, and practical responsibilities for using the website and PDF app.';
+const title = 'Terms of Use | LocalPDF';
+const description = 'Read the LocalPDF Terms of Use for subscriptions, license keys, acceptable use, disclaimers, and service limitations.';
 const canonical = 'https://localpdf.online/terms';
 const image = 'https://localpdf.online/og/home.svg';
 const termsSchema = {
@@ -15,91 +15,165 @@ const termsSchema = {
 ---
 
 <MarketingLayout title={title} description={description} canonical={canonical} image={image} schema={termsSchema}>
-  <div class="page-shell">
+  <div class="page-shell legal-shell">
     <section class="section intro">
       <span class="eyebrow">Terms</span>
-      <h1>Simple terms for using LocalPDF responsibly</h1>
+      <h1>Terms of Use</h1>
       <p class="section-intro">
-        These terms define the current service boundaries for LocalPDF in plain language and stay aligned with the actual product experience.
+        These Terms of Use govern your access to the LocalPDF website, app, and paid plans. By using LocalPDF or purchasing a subscription,
+        you agree to these terms.
+      </p>
+      <p class="meta">Last updated: 2026-03-22</p>
+    </section>
+
+    <section class="section legal-section">
+      <h2 class="section-title">1. Who operates LocalPDF</h2>
+      <p>
+        LocalPDF is operated through the website at <a href="https://localpdf.online">localpdf.online</a>. For support, billing questions,
+        privacy requests, or legal notices, contact <a href="mailto:support@localpdf.online">support@localpdf.online</a>.
       </p>
     </section>
 
-    <section class="section">
-      <h2 class="section-title">Current service framing</h2>
-      <div class="card-grid">
-        <div class="card">
-          <h3>Product status</h3>
-          <p>LocalPDF is an actively evolving PDF product. Features, packaging, and routing may change as the product matures.</p>
-        </div>
-        <div class="card">
-          <h3>User responsibility</h3>
-          <p>Users are responsible for the documents they process and are expected to keep backups of important files before relying on any single export result.</p>
-        </div>
-        <div class="card">
-          <h3>Service scope</h3>
-          <p>LocalPDF is provided as a practical PDF tool, and features, workflows, or availability may change over time.</p>
-        </div>
-      </div>
+    <section class="section legal-section">
+      <h2 class="section-title">2. What LocalPDF provides</h2>
+      <p>
+        LocalPDF provides PDF tools and document workflows, including editing, merging, OCR, conversion, protection, and related functionality.
+        Some features may be available for free, and some require a paid Pro subscription or a valid license state.
+      </p>
+      <p>
+        We may update, improve, suspend, replace, or remove features over time. We may also change packaging, usage limits, pricing, and plan
+        structure.
+      </p>
     </section>
 
-    <section class="section">
-      <h2 class="section-title">Working rules</h2>
-      <div class="rules">
-        <article class="rule">
-          <strong>Use LocalPDF responsibly</strong>
-          <p>Do not process documents you have no right to handle.</p>
-        </article>
-        <article class="rule">
-          <strong>Keep backups of important files</strong>
-          <p>Important documents should not depend on one browser session or one export attempt.</p>
-        </article>
-        <article class="rule">
-          <strong>Expect iteration</strong>
-          <p>The product, pricing, and packaging may evolve over time as the app develops.</p>
-        </article>
-      </div>
+    <section class="section legal-section">
+      <h2 class="section-title">3. Accounts, subscriptions, and license keys</h2>
+      <ul class="bullet-list">
+        <li>Paid access may be sold as a monthly or yearly Pro subscription.</li>
+        <li>Checkout and billing may be handled by our payment provider, LemonSqueezy.</li>
+        <li>After purchase, you may receive a license key or equivalent subscription credential.</li>
+        <li>You are responsible for keeping your license key secure.</li>
+        <li>License keys are personal to the purchaser or intended customer and may not be resold, sublicensed, or shared abusively.</li>
+        <li>We may limit, suspend, or revoke access in cases of fraud, abuse, payment reversal, or misuse of the licensing system.</li>
+      </ul>
+    </section>
+
+    <section class="section legal-section">
+      <h2 class="section-title">4. Renewals and cancellation</h2>
+      <p>
+        If a Pro plan is sold as a recurring subscription, it renews automatically until canceled through the payment provider or applicable customer portal.
+        Canceling stops future renewals but does not retroactively reverse charges already processed, unless required by law or covered by our refund policy.
+      </p>
+      <p>
+        Additional billing and refund details are described on the <a href="/refund-policy">Refund Policy</a> page.
+      </p>
+    </section>
+
+    <section class="section legal-section">
+      <h2 class="section-title">5. Acceptable use</h2>
+      <ul class="bullet-list">
+        <li>You may use LocalPDF only for lawful purposes.</li>
+        <li>You must not process documents you do not have the right to handle.</li>
+        <li>You must not attempt to bypass feature restrictions, licensing checks, or technical safeguards.</li>
+        <li>You must not reverse engineer, abuse, disrupt, overload, or interfere with the service.</li>
+        <li>You must not use LocalPDF to infringe intellectual property, privacy, or confidentiality rights.</li>
+      </ul>
+    </section>
+
+    <section class="section legal-section">
+      <h2 class="section-title">6. Document accuracy and user responsibility</h2>
+      <p>
+        PDF editing, OCR, conversion, extraction, compression, and redaction-related workflows can produce imperfect results. You are responsible for reviewing
+        output files before relying on them for business, legal, financial, compliance, or archival purposes.
+      </p>
+      <p>
+        You should keep your own backups of important files. LocalPDF is a productivity tool, not a substitute for your own validation, document controls,
+        or records policy.
+      </p>
+    </section>
+
+    <section class="section legal-section">
+      <h2 class="section-title">7. Privacy and data handling</h2>
+      <p>
+        Our handling of personal data is described in the <a href="/privacy">Privacy Policy</a>. By using LocalPDF, you acknowledge that payment,
+        analytics, support, and technical operations may involve third-party services described there.
+      </p>
+    </section>
+
+    <section class="section legal-section">
+      <h2 class="section-title">8. Intellectual property</h2>
+      <p>
+        LocalPDF, its branding, site content, software, and related materials are protected by applicable intellectual property laws. Except where allowed by law,
+        you may not copy, distribute, modify, sell, or exploit our software or site content without permission.
+      </p>
+    </section>
+
+    <section class="section legal-section">
+      <h2 class="section-title">9. Disclaimer of warranties</h2>
+      <p>
+        LocalPDF is provided on an “as is” and “as available” basis. To the maximum extent permitted by law, we disclaim warranties of merchantability,
+        fitness for a particular purpose, non-infringement, uninterrupted availability, and error-free operation.
+      </p>
+    </section>
+
+    <section class="section legal-section">
+      <h2 class="section-title">10. Limitation of liability</h2>
+      <p>
+        To the maximum extent permitted by law, LocalPDF will not be liable for indirect, incidental, special, consequential, or punitive damages, or for loss of
+        profits, revenue, data, business, goodwill, or documents arising from or related to your use of the service.
+      </p>
+      <p>
+        To the maximum extent permitted by law, our total liability for claims related to paid services will not exceed the amount you paid for LocalPDF in the
+        12 months before the event giving rise to the claim.
+      </p>
+    </section>
+
+    <section class="section legal-section">
+      <h2 class="section-title">11. Changes to these terms</h2>
+      <p>
+        We may update these terms from time to time. The updated version becomes effective when posted on this page unless stated otherwise.
+      </p>
     </section>
 
     <section class="section final-band">
       <div>
         <span class="eyebrow">Related pages</span>
-        <h2 class="section-title">Terms work better when they stay connected to Privacy and Security</h2>
+        <h2 class="section-title">Need the practical policy pages too?</h2>
         <p class="section-intro">
-          Use Terms for service boundaries, Privacy for data-handling language, and Security for the trust model that sits behind the workflow.
+          Read Privacy for data handling, Refund Policy for billing questions, and Security for the local-first trust model.
         </p>
       </div>
       <div class="cta-row">
         <a class="btn-primary" href="/privacy">Read Privacy</a>
-        <a class="btn-secondary" href="/security">Read Security</a>
+        <a class="btn-secondary" href="/refund-policy">Read Refund Policy</a>
       </div>
     </section>
   </div>
 </MarketingLayout>
 
 <style>
-  .intro h1 {
-    font-size: clamp(3rem, 5vw, 5rem);
-    margin-top: 18px;
-    margin-bottom: 18px;
-    max-width: 12ch;
+  .legal-shell {
+    max-width: 940px;
   }
 
-  .rules {
+  .intro h1 {
+    font-size: clamp(3rem, 5vw, 4.8rem);
+    margin-top: 18px;
+    margin-bottom: 18px;
+  }
+
+  .meta {
+    margin-top: 10px;
+    font-size: 0.95rem;
+  }
+
+  .legal-section {
     display: grid;
     gap: 14px;
   }
 
-  .rule {
-    padding: 20px 22px;
-    border-radius: 22px;
-    border: 1px solid var(--line);
-    background: var(--surface);
-  }
-
-  .rule strong {
-    display: block;
-    margin-bottom: 8px;
-    font-size: 1rem;
+  .legal-section a {
+    color: var(--accent);
   }
 
   .final-band {

@@ -1,8 +1,8 @@
 ---
 import MarketingLayout from '../layouts/MarketingLayout.astro';
 
-const title = 'Privacy at LocalPDF | Local-first PDF handling explained';
-const description = 'Read how LocalPDF explains privacy, local-first PDF handling, analytics boundaries, and document workflow claims in practical terms.';
+const title = 'Privacy Policy | LocalPDF';
+const description = 'Read the LocalPDF Privacy Policy, including what data we collect, how billing and analytics work, and how to contact us.';
 const canonical = 'https://localpdf.online/privacy';
 const image = 'https://localpdf.online/og/home.svg';
 const privacySchema = {
@@ -15,104 +15,167 @@ const privacySchema = {
 ---
 
 <MarketingLayout title={title} description={description} canonical={canonical} image={image} schema={privacySchema}>
-  <div class="page-shell">
+  <div class="page-shell legal-shell">
     <section class="section intro">
       <span class="eyebrow">Privacy</span>
-      <h1>How LocalPDF talks about privacy in practical terms</h1>
+      <h1>Privacy Policy</h1>
       <p class="section-intro">
-        This page explains how LocalPDF approaches privacy, document handling, and website behavior without relying on absolute claims.
+        This Privacy Policy explains what personal data LocalPDF may process, why we process it, and how to contact us about privacy requests.
+      </p>
+      <p class="meta">Last updated: 2026-03-22</p>
+    </section>
+
+    <section class="section legal-section">
+      <h2 class="section-title">1. Contact</h2>
+      <p>
+        For privacy questions, data access requests, deletion requests, or billing-related data questions, contact
+        <a href="mailto:support@localpdf.online">support@localpdf.online</a>.
       </p>
     </section>
 
-    <section class="section">
-      <h2 class="section-title">Privacy position</h2>
-      <div class="card-grid">
-        <div class="card">
-          <h3>Document handling</h3>
-          <p>LocalPDF is positioned as a local-first PDF product. Sensitive-document workflows begin as close to the user device as possible.</p>
-        </div>
-        <div class="card">
-          <h3>Website behavior</h3>
-          <p>The marketing site is still a website. Hosting, assets, and optional measurement tools are described honestly when they are enabled.</p>
-        </div>
-        <div class="card">
-          <h3>Public claims</h3>
-          <p>Privacy copy stays aligned with the actual implementation. If the stack changes, the public wording changes with it.</p>
-        </div>
-      </div>
+    <section class="section legal-section">
+      <h2 class="section-title">2. What LocalPDF does</h2>
+      <p>
+        LocalPDF is a local-first PDF product. Many core document actions are designed to run in the browser rather than through an upload-first workflow.
+        However, the website still uses normal web infrastructure, and some product functions rely on external services such as payment processing,
+        analytics, hosting, and license validation.
+      </p>
+      <p>
+        Because of that, LocalPDF should not be understood as “collects nothing.” Instead, we aim to keep data collection limited, practical, and aligned with
+        the actual product behavior.
+      </p>
     </section>
 
-    <section class="section">
-      <h2 class="section-title">Use and avoid</h2>
-      <div class="two-col">
-        <div class="policy-box good">
-          <strong>Use language like this</strong>
-          <ul class="bullet-list">
-            <li>LocalPDF is built around local PDF workflows</li>
-            <li>Sensitive-document tasks do not have to begin with a blind upload pattern</li>
-            <li>Privacy claims stay consistent with the actual site stack and any enabled analytics configuration</li>
-          </ul>
-        </div>
-        <div class="policy-box bad">
-          <strong>Avoid language like this</strong>
-          <ul class="bullet-list">
-            <li>Absolute “we collect nothing” claims unless that is fully true</li>
-            <li>“No analytics” if analytics or telemetry are present</li>
-            <li>“No third-party requests” if fonts, scripts, or hosted services are still in use</li>
-          </ul>
-        </div>
-      </div>
+    <section class="section legal-section">
+      <h2 class="section-title">3. Data we may process</h2>
+      <ul class="bullet-list">
+        <li><strong>Billing data:</strong> purchase records, subscription status, transaction metadata, and license-related identifiers processed through LemonSqueezy.</li>
+        <li><strong>Technical data:</strong> IP address, browser type, device information, page requests, timestamps, referrers, and basic server logs.</li>
+        <li><strong>Analytics data:</strong> usage events and website behavior if analytics tools are enabled.</li>
+        <li><strong>Support data:</strong> messages you send to us, including your email address and any information you choose to include.</li>
+        <li><strong>License restore data:</strong> submitted license keys, validation responses, and related anti-abuse or rate-limit metadata.</li>
+        <li><strong>Local storage data:</strong> browser-side tokens or settings required to remember your billing state or product preferences.</li>
+      </ul>
+    </section>
+
+    <section class="section legal-section">
+      <h2 class="section-title">4. Document handling</h2>
+      <p>
+        Many LocalPDF workflows are built around local browser processing. That means documents do not always need to be uploaded to a remote processing backend
+        just to begin a task.
+      </p>
+      <p>
+        Still, you should not assume that every part of the broader site experience is entirely local. Billing, analytics, restore requests, support, and normal web
+        hosting can involve network requests and third-party processors.
+      </p>
+    </section>
+
+    <section class="section legal-section">
+      <h2 class="section-title">5. Why we process data</h2>
+      <ul class="bullet-list">
+        <li>To operate, secure, and improve the website and app</li>
+        <li>To process payments and manage subscriptions</li>
+        <li>To restore and validate Pro access</li>
+        <li>To prevent abuse, fraud, and technical misuse</li>
+        <li>To understand product usage and improve user experience</li>
+        <li>To respond to support requests and legal obligations</li>
+      </ul>
+    </section>
+
+    <section class="section legal-section">
+      <h2 class="section-title">6. Third-party services</h2>
+      <p>LocalPDF may use third-party providers, including categories such as:</p>
+      <ul class="bullet-list">
+        <li><strong>Payments and subscriptions:</strong> LemonSqueezy</li>
+        <li><strong>Analytics and measurement:</strong> tools such as Google Analytics, PostHog, or Vercel Analytics when enabled</li>
+        <li><strong>Hosting and delivery:</strong> website hosting, CDN, and infrastructure providers</li>
+      </ul>
+      <p>
+        These providers may process personal data according to their own policies and contractual roles.
+      </p>
+    </section>
+
+    <section class="section legal-section">
+      <h2 class="section-title">7. Cookies, analytics, and local storage</h2>
+      <p>
+        The website and app may use cookies, local storage, or similar browser technologies to support analytics, billing state, feature behavior, and basic site
+        functionality.
+      </p>
+      <p>
+        If analytics tooling is enabled, your interactions with the site may be measured in aggregate or event form to help improve the product.
+      </p>
+    </section>
+
+    <section class="section legal-section">
+      <h2 class="section-title">8. Data retention</h2>
+      <p>
+        We retain data for as long as reasonably necessary to operate the service, comply with legal obligations, prevent abuse, resolve disputes, and support billing
+        records. Different categories of data may be retained for different periods depending on legal, operational, and security needs.
+      </p>
+    </section>
+
+    <section class="section legal-section">
+      <h2 class="section-title">9. Your rights</h2>
+      <p>
+        Depending on your location, you may have rights to request access, correction, deletion, restriction, objection, or portability of personal data.
+        To make a request, email <a href="mailto:support@localpdf.online">support@localpdf.online</a>.
+      </p>
+    </section>
+
+    <section class="section legal-section">
+      <h2 class="section-title">10. International processing</h2>
+      <p>
+        LocalPDF and its providers may process data in multiple countries depending on hosting, payment, and analytics infrastructure. By using the service,
+        you understand that data may be processed outside your home jurisdiction.
+      </p>
+    </section>
+
+    <section class="section legal-section">
+      <h2 class="section-title">11. Changes to this policy</h2>
+      <p>
+        We may update this Privacy Policy from time to time. The latest version will be posted on this page with an updated effective date.
+      </p>
     </section>
 
     <section class="section final-band">
       <div>
-        <span class="eyebrow">Trust flow</span>
-        <h2 class="section-title">Privacy is clearer when it stays close to product behavior</h2>
+        <span class="eyebrow">Related pages</span>
+        <h2 class="section-title">Need the policy pages tied together?</h2>
         <p class="section-intro">
-          Read Security for the broader trust explanation and FAQ for the user-facing questions that come up before opening the app.
+          Read Terms for service boundaries and Refund Policy for cancellation, refunds, and subscription questions.
         </p>
       </div>
       <div class="cta-row">
-        <a class="btn-primary" href="/security">Read Security</a>
-        <a class="btn-secondary" href="/faq">Read FAQ</a>
+        <a class="btn-primary" href="/terms">Read Terms</a>
+        <a class="btn-secondary" href="/refund-policy">Read Refund Policy</a>
       </div>
     </section>
   </div>
 </MarketingLayout>
 
 <style>
+  .legal-shell {
+    max-width: 940px;
+  }
+
   .intro h1 {
-    font-size: clamp(3rem, 5vw, 5rem);
+    font-size: clamp(3rem, 5vw, 4.8rem);
     margin-top: 18px;
     margin-bottom: 18px;
-    max-width: 11ch;
   }
 
-  .two-col {
+  .meta {
+    margin-top: 10px;
+    font-size: 0.95rem;
+  }
+
+  .legal-section {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 18px;
+    gap: 14px;
   }
 
-  .policy-box {
-    padding: 22px;
-    border-radius: 24px;
-    border: 1px solid var(--line);
-    background: var(--surface);
-  }
-
-  .policy-box strong {
-    display: block;
-    margin-bottom: 14px;
-    font-size: 1rem;
-  }
-
-  .policy-box.good {
-    background: rgba(217, 235, 225, 0.42);
-  }
-
-  .policy-box.bad {
-    background: rgba(243, 201, 146, 0.32);
+  .legal-section a {
+    color: var(--accent);
   }
 
   .final-band {
@@ -121,11 +184,5 @@ const privacySchema = {
     align-items: center;
     justify-content: space-between;
     gap: 20px;
-  }
-
-  @media (max-width: 800px) {
-    .two-col {
-      grid-template-columns: 1fr;
-    }
   }
 </style>

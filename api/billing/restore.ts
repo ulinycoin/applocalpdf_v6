@@ -53,7 +53,53 @@ function parseIdSet(raw: string | undefined): Set<string> {
   return new Set((raw ?? '').split(',').map((value) => value.trim()).filter(Boolean));
 }
 
-function getMappedLicense(lsData: any): { plan: BillingPlan; tier: BillingTier } | null {
+function selectTierByVariantOrProduct(
+  productId: string,
+  variantId: string,
+  options: {
+    monthlyProductIds: Set<string>;
+    monthlyVariantIds: Set<string>;
+    yearlyProductIds: Set<string>;
+    yearlyVariantIds: Set<string>;
+  },
+): BillingTier | null {
+  const {
+    monthlyProductIds,
+    monthlyVariantIds,
+    yearlyProductIds,
+    yearlyVariantIds,
+  } = options;
+
+  const hasMonthlyVariant = variantId !== '' && monthlyVariantIds.has(variantId);
+  const hasYearlyVariant = variantId !== '' && yearlyVariantIds.has(variantId);
+
+  if (hasMonthlyVariant && hasYearlyVariant) {
+    return null;
+  }
+  if (hasMonthlyVariant) {
+    return 'pro_monthly';
+  }
+  if (hasYearlyVariant) {
+    return 'pro_yearly';
+  }
+
+  const hasMonthlyProduct = productId !== '' && monthlyProductIds.has(productId);
+  const hasYearlyProduct = productId !== '' && yearlyProductIds.has(productId);
+
+  if (hasMonthlyProduct && hasYearlyProduct) {
+    return null;
+  }
+  if (hasMonthlyProduct) {
+    return 'pro_monthly';
+  }
+  if (hasYearlyProduct) {
+    return 'pro_yearly';
+  }
+
+  return null;
+}
+
+export function getMappedLicense(lsData: any): { plan: BillingPlan; tier: BillingTier } | null {
   const meta = lsData?.meta ?? {};
   const orderItem = lsData?.license_key?.order_item ?? {};
   const productId = String(meta.product_id ?? orderItem.product_id ?? '');
@@ -64,13 +110,18 @@ function getMappedLicense(lsData: any): { plan: BillingPlan; tier: BillingTier }
   const yearlyProductIds = parseIdSet(process.env.LEMON_SQUEEZY_PRO_YEARLY_PRODUCT_IDS);
   const yearlyVariantIds = parseIdSet(process.env.LEMON_SQUEEZY_PRO_YEARLY_VARIANT_IDS);
 
-  if (monthlyVariantIds.has(variantId) || monthlyProductIds.has(productId)) {
-    return { plan: 'pro', tier: 'pro_monthly' };
+  const tier = selectTierByVariantOrProduct(productId, variantId, {
+    monthlyProductIds,
+    monthlyVariantIds,
+    yearlyProductIds,
+    yearlyVariantIds,
+  });
+
+  if (!tier) {
+    return null;
   }
-  if (yearlyVariantIds.has(variantId) || yearlyProductIds.has(productId)) {
-    return { plan: 'pro', tier: 'pro_yearly' };
-  }
-  return null;
+
+  return { plan: 'pro', tier };
 }
 
 export default async function handler(req: any, res: any) {

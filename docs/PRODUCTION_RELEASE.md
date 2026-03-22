@@ -66,7 +66,8 @@ The billing preflight verifies:
 - required billing env presence
 - checkout URLs are HTTPS
 - billing destination is safe
-- monthly/yearly LemonSqueezy allowlists are populated and non-overlapping
+- monthly/yearly LemonSqueezy allowlists are populated
+- warns if monthly/yearly product ids overlap
 - RSA public/private key pair matches
 - `PUBLIC_APP_URL` is production-safe when set
 

@@ -1,0 +1,128 @@
+---
+import MarketingLayout from '../layouts/MarketingLayout.astro';
+
+const title = 'Refund Policy | LocalPDF';
+const description = 'Read the LocalPDF refund and cancellation policy for monthly and yearly Pro plans.';
+const canonical = 'https://localpdf.online/refund-policy';
+const image = 'https://localpdf.online/og/home.svg';
+const schema = {
+  '@context': 'https://schema.org',
+  '@type': 'WebPage',
+  name: title,
+  description,
+  url: canonical,
+};
+---
+
+<MarketingLayout title={title} description={description} canonical={canonical} image={image} schema={schema}>
+  <div class="page-shell legal-shell">
+    <section class="section intro">
+      <span class="eyebrow">Refunds</span>
+      <h1>Refund & Cancellation Policy</h1>
+      <p class="section-intro">
+        This page explains how cancellations and refund requests work for LocalPDF Pro plans.
+      </p>
+      <p class="meta">Last updated: 2026-03-22</p>
+    </section>
+
+    <section class="section legal-section">
+      <h2 class="section-title">1. Cancel anytime</h2>
+      <p>
+        If your plan renews automatically, you can cancel future renewals through the payment provider or customer portal. Cancellation prevents the next renewal
+        charge but does not automatically reverse charges already processed.
+      </p>
+    </section>
+
+    <section class="section legal-section">
+      <h2 class="section-title">2. Refund requests</h2>
+      <p>
+        We aim to handle reasonable refund requests fairly. If you believe you were charged in error or LocalPDF materially failed to provide the paid service,
+        contact <a href="mailto:support@localpdf.online">support@localpdf.online</a>.
+      </p>
+      <p>
+        Include the email used at checkout, the approximate purchase date, and a short explanation of the issue.
+      </p>
+    </section>
+
+    <section class="section legal-section">
+      <h2 class="section-title">3. General refund rule</h2>
+      <p>
+        Refunds are not guaranteed automatically for all digital purchases, but we may approve refunds in cases such as duplicate billing, accidental repeat purchase,
+        technical billing error, or a verified service problem shortly after purchase.
+      </p>
+    </section>
+
+    <section class="section legal-section">
+      <h2 class="section-title">4. Non-refundable situations</h2>
+      <ul class="bullet-list">
+        <li>Change of mind after meaningful use of the service</li>
+        <li>Failure to cancel before the renewal date</li>
+        <li>Requests made without enough information to verify the transaction</li>
+        <li>Abuse, fraud, chargeback abuse, or violation of the Terms of Use</li>
+      </ul>
+    </section>
+
+    <section class="section legal-section">
+      <h2 class="section-title">5. Timing</h2>
+      <p>
+        If a refund is approved, processing time depends on the payment provider and your bank or card network. We cannot control external settlement timelines.
+      </p>
+    </section>
+
+    <section class="section legal-section">
+      <h2 class="section-title">6. Provider controls</h2>
+      <p>
+        Some billing actions, subscription management, tax handling, and payment processing are performed by LemonSqueezy. Their systems and terms may affect how
+        charges, renewals, and refunds are administered in practice.
+      </p>
+    </section>
+
+    <section class="section final-band">
+      <div>
+        <span class="eyebrow">Related pages</span>
+        <h2 class="section-title">Need the full legal set?</h2>
+        <p class="section-intro">
+          Read Terms for service rules and Privacy Policy for data handling and third-party processor information.
+        </p>
+      </div>
+      <div class="cta-row">
+        <a class="btn-primary" href="/terms">Read Terms</a>
+        <a class="btn-secondary" href="/privacy">Read Privacy</a>
+      </div>
+    </section>
+  </div>
+</MarketingLayout>
+
+<style>
+  .legal-shell {
+    max-width: 940px;
+  }
+
+  .intro h1 {
+    font-size: clamp(3rem, 5vw, 4.8rem);
+    margin-top: 18px;
+    margin-bottom: 18px;
+  }
+
+  .meta {
+    margin-top: 10px;
+    font-size: 0.95rem;
+  }
+
+  .legal-section {
+    display: grid;
+    gap: 14px;
+  }
+
+  .legal-section a {
+    color: var(--accent);
+  }
+
+  .final-band {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+  }
+</style>
