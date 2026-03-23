@@ -1,0 +1,44 @@
+---
+import MarketingLayout from '../layouts/MarketingLayout.astro';
+import { getAppUrl } from '../utils/app-url';
+
+const title = 'PDF tools without upload | Local-first browser workflows for sensitive PDFs';
+const description = 'Use LocalPDF for PDF tools without upload-first pressure: edit, merge, OCR, split, sign, and convert files in a local-first browser workflow.';
+const canonical = 'https://localpdf.online/pdf-tools-without-upload';
+const image = 'https://localpdf.online/og/home.svg';
+const appUrl = getAppUrl();
+
+const schema = {
+  '@context': 'https://schema.org',
+  '@type': 'WebPage',
+  name: title,
+  description,
+  url: canonical,
+};
+---
+
+<MarketingLayout title={title} description={description} canonical={canonical} image={image} schema={schema}>
+  <div class="page-shell hero-shell">
+    <section class="section hero">
+      <span class="eyebrow">Category</span>
+      <h1>PDF tools without upload-first pressure</h1>
+      <p class="section-intro">
+        LocalPDF is built for users who search for PDF tools without upload because the document is sensitive, internal,
+        or simply too important to treat as a disposable remote upload. Core workflows are designed to begin locally in
+        the browser.
+      </p>
+      <div class="cta-row">
+        <a class="btn-primary" href={appUrl}>Open LocalPDF</a>
+        <a class="btn-secondary" href="/private-pdf-editor">Private PDF editor</a>
+      </div>
+    </section>
+
+    <section class="section card-grid">
+      <article class="card"><h3>Why people search this</h3><p>They want a better answer for contracts, invoices, records, receipts, and internal PDFs than a generic upload queue.</p></article>
+      <article class="card"><h3>What LocalPDF covers</h3><p>Edit, merge, OCR, compress, split, sign, and conversion workflows in one local-first product path.</p></article>
+      <article class="card"><h3>When it is the right fit</h3><p>When trust, speed, and local handling matter together — especially for sensitive or operational document work.</p></article>
+    </section>
+  </div>
+</MarketingLayout>
+
+<style>.hero-shell h1{font-size:clamp(3rem,5vw,4.8rem);margin-top:18px;margin-bottom:18px;max-width:11ch;}</style>

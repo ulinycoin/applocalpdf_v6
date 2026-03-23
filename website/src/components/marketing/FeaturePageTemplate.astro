@@ -25,6 +25,11 @@ const schema = [
       price: '0',
       priceCurrency: 'USD',
     },
+    featureList: [...page.capabilities, ...page.useCases],
+    audience: {
+      '@type': 'Audience',
+      audienceType: 'Users who need privacy-first PDF workflows for sensitive or practical document handling',
+    },
   },
   {
     '@context': 'https://schema.org',
@@ -77,6 +82,15 @@ const schema = [
     '@type': 'HowTo',
     name: `${page.eyebrow} with LocalPDF`,
     description: page.metaDescription,
+    totalTime: 'PT3M',
+    supply: [{
+      '@type': 'HowToSupply',
+      name: 'PDF file on your device',
+    }],
+    tool: [{
+      '@type': 'HowToTool',
+      name: 'LocalPDF',
+    }],
     step: page.howItWorks.map((step, index) => ({
       '@type': 'HowToStep',
       position: index + 1,

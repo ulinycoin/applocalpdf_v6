@@ -1,0 +1,75 @@
+---
+import MarketingLayout from '../../layouts/MarketingLayout.astro';
+import { getAppUrl } from '../../utils/app-url';
+
+const title = 'PDF editor for accountants | Private invoice and finance document workflows';
+const description = 'LocalPDF is a privacy-first PDF editor for accountants who need to merge, OCR, sign, split, and prepare invoices, receipts, and financial PDFs in the browser.';
+const canonical = 'https://localpdf.online/use-cases/accountants';
+const image = 'https://localpdf.online/og/home.svg';
+const appUrl = getAppUrl();
+
+const schema = [
+  {
+    '@context': 'https://schema.org',
+    '@type': 'WebPage',
+    name: title,
+    description,
+    url: canonical,
+    about: { '@type': 'Thing', name: 'PDF editor for accountants' },
+    audience: { '@type': 'Audience', audienceType: 'Accountants and finance teams' },
+  },
+  {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: [
+      {
+        '@type': 'Question',
+        name: 'Why is LocalPDF useful for accountants?',
+        acceptedAnswer: { '@type': 'Answer', text: 'LocalPDF is useful for accountants because invoices, receipts, statements, tax records, and close packets are sensitive PDFs that benefit from a privacy-first local-first browser workflow.' },
+      },
+      {
+        '@type': 'Question',
+        name: 'Which accounting jobs fit LocalPDF best?',
+        acceptedAnswer: { '@type': 'Answer', text: 'Merging invoice packets, OCR on receipts, splitting statement bundles, editing outbound PDFs, and preparing finance records for review or archive are all strong fits.' },
+      },
+    ],
+  },
+];
+---
+
+<MarketingLayout title={title} description={description} canonical={canonical} image={image} schema={schema}>
+  <div class="page-shell usecase-shell">
+    <section class="section hero">
+      <span class="eyebrow">Use case</span>
+      <h1>Private PDF workflows for accountants</h1>
+      <p class="section-intro">
+        Finance teams work with invoices, receipts, statements, tax files, month-end packets, and archive records that
+        often should not begin with a remote upload. LocalPDF is built for accounting workflows that need a
+        privacy-first PDF editor and a local-first browser workflow.
+      </p>
+      <div class="cta-row">
+        <a class="btn-primary" href={appUrl}>Open LocalPDF</a>
+        <a class="btn-secondary" href="/privacy">Read Privacy</a>
+      </div>
+    </section>
+
+    <section class="section card-grid">
+      <article class="card"><h3>Typical documents</h3><p>Invoices, receipts, statements, tax packets, account summaries, financial reports, and internal archive PDFs.</p></article>
+      <article class="card"><h3>Typical jobs</h3><p>Merge invoice batches, OCR scanned receipts, split statements, edit outbound PDFs, and prepare archive-ready finance files.</p></article>
+      <article class="card"><h3>Why LocalPDF fits</h3><p>It gives accounting teams a local-first path for practical PDF work without turning every file into an upload-first workflow.</p></article>
+    </section>
+
+    <section class="section">
+      <h2 class="section-title">Why accounting teams care about local-first handling</h2>
+      <div class="card-grid">
+        <article class="card"><h3>Invoices and statements are sensitive by default</h3><p>Client details, transaction records, and pricing information make finance PDFs trust-sensitive even when the task is routine.</p></article>
+        <article class="card"><h3>Receipt OCR is common but risky</h3><p>Scanned receipts and expense files often need OCR, but they still contain financial details that users prefer to keep in a local-first flow.</p></article>
+        <article class="card"><h3>Month-end work needs speed</h3><p>Finance operations need compression, merge, split, and export tasks to feel fast, repeatable, and easy to justify.</p></article>
+      </div>
+    </section>
+  </div>
+</MarketingLayout>
+
+<style>
+  .usecase-shell h1 { font-size: clamp(3rem, 5vw, 4.8rem); margin-top: 18px; margin-bottom: 18px; max-width: 11ch; }
+</style>

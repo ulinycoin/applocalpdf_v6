@@ -1,0 +1,110 @@
+---
+import MarketingLayout from '../../layouts/MarketingLayout.astro';
+import { getAppUrl } from '../../utils/app-url';
+
+const title = 'LocalPDF vs iLovePDF | Privacy-first alternative for sensitive PDFs';
+const description = 'Compare LocalPDF vs iLovePDF for local-first handling, privacy, workflow design, and fit for legal, finance, and internal PDF work.';
+const canonical = 'https://localpdf.online/compare/localpdf-vs-ilovepdf';
+const image = 'https://localpdf.online/og/home.svg';
+const appUrl = getAppUrl();
+
+const schema = [
+  {
+    '@context': 'https://schema.org',
+    '@type': 'Article',
+    headline: title,
+    description,
+    url: canonical,
+    author: { '@type': 'Organization', name: 'LocalPDF' },
+    publisher: { '@type': 'Organization', name: 'LocalPDF' },
+  },
+  {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: [
+      {
+        '@type': 'Question',
+        name: 'Is LocalPDF a good iLovePDF alternative for private work?',
+        acceptedAnswer: { '@type': 'Answer', text: 'Yes. LocalPDF is a stronger iLovePDF alternative when the deciding factor is privacy-first handling for contracts, invoices, records, and other sensitive PDFs.' },
+      },
+      {
+        '@type': 'Question',
+        name: 'What is the main trade-off between LocalPDF and iLovePDF?',
+        acceptedAnswer: { '@type': 'Answer', text: 'The trade-off is between a local-first workflow and a very large online utility ecosystem. LocalPDF is more opinionated about privacy-first handling, while iLovePDF is broader and more utility-driven.' },
+      },
+    ],
+  },
+];
+---
+
+<MarketingLayout title={title} description={description} canonical={canonical} image={image} schema={schema}>
+  <div class="page-shell compare-shell">
+    <section class="section hero">
+      <span class="eyebrow">Comparison</span>
+      <h1>LocalPDF vs iLovePDF</h1>
+      <p class="section-intro">
+        iLovePDF is one of the strongest online PDF brands in the market, but its model is still centered on a broad
+        utility network. LocalPDF is a better fit for users who care less about volume of tools and more about a
+        privacy-first PDF workflow that starts locally in the browser.
+      </p>
+      <div class="cta-row">
+        <a class="btn-primary" href={appUrl}>Open LocalPDF</a>
+        <a class="btn-secondary" href="/privacy">Read Privacy</a>
+      </div>
+    </section>
+
+    <section class="section card-grid">
+      <article class="card">
+        <h3>LocalPDF strengths</h3>
+        <ul class="bullet-list">
+          <li>Works better when the PDF is sensitive and you want to keep the job closer to your device</li>
+          <li>Clearer fit for contracts, invoices, and internal records</li>
+          <li>Workspace-style journey instead of pure utility sprawl</li>
+        </ul>
+      </article>
+      <article class="card">
+        <h3>iLovePDF strengths</h3>
+        <ul class="bullet-list">
+          <li>Huge brand recognition and broad SEO coverage</li>
+          <li>Wide product ecosystem across many PDF tasks</li>
+          <li>Strong general-purpose online utility presence</li>
+        </ul>
+      </article>
+      <article class="card">
+        <h3>Main decision</h3>
+        <p>Choose LocalPDF when local-first handling is part of the product requirement, not just a nice-to-have trust signal.</p>
+      </article>
+    </section>
+
+    <section class="section">
+      <h2 class="section-title">Which one should users choose?</h2>
+      <div class="card-grid">
+        <article class="card">
+          <h3>Lawyers and compliance-heavy work</h3>
+          <p>LocalPDF is easier to recommend when the PDF contains sensitive clauses, legal drafts, or internal review comments.</p>
+        </article>
+        <article class="card">
+          <h3>Accounting and operations</h3>
+          <p>LocalPDF is stronger when invoices, statements, receipts, or archive files should stay in a local-first workflow.</p>
+        </article>
+        <article class="card">
+          <h3>High-volume generic online tasks</h3>
+          <p>iLovePDF may still fit users who primarily want a large upload-first online tool ecosystem with broad task coverage.</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="section factual-box">
+      <h2 class="section-title">Direct answer</h2>
+      <p>
+        LocalPDF is a strong alternative to iLovePDF for users searching for a <strong>private PDF editor</strong>,
+        <strong>PDF tools without upload-first pressure</strong>, or a <strong>local-first PDF workflow</strong> in the browser.
+      </p>
+    </section>
+  </div>
+</MarketingLayout>
+
+<style>
+  .compare-shell h1 { font-size: clamp(3rem, 5vw, 4.8rem); margin-top: 18px; margin-bottom: 18px; }
+  .factual-box p { font-size: 1.05rem; }
+</style>

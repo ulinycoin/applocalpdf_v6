@@ -1,0 +1,27 @@
+---
+import MarketingLayout from '../../layouts/MarketingLayout.astro';
+import { getAppUrl } from '../../utils/app-url';
+
+const title = 'PDF workflows for HR documents | Private browser handling for sensitive employee files';
+const description = 'LocalPDF helps HR teams handle offer letters, signed forms, employee records, and internal PDFs with local-first workflows in the browser.';
+const canonical = 'https://localpdf.online/use-cases/hr-sensitive-documents';
+const image = 'https://localpdf.online/og/home.svg';
+const appUrl = getAppUrl();
+---
+
+<MarketingLayout title={title} description={description} canonical={canonical} image={image}>
+  <div class="page-shell usecase-shell">
+    <section class="section hero">
+      <span class="eyebrow">Use case</span>
+      <h1>Private PDF workflows for HR documents</h1>
+      <p class="section-intro">HR teams work with employee forms, offer letters, signed PDFs, policy packs, and internal records that often contain personal data. LocalPDF gives HR workflows a privacy-first browser path that begins locally.</p>
+      <div class="cta-row"><a class="btn-primary" href={appUrl}>Open LocalPDF</a><a class="btn-secondary" href="/privacy">Read Privacy</a></div>
+    </section>
+    <section class="section card-grid">
+      <article class="card"><h3>Common documents</h3><p>Offer letters, policy packs, onboarding forms, signed employee PDFs, review files, and internal HR records.</p></article>
+      <article class="card"><h3>Common jobs</h3><p>Edit, split, merge, sign, OCR, compress, and prepare clean outbound versions.</p></article>
+      <article class="card"><h3>Why it fits</h3><p>HR documents are personal by default, which makes a local-first handling model much easier to defend.</p></article>
+    </section>
+  </div>
+</MarketingLayout>
+<style>.usecase-shell h1{font-size:clamp(3rem,5vw,4.8rem);margin-top:18px;margin-bottom:18px;max-width:11ch;}</style>

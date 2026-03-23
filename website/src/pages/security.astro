@@ -46,6 +46,18 @@ const securitySchema = [
   },
   {
     '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: trustFaqs.map((faq) => ({
+      '@type': 'Question',
+      name: faq.question,
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: faq.answer,
+      },
+    })),
+  },
+  {
+    '@context': 'https://schema.org',
     '@type': 'BreadcrumbList',
     itemListElement: [
       { '@type': 'ListItem', position: 1, name: 'Home', item: 'https://localpdf.online/' },
@@ -78,7 +90,7 @@ const rules = [
 const boundaryItems = [
   'The local-first workflow is explained before the user is asked to act.',
   'Trust pages describe product behavior in plain language.',
-  'Security positioning supports the app instead of replacing it with abstract branding.',
+  'Security copy should help the user understand the product instead of hiding behind abstract branding.',
   'Website and app boundaries are easier to trust when they are explained directly.',
 ];
 ---
@@ -107,7 +119,7 @@ const boundaryItems = [
         </div>
 
         <div class="boundary-panel">
-          <small>What you can verify here</small>
+          <small>What this page covers</small>
           <ul class="bullet-list">
             <li>How local-first handling fits into the workflow</li>
             <li>What privacy claims LocalPDF does and does not make</li>
@@ -125,6 +137,32 @@ const boundaryItems = [
           <p>{item.body}</p>
         </article>
       ))}
+    </section>
+
+    <section class="section factual-strip">
+      <div>
+        <span class="eyebrow">Security in plain language</span>
+        <h2 class="section-title">How LocalPDF approaches sensitive document work</h2>
+        <p class="section-intro">
+          LocalPDF is a privacy-first PDF editor built around local-first browser workflows. Core jobs are designed to
+          start on the user device, which makes the product a stronger fit for contracts, invoices, records, and other
+          sensitive PDFs.
+        </p>
+      </div>
+      <div class="rules">
+        <div class="rule">
+          <strong>Local-first start</strong>
+          <p>Core workflows are designed to begin locally instead of requiring an upload-first handoff.</p>
+        </div>
+        <div class="rule">
+          <strong>Best for sensitive files</strong>
+          <p>LocalPDF is especially useful for PDFs that contain legal, finance, HR, or internal business data.</p>
+        </div>
+        <div class="rule">
+          <strong>Trust before action</strong>
+          <p>Users can evaluate the trust model before they open the app and start working on a document.</p>
+        </div>
+      </div>
     </section>
 
     <section class="section split-layout">
@@ -177,6 +215,15 @@ const boundaryItems = [
       </div>
     </section>
 
+    <section class="section">
+      <h2 class="section-title">Use cases that benefit most from local-first handling</h2>
+      <div class="cta-row">
+        <a class="btn-secondary" href="/use-cases/lawyers">For lawyers</a>
+        <a class="btn-secondary" href="/use-cases/accountants">For accountants</a>
+        <a class="btn-secondary" href="/compare/localpdf-vs-smallpdf">Compare with Smallpdf</a>
+      </div>
+    </section>
+
     <section class="section final-band">
       <div>
         <span class="eyebrow">Decision point</span>
@@ -206,6 +253,13 @@ const boundaryItems = [
     display: grid;
     grid-template-columns: 1.1fr 0.9fr;
     gap: 22px;
+    align-items: start;
+  }
+
+  .factual-strip {
+    display: grid;
+    grid-template-columns: 0.95fr 1.05fr;
+    gap: 20px;
     align-items: start;
   }
 
@@ -302,5 +356,8 @@ const boundaryItems = [
     .split-layout {
       grid-template-columns: 1fr;
     }
+  }
+</style>
+
   }
 </style>

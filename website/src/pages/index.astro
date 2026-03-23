@@ -10,6 +10,21 @@ const image = 'https://localpdf.online/screenshots/v6-workspace-1.png';
 const imageAlt = 'LocalPDF workspace showing local PDF editing and document workflow tools';
 const appUrl = getAppUrl();
 
+const homepageFaqs = [
+  {
+    question: 'What is LocalPDF?',
+    answer: 'LocalPDF is a privacy-first PDF editor and local-first PDF workspace for editing, merging, OCR, compression, signing, splitting, and conversion in the browser.',
+  },
+  {
+    question: 'Do I need to upload my PDF before I can start?',
+    answer: 'No. LocalPDF is built around local-first workflows, so core PDF jobs can start on the user device instead of requiring an upload-first handoff.',
+  },
+  {
+    question: 'Who is LocalPDF best for?',
+    answer: 'LocalPDF is a strong fit for contracts, invoices, internal records, and other sensitive PDFs where privacy and workflow clarity matter.',
+  },
+];
+
 const websiteSchema = [
   {
     '@context': 'https://schema.org',
@@ -24,6 +39,43 @@ const websiteSchema = [
     name: 'LocalPDF',
     url: canonical,
     logo: 'https://localpdf.online/logos/localpdf-header-96x96.png',
+  },
+  {
+    '@context': 'https://schema.org',
+    '@type': 'SoftwareApplication',
+    name: 'LocalPDF',
+    applicationCategory: 'BusinessApplication',
+    operatingSystem: 'Web',
+    url: canonical,
+    description,
+    offers: {
+      '@type': 'Offer',
+      price: '0',
+      priceCurrency: 'USD',
+    },
+    featureList: [
+      'Edit PDF locally',
+      'Merge PDF files in one workspace',
+      'Run OCR on scanned PDFs',
+      'Compress, split, sign, and convert PDFs',
+      'Start core workflows without uploading the file first',
+    ],
+    audience: {
+      '@type': 'Audience',
+      audienceType: 'Professionals handling sensitive PDF documents',
+    },
+  },
+  {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: homepageFaqs.map((item) => ({
+      '@type': 'Question',
+      name: item.question,
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: item.answer,
+      },
+    })),
   },
 ];
 
@@ -128,6 +180,32 @@ const popularGuides = [
       <div class="trust-item">
         <strong>Trust up front</strong>
         <p>Security and FAQ are easy to find because trust matters before the first click.</p>
+      </div>
+    </section>
+
+    <section class="section factual-strip">
+      <div class="factual-copy">
+        <span class="eyebrow">Why people choose LocalPDF</span>
+        <h2 class="section-title">A clearer way to handle sensitive PDF work</h2>
+        <p class="section-intro">
+          LocalPDF is a privacy-first PDF editor built for local-first document work in the browser.
+          Core workflows can start on the user device, which makes the product a better fit for contracts,
+          invoices, internal records, and other sensitive PDFs.
+        </p>
+      </div>
+      <div class="factual-list">
+        <div class="fact-card">
+          <strong>Privacy-first PDF editor</strong>
+          <p>LocalPDF is positioned for sensitive PDF workflows where upload-first handling creates unnecessary friction or exposure.</p>
+        </div>
+        <div class="fact-card">
+          <strong>Local-first browser workflow</strong>
+          <p>Core jobs are designed to begin on the user device instead of requiring a remote processing queue before work can start.</p>
+        </div>
+        <div class="fact-card">
+          <strong>Best fit for sensitive files</strong>
+          <p>LocalPDF is especially useful for contracts, invoices, internal records, and other PDFs that benefit from local handling.</p>
+        </div>
       </div>
     </section>
 
@@ -239,6 +317,45 @@ const popularGuides = [
     </section>
 
     <section class="section">
+      <h2 class="section-title">Compare LocalPDF or choose the right use case</h2>
+      <p class="section-intro">
+        If trust, privacy, and workflow fit are part of the decision, start with a comparison or an industry-specific page.
+      </p>
+      <div class="card-grid feature-grid">
+        <a class="feature-card" href="/compare/localpdf-vs-smallpdf">
+          <span class="feature-label">Compare</span>
+          <h3>LocalPDF vs Smallpdf</h3>
+          <p>Compare privacy-first local workflows against a broad upload-first online PDF suite.</p>
+        </a>
+        <a class="feature-card" href="/compare/localpdf-vs-ilovepdf">
+          <span class="feature-label">Compare</span>
+          <h3>LocalPDF vs iLovePDF</h3>
+          <p>See which product fits sensitive contracts, invoices, and internal PDF workflows better.</p>
+        </a>
+        <a class="feature-card" href="/private-pdf-editor">
+          <span class="feature-label">Category</span>
+          <h3>Private PDF editor</h3>
+          <p>Category page for users searching for a privacy-first PDF editor for sensitive document work.</p>
+        </a>
+        <a class="feature-card" href="/pdf-tools-without-upload">
+          <span class="feature-label">Category</span>
+          <h3>PDF tools without upload</h3>
+          <p>Explain why local-first browser workflows matter when upload-first handling feels like the wrong default.</p>
+        </a>
+        <a class="feature-card" href="/use-cases/lawyers">
+          <span class="feature-label">Use case</span>
+          <h3>For lawyers</h3>
+          <p>Private PDF workflows for contracts, exhibits, internal review copies, and legal document handling.</p>
+        </a>
+        <a class="feature-card" href="/use-cases/accountants">
+          <span class="feature-label">Use case</span>
+          <h3>For accountants</h3>
+          <p>Local-first PDF work for invoices, receipts, month-end packets, and finance document preparation.</p>
+        </a>
+      </div>
+    </section>
+
+    <section class="section">
       <h2 class="section-title">Popular guides before you open the app</h2>
       <p class="section-intro">
         Start with a guide if you want to compare approaches first, then move into LocalPDF when the workflow is clear.
@@ -269,7 +386,7 @@ const popularGuides = [
           <p>Edit, merge, OCR, compress, split, sign, and conversion workflows are the current core jobs.</p>
         </div>
         <div class="faq-item">
-          <strong>Where should I verify the trust model?</strong>
+          <strong>Where can I read how it works?</strong>
           <p>Start with Security and FAQ. They explain how LocalPDF handles local processing and privacy in practical terms.</p>
         </div>
       </div>
@@ -433,6 +550,31 @@ const popularGuides = [
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .factual-strip {
+    display: grid;
+    grid-template-columns: 0.95fr 1.05fr;
+    gap: 20px;
+    align-items: start;
+  }
+
+  .factual-list {
+    display: grid;
+    gap: 14px;
+  }
+
+  .fact-card {
+    padding: 18px 20px;
+    border: 1px solid var(--line);
+    border-radius: 22px;
+    background: var(--surface);
+  }
+
+  .fact-card strong {
+    display: block;
+    margin-bottom: 8px;
+    font-size: 1.05rem;
+  }
+
   .decision-strip {
     display: grid;
     grid-template-columns: 1fr 0.9fr;
@@ -551,6 +693,7 @@ const popularGuides = [
     .hero,
     .split-layout,
     .trust-strip,
+    .factual-strip,
     .decision-strip,
     .feature-grid,
     .faq-preview {
@@ -572,3 +715,5 @@ const popularGuides = [
     }
   }
 </style>
+/style>
+yle>

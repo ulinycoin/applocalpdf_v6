@@ -1,0 +1,59 @@
+---
+import MarketingLayout from '../layouts/MarketingLayout.astro';
+import { getAppUrl } from '../utils/app-url';
+
+const title = 'How local PDF processing works | LocalPDF';
+const description = 'Understand how LocalPDF approaches local-first PDF processing in the browser and why that matters for contracts, invoices, scans, and internal documents.';
+const canonical = 'https://localpdf.online/how-local-pdf-processing-works';
+const image = 'https://localpdf.online/og/home.svg';
+const appUrl = getAppUrl();
+
+const schema = [
+  {
+    '@context': 'https://schema.org',
+    '@type': 'Article',
+    headline: title,
+    description,
+    url: canonical,
+    author: { '@type': 'Organization', name: 'LocalPDF' },
+    publisher: { '@type': 'Organization', name: 'LocalPDF' },
+  },
+  {
+    '@context': 'https://schema.org',
+    '@type': 'HowTo',
+    name: 'How local PDF processing works',
+    description,
+    step: [
+      { '@type': 'HowToStep', position: 1, name: 'Open the workflow', text: 'Open the LocalPDF workflow that matches the job.' },
+      { '@type': 'HowToStep', position: 2, name: 'Start with the file on your device', text: 'Begin the core task from the user device instead of a remote upload queue.' },
+      { '@type': 'HowToStep', position: 3, name: 'Finish and export', text: 'Complete the workflow and export the result when the document is ready.' },
+    ],
+  },
+];
+---
+
+<MarketingLayout title={title} description={description} canonical={canonical} image={image} schema={schema}>
+  <div class="page-shell hero-shell">
+    <section class="section hero">
+      <span class="eyebrow">Explainer</span>
+      <h1>How local PDF processing works</h1>
+      <p class="section-intro">
+        Local PDF processing matters when the document is sensitive and the user wants the workflow to start closer to
+        the file. LocalPDF is built around that idea: core jobs begin in the browser, with a local-first product path
+        instead of an upload-first assumption.
+      </p>
+      <div class="cta-row">
+        <a class="btn-primary" href={appUrl}>Open LocalPDF</a>
+        <a class="btn-secondary" href="/security">Read Security</a>
+      </div>
+    </section>
+
+    <section class="section card-grid">
+      <article class="card"><h3>Step 1: Start with the real job</h3><p>Open edit, merge, OCR, split, sign, compress, or convert based on the actual PDF task.</p></article>
+      <article class="card"><h3>Step 2: Keep trust visible</h3><p>Users should understand how local-first handling fits the workflow before they commit to the app.</p></article>
+      <article class="card"><h3>Step 3: Finish and export</h3><p>Complete the job and export the result without scattering the document across disconnected utility routes.</p></article>
+    </section>
+  </div>
+</MarketingLayout>
+
+<style>.hero-shell h1{font-size:clamp(3rem,5vw,4.8rem);margin-top:18px;margin-bottom:18px;max-width:11ch;}</style>

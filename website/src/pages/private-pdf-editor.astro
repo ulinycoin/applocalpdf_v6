@@ -1,0 +1,64 @@
+---
+import MarketingLayout from '../layouts/MarketingLayout.astro';
+import { getAppUrl } from '../utils/app-url';
+
+const title = 'Private PDF editor | Local-first PDF workflows in the browser';
+const description = 'LocalPDF is a private PDF editor for editing, merging, OCR, splitting, signing, and converting sensitive PDFs with a local-first browser workflow.';
+const canonical = 'https://localpdf.online/private-pdf-editor';
+const image = 'https://localpdf.online/og/home.svg';
+const appUrl = getAppUrl();
+
+const schema = [
+  {
+    '@context': 'https://schema.org',
+    '@type': 'WebPage',
+    name: title,
+    description,
+    url: canonical,
+    about: { '@type': 'Thing', name: 'Private PDF editor' },
+  },
+  {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: [
+      {
+        '@type': 'Question',
+        name: 'What makes LocalPDF a private PDF editor?',
+        acceptedAnswer: { '@type': 'Answer', text: 'LocalPDF is a private PDF editor because it is built around local-first browser workflows for editing, merging, OCR, compression, signing, splitting, and conversion.' },
+      },
+      {
+        '@type': 'Question',
+        name: 'Who is a private PDF editor for?',
+        acceptedAnswer: { '@type': 'Answer', text: 'A private PDF editor is especially useful for lawyers, accountants, operations teams, and privacy-conscious users handling contracts, invoices, records, and internal documents.' },
+      },
+    ],
+  },
+];
+---
+
+<MarketingLayout title={title} description={description} canonical={canonical} image={image} schema={schema}>
+  <div class="page-shell hero-shell">
+    <section class="section hero">
+      <span class="eyebrow">Category</span>
+      <h1>Private PDF editor for sensitive document work</h1>
+      <p class="section-intro">
+        LocalPDF is a private PDF editor built for editing, merging, OCR, splitting, signing, and converting PDFs in a
+        local-first browser workflow. It makes the most sense when the file is important enough that uploading it first
+        feels like the wrong default.
+      </p>
+      <div class="cta-row">
+        <a class="btn-primary" href={appUrl}>Open LocalPDF</a>
+        <a class="btn-secondary" href="/security">Read Security</a>
+      </div>
+    </section>
+
+    <section class="section card-grid">
+      <article class="card"><h3>Best for</h3><p>Contracts, invoices, internal records, finance files, scanned documents, and practical PDF tasks that benefit from local-first handling.</p></article>
+      <article class="card"><h3>Core jobs</h3><p>Edit, merge, OCR, compress, split, sign, and convert PDFs without turning the workflow into a utility-page maze.</p></article>
+      <article class="card"><h3>Main value</h3><p>Privacy-first positioning, practical browser workflows, and clearer trust before the first click.</p></article>
+    </section>
+  </div>
+</MarketingLayout>
+
+<style>.hero-shell h1{font-size:clamp(3rem,5vw,4.8rem);margin-top:18px;margin-bottom:18px;max-width:11ch;}</style>
+yle>

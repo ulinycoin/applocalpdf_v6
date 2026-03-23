@@ -1,0 +1,75 @@
+---
+import MarketingLayout from '../../layouts/MarketingLayout.astro';
+import { getAppUrl } from '../../utils/app-url';
+
+const title = 'PDF editor for lawyers | Private contract and case-document workflows';
+const description = 'LocalPDF is a privacy-first PDF editor for lawyers who need to edit, merge, OCR, sign, and review sensitive legal PDFs in a local-first browser workflow.';
+const canonical = 'https://localpdf.online/use-cases/lawyers';
+const image = 'https://localpdf.online/og/home.svg';
+const appUrl = getAppUrl();
+
+const schema = [
+  {
+    '@context': 'https://schema.org',
+    '@type': 'WebPage',
+    name: title,
+    description,
+    url: canonical,
+    about: { '@type': 'Thing', name: 'PDF editor for lawyers' },
+    audience: { '@type': 'Audience', audienceType: 'Lawyers and legal teams' },
+  },
+  {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: [
+      {
+        '@type': 'Question',
+        name: 'Why would lawyers choose LocalPDF?',
+        acceptedAnswer: { '@type': 'Answer', text: 'Lawyers choose LocalPDF when contract drafts, signed PDFs, exhibits, and internal review files should stay in a privacy-first local-first workflow.' },
+      },
+      {
+        '@type': 'Question',
+        name: 'What kind of legal PDF work fits LocalPDF?',
+        acceptedAnswer: { '@type': 'Answer', text: 'Editing, merging, OCR, signing, splitting, and preparing legal PDFs for review, filing, and client delivery are strong fits for LocalPDF.' },
+      },
+    ],
+  },
+];
+---
+
+<MarketingLayout title={title} description={description} canonical={canonical} image={image} schema={schema}>
+  <div class="page-shell usecase-shell">
+    <section class="section hero">
+      <span class="eyebrow">Use case</span>
+      <h1>Private PDF workflows for lawyers</h1>
+      <p class="section-intro">
+        Legal work often involves contract drafts, signed PDFs, exhibits, case documents, and internal review copies.
+        LocalPDF is built for teams that want a privacy-first PDF editor in the browser and a local-first workflow for
+        document tasks that should not begin with an upload-first handoff.
+      </p>
+      <div class="cta-row">
+        <a class="btn-primary" href={appUrl}>Open LocalPDF</a>
+        <a class="btn-secondary" href="/security">How local processing works</a>
+      </div>
+    </section>
+
+    <section class="section card-grid">
+      <article class="card"><h3>Typical documents</h3><p>Contracts, NDAs, exhibits, pleadings, review copies, scanned court files, signature packets, and internal legal PDFs.</p></article>
+      <article class="card"><h3>Typical jobs</h3><p>Edit text, merge appendices, OCR scans, split packets, sign documents, and prepare clean outbound versions for clients or filing.</p></article>
+      <article class="card"><h3>Why LocalPDF fits</h3><p>It gives legal teams a private PDF workflow that begins locally in the browser and keeps trust questions visible before the first click.</p></article>
+    </section>
+
+    <section class="section">
+      <h2 class="section-title">Why legal teams search for a privacy-first PDF editor</h2>
+      <div class="card-grid">
+        <article class="card"><h3>Contracts contain sensitive details</h3><p>Names, pricing, clauses, signatures, and redlines make legal PDFs poor candidates for a casual upload-first workflow.</p></article>
+        <article class="card"><h3>Scanned records are trust-heavy by default</h3><p>OCR and review tasks on case records and signed scans benefit from a local-first browser flow.</p></article>
+        <article class="card"><h3>Operational speed still matters</h3><p>Legal teams need privacy and speed together: merge, sign, split, edit, and export without route sprawl.</p></article>
+      </div>
+    </section>
+  </div>
+</MarketingLayout>
+
+<style>
+  .usecase-shell h1 { font-size: clamp(3rem, 5vw, 4.8rem); margin-top: 18px; margin-bottom: 18px; max-width: 11ch; }
+</style>

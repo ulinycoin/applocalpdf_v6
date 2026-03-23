@@ -5,13 +5,38 @@ const title = 'Privacy Policy | LocalPDF';
 const description = 'Read the LocalPDF Privacy Policy, including what data we collect, how billing and analytics work, and how to contact us.';
 const canonical = 'https://localpdf.online/privacy';
 const image = 'https://localpdf.online/og/home.svg';
-const privacySchema = {
-  '@context': 'https://schema.org',
-  '@type': 'WebPage',
-  name: title,
-  description,
-  url: canonical,
-};
+const privacyFaqs = [
+  {
+    question: 'Does LocalPDF upload every document by default?',
+    answer: 'No. LocalPDF is built around local-first PDF workflows, so many core document actions are designed to start in the browser rather than with an upload-first flow.',
+  },
+  {
+    question: 'What should users still understand about privacy?',
+    answer: 'Users should still understand that billing, analytics, support, hosting, and license validation can involve normal web infrastructure and third-party processors.',
+  },
+];
+
+const privacySchema = [
+  {
+    '@context': 'https://schema.org',
+    '@type': 'WebPage',
+    name: title,
+    description,
+    url: canonical,
+  },
+  {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: privacyFaqs.map((item) => ({
+      '@type': 'Question',
+      name: item.question,
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: item.answer,
+      },
+    })),
+  },
+];
 ---
 
 <MarketingLayout title={title} description={description} canonical={canonical} image={image} schema={privacySchema}>
@@ -44,6 +69,24 @@ const privacySchema = {
         Because of that, LocalPDF should not be understood as “collects nothing.” Instead, we aim to keep data collection limited, practical, and aligned with
         the actual product behavior.
       </p>
+    </section>
+
+    <section class="section legal-section factual-section">
+      <h2 class="section-title">Fast facts about privacy</h2>
+      <div class="card-grid factual-grid">
+        <div class="card">
+          <h3>Local-first by design</h3>
+          <p>Many core PDF jobs are designed to start in the browser instead of with a remote upload-first handoff.</p>
+        </div>
+        <div class="card">
+          <h3>Not a zero-data fairy tale</h3>
+          <p>Billing, analytics, support, hosting, and license validation can still involve normal web infrastructure and third-party processors.</p>
+        </div>
+        <div class="card">
+          <h3>Works best for sensitive work</h3>
+          <p>LocalPDF is especially relevant when contracts, invoices, records, or internal documents benefit from local-first handling.</p>
+        </div>
+      </div>
     </section>
 
     <section class="section legal-section">
@@ -178,11 +221,21 @@ const privacySchema = {
     color: var(--accent);
   }
 
+  .factual-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
   .final-band {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
     justify-content: space-between;
     gap: 20px;
+  }
+
+  @media (max-width: 900px) {
+    .factual-grid {
+      grid-template-columns: 1fr;
+    }
   }
 </style>
