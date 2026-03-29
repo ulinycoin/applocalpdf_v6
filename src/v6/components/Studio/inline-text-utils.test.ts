@@ -7,6 +7,7 @@ import {
   fitTextToWidth,
   mergeTextLine,
   normalizeFontName,
+  normalizeTextLayerSpans,
   resolveFontFamily,
 } from './inline-text-utils';
 
@@ -113,6 +114,58 @@ test('mergeTextLine splits medium-gap shifted duplicate run after repeated saves
   const merged = mergeTextLine(spans, spans[0]);
   assert.ok(merged);
   assert.equal(merged?.text, 'LocalPDF Browser Extension');
+});
+
+test('mergeTextLine trims a duplicated line suffix after save-and-reselect', () => {
+  const spans = [
+    { id: 'a1', text: 'Edit', xRatio: 0.1, yRatio: 0.2, widthRatio: 0.06, heightRatio: 0.03, fontSizeRatio: 0.02 },
+    { id: 'a2', text: 'this', xRatio: 0.165, yRatio: 0.2, widthRatio: 0.07, heightRatio: 0.03, fontSizeRatio: 0.02 },
+    { id: 'a3', text: 'line', xRatio: 0.24, yRatio: 0.2, widthRatio: 0.07, heightRatio: 0.03, fontSizeRatio: 0.02 },
+    { id: 'b1', text: 'Edit', xRatio: 0.36, yRatio: 0.2, widthRatio: 0.06, heightRatio: 0.03, fontSizeRatio: 0.02 },
+    { id: 'b2', text: 'this', xRatio: 0.425, yRatio: 0.2, widthRatio: 0.07, heightRatio: 0.03, fontSizeRatio: 0.02 },
+    { id: 'b3', text: 'line', xRatio: 0.5, yRatio: 0.2, widthRatio: 0.07, heightRatio: 0.03, fontSizeRatio: 0.02 },
+  ];
+
+  const merged = mergeTextLine(spans, spans[0]);
+  assert.ok(merged);
+  assert.equal(merged?.text, 'Edit this line');
+});
+
+test('mergeTextLine collapses overlapping duplicate spans from visual fallback', () => {
+  const spans = [
+    { id: 'a1', text: 'Edit this line', xRatio: 0.1, yRatio: 0.2, widthRatio: 0.18, heightRatio: 0.03, fontSizeRatio: 0.02 },
+    { id: 'a2', text: 'Edit this line', xRatio: 0.1, yRatio: 0.2004, widthRatio: 0.18, heightRatio: 0.03, fontSizeRatio: 0.02 },
+  ];
+
+  const merged = mergeTextLine(spans, spans[0]);
+  assert.ok(merged);
+  assert.equal(merged?.text, 'Edit this line');
+});
+
+test('mergeTextLine stops a partial restart run that repeats the first token', () => {
+  const spans = [
+    { id: 'a1', text: 'LocalPDF', xRatio: 0.1, yRatio: 0.2, widthRatio: 0.08, heightRatio: 0.03, fontSizeRatio: 0.02 },
+    { id: 'a2', text: 'Browser', xRatio: 0.18, yRatio: 0.2, widthRatio: 0.09, heightRatio: 0.03, fontSizeRatio: 0.02 },
+    { id: 'a3', text: 'Extension', xRatio: 0.27, yRatio: 0.2, widthRatio: 0.1, heightRatio: 0.03, fontSizeRatio: 0.02 },
+    { id: 'b1', text: 'LocalPDF', xRatio: 0.37, yRatio: 0.2, widthRatio: 0.08, heightRatio: 0.03, fontSizeRatio: 0.02 },
+    { id: 'b2', text: 'Extension', xRatio: 0.45, yRatio: 0.2, widthRatio: 0.1, heightRatio: 0.03, fontSizeRatio: 0.02 },
+  ];
+
+  const merged = mergeTextLine(spans, spans[0]);
+  assert.ok(merged);
+  assert.equal(merged?.text, 'LocalPDFBrowserExtension');
+});
+
+test('normalizeTextLayerSpans removes overlapping duplicate spans', () => {
+  const spans = [
+    { id: 'a1', text: 'Edit this line', xRatio: 0.1, yRatio: 0.2, widthRatio: 0.18, heightRatio: 0.03, fontSizeRatio: 0.02 },
+    { id: 'a2', text: 'Edit this line', xRatio: 0.1003, yRatio: 0.2002, widthRatio: 0.1802, heightRatio: 0.0301, fontSizeRatio: 0.02 },
+    { id: 'b1', text: 'Other line', xRatio: 0.1, yRatio: 0.3, widthRatio: 0.12, heightRatio: 0.03, fontSizeRatio: 0.02 },
+  ];
+
+  const normalized = normalizeTextLayerSpans(spans);
+  assert.equal(normalized.length, 2);
+  assert.deepEqual(normalized.map((span) => span.id), ['a1', 'b1']);
 });
 
 test('fitTextToWidth reduces font size/tracking for long text', async () => {

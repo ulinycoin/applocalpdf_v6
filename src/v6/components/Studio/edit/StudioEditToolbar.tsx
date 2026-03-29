@@ -4,10 +4,12 @@ import type { EditorToolId } from '../editor-types';
 interface StudioEditToolbarProps {
     ui: any;
     tool: EditorToolId | null;
+    textInteractionMode: 'edit' | 'move';
     onSelectTool: (tool: EditorToolId) => void;
+    onToggleTextInteractionMode: () => void;
 }
 
-export function StudioEditToolbar({ ui, tool, onSelectTool }: StudioEditToolbarProps) {
+export function StudioEditToolbar({ ui, tool, textInteractionMode, onSelectTool, onToggleTextInteractionMode }: StudioEditToolbarProps) {
     return (
         <div className="studio-editor-left-toolbar" style={{
             display: 'flex', flexDirection: 'column', gap: 12, padding: '12px 6px',
@@ -20,6 +22,16 @@ export function StudioEditToolbar({ ui, tool, onSelectTool }: StudioEditToolbarP
             >
                 <LinearIcon name="text" size={22} />
             </button>
+            {tool === 'text' && (
+                <button
+                    className={`studio-edit-tool-btn ${textInteractionMode === 'move' ? 'active' : ''}`}
+                    onClick={onToggleTextInteractionMode}
+                    title={ui.moveText}
+                    aria-pressed={textInteractionMode === 'move'}
+                >
+                    <LinearIcon name="move" size={22} />
+                </button>
+            )}
             <button
                 className={`studio-edit-tool-btn ${tool === 'annotate' ? 'active' : ''}`}
                 onClick={() => { onSelectTool('annotate'); }}

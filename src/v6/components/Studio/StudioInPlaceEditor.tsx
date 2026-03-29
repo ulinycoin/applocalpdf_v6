@@ -8,6 +8,7 @@ import { usePlatform } from '../../../app/react/platform-context';
 import type { IWorkerCommand, WorkerStudioEditElement } from '../../../core/public/contracts';
 import { defaultFilePreviewService } from '../../preview/preview-service';
 import { getStudioEditMessages } from './studio-edit-i18n';
+import { normalizeTextLayerSpans } from './inline-text-utils';
 
 interface StudioInPlaceEditorProps {
     stageRef: React.RefObject<Konva.Stage | null>;
@@ -98,7 +99,7 @@ export function StudioInPlaceEditor({ stageRef }: StudioInPlaceEditorProps) {
                 };
                 const finalEvent = await runtime.workerOrchestrator.dispatch(command, undefined, abortController.signal);
                 if (finalEvent.payload.type === 'TEXT_LAYER_RESULT') {
-                    setTextLayerSpans(finalEvent.payload.payload.spans);
+                    setTextLayerSpans(normalizeTextLayerSpans(finalEvent.payload.payload.spans));
                 }
             } catch (e) {
                 // Silent catch

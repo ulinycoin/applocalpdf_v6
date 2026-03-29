@@ -5,6 +5,7 @@ export interface StudioEditMessages {
   switchToSelectTextMode: string;
   selectText: string;
   text: string;
+  moveText: string;
   textFontFamily: string;
   textFontSize: string;
   textColor: string;
@@ -67,6 +68,7 @@ const EN_MESSAGES: StudioEditMessages = {
   switchToSelectTextMode: 'Switch to Select Text Mode',
   selectText: 'Select Text',
   text: 'Text',
+  moveText: 'Move Text',
   textFontFamily: 'Font',
   textFontSize: 'Size',
   textColor: 'Color',

@@ -91,6 +91,24 @@ function toPdfBlob(bytes: Uint8Array): Blob {
   return new Blob([stable.buffer], { type: 'application/pdf' });
 }
 
+async function readFirstPageContentStream(bytes: Uint8Array): Promise<string> {
+  const doc = await PDFDocument.load(bytes);
+  const page = doc.getPage(0);
+  const { PDFName } = await import('pdf-lib');
+  const core = await import('pdf-lib/cjs/core/index.js');
+  const decodePDFRawStream = (core as { decodePDFRawStream: (stream: unknown) => { decode: () => Uint8Array } }).decodePDFRawStream;
+
+  const contentsRef = page.node.get(PDFName.of('Contents'));
+  const resolved = doc.context.lookup(contentsRef as any) as any;
+  const streams = resolved && typeof resolved.size === 'function'
+    ? Array.from({ length: Number(resolved.size()) }, (_, index) => doc.context.lookup(resolved.get(index)))
+    : [resolved];
+
+  return streams
+    .map((stream) => new TextDecoder('latin1').decode(decodePDFRawStream(stream).decode()))
+    .join('\n');
+}
+
 async function readFixturePdfBytes(...segments: string[]): Promise<Uint8Array> {
   const fixturePath = join(process.cwd(), 'test', 'fixtures', 'pdfs', ...segments);
   const bytes = await readFile(fixturePath);
@@ -223,6 +241,68 @@ test('applyStudioTextEditsToPdfBytes reports overflow for constrained width cont
   });
 
   assert.equal(result.overflowDetected, true);
+  assert.equal(result.trueReplaceApplied, false);
+});
+
+test('applyStudioTextEditsToPdfBytes preserves font size when wrapping a long sentence', async () => {
+  const sourceBytes = await createBlankPdfBytes();
+  const result = await applyStudioTextEditsToPdfBytes({
+    sourceBytes,
+    pageIndex: 0,
+    elements: [{
+      id: 'txt-wrap-preserve-size',
+      type: 'text',
+      x: 0.1,
+      y: 0.2,
+      w: 0.08,
+      h: 0.45,
+      text: 'PRESERVE FONT SIZE ACROSS WRAPPING',
+      color: '#000000',
+      fontSize: 24,
+      fontFamily: 'sora',
+      fontWeight: 'normal',
+      fontStyle: 'normal',
+      textAlign: 'left',
+      lineHeight: 1.2,
+      letterSpacing: 0,
+      opacity: 1,
+    }],
+  });
+
+  const content = await readFirstPageContentStream(result.outputBytes);
+  assert.match(content, /24 Tf/u);
+  assert.ok((content.match(/Tj/g) ?? []).length >= 2);
+  assert.equal(result.trueReplaceApplied, false);
+});
+
+test('applyStudioTextEditsToPdfBytes preserves font size when editing a single long word', async () => {
+  const sourceBytes = await createBlankPdfBytes();
+  const result = await applyStudioTextEditsToPdfBytes({
+    sourceBytes,
+    pageIndex: 0,
+    elements: [{
+      id: 'txt-wrap-single-word',
+      type: 'text',
+      x: 0.1,
+      y: 0.25,
+      w: 0.06,
+      h: 0.38,
+      text: 'SUPERCALIFRAGILISTICEXPIALIDOCIOUS',
+      color: '#000000',
+      fontSize: 24,
+      fontFamily: 'sora',
+      fontWeight: 'normal',
+      fontStyle: 'normal',
+      textAlign: 'left',
+      lineHeight: 1.2,
+      letterSpacing: 0,
+      opacity: 1,
+    }],
+  });
+
+  const content = await readFirstPageContentStream(result.outputBytes);
+  assert.match(content, /24 Tf/u);
+  assert.ok((content.match(/Tj/g) ?? []).length >= 2);
   assert.equal(result.trueReplaceApplied, false);
 });
 

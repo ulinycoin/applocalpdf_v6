@@ -123,6 +123,55 @@ export function sanitizeInlineText(value: string): string {
   return value.replace(/\0/g, '').replace(/[\r\n]+/gu, ' ');
 }
 
+function normalizeTextRun(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/\s+/gu, ' ')
+    .trim()
+    .replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, '');
+}
+
+function isOverlappingDuplicateSpan(prev: TextLayerSpanLike, current: TextLayerSpanLike): boolean {
+  if (normalizeTextRun(prev.text) !== normalizeTextRun(current.text)) {
+    return false;
+  }
+
+  const widthTolerance = Math.max(0.0015, Math.min(prev.widthRatio, current.widthRatio) * 0.12);
+  const heightTolerance = Math.max(0.0015, Math.min(prev.heightRatio, current.heightRatio) * 0.16);
+  const xTolerance = Math.max(0.0015, Math.min(prev.widthRatio, current.widthRatio) * 0.08);
+  const yTolerance = Math.max(0.0015, Math.min(prev.heightRatio, current.heightRatio) * 0.18);
+
+  return Math.abs(prev.xRatio - current.xRatio) <= xTolerance
+    && Math.abs(prev.yRatio - current.yRatio) <= yTolerance
+    && Math.abs(prev.widthRatio - current.widthRatio) <= widthTolerance
+    && Math.abs(prev.heightRatio - current.heightRatio) <= heightTolerance
+    && Math.abs((prev.xRatio + prev.widthRatio) - (current.xRatio + current.widthRatio)) <= widthTolerance;
+}
+
+export function normalizeTextLayerSpans(spans: TextLayerSpanLike[]): TextLayerSpanLike[] {
+  if (spans.length < 2) {
+    return [...spans];
+  }
+
+  const sorted = [...spans].sort((a, b) => (
+    a.yRatio - b.yRatio
+    || a.xRatio - b.xRatio
+    || a.widthRatio - b.widthRatio
+    || a.heightRatio - b.heightRatio
+    || a.id.localeCompare(b.id)
+  ));
+
+  const deduped: TextLayerSpanLike[] = [];
+  for (const span of sorted) {
+    const last = deduped[deduped.length - 1];
+    if (last && isOverlappingDuplicateSpan(last, span)) {
+      continue;
+    }
+    deduped.push(span);
+  }
+  return deduped;
+}
+
 function distanceToRect(point: PointRatio, span: TextLayerSpanLike): number {
   const left = span.xRatio;
   const right = span.xRatio + span.widthRatio;
@@ -161,7 +210,7 @@ export function mergeTextLine(spans: TextLayerSpanLike[], anchor: TextLayerSpanL
   const lineThreshold = Math.max(0.0025, anchor.heightRatio * 0.4);
   const anchorBaseline = anchor.yRatio + (anchor.ascentRatio ?? anchor.heightRatio * 0.8);
 
-  const lineSpans = spans
+  const lineSpans = normalizeTextLayerSpans(spans)
     .filter((candidate) => {
       const candidateBaseline = candidate.yRatio + (candidate.ascentRatio ?? candidate.heightRatio * 0.8);
       // Group by baseline if both have it, otherwise fallback to top/bottom match
@@ -233,6 +282,7 @@ export function mergeTextLine(spans: TextLayerSpanLike[], anchor: TextLayerSpanL
   const bottom = Math.max(...mergedCluster.map((item) => item.yRatio + item.heightRatio));
 
   let mergedText = '';
+  let mergedChunkCount = 0;
   const escapeRegex = (value: string): string => value.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&');
   const firstTokenOf = (value: string): string => {
     const token = value.trim().split(/\s+/u)[0] ?? '';
@@ -248,6 +298,15 @@ export function mergeTextLine(spans: TextLayerSpanLike[], anchor: TextLayerSpanL
       const currentToken = firstTokenOf(current.text);
       // Some PDFs keep an old line and append a shifted duplicate line after save.
       // If we detect a clear restart of the line after a noticeable gap, stop at first run.
+      if (
+        firstMergedToken
+        && currentToken
+        && currentToken === firstMergedToken
+        && mergedChunkCount >= 2
+        && gap <= restartGapThreshold * 1.25
+      ) {
+        break;
+      }
       if (gap > restartGapThreshold && firstMergedToken && currentToken && currentToken === firstMergedToken) {
         break;
       }
@@ -274,12 +333,80 @@ export function mergeTextLine(spans: TextLayerSpanLike[], anchor: TextLayerSpanL
       }
     }
     mergedText += current.text;
+    mergedChunkCount += 1;
     if (!firstMergedToken) {
       firstMergedToken = firstTokenOf(mergedText);
     }
   }
 
-  const text = mergedText.replace(/\s+/gu, ' ').trim();
+  const stripRepeatedSuffix = (value: string): string => {
+    const collapseRepeatedRawRuns = (rawValue: string): string => {
+      const compact = rawValue.replace(/\s+/gu, '');
+      if (compact.length < 8) {
+        return rawValue;
+      }
+
+      const maxRepeat = Math.floor(compact.length / 2);
+      for (let repeatLen = maxRepeat; repeatLen >= 4; repeatLen -= 1) {
+        if (compact.length % repeatLen !== 0) {
+          continue;
+        }
+        const prefix = compact.slice(0, repeatLen);
+        if (!prefix) {
+          continue;
+        }
+
+        let repeated = true;
+        for (let index = repeatLen; index < compact.length; index += repeatLen) {
+          if (compact.slice(index, index + repeatLen) !== prefix) {
+            repeated = false;
+            break;
+          }
+        }
+        if (!repeated) {
+          continue;
+        }
+
+        let nonWhitespaceCount = 0;
+        for (let index = 0; index < rawValue.length; index += 1) {
+          if (!/\s/u.test(rawValue[index] ?? '')) {
+            nonWhitespaceCount += 1;
+          }
+          if (nonWhitespaceCount >= repeatLen) {
+            return rawValue.slice(0, index + 1);
+          }
+        }
+      }
+      return rawValue;
+    };
+
+    const rawCollapsed = collapseRepeatedRawRuns(value);
+    if (rawCollapsed !== value) {
+      return rawCollapsed;
+    }
+
+    const tokens = value.trim().split(/\s+/u).filter(Boolean);
+    if (tokens.length < 4) {
+      return value;
+    }
+
+    const normalizeToken = (token: string): string => token
+      .toLowerCase()
+      .replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, '');
+
+    const maxRepeat = Math.floor(tokens.length / 2);
+    for (let repeatLen = maxRepeat; repeatLen >= 2; repeatLen -= 1) {
+      const prefix = tokens.slice(0, repeatLen).map(normalizeToken).join('\u0000');
+      const suffix = tokens.slice(tokens.length - repeatLen).map(normalizeToken).join('\u0000');
+      if (!prefix || prefix !== suffix) {
+        continue;
+      }
+      return tokens.slice(0, repeatLen).join(' ');
+    }
+    return value;
+  };
+
+  const text = stripRepeatedSuffix(mergedText.replace(/\s+/gu, ' ').trim());
   if (!text) {
     return null;
   }

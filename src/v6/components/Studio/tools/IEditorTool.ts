@@ -22,6 +22,7 @@ export interface ToolContext {
     textLayerSpans: TextLayerSpan[];
     isSelectMode: boolean;
     textSelectionMode: 'line' | 'word';
+    textInteractionMode: 'edit' | 'move';
     textEditor: TextEditorState | null;
     commitTextEditor: () => void;
     startEditingText: (element: TextElement) => void;

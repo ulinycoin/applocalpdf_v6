@@ -7,6 +7,7 @@ import {
 } from './inline-text-utils';
 import { getStudioEditMessages } from './studio-edit-i18n';
 import { clamp01, getStrokeBounds, moveStrokePoints } from '../../utils/studio-edit-math';
+import { LinearIcon } from '../icons/linear-icon';
 import {
     EditElement,
     ImageElement,
@@ -52,6 +53,7 @@ export interface StudioPageEditorProps {
     setIsSelectMode: (val: boolean) => void;
     textSelectionMode?: 'line' | 'word';
     onTextSelectionModeChange?: (_mode: 'line' | 'word') => void;
+    textInteractionMode?: 'edit' | 'move';
     annotateColor?: string;
     annotateMode?: 'highlight' | 'pen' | 'shapes';
     annotateStrokeWidth?: number;
@@ -113,6 +115,7 @@ export const StudioPageEditor = forwardRef<StudioPageEditorHandle, StudioPageEdi
     setIsSelectMode: _setIsSelectMode,
     textSelectionMode: externalTextSelectionMode,
     onTextSelectionModeChange: _onTextSelectionModeChange,
+    textInteractionMode: externalTextInteractionMode,
     annotateColor = '#fff176',
     annotateMode = 'highlight',
     annotateStrokeWidth = 5,
@@ -183,6 +186,7 @@ export const StudioPageEditor = forwardRef<StudioPageEditorHandle, StudioPageEdi
     const [draftStroke, setDraftStroke] = useState<StrokeDraft | null>(null);
 
     const textSelectionMode = externalTextSelectionMode ?? 'line';
+    const textInteractionMode = externalTextInteractionMode ?? 'edit';
     const activeTool = externalActiveTool;
     const hasPendingSignDraft = activeTool === 'sign' && signMode === 'draw' && hasSignatureDraft(draftStroke);
     const hasPendingAnnotatePenDraft = activeTool === 'annotate' && annotateMode === 'pen' && hasAnnotatePenDraft(draftStroke);
@@ -225,6 +229,7 @@ export const StudioPageEditor = forwardRef<StudioPageEditorHandle, StudioPageEdi
         textLayerSpans,
         isSelectMode,
         textSelectionMode,
+        textInteractionMode,
         textEditor,
         commitTextEditor,
         startEditingText,
@@ -599,8 +604,34 @@ export const StudioPageEditor = forwardRef<StudioPageEditorHandle, StudioPageEdi
                                 fontSize: el.fontSize, color: el.color, fontFamily: toCssFontFamily(el.fontFamily),
                                 fontWeight: el.fontWeight, fontStyle: el.fontStyle, textAlign: el.textAlign,
                                 lineHeight: el.lineHeight, letterSpacing: el.letterSpacing,
-                                whiteSpace: 'nowrap', position: 'relative', display: 'grid'
+                                whiteSpace: 'nowrap', position: 'relative', display: 'grid',
+                                overflow: 'visible',
+                                cursor: textInteractionMode === 'move' ? 'grab' : 'text'
                             }}>
+                                {selectedElementId === el.id && textInteractionMode === 'move' && textEditor?.id !== el.id && (
+                                    <div style={{
+                                        position: 'absolute',
+                                        top: -28,
+                                        left: 0,
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        gap: 6,
+                                        padding: '4px 8px',
+                                        borderRadius: 999,
+                                        background: 'rgba(15, 23, 42, 0.92)',
+                                        color: '#f8fafc',
+                                        fontSize: 11,
+                                        fontWeight: 700,
+                                        letterSpacing: '0.02em',
+                                        boxShadow: '0 8px 24px rgba(15, 23, 42, 0.24)',
+                                        pointerEvents: 'none',
+                                        userSelect: 'none',
+                                        whiteSpace: 'nowrap',
+                                    }}>
+                                        <LinearIcon name="move" size={12} />
+                                        <span>Move</span>
+                                    </div>
+                                )}
                                 {textEditor?.id === el.id ? (
                                     <>
                                         {/* Mirror span for auto-growth */}

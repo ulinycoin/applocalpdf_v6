@@ -34,7 +34,11 @@ export const TextTool: IEditorTool = {
             };
             ctx.applyElements([...ctx.elements, next]);
             ctx.setSelectedElementId(next.id);
-            ctx.startEditingText(next);
+            if (ctx.textInteractionMode === 'edit') {
+                ctx.startEditingText(next);
+            } else {
+                ctx.setInlineUiState('selected');
+            }
         }
     },
     onPointerMove: (_ctx: ToolContext, _event: React.PointerEvent, _worldPos: Point) => {
@@ -84,7 +88,9 @@ function selectTextSpanForEditing(ctx: ToolContext, clickedSpan: TextLayerSpan) 
     if (existing) {
         ctx.setSelectedElementId(existing.id);
         ctx.setInlineUiState('selected');
-        ctx.startEditingText(existing as TextElement);
+        if (ctx.textInteractionMode === 'edit') {
+            ctx.startEditingText(existing as TextElement);
+        }
         return;
     }
 
@@ -113,5 +119,9 @@ function selectTextSpanForEditing(ctx: ToolContext, clickedSpan: TextLayerSpan) 
 
     ctx.applyElements([...ctx.elements, whiteout, next]);
     ctx.setSelectedElementId(next.id);
-    ctx.startEditingText(next);
+    if (ctx.textInteractionMode === 'edit') {
+        ctx.startEditingText(next);
+    } else {
+        ctx.setInlineUiState('selected');
+    }
 }

@@ -580,7 +580,11 @@ export function StudioEditWorkspace() {
                     <StudioEditToolbar
                         ui={ui}
                         tool={ctrl.tool}
+                        textInteractionMode={ctrl.textInteractionMode}
                         onSelectTool={ctrl.setTool}
+                        onToggleTextInteractionMode={() => {
+                            ctrl.setTextInteractionMode(ctrl.textInteractionMode === 'move' ? 'edit' : 'move');
+                        }}
                     />
                 </div>
 
@@ -633,6 +637,7 @@ export function StudioEditWorkspace() {
                                 setIsSelectMode={ctrl.setIsSelectMode}
                                 textSelectionMode={ctrl.textSelectionMode}
                                 onTextSelectionModeChange={ctrl.setTextSelectionMode}
+                                textInteractionMode={ctrl.textInteractionMode}
                                 annotateColor={ctrl.annotateColor}
                                 annotateMode={ctrl.annotateMode}
                                 annotateStrokeWidth={ctrl.annotateMode === 'shapes' ? ctrl.shapeStrokeWidth : ctrl.annotateStrokeWidth}

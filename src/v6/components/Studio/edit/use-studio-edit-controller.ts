@@ -25,7 +25,7 @@ import {
     TextLayerSpan,
     EditorToolId
 } from '../editor-types';
-import type { FontFamilyId } from '../inline-text-utils';
+import { normalizeTextLayerSpans, type FontFamilyId } from '../inline-text-utils';
 
 const STUDIO_TOOL_CONTEXT = {
     userId: 'studio-user',
@@ -178,6 +178,7 @@ export function useStudioEditController(ui: any) {
 
     // Local State
     const [tool, setTool] = useState<EditorToolId | null>(editSession?.activeTool ?? null);
+    const [textInteractionMode, setTextInteractionMode] = useState<'edit' | 'move'>('edit');
     const [elements, setElements] = useState<EditElement[]>([]);
     const elementsRef = useRef<EditElement[]>([]);
     const [history, setHistory] = useState<EditElement[][]>([[]]);
@@ -362,14 +363,20 @@ export function useStudioEditController(ui: any) {
             try {
                 const workerSpans = await requestTextLayerSpans(runtime, preview.page.fileId, preview.page.pageIndex + 1, abortController.signal);
                 if (abortController.signal.aborted) return;
-                const spans = workerSpans.length > 0 ? workerSpans : await requestTextLayerSpansFallback(runtime, preview.page.fileId, preview.page.pageIndex + 1);
+                const spans = normalizeTextLayerSpans(
+                    workerSpans.length > 0
+                        ? workerSpans
+                        : await requestTextLayerSpansFallback(runtime, preview.page.fileId, preview.page.pageIndex + 1),
+                );
                 if (abortController.signal.aborted) return;
                 setTextLayerSpans(spans);
                 if (spans.length === 0) setMessage(ui.noTextLayer);
             } catch (error) {
                 if (abortController.signal.aborted) return;
                 try {
-                    const fallbackSpans = await requestTextLayerSpansFallback(runtime, preview.page.fileId, preview.page.pageIndex + 1);
+                    const fallbackSpans = normalizeTextLayerSpans(
+                        await requestTextLayerSpansFallback(runtime, preview.page.fileId, preview.page.pageIndex + 1),
+                    );
                     if (abortController.signal.aborted) return;
                     setTextLayerSpans(fallbackSpans);
                     if (fallbackSpans.length === 0) setMessage(ui.noTextLayer);
@@ -837,6 +844,7 @@ export function useStudioEditController(ui: any) {
         textLayerSpans,
         isSelectMode, setIsSelectMode,
         textSelectionMode, setTextSelectionMode,
+        textInteractionMode, setTextInteractionMode,
         annotateColor, setAnnotateColor,
         annotateMode, setAnnotateMode,
         annotateStrokeWidth, setAnnotateStrokeWidth,

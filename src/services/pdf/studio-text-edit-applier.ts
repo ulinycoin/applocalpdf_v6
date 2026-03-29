@@ -20,45 +20,117 @@ function measureTextWidthWithTracking(font: PDFFont, text: string, fontSize: num
   return font.widthOfTextAtSize(text, fontSize) + tracking * Math.max(0, text.length - 1);
 }
 
-function fitTextToWidth(
-  font: PDFFont,
-  text: string,
-  targetWidth: number,
-  preferredFontSize: number,
-  preferredTracking: number,
-  minFontSize = 8,
-): { fontSize: number; tracking: number; overflow: boolean } {
-  const safeText = text || ' ';
-  let fontSize = preferredFontSize;
-  let tracking = preferredTracking;
-
-  const fitAtSize = (size: number) => {
-    const baseWidth = measureTextWidthWithTracking(font, safeText, size, preferredTracking);
-    // Use 2% tolerance to match client-side calculation
-    const effectiveTargetWidth = targetWidth * 1.02;
-    if (baseWidth <= effectiveTargetWidth || safeText.length <= 1) {
-      return { size, tracking: preferredTracking, width: baseWidth };
-    }
-    const minTracking = -0.05 * size;
-    const neededTracking = (effectiveTargetWidth - baseWidth) / (safeText.length - 1);
-    const nextTracking = preferredTracking + clamp(neededTracking, minTracking, 0);
-    const width = measureTextWidthWithTracking(font, safeText, size, nextTracking);
-    return { size, tracking: nextTracking, width };
-  };
-
-  let fitted = fitAtSize(fontSize);
-  const effectiveTargetWidth = targetWidth * 1.02;
-  while (fitted.width > effectiveTargetWidth && fontSize > minFontSize) {
-    fontSize = Math.max(minFontSize, fontSize - 0.5);
-    fitted = fitAtSize(fontSize);
+function segmentTextForWrapping(text: string): string[] {
+  const source = text || '';
+  if (!source) {
+    return [];
   }
 
-  tracking = fitted.tracking;
+  if (typeof Intl !== 'undefined' && typeof Intl.Segmenter === 'function') {
+    const segmenter = new Intl.Segmenter(undefined, { granularity: 'grapheme' });
+    return Array.from(segmenter.segment(source), (item) => item.segment).filter(Boolean);
+  }
 
+  return Array.from(source).filter(Boolean);
+}
+
+function layoutTextAtFixedFontSize(params: {
+  font: PDFFont;
+  text: string;
+  blockWidth: number;
+  fontSize: number;
+  tracking: number;
+}): { lines: Array<{ text: string; width: number }>; overflow: boolean } {
+  const { font, text, blockWidth, fontSize, tracking } = params;
+  const safeText = text.trim() || ' ';
+  const maxWidth = Math.max(1, blockWidth);
+  const words = safeText.split(/\s+/u).filter(Boolean);
+  const lines: Array<{ text: string; width: number }> = [];
+
+  const measure = (value: string) => measureTextWidthWithTracking(font, value, fontSize, tracking);
+  const pushLine = (value: string) => {
+    const trimmed = value.trim();
+    if (!trimmed) {
+      return;
+    }
+    lines.push({ text: trimmed, width: measure(trimmed) });
+  };
+
+  const breakWord = (word: string): string[] => {
+    const segments = segmentTextForWrapping(word);
+    if (segments.length <= 1) {
+      return [word];
+    }
+
+    const chunks: string[] = [];
+    let chunk = '';
+    for (const segment of segments) {
+      const next = chunk ? `${chunk}${segment}` : segment;
+      if (!chunk || measure(next) <= maxWidth) {
+        chunk = next;
+        continue;
+      }
+      chunks.push(chunk);
+      chunk = segment;
+    }
+    if (chunk) {
+      chunks.push(chunk);
+    }
+    return chunks.length > 0 ? chunks : [word];
+  };
+
+  let currentLine = '';
+  for (const word of words) {
+    if (!currentLine) {
+      if (measure(word) <= maxWidth) {
+        currentLine = word;
+        continue;
+      }
+
+      const chunks = breakWord(word);
+      if (chunks.length === 1) {
+        currentLine = chunks[0]!;
+        continue;
+      }
+      for (let i = 0; i < chunks.length - 1; i += 1) {
+        pushLine(chunks[i]!);
+      }
+      currentLine = chunks[chunks.length - 1] ?? '';
+      continue;
+    }
+
+    const nextLine = `${currentLine} ${word}`;
+    if (measure(nextLine) <= maxWidth) {
+      currentLine = nextLine;
+      continue;
+    }
+
+    pushLine(currentLine);
+
+    if (measure(word) <= maxWidth) {
+      currentLine = word;
+      continue;
+    }
+
+    const chunks = breakWord(word);
+    if (chunks.length === 1) {
+      currentLine = chunks[0]!;
+      continue;
+    }
+    for (let i = 0; i < chunks.length - 1; i += 1) {
+      pushLine(chunks[i]!);
+    }
+    currentLine = chunks[chunks.length - 1] ?? '';
+  }
+
+  if (currentLine) {
+    pushLine(currentLine);
+  }
+
+  const overflow = lines.some((line) => line.width > maxWidth + 0.5);
   return {
-    fontSize,
-    tracking,
-    overflow: fitted.width > targetWidth,
+    lines: lines.length > 0 ? lines : [{ text: safeText, width: measure(safeText) }],
+    overflow,
   };
 }
 
@@ -795,55 +867,41 @@ export async function applyStudioTextEditsToPdfBytes(params: {
       const textToDraw = rendered.text || ' ';
       const { r, g, b } = hexToRgb(element.color);
       const blockWidth = element.w * pageWidth;
-      const sourceDerivedFontSize = typeof element.sourceFontSizeRatio === 'number'
-        ? clamp(element.sourceFontSizeRatio * pageHeight, 4, 144)
-        : null;
-      const hasExplicitFontSizeChange = sourceDerivedFontSize === null
-        ? true
-        : Math.abs(element.fontSize - sourceDerivedFontSize) > 0.35;
-      const preferredFontSize = hasExplicitFontSizeChange
-        ? element.fontSize
-        : (sourceDerivedFontSize ?? element.fontSize);
-      const fit = fitTextToWidth(font, textToDraw, blockWidth, preferredFontSize, element.letterSpacing ?? 0, 8);
-      overflowDetected ||= fit.overflow;
-
-      const lineWidth = font.widthOfTextAtSize(textToDraw, fit.fontSize) + fit.tracking * Math.max(0, textToDraw.length - 1);
-      let x = element.x * pageWidth;
-      if (element.textAlign === 'center') {
-        x += Math.max(0, (blockWidth - lineWidth) / 2);
-      }
-      if (element.textAlign === 'right') {
-        x += Math.max(0, blockWidth - lineWidth);
-      }
       const yTop = element.y * pageHeight;
-      // If we have the exact ascent from extraction, use it. Otherwise use 0.82 heuristic.
-      const ascent = element.ascent ?? (fit.fontSize * 0.82);
-      const y = pageHeight - yTop - ascent;
+      const renderFontSize = clamp(element.fontSize || 12, 4, 144);
+      const lineHeightFactor = typeof element.lineHeight === 'number' ? element.lineHeight : 1.2;
+      const textLayout = layoutTextAtFixedFontSize({
+        font,
+        text: textToDraw,
+        blockWidth,
+        fontSize: renderFontSize,
+        tracking: element.letterSpacing ?? 0,
+      });
+      overflowDetected ||= textLayout.overflow || (textLayout.lines.length * renderFontSize * Math.max(0.8, lineHeightFactor) > (element.h * pageHeight) + 0.5);
 
-      // Use a small tolerance for tracking to avoid manual loop for floating point noise
-      if (Math.abs(fit.tracking) < 0.001 || textToDraw.length <= 1) {
-        page.drawText(textToDraw, {
+      const lineHeightPt = Math.max(1, renderFontSize * Math.max(0.8, lineHeightFactor));
+      // If we have the exact ascent from extraction, use it. Otherwise use 0.82 heuristic.
+      const ascent = element.ascent ?? (renderFontSize * 0.82);
+      const baseY = pageHeight - yTop - ascent;
+
+      for (let lineIndex = 0; lineIndex < textLayout.lines.length; lineIndex += 1) {
+        const line = textLayout.lines[lineIndex]!;
+        let x = element.x * pageWidth;
+        if (element.textAlign === 'center') {
+          x += Math.max(0, (blockWidth - line.width) / 2);
+        }
+        if (element.textAlign === 'right') {
+          x += Math.max(0, blockWidth - line.width);
+        }
+        const y = baseY - (lineIndex * lineHeightPt);
+        page.drawText(line.text, {
           x,
           y,
-          size: fit.fontSize,
+          size: renderFontSize,
           font,
           color: rgb(r, g, b),
           opacity: element.opacity,
         });
-      } else {
-        let cursor = x;
-        for (let i = 0; i < textToDraw.length; i += 1) {
-          const char = textToDraw[i]!;
-          page.drawText(char, {
-            x: cursor,
-            y,
-            size: fit.fontSize,
-            font,
-            color: rgb(r, g, b),
-            opacity: element.opacity,
-          });
-          cursor += font.widthOfTextAtSize(char, fit.fontSize) + (i < textToDraw.length - 1 ? fit.tracking : 0);
-        }
       }
       continue;
     }
