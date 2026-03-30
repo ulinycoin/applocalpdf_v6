@@ -1,4 +1,4 @@
-import type { IFileEntry, IFileSystem } from '../types/contracts';
+import { FilePinnedError, type IFileEntry, type IFileSystem } from '../types/contracts';
 
 export class VfsQuotaExceededError extends Error {
   code = 'VFS_QUOTA_EXCEEDED';
@@ -42,9 +42,24 @@ export class VirtualFileSystem {
     return this.fs.read(id);
   }
 
+  async pin(id: string): Promise<void> {
+    await this.fs.pin(id);
+  }
+
+  async unpin(id: string): Promise<void> {
+    await this.fs.unpin(id);
+  }
+
   async delete(id: string): Promise<void> {
-    await this.fs.delete(id);
-    this.unregisterFile(id);
+    try {
+      await this.fs.delete(id);
+      this.unregisterFile(id);
+    } catch (error) {
+      if (error instanceof FilePinnedError) {
+        return; // Ignore delete if file is pinned
+      }
+      throw error;
+    }
   }
 
   async cleanupScope(scopeId: string): Promise<void> {

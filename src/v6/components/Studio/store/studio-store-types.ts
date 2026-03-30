@@ -49,3 +49,39 @@ export interface SaveCheckpointEntry {
 export interface SaveCheckpoint {
     entries: SaveCheckpointEntry[];
 }
+
+export interface IWorkspaceSnapshot {
+    documents: StudioDocument[];
+    detachedPages: DetachedPageItem[];
+    activeDocumentId: string | null;
+    activeEditPageId: string | null;
+    requestedInlineTool: 'compress-pdf' | null;
+    operationScope: StudioOperationScope;
+    viewScale: number;
+    viewPosition: { x: number; y: number };
+    selection: { docId: string; pageId: string }[];
+    interactionMode: StudioInteractionMode;
+}
+
+export type TimelineEventType = 
+    | 'system'
+    | 'upload'
+    | 'delete_page'
+    | 'move_page'
+    | 'rotate_page'
+    | 'edit_save'
+    | 'convert'
+    | 'protect'
+    | 'space_new'
+    | 'space_rename'
+    | 'space_delete'
+    | 'restore';
+
+export interface ITimelineEvent {
+    id: string;
+    type: TimelineEventType;
+    label: string;
+    timestamp: number;
+    snapshot?: IWorkspaceSnapshot;
+    isManualVersion?: boolean;
+}

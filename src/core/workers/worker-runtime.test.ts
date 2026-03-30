@@ -35,8 +35,9 @@ class MemFs implements IFileSystem {
     }
     return new MemEntry(id, blob);
   }
-
   async delete(): Promise<void> {}
+  async pin(): Promise<void> {}
+  async unpin(): Promise<void> {}
 }
 
 async function createPdfWithText(text: string): Promise<Blob> {

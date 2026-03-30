@@ -8,6 +8,7 @@ import { usePlatform } from '../../../app/react/platform-context';
 import { canUseDocumentWithPageCount } from '../../../app/platform/plan-limits';
 import { showStudioPaywall } from '../../../app/react/studio-paywall';
 import { getPdfJs } from '../../services/pdf/pdf-loader';
+import { useHistoryStore } from './store/history-store';
 
 // --- LRU Cache for High-Res Bitmaps ---
 const HIGH_RES_CACHE_LIMIT = 30; // Max number of high-res canvases to keep in memory (approx 100-300MB depending on resolution)
@@ -51,6 +52,7 @@ interface SelectionItem {
 export const PageObject: React.FC<PageObjectProps> = ({ page, docId, x, y, currentIndex, shouldPrefetchOnly = false }) => {
     const groupRef = useRef<Konva.Group>(null);
     const { runtime } = usePlatform();
+    const createCheckpoint = useHistoryStore((s) => s.createCheckpoint);
 
     // Tier 0: Thumbnail
     const [thumbImage] = useImage(page.thumbnailUrl);
@@ -187,10 +189,14 @@ export const PageObject: React.FC<PageObjectProps> = ({ page, docId, x, y, curre
             const targetIndex = targetRow * gridColumns + targetCol;
 
             movePage(docId, page.id, targetDocId, targetIndex);
+            void createCheckpoint(runtime.vfs, 'move_page', targetDocId === docId
+                ? 'Moved page within workspace'
+                : 'Moved page to another workspace');
         } else {
             const absPos = node.absolutePosition();
             const worldDropPos = inverseTransform.point(absPos);
             detachPage(docId, page.id, worldDropPos.x, worldDropPos.y);
+            void createCheckpoint(runtime.vfs, 'move_page', 'Detached page');
         }
     };
 

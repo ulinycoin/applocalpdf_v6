@@ -19,6 +19,8 @@ class MemFs implements IFileSystem {
   async write(data: Blob): Promise<IFileEntry> { const id = crypto.randomUUID(); this.map.set(id, data); return new MemEntry(id, data); }
   async read(id: string): Promise<IFileEntry> { const b = this.map.get(id); if (!b) throw new Error('missing'); return new MemEntry(id, b); }
   async delete(id: string): Promise<void> { this.map.delete(id); }
+  async pin(): Promise<void> {}
+  async unpin(): Promise<void> {}
 }
 
 test('PdfFileMetadataService returns page count', async () => {

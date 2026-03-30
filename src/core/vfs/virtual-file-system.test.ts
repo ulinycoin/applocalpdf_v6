@@ -27,6 +27,8 @@ class MemFs implements IFileSystem {
     return new MemEntry(id, blob);
   }
   async delete(id: string): Promise<void> { this.map.delete(id); }
+  async pin(): Promise<void> {}
+  async unpin(): Promise<void> {}
 }
 
 test('VirtualFileSystem cleans temp scope files after cleanupScope', async () => {

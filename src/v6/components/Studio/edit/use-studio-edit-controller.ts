@@ -10,6 +10,7 @@ import {
     type StudioEditToolId,
     type SaveCheckpointEntry,
 } from '../studio-store';
+import { useHistoryStore } from '../store/history-store';
 import { requestTextLayerSpans, requestTextLayerSpansFallback } from '../../../pdf/text-layer-client';
 import { CommandExecutor } from '../store/command-manager';
 import type { StudioToolRouteState } from '../../../studio/navigation/studio-tool-context';
@@ -175,6 +176,7 @@ export function useStudioEditController(ui: any) {
     const popCommandUndo = useStudioStore((s) => s.popCommandUndo);
     const pushCommandRedo = useStudioStore((s) => s.pushCommandRedo);
     const popCommandRedo = useStudioStore((s) => s.popCommandRedo);
+    const createCheckpoint = useHistoryStore((s) => s.createCheckpoint);
 
     // Local State
     const [tool, setTool] = useState<EditorToolId | null>(editSession?.activeTool ?? null);
@@ -627,6 +629,13 @@ export function useStudioEditController(ui: any) {
                     pushSaveUndo({ entries: checkpointEntries });
                 }
             }
+            await createCheckpoint(
+                runtime.vfs,
+                'edit_save',
+                targets.length > 1
+                    ? `Saved inline edits (${targets.length} pages)`
+                    : 'Saved inline edits',
+            );
 
             runtime.telemetry.track({
                 type: 'STUDIO_EDIT_SAVE_ACTION', runId, toolId: 'studio.edit.text', action: 'apply', scope: targets.length > 1 ? 'selection' : 'single',

@@ -34,7 +34,22 @@ export class WebFileSystemAdapter implements IFileSystem {
   private static readonly DB_NAME = 'localpdf-v6';
   private static readonly STORE_NAME = 'files';
   private readonly memoryFallback = new Map<string, StoredFileRecord>();
+  private readonly pins = new Map<string, number>();
   private dbPromise: Promise<IDBDatabase> | null = null;
+
+  async pin(id: string): Promise<void> {
+    const count = this.pins.get(id) ?? 0;
+    this.pins.set(id, count + 1);
+  }
+
+  async unpin(id: string): Promise<void> {
+    const count = this.pins.get(id) ?? 0;
+    if (count <= 1) {
+      this.pins.delete(id);
+    } else {
+      this.pins.set(id, count - 1);
+    }
+  }
 
   async write(data: Blob): Promise<IFileEntry> {
     const id = crypto.randomUUID();
@@ -73,6 +88,11 @@ export class WebFileSystemAdapter implements IFileSystem {
   }
 
   async delete(id: string): Promise<void> {
+    if ((this.pins.get(id) ?? 0) > 0) {
+      const { FilePinnedError } = await import('../types/contracts');
+      throw new FilePinnedError(id);
+    }
+
     if (!this.isIndexedDbAvailable()) {
       this.memoryFallback.delete(id);
       return;

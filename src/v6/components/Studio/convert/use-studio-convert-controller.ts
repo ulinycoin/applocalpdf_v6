@@ -9,6 +9,7 @@ import { requestPdfImageCandidates } from '../../../pdf/image-candidate-client';
 import type { WorkerPdfImageCandidate } from '../../../../core/public/contracts';
 import { createZipBlob } from '../../../utils/zip';
 import { type PageItem, type StudioDocument, type StudioState, useStudioStore } from '../studio-store';
+import { useHistoryStore } from '../store/history-store';
 
 export type StudioConvertToolId = 'ocr-pdf' | 'pdf-to-jpg' | 'extract-images' | 'compress-pdf';
 export type StudioConvertStep = 'config' | 'processing' | 'result';
@@ -206,6 +207,7 @@ export function useStudioConvertController() {
   const [imageScanPendingByPage, setImageScanPendingByPage] = useState<Record<string, boolean>>({});
   const objectUrlsRef = useRef<string[]>([]);
   const imageScanPendingRef = useRef<Record<string, boolean>>({});
+  const recordHistoryEvent = useHistoryStore((s) => s.recordEvent);
 
   const isRunning = step === 'processing';
 
@@ -650,6 +652,16 @@ export function useStudioConvertController() {
             : activeTool === 'compress-pdf'
               ? 'Compression completed.'
               : 'Image extraction completed.',
+      );
+      recordHistoryEvent(
+        'convert',
+        activeTool === 'ocr-pdf'
+          ? 'OCR completed'
+          : activeTool === 'pdf-to-jpg'
+            ? 'PDF to JPG completed'
+            : activeTool === 'compress-pdf'
+              ? 'Compression completed'
+              : 'Image extraction completed',
       );
       setStep('result');
     } catch (runError) {

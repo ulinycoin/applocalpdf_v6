@@ -7,6 +7,7 @@ import { DetachedPageItem, StudioState, useStudioStore } from './studio-store';
 import { usePlatform } from '../../../app/react/platform-context';
 import { canUseDocumentWithPageCount } from '../../../app/platform/plan-limits';
 import { showStudioPaywall } from '../../../app/react/studio-paywall';
+import { useHistoryStore } from './store/history-store';
 
 interface DetachedPageObjectProps {
     page: DetachedPageItem;
@@ -15,6 +16,7 @@ interface DetachedPageObjectProps {
 export const DetachedPageObject: React.FC<DetachedPageObjectProps> = ({ page }) => {
     const { runtime } = usePlatform();
     const [image] = useImage(page.thumbnailUrl);
+    const createCheckpoint = useHistoryStore((s) => s.createCheckpoint);
     const attachDetachedPage = useStudioStore((s: StudioState) => s.attachDetachedPage);
     const moveDetachedPage = useStudioStore((s: StudioState) => s.moveDetachedPage);
     const removeDetachedPage = useStudioStore((s: StudioState) => s.removeDetachedPage);
@@ -92,12 +94,14 @@ export const DetachedPageObject: React.FC<DetachedPageObjectProps> = ({ page }) 
             const targetIndex = targetRow * gridColumns + targetCol;
 
             attachDetachedPage(page.id, targetDocId, targetIndex);
+            void createCheckpoint(runtime.vfs, 'move_page', 'Attached page to workspace');
             return;
         }
 
         const inverseTransform = stage.getAbsoluteTransform().copy().invert();
         const worldDropPos = inverseTransform.point(absPos);
         moveDetachedPage(page.id, worldDropPos.x, worldDropPos.y);
+        void createCheckpoint(runtime.vfs, 'move_page', 'Moved detached page');
     };
 
     return (
@@ -125,6 +129,7 @@ export const DetachedPageObject: React.FC<DetachedPageObjectProps> = ({ page }) 
                     }
                 }
                 attachDetachedPage(page.id, activeDocumentId);
+                void createCheckpoint(runtime.vfs, 'move_page', 'Attached page to active workspace');
             }}
             onDragStart={(e) => {
                 e.cancelBubble = true;
@@ -169,12 +174,13 @@ export const DetachedPageObject: React.FC<DetachedPageObjectProps> = ({ page }) 
                 <Text text="Detached page" fill="#dbeafe" fontSize={11} x={8} y={4} />
             </Group>
 
-            <Group
+                <Group
                 x={162}
                 y={-8}
                 onClick={(e) => {
                     e.cancelBubble = true;
                     removeDetachedPage(page.id);
+                    void createCheckpoint(runtime.vfs, 'delete_page', 'Deleted detached page');
                 }}
                 onMouseEnter={(e) => {
                     const container = e.target.getStage()?.container();

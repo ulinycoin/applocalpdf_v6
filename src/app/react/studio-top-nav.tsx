@@ -4,6 +4,7 @@ import { useStudioStore, type PageItem, type StudioDocument, type StudioState } 
 import { LinearIcon } from '../../v6/components/icons/linear-icon';
 import { usePlatform } from './platform-context';
 import { PipelineRunner } from '../../v6/studio/pipeline/PipelineRunner';
+import { useHistoryStore } from '../../v6/components/Studio/store/history-store';
 import type { IPipelineRecipe } from '../../v6/studio/pipeline/types';
 import { openBillingPlans } from './billing';
 import { canAddDocumentToStudio } from '../platform/plan-limits';
@@ -51,6 +52,7 @@ export function StudioTopNav({ telemetryEnabled, onToggleTelemetry, telemetryOpe
   const setSelection = useStudioStore((s: StudioState) => s.setSelection);
   const requestInlineTool = useStudioStore((s: StudioState) => s.requestInlineTool);
   const markWorkspaceExported = useStudioStore((s: StudioState) => s.markWorkspaceExported);
+  const createCheckpoint = useHistoryStore((s) => s.createCheckpoint);
 
   const activeDocument = useMemo(
     () => documents.find((doc: StudioDocument) => doc.id === activeDocumentId) ?? null,
@@ -147,6 +149,9 @@ export function StudioTopNav({ telemetryEnabled, onToggleTelemetry, telemetryOpe
       isModified: true,
     });
     setActiveDocument(nextDocId);
+    setTimeout(() => {
+      void createCheckpoint(runtime.vfs, 'space_new', `Created ${name}`);
+    }, 0);
   };
 
   const handleDeleteSpace = (): void => {
@@ -161,6 +166,9 @@ export function StudioTopNav({ telemetryEnabled, onToggleTelemetry, telemetryOpe
     removeDocument(activeDocument.id);
     setSelection([]);
     requestInlineTool(null);
+    setTimeout(() => {
+      void createCheckpoint(runtime.vfs, 'space_delete', `Deleted ${activeDocument.name}`);
+    }, 0);
   };
 
   const handleDownload = () => {

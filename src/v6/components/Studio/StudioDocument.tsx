@@ -3,6 +3,8 @@ import { Group, Rect, Text } from 'react-konva';
 import type { KonvaEventObject } from 'konva/lib/Node';
 import { PageObject } from './PageObject';
 import { StudioDocument as IStudioDocument, StudioState, useStudioStore } from './studio-store';
+import { useHistoryStore } from './store/history-store';
+import { usePlatform } from '../../../app/react/platform-context';
 
 interface StudioDocumentProps {
     doc: IStudioDocument;
@@ -19,6 +21,8 @@ export const StudioDocument: React.FC<StudioDocumentProps> = ({ doc }) => {
     const viewportSize = useStudioStore((s: StudioState) => s.viewportSize);
     const studioViewPosition = useStudioStore((s: StudioState) => s.studioViewPosition);
     const studioViewScale = useStudioStore((s: StudioState) => s.studioViewScale);
+    const createCheckpoint = useHistoryStore((s) => s.createCheckpoint);
+    const { runtime } = usePlatform();
 
     const handleDragEnd = (e: KonvaEventObject<DragEvent>) => {
         // ONLY handle if the document itself was dragged
@@ -149,8 +153,9 @@ export const StudioDocument: React.FC<StudioDocumentProps> = ({ doc }) => {
                     const userInput = window.prompt('Enter new name for the workspace:', doc.name);
                     if (userInput !== null) {
                         const newName = userInput.trim();
-                        if (newName) {
+                        if (newName && newName !== doc.name) {
                             updateDocument(doc.id, { name: newName });
+                            void createCheckpoint(runtime.vfs, 'space_rename', `Renamed to ${newName}`);
                         }
                     }
                 }}

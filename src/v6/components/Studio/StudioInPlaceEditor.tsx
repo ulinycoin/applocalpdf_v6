@@ -9,6 +9,7 @@ import type { IWorkerCommand, WorkerStudioEditElement } from '../../../core/publ
 import { defaultFilePreviewService } from '../../preview/preview-service';
 import { getStudioEditMessages } from './studio-edit-i18n';
 import { normalizeTextLayerSpans } from './inline-text-utils';
+import { useHistoryStore } from './store/history-store';
 
 interface StudioInPlaceEditorProps {
     stageRef: React.RefObject<Konva.Stage | null>;
@@ -22,6 +23,7 @@ export function StudioInPlaceEditor({ stageRef }: StudioInPlaceEditorProps) {
     const updatePage = useStudioStore((s: StudioState) => s.updatePage);
     const clearEditSession = useStudioStore((s: StudioState) => s.clearEditSession);
     const setActiveEditPageId = useStudioStore((s: StudioState) => s.setActiveEditPageId);
+    const createCheckpoint = useHistoryStore((s) => s.createCheckpoint);
 
     const [elements, setElements] = useState<EditElement[]>([]);
     const [overlayRect, setOverlayRect] = useState<{ x: number, y: number, w: number, h: number, scale: number } | null>(null);
@@ -136,6 +138,7 @@ export function StudioInPlaceEditor({ stageRef }: StudioInPlaceEditorProps) {
                     fileId: finalEvent.payload.payload.outputId,
                     thumbnailUrl: preview?.thumbnailUrl ?? activePage.thumbnailUrl
                 });
+                await createCheckpoint(runtime.vfs, 'edit_save', 'Saved inline edits');
                 handleCancel();
             }
         } catch (e) {

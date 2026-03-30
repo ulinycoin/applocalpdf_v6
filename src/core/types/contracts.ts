@@ -66,10 +66,19 @@ export interface IFileEntry {
   getType(): Promise<string>;
 }
 
+export class FilePinnedError extends Error {
+  code = 'FILE_PINNED';
+  constructor(id: string) {
+    super(`Cannot delete pinned file: ${id}`);
+  }
+}
+
 export interface IFileSystem {
   write(data: Blob): Promise<IFileEntry>;
   read(id: string): Promise<IFileEntry>;
   delete(id: string): Promise<void>;
+  pin(id: string): Promise<void>;
+  unpin(id: string): Promise<void>;
 }
 
 export interface IFileMetadataService {

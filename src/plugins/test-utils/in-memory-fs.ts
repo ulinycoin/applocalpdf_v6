@@ -26,7 +26,22 @@ class MemoryFileEntry implements IFileEntry {
 
 export class InMemoryFileSystem implements IFileSystem {
   private readonly store = new Map<string, { blob: Blob; name: string }>();
+  private readonly pins = new Map<string, number>();
   private idCounter = 0;
+
+  async pin(id: string): Promise<void> {
+    const count = this.pins.get(id) ?? 0;
+    this.pins.set(id, count + 1);
+  }
+
+  async unpin(id: string): Promise<void> {
+    const count = this.pins.get(id) ?? 0;
+    if (count <= 1) {
+      this.pins.delete(id);
+    } else {
+      this.pins.set(id, count - 1);
+    }
+  }
 
   seed(id: string, blob: Blob): void {
     this.store.set(id, {
@@ -52,6 +67,10 @@ export class InMemoryFileSystem implements IFileSystem {
   }
 
   async delete(id: string): Promise<void> {
+    if ((this.pins.get(id) ?? 0) > 0) {
+      const { FilePinnedError } = await import('../../core/types/contracts');
+      throw new FilePinnedError(id);
+    }
     this.store.delete(id);
   }
 }

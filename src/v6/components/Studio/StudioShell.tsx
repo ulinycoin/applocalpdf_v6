@@ -9,13 +9,15 @@ import { StudioDocument } from './StudioDocument';
 import { DetachedPageObject } from './DetachedPageObject';
 import { StudioFloatingMenu } from './StudioFloatingMenu';
 import { StudioModeSwitcher } from './StudioModeSwitcher';
+import { LinearIcon } from '../icons/linear-icon';
 import { ThumbnailService } from '../../studio/thumbnail/thumbnail-service';
+import { StudioTimeline } from './branching/StudioTimeline';
 import type { StudioReturnContext, StudioToolRouteState } from '../../studio/navigation/studio-tool-context';
 import { getPdfJs, getPdfLib } from '../../services/pdf/pdf-loader';
 import { StudioInPlaceEditor } from './StudioInPlaceEditor';
 import { canAddDocumentToStudio, canCreateWorkspace, canUseDocumentWithPageCount } from '../../../app/platform/plan-limits';
 import { showStudioPaywall } from '../../../app/react/studio-paywall';
-
+import { useHistoryStore } from './store/history-store';
 export interface StudioShellProps {
     onFilesDropped?: (files: File[]) => void;
 }
@@ -177,6 +179,9 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
     const setDocuments = useStudioStore((s: StudioState) => s.setDocuments);
     const setActiveDocument = useStudioStore((s: StudioState) => s.setActiveDocument);
     const activeDocumentId = useStudioStore((s: StudioState) => s.activeDocumentId);
+    const createCheckpoint = useHistoryStore((s) => s.createCheckpoint);
+    const isHistoryOpen = useStudioStore((s: StudioState) => s.isHistoryOpen);
+    const setHistoryOpen = useStudioStore((s: StudioState) => s.setHistoryOpen);
     const selection = useStudioStore((s: StudioState) => s.selection);
     const setSelection = useStudioStore((s: StudioState) => s.setSelection);
     const setInteractionMode = useStudioStore((s: StudioState) => s.setInteractionMode);
@@ -431,8 +436,9 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
         }
         if (positionedDocs.length > 0) {
             fitToDocuments([...documents, ...positionedDocs]);
+            void createCheckpoint(runtime.vfs, 'upload', `Uploaded ${positionedDocs.length} ${positionedDocs.length === 1 ? 'file' : 'files'}`);
         }
-    }, [addDocument, dimensions.width, documents, fitToDocuments, notifyStudioError, onFilesDropped, runtime.telemetry, runtime.vfs, gridColumns]);
+    }, [addDocument, createCheckpoint, dimensions.width, documents, fitToDocuments, notifyStudioError, onFilesDropped, runtime.telemetry, runtime.vfs, gridColumns]);
 
     const handleDrop = useCallback(async (e: React.DragEvent) => {
         e.preventDefault();
@@ -703,6 +709,7 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
                             addDocument(doc);
                         }
                     }
+                    await createCheckpoint(runtime.vfs, 'convert', `Executed ${toolResult.toolId}`);
                 }
                 setSelection([]);
             } catch (error) {
@@ -730,6 +737,7 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
         applyReturnContext,
         buildPagesFromFileId,
         buildEncryptedFallbackFromSource,
+        createCheckpoint,
         documents,
         fitToDocuments,
         location.state,
@@ -858,6 +866,14 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
                     </button>
                 </div>
                 <div className="studio-viewport-section studio-viewport-section-right">
+                    <button
+                        className={`studio-viewport-btn ${isHistoryOpen ? 'active' : ''}`}
+                        onClick={() => setHistoryOpen(!isHistoryOpen)}
+                        title={isHistoryOpen ? 'Hide history' : 'Show history'}
+                    >
+                        <LinearIcon name="history" size={14} />
+                        <span>History</span>
+                    </button>
                     <button className="studio-viewport-btn studio-viewport-btn-upload" onClick={openUploadDialog} title="Upload files (U or Ctrl/Cmd+O)">
                     Upload
                     </button>
@@ -871,6 +887,7 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
                 className="hidden"
                 onChange={handleUploadInputChange}
             />
+            {isHistoryOpen && <StudioTimeline />}
             {!useStudioStore.getState().activeEditPageId && <StudioFloatingMenu />}
             <StudioInPlaceEditor stageRef={stageRef} />
         </div>

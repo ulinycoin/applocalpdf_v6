@@ -1,6 +1,13 @@
 import { create } from 'zustand';
 import type { StudioInteractionMode, StudioOperationScope } from './studio-store-types';
 
+function getDefaultViewportSize(): { width: number; height: number } {
+    if (typeof window === 'undefined') {
+        return { width: 0, height: 0 };
+    }
+    return { width: window.innerWidth, height: window.innerHeight };
+}
+
 export interface UIState {
     selection: { docId: string; pageId: string }[];
     requestedInlineTool: 'compress-pdf' | null;
@@ -13,6 +20,7 @@ export interface UIState {
     studioViewPosition: { x: number; y: number };
     gridColumns: 3 | 5;
     viewportSize: { width: number; height: number };
+    isHistoryOpen: boolean;
 
     setSelection: (selection: { docId: string; pageId: string }[]) => void;
     requestInlineTool: (toolId: 'compress-pdf' | null) => void;
@@ -25,6 +33,7 @@ export interface UIState {
     setGridColumns: (columns: 3 | 5) => void;
     whiteoutColor: string;
     setWhiteoutColor: (color: string) => void;
+    setHistoryOpen: (open: boolean) => void;
     clearUI: () => void;
 }
 
@@ -39,8 +48,9 @@ export const useUIStore = create<UIState>((set) => ({
     studioViewScale: 1,
     studioViewPosition: { x: 0, y: 0 },
     gridColumns: 5,
-    viewportSize: { width: window.innerWidth, height: window.innerHeight },
+    viewportSize: getDefaultViewportSize(),
     whiteoutColor: '#ffffff',
+    isHistoryOpen: false,
 
     setSelection: (selection) => set((state) => ({
         selection,
@@ -59,6 +69,7 @@ export const useUIStore = create<UIState>((set) => ({
     })),
     setGridColumns: (columns) => set({ gridColumns: columns }),
     setWhiteoutColor: (color) => set({ whiteoutColor: color }),
+    setHistoryOpen: (open) => set({ isHistoryOpen: open }),
     clearUI: () => set({
         selection: [],
         requestedInlineTool: null,

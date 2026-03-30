@@ -53,6 +53,8 @@ class InMemoryFileSystem implements IFileSystem {
   async delete(id: string): Promise<void> {
     this.map.delete(id);
   }
+  async pin(): Promise<void> {}
+  async unpin(): Promise<void> {}
 }
 
 const tool: IToolDefinition = {

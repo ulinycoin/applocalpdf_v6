@@ -6,6 +6,7 @@ import { PipelineRunner } from '../../studio/pipeline/PipelineRunner';
 import { usePlatform } from '../../../app/react/platform-context';
 import { canAddDocumentToStudio } from '../../../app/platform/plan-limits';
 import { showStudioPaywall } from '../../../app/react/studio-paywall';
+import { useHistoryStore } from './store/history-store';
 
 interface ReorderItem {
     sourceFileId: string;
@@ -16,6 +17,7 @@ interface ReorderItem {
 export function StudioActionBar() {
     const { runtime } = usePlatform();
     const [deleteArmedDocId, setDeleteArmedDocId] = useState<string | null>(null);
+    const createCheckpoint = useHistoryStore((s) => s.createCheckpoint);
     const addDocument = useStudioStore((s: StudioState) => s.addDocument);
     const removeDocument = useStudioStore((s: StudioState) => s.removeDocument);
     const setActiveDocument = useStudioStore((s: StudioState) => s.setActiveDocument);
@@ -128,19 +130,19 @@ export function StudioActionBar() {
             isModified: true,
         });
         setActiveDocument(nextDocId);
+        void createCheckpoint(runtime.vfs, 'system', 'Created Workspace');
     };
 
     const handleRenameActiveSpace = () => {
         if (!activeDocument) return;
-        setTimeout(() => {
-            const userInput = window.prompt('Enter new name for the workspace:', activeDocument.name);
-            if (userInput !== null) {
-                const newName = userInput.trim();
-                if (newName) {
-                    updateDocument(activeDocument.id, { name: newName });
-                }
+        const userInput = window.prompt('Enter new name for the workspace:', activeDocument.name);
+        if (userInput !== null) {
+            const newName = userInput.trim();
+            if (newName) {
+                updateDocument(activeDocument.id, { name: newName });
+                void createCheckpoint(runtime.vfs, 'system', `Renamed to "${newName}"`);
             }
-        }, 50);
+        }
     };
 
     const handleDeleteActiveSpace = () => {
@@ -155,6 +157,7 @@ export function StudioActionBar() {
         removeDocument(activeDocument.id);
         setSelection([]);
         requestInlineTool(null);
+        void createCheckpoint(runtime.vfs, 'system', 'Deleted Workspace');
     };
 
     return (
