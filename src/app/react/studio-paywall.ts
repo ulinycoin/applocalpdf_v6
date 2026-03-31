@@ -1,4 +1,4 @@
-import type { TelemetrySink } from '../../core/telemetry/telemetry';
+import type { TelemetrySink } from '../../core/public';
 import { openBillingPlans } from './billing';
 
 export function showStudioPaywall(

@@ -3,7 +3,7 @@ import type { IWorkspaceSnapshot, ITimelineEvent, TimelineEventType } from './st
 import { useDocumentStore } from './document-store';
 import { useUIStore } from './ui-store';
 import { useEditSessionStore } from './session-store';
-import type { IFileSystem } from '../../../../core/types/contracts';
+import type { IFileSystem } from '../../../../core/public';
 
 export interface HistoryState {
     timeline: ITimelineEvent[];
