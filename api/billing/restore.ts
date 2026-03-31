@@ -1,10 +1,45 @@
 import { createSign, type KeyLike } from 'node:crypto';
-import {
-  getDefaultEntitlementsForPlan,
-  isNonEmptyString,
-  type BillingPlan,
-  type BillingTier,
-} from '../../src/app/platform/billing-contract.ts';
+
+type BillingPlan = 'basic' | 'pro';
+type BillingTier = 'free' | 'pro_monthly' | 'pro_yearly';
+type BillingEntitlement =
+  | 'pdf.merge'
+  | 'pdf.split'
+  | 'pdf.compress'
+  | 'pdf.ocr'
+  | 'pdf.rotate'
+  | 'pdf.delete_pages'
+  | 'pdf.edit'
+  | 'pdf.to_image'
+  | 'office.convert'
+  | 'pdf.protect.encrypt'
+  | 'pdf.protect.unlock';
+
+const BASIC_ENTITLEMENTS: BillingEntitlement[] = [
+  'pdf.merge',
+  'pdf.split',
+  'pdf.compress',
+];
+
+const PRO_ENTITLEMENTS: BillingEntitlement[] = [
+  ...BASIC_ENTITLEMENTS,
+  'pdf.ocr',
+  'pdf.rotate',
+  'pdf.delete_pages',
+  'pdf.edit',
+  'pdf.to_image',
+  'office.convert',
+  'pdf.protect.encrypt',
+  'pdf.protect.unlock',
+];
+
+function getDefaultEntitlementsForPlan(plan: BillingPlan): BillingEntitlement[] {
+  return [...(plan === 'pro' ? PRO_ENTITLEMENTS : BASIC_ENTITLEMENTS)];
+}
+
+function isNonEmptyString(value: unknown): value is string {
+  return typeof value === 'string' && value.trim().length > 0;
+}
 
 const RATE_LIMIT_WINDOW_MS = 10 * 60 * 1000;
 const RATE_LIMIT_MAX_ATTEMPTS = 10;
