@@ -4,7 +4,7 @@ import {
   isNonEmptyString,
   type BillingPlan,
   type BillingTier,
-} from '../../src/app/platform/billing-contract';
+} from '../../src/app/platform/billing-contract.ts';
 
 const RATE_LIMIT_WINDOW_MS = 10 * 60 * 1000;
 const RATE_LIMIT_MAX_ATTEMPTS = 10;
