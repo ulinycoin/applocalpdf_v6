@@ -32,6 +32,13 @@ export interface FeaturePageData {
     href: string;
     title: string;
   }>;
+  monetizationBlock?: {
+    eyebrow?: string;
+    title: string;
+    body: string;
+    primaryCtaLabel?: string;
+    secondaryCtaLabel?: string;
+  };
 }
 
 export const featurePages: FeaturePageData[] = [
@@ -105,6 +112,13 @@ export const featurePages: FeaturePageData[] = [
       { href: '/blog/edit-text-in-pdf-guide', title: 'How to Edit Text in PDF Files' },
       { href: '/blog/pdf-security-best-practices', title: 'PDF Security Best Practices' },
     ],
+    monetizationBlock: {
+      eyebrow: 'Free vs Pro',
+      title: 'Free for quick tasks. Pro for recurring PDF work.',
+      body: 'Use Edit PDF for quick changes, cover-ups, and lightweight fixes. Upgrade when editing becomes recurring document work and you need broader Studio access without running into limits.',
+      primaryCtaLabel: 'See Pro plans',
+      secondaryCtaLabel: 'Open Edit PDF',
+    },
   },
   {
     slug: 'merge-pdf',
@@ -176,6 +190,13 @@ export const featurePages: FeaturePageData[] = [
       { href: '/blog/how-to-merge-pdf-files', title: 'How to Merge PDF Files' },
       { href: '/blog/how-to-merge-pdfs-locally-for-legal-and-finance-teams', title: 'How to Merge PDFs Locally for Legal and Finance Teams' },
     ],
+    monetizationBlock: {
+      eyebrow: 'Free vs Pro',
+      title: 'Free for quick tasks. Pro for recurring PDF work.',
+      body: 'Use Merge PDF for fast one-off packet assembly. Upgrade when merge becomes part of a recurring workflow with bigger files, more pages, and broader PDF work across Studio.',
+      primaryCtaLabel: 'See Pro plans',
+      secondaryCtaLabel: 'Open Merge PDF',
+    },
   },
   {
     slug: 'ocr-pdf',
@@ -247,6 +268,13 @@ export const featurePages: FeaturePageData[] = [
       { href: '/blog/ocr-pdf-extract-text', title: 'OCR PDF: Extract Text from Scanned Documents' },
       { href: '/blog/pdf-security-best-practices', title: 'PDF Security Best Practices' },
     ],
+    monetizationBlock: {
+      eyebrow: 'Free vs Pro',
+      title: 'Free for quick tasks. Pro for recurring PDF work.',
+      body: 'Use OCR PDF when you need to unlock one scan fast. Upgrade when OCR becomes part of recurring document handling, larger files, and broader PDF workflows inside Studio.',
+      primaryCtaLabel: 'See Pro plans',
+      secondaryCtaLabel: 'Open OCR PDF',
+    },
   },
   {
     slug: 'compress-pdf',
@@ -318,6 +346,13 @@ export const featurePages: FeaturePageData[] = [
       { href: '/blog/compress-pdf-without-losing-quality', title: 'How to Compress PDF Files Without Losing Quality' },
       { href: '/blog/how-to-merge-pdf-files', title: 'How to Merge PDF Files' },
     ],
+    monetizationBlock: {
+      eyebrow: 'Free vs Pro',
+      title: 'Free for quick tasks. Pro for recurring PDF work.',
+      body: 'Use Compress PDF for quick size reduction before a send, upload, or archive step. Upgrade when compression becomes recurring work across larger documents and the rest of your PDF stack.',
+      primaryCtaLabel: 'See Pro plans',
+      secondaryCtaLabel: 'Open Compress PDF',
+    },
   },
   {
     slug: 'split-pdf',

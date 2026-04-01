@@ -4,15 +4,15 @@ import MarketingLayout from '../layouts/MarketingLayout.astro';
 
 <MarketingLayout
   title="Pricing - LocalPDF"
-  description="Simple and transparent pricing for LocalPDF. Free for everyday use, Pro for unlimited Studio work."
+  description="Simple and transparent pricing for LocalPDF. Free for quick tasks, Pro for recurring PDF work."
 >
   <main class="pricing-page">
     <div class="pricing-shell">
       <header class="pricing-header">
         <p class="eyebrow">Pricing</p>
-        <h1>Free for basics. Pro for real work.</h1>
+        <h1>Free for quick tasks. Pro for recurring PDF work.</h1>
         <p class="subtitle">
-          Keep your files local, stay productive in Studio, and upgrade only when you need unlimited workspaces or larger documents.
+          Keep your files local, move fast on one-off jobs, and upgrade when PDF work becomes recurring enough to need unlimited workspaces, larger documents, and full Studio access.
         </p>
       </header>
 
@@ -22,7 +22,7 @@ import MarketingLayout from '../layouts/MarketingLayout.astro';
             <p class="plan-kicker">Free</p>
             <h2>$0</h2>
             <p class="plan-period">Forever</p>
-            <p class="plan-summary">Best for occasional local PDF work.</p>
+            <p class="plan-summary">Best for quick, occasional PDF tasks on your device.</p>
           </div>
           <ul class="feature-list">
             <li>Up to 3 Studio workspaces</li>
@@ -39,7 +39,7 @@ import MarketingLayout from '../layouts/MarketingLayout.astro';
             <p class="plan-kicker">Pro</p>
             <h2>$3.99</h2>
             <p class="plan-period">per month</p>
-            <p class="plan-summary">Unlimited Studio workspaces and documents.</p>
+            <p class="plan-summary">Built for recurring PDF work without workspace or document limits.</p>
           </div>
           <ul class="feature-list">
             <li>Unlimited Studio workspaces</li>
@@ -104,7 +104,6 @@ import MarketingLayout from '../layouts/MarketingLayout.astro';
 
 <script>
   import { openCheckout, resolveCheckoutUrl } from '../../../src/app/react/billing';
-  import { trackMonetizationEvent } from '../../../src/app/react/monetization-telemetry';
   import { BillingService } from '../../../src/app/platform/billing-service';
 
   const billingService = new BillingService('v6_subscription_jwt', import.meta.env.VITE_PUBLIC_JWT_KEY);

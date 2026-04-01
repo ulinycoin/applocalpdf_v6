@@ -107,9 +107,9 @@ export function UxFeedbackOverlay() {
       {upsell && (
         <div className="ux-upsell-overlay">
           <div className="ux-upsell-modal">
-            <h3 className="ux-upsell-title">Upgrade required</h3>
+            <h3 className="ux-upsell-title">Free for quick tasks. Pro for recurring PDF work.</h3>
             <p className="ux-upsell-reason">{upsell.reason}</p>
-            <p className="ux-upsell-tool">Tool: {upsell.toolId}</p>
+            <p className="ux-upsell-tool">You’re in {upsell.toolId}. Upgrade when this becomes part of recurring PDF work instead of a one-off task.</p>
             <div className="ux-upsell-actions">
               <button className="btn-ghost" onClick={() => setUpsell(null)}>
                 Close

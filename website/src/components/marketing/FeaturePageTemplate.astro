@@ -238,6 +238,20 @@ const schema = [
       </section>
     )}
 
+    {page.monetizationBlock && (
+      <section class="section monetization-section">
+        <div class="monetization-copy">
+          {page.monetizationBlock.eyebrow && <span class="section-eyebrow">{page.monetizationBlock.eyebrow}</span>}
+          <h2 class="section-title">{page.monetizationBlock.title}</h2>
+          <p class="section-intro">{page.monetizationBlock.body}</p>
+        </div>
+        <div class="monetization-actions">
+          <a class="btn-primary" href="/pricing">{page.monetizationBlock.primaryCtaLabel ?? 'See Pro plans'}</a>
+          <a class="btn-secondary" href={appUrl}>{page.monetizationBlock.secondaryCtaLabel ?? 'Open LocalPDF'}</a>
+        </div>
+      </section>
+    )}
+
     <section class="section objection-section">
       <div class="objection-copy">
         <h2 class="section-title">{page.objectionTitle}</h2>
@@ -464,6 +478,34 @@ const schema = [
     gap: 20px;
   }
 
+  .section-eyebrow {
+    display: inline-block;
+    margin-bottom: 12px;
+    color: #8a572d;
+    font-weight: 800;
+    font-size: 0.84rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+
+  .monetization-section {
+    display: grid;
+    grid-template-columns: 1.2fr 0.8fr;
+    gap: 20px;
+    align-items: center;
+    padding: 28px;
+    border: 1px solid var(--line);
+    border-radius: 28px;
+    background: linear-gradient(180deg, rgba(243, 201, 146, 0.18), rgba(255, 253, 249, 0.98));
+    box-shadow: var(--shadow);
+  }
+
+  .monetization-actions {
+    display: grid;
+    gap: 12px;
+    align-content: center;
+  }
+
   .objection-section {
     display: grid;
     grid-template-columns: 1fr 0.95fr;
@@ -531,7 +573,8 @@ const schema = [
     .faq-grid,
     .outcome-section,
     .objection-section,
-    .related-grid {
+    .related-grid,
+    .monetization-section {
       grid-template-columns: 1fr;
     }
   }
