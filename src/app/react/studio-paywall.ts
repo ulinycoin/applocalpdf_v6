@@ -1,5 +1,5 @@
 import type { TelemetrySink } from '../../core/public';
-import { openBillingPlans } from './billing';
+import { trackMonetizationEvent } from './monetization-telemetry';
 
 export function showStudioPaywall(
   telemetry: TelemetrySink,
@@ -14,7 +14,15 @@ export function showStudioPaywall(
     reason,
   });
 
-
+  trackMonetizationEvent('paywall_shown', {
+    source: 'studio_paywall',
+    toolId: 'studio',
+    trigger: 'upsell_guardrail',
+    reason,
+    userState: 'local',
+    hadPriorSuccessfulRun: false,
+    flowId: runId,
+  });
 
   return runId;
 }

@@ -1,3 +1,5 @@
+import { trackMonetizationEvent } from './monetization-telemetry';
+
 const DEFAULT_BILLING_PATH = '/pricing';
 
 function isAbsoluteHttpUrl(value: string): boolean {
@@ -35,7 +37,15 @@ export function openBillingPlans(rawValue: string | undefined): string {
   return destination;
 }
 
-export function openCheckout(checkoutUrl: string | undefined): void {
+export function openCheckout(checkoutUrl: string | undefined, options?: {
+  source?: string;
+  trigger?: string;
+  plan?: string;
+  variant?: string;
+  userState?: 'anonymous' | 'signed_in' | 'local';
+  hadPriorSuccessfulRun?: boolean;
+  flowId?: string;
+}): void {
   if (typeof window === 'undefined') {
     return;
   }
@@ -44,6 +54,18 @@ export function openCheckout(checkoutUrl: string | undefined): void {
   if (!safeCheckoutUrl) {
     return;
   }
+
+  trackMonetizationEvent('checkout_opened', {
+    source: options?.source ?? 'billing',
+    trigger: options?.trigger,
+    checkoutUrl: safeCheckoutUrl,
+    destination: safeCheckoutUrl,
+    plan: options?.plan,
+    variant: options?.variant,
+    userState: options?.userState ?? 'local',
+    hadPriorSuccessfulRun: options?.hadPriorSuccessfulRun,
+    flowId: options?.flowId,
+  });
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const ls = (window as any).LemonSqueezy;

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { usePlatform } from './platform-context';
 import type { RunnerTelemetryEvent } from '../../core/public/contracts';
 import { openBillingPlans } from './billing';
+import { trackMonetizationEvent } from './monetization-telemetry';
 
 interface UiToastItem {
   id: string;
@@ -122,6 +123,15 @@ export function UxFeedbackOverlay() {
                     runId: upsell.runId,
                     toolId: upsell.toolId,
                     destination,
+                  });
+                  trackMonetizationEvent('paywall_cta_clicked', {
+                    source: 'upsell_overlay',
+                    toolId: upsell.toolId,
+                    trigger: 'view_plans',
+                    destination,
+                    userState: 'local',
+                    hadPriorSuccessfulRun: false,
+                    flowId: upsell.runId,
                   });
                   setUpsell(null);
                 }}

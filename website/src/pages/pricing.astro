@@ -104,18 +104,27 @@ import MarketingLayout from '../layouts/MarketingLayout.astro';
 
 <script>
   import { openCheckout, resolveCheckoutUrl } from '../../../src/app/react/billing';
+  import { trackMonetizationEvent } from '../../../src/app/react/monetization-telemetry';
   import { BillingService } from '../../../src/app/platform/billing-service';
 
   const billingService = new BillingService('v6_subscription_jwt', import.meta.env.VITE_PUBLIC_JWT_KEY);
 
-  function setupCheckout(buttonId: string) {
+  function setupCheckout(buttonId: string, variant: 'monthly' | 'yearly') {
     const btn = document.getElementById(buttonId);
     if (!btn) return;
 
     const checkoutUrl = resolveCheckoutUrl(btn.getAttribute('data-checkout-url') ?? undefined);
     btn.addEventListener('click', () => {
       if (checkoutUrl) {
-        openCheckout(checkoutUrl);
+        openCheckout(checkoutUrl, {
+          source: 'pricing_page',
+          trigger: buttonId,
+          plan: 'pro',
+          variant,
+          userState: 'local',
+          hadPriorSuccessfulRun: false,
+          flowId: buttonId,
+        });
         return;
       }
       console.error('Missing or invalid LemonSqueezy checkout URL');
@@ -123,8 +132,8 @@ import MarketingLayout from '../layouts/MarketingLayout.astro';
     });
   }
 
-  setupCheckout('buy-pro-monthly');
-  setupCheckout('buy-pro-yearly');
+  setupCheckout('buy-pro-monthly', 'monthly');
+  setupCheckout('buy-pro-yearly', 'yearly');
 
   const restoreBtn = document.getElementById('restore-license-btn') as HTMLButtonElement | null;
   const licenseInput = document.getElementById('license-key-input') as HTMLInputElement | null;
