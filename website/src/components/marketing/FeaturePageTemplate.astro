@@ -14,25 +14,6 @@ const relatedPages = featurePages.filter((item) => item.slug !== page.slug).slic
 const schema = [
   {
     '@context': 'https://schema.org',
-    '@type': 'SoftwareApplication',
-    name: 'LocalPDF',
-    applicationCategory: 'BusinessApplication',
-    operatingSystem: 'Web',
-    description: page.metaDescription,
-    url: canonical,
-    offers: {
-      '@type': 'Offer',
-      price: '0',
-      priceCurrency: 'USD',
-    },
-    featureList: [...page.capabilities, ...page.useCases],
-    audience: {
-      '@type': 'Audience',
-      audienceType: 'Users who need privacy-first PDF workflows for sensitive or practical document handling',
-    },
-  },
-  {
-    '@context': 'https://schema.org',
     '@type': 'WebPage',
     name: page.metaTitle,
     description: page.metaDescription,
@@ -75,27 +56,6 @@ const schema = [
         '@type': 'Answer',
         text: item.answer,
       },
-    })),
-  },
-  {
-    '@context': 'https://schema.org',
-    '@type': 'HowTo',
-    name: `${page.eyebrow} with LocalPDF`,
-    description: page.metaDescription,
-    totalTime: 'PT3M',
-    supply: [{
-      '@type': 'HowToSupply',
-      name: 'PDF file on your device',
-    }],
-    tool: [{
-      '@type': 'HowToTool',
-      name: 'LocalPDF',
-    }],
-    step: page.howItWorks.map((step, index) => ({
-      '@type': 'HowToStep',
-      position: index + 1,
-      name: step,
-      text: step,
     })),
   },
 ];

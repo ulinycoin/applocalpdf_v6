@@ -279,7 +279,7 @@ export const featurePages: FeaturePageData[] = [
   {
     slug: 'compress-pdf',
     title: 'Compress PDF files locally before sending or archiving them',
-    metaTitle: 'Compress PDF Files Locally Before Sending or Uploading | LocalPDF',
+    metaTitle: 'Compress PDF Files Locally | LocalPDF',
     metaDescription: 'Compress PDF files locally with LocalPDF before sharing, uploading, or archiving large documents.',
     socialImage: 'https://localpdf.online/og/compress-pdf.svg',
     intro: 'Compression is a practical workflow. It should be fast, predictable, and not require an upload loop before you can send a file.',
@@ -499,7 +499,7 @@ export const featurePages: FeaturePageData[] = [
   {
     slug: 'convert-pdf',
     title: 'Convert PDFs and related document formats in one local workflow',
-    metaTitle: 'Convert PDF, Word, and Image Formats in One Local Workflow | LocalPDF',
+    metaTitle: 'Convert PDF, Word, and Image Files | LocalPDF',
     metaDescription: 'Convert PDF, Word, and image formats in one LocalPDF workflow, including PDF to Word, Word to PDF, and PDF to image paths.',
     socialImage: 'https://localpdf.online/og/convert-pdf.svg',
     intro: 'Use Convert PDF when you need PDF to Word, Word to PDF, PDF to image, or image to PDF conversion without leaving the main workflow.',
