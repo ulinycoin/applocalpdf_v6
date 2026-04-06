@@ -7,6 +7,12 @@ const description = 'Compare LocalPDF vs PDFescape for privacy-first positioning
 const canonical = 'https://localpdf.online/compare/localpdf-vs-pdfescape';
 const image = 'https://localpdf.online/og/home.svg';
 const appUrl = getAppUrl();
+
+const comparisonRows = [
+  ['Handling model', 'Local-first browser handling', 'Lightweight browser editing'],
+  ['Target use case', 'Contracts, invoices, internal PDFs', 'General browser-based PDF edits'],
+  ['Brand positioning', 'Privacy-first PDF category', 'Longstanding browser utility brand'],
+];
 ---
 
 <MarketingLayout title={title} description={description} canonical={canonical} image={image}>
@@ -17,11 +23,34 @@ const appUrl = getAppUrl();
       <p class="section-intro">PDFescape is a known browser PDF brand, but LocalPDF makes more sense when you want to handle contracts, invoices, and internal documents in a simpler browser workflow that stays closer to the file.</p>
       <div class="cta-row"><a class="btn-primary" href={appUrl}>Open LocalPDF</a><a class="btn-secondary" href="/security">Read Security</a></div>
     </section>
+    <section class="section">
+      <h2 class="section-title">Quick comparison</h2>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Feature</th><th>LocalPDF</th><th>PDFescape</th></tr>
+          </thead>
+          <tbody>
+            {comparisonRows.map((row) => (
+              <tr>
+                <td>{row[0]}</td>
+                <td>{row[1]}</td>
+                <td>{row[2]}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
     <section class="section card-grid">
-      <article class="card"><h3>Choose LocalPDF when</h3><p>You want local-first handling, clearer trust pages, and a workflow better suited to contracts, invoices, and internal PDFs.</p></article>
-      <article class="card"><h3>Choose PDFescape when</h3><p>You mainly need lightweight browser editing and are less focused on privacy-first workflow positioning.</p></article>
       <article class="card"><h3>Main difference</h3><p>PDFescape is a longstanding browser utility brand; LocalPDF is the better category fit for privacy-first PDF work.</p></article>
     </section>
   </div>
 </MarketingLayout>
-<style>.compare-shell h1{font-size:clamp(3rem,5vw,4.8rem);margin-top:18px;margin-bottom:18px;}</style>
+<style>
+  .compare-shell h1{font-size:clamp(3rem,5vw,4.8rem);margin-top:18px;margin-bottom:18px;}
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; background: var(--surface); border-radius: 18px; overflow: hidden; }
+  th, td { border: 1px solid var(--line); padding: 14px; text-align: left; vertical-align: top; }
+  th { background: rgba(217, 235, 225, 0.45); }
+</style>

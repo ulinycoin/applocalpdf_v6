@@ -8,6 +8,12 @@ const canonical = 'https://localpdf.online/compare/localpdf-vs-sejda';
 const image = 'https://localpdf.online/og/home.svg';
 const appUrl = getAppUrl();
 
+const comparisonRows = [
+  ['Primary focus', 'Privacy-first, local-browser workflows', 'Education-led, general-purpose PDF tools'],
+  ['Best fit', 'Contracts, invoices, internal records', 'General PDF tasks with high content guidance'],
+  ['Product structure', 'Workspace-style app experience', 'Broad directory of online utilities'],
+];
+
 const schema = [
   {
     '@context': 'https://schema.org',
@@ -53,23 +59,27 @@ const schema = [
       </div>
     </section>
 
+    <section class="section">
+      <h2 class="section-title">Quick comparison</h2>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Feature</th><th>LocalPDF</th><th>Sejda</th></tr>
+          </thead>
+          <tbody>
+            {comparisonRows.map((row) => (
+              <tr>
+                <td>{row[0]}</td>
+                <td>{row[1]}</td>
+                <td>{row[2]}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
+
     <section class="section card-grid">
-      <article class="card">
-        <h3>Where LocalPDF wins</h3>
-        <ul class="bullet-list">
-          <li>Better when the file is sensitive and you want to keep the job closer to your device</li>
-          <li>Simpler fit for contracts, invoices, scans, and internal documents</li>
-          <li>Less like a tool directory and more like one working space</li>
-        </ul>
-      </article>
-      <article class="card">
-        <h3>Where Sejda wins</h3>
-        <ul class="bullet-list">
-          <li>Strong how-to and workflow content depth</li>
-          <li>More mature general-purpose educational content footprint</li>
-          <li>Broader recognition for online PDF help content</li>
-        </ul>
-      </article>
       <article class="card">
         <h3>Best decision rule</h3>
         <p>If privacy and local handling are part of the workflow requirement, LocalPDF is the better fit. If content breadth is the main factor, Sejda remains strong.</p>
@@ -89,4 +99,8 @@ const schema = [
 
 <style>
   .compare-shell h1 { font-size: clamp(3rem, 5vw, 4.8rem); margin-top: 18px; margin-bottom: 18px; }
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; background: var(--surface); border-radius: 18px; overflow: hidden; }
+  th, td { border: 1px solid var(--line); padding: 14px; text-align: left; vertical-align: top; }
+  th { background: rgba(217, 235, 225, 0.45); }
 </style>

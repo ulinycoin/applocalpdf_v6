@@ -34,7 +34,14 @@ export default defineConfig({
   integrations: [
     mdx(),
     sitemap({
-      filter: (page) => !sitemapBlockedPaths.has(page) && (sitemapAllowList.has(page) || page.startsWith('https://localpdf.online/blog/')),
+      filter: (page) => 
+        !sitemapBlockedPaths.has(page) && 
+        (
+          sitemapAllowList.has(page) || 
+          page.startsWith('https://localpdf.online/blog/') ||
+          page.includes('/compare/') ||
+          page.includes('/use-cases/')
+        ),
     })
   ],
   output: 'static',

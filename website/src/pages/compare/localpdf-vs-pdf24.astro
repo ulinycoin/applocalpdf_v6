@@ -7,6 +7,12 @@ const description = 'Compare LocalPDF vs PDF24 for workflow style and which one 
 const canonical = 'https://localpdf.online/compare/localpdf-vs-pdf24';
 const image = 'https://localpdf.online/og/home.svg';
 const appUrl = getAppUrl();
+
+const comparisonRows = [
+  ['Category focus', 'Browser-based local-first workflow', 'Traditional utility toolkit'],
+  ['Primary strengths', 'Privacy-first positioning', 'Utility breadth and free-tool coverage'],
+  ['Best for', 'Contracts, invoices, internal records', 'General everyday PDF tasks'],
+];
 ---
 
 <MarketingLayout title={title} description={description} canonical={canonical} image={image}>
@@ -17,12 +23,34 @@ const appUrl = getAppUrl();
       <p class="section-intro">PDF24 is a broad utility toolkit with strong free-tool coverage. LocalPDF is a more opinionated privacy-first product for users who want local-first browser workflows for sensitive PDF work.</p>
       <div class="cta-row"><a class="btn-primary" href={appUrl}>Open LocalPDF</a><a class="btn-secondary" href="/private-pdf-editor">Private PDF editor</a></div>
     </section>
+    <section class="section">
+      <h2 class="section-title">Quick comparison</h2>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Feature</th><th>LocalPDF</th><th>PDF24</th></tr>
+          </thead>
+          <tbody>
+            {comparisonRows.map((row) => (
+              <tr>
+                <td>{row[0]}</td>
+                <td>{row[1]}</td>
+                <td>{row[2]}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
     <section class="section card-grid">
-      <article class="card"><h3>Choose LocalPDF when</h3><p>You want a browser-based local-first workflow for contracts, invoices, internal records, or trust-heavy PDF work.</p></article>
-      <article class="card"><h3>Choose PDF24 when</h3><p>You want a broad utility stack and are comfortable with a more traditional toolkit approach.</p></article>
       <article class="card"><h3>Main difference</h3><p>PDF24 wins on utility breadth; LocalPDF wins on privacy-first browser workflow positioning.</p></article>
     </section>
   </div>
 </MarketingLayout>
-<style>.compare-shell h1{font-size:clamp(3rem,5vw,4.8rem);margin-top:18px;margin-bottom:18px;}</style>
-8px;margin-bottom:18px;}</style>
+<style>
+  .compare-shell h1{font-size:clamp(3rem,5vw,4.8rem);margin-top:18px;margin-bottom:18px;}
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; background: var(--surface); border-radius: 18px; overflow: hidden; }
+  th, td { border: 1px solid var(--line); padding: 14px; text-align: left; vertical-align: top; }
+  th { background: rgba(217, 235, 225, 0.45); }
+</style>
