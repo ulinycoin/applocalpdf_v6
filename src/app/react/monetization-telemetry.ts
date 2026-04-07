@@ -1,5 +1,3 @@
-import { getTelemetryBrowserContext } from '../../core/telemetry/browser-context';
-
 declare global {
   interface Window {
     posthog?: {

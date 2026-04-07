@@ -9,7 +9,7 @@ import type { IPipelineRecipe } from '../../v6/studio/pipeline/types';
 import { openBillingPlans } from './billing';
 import { canAddDocumentToStudio } from '../platform/plan-limits';
 import { showStudioPaywall } from './studio-paywall';
-import { getOrCreateFlowId } from '../../core/telemetry/browser-context';
+import { getOrCreateFlowId } from '../platform/browser-context';
 
 const DEFAULT_MARKETING_SITE_URL = 'http://127.0.0.1:4321';
 

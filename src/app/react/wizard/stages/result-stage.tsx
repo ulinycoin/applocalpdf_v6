@@ -1,6 +1,6 @@
 import { usePlatform } from '../../platform-context';
 import { downloadOutputFiles } from '../../../platform/download-output-files';
-import { getOrCreateFlowId } from '../../../../core/telemetry/browser-context';
+import { getOrCreateFlowId } from '../../../platform/browser-context';
 
 interface ResultStageProps {
     outputIds: string[];
