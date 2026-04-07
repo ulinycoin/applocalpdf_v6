@@ -41,6 +41,45 @@ export class PostHogTelemetrySink implements TelemetrySink {
     // PostHog Tracking for detailed action data
     if (window.posthog) {
       switch (event.type) {
+        case 'APP_SESSION_ATTRIBUTED':
+          window.posthog.capture('app_session_attributed', {
+            flow_id: event.flowId,
+            entry_url: event.entryUrl,
+            entry_path: event.entryPath,
+            referrer: event.referrer,
+            referring_domain: event.referringDomain,
+            utm_source: event.utmSource,
+            utm_medium: event.utmMedium,
+            utm_campaign: event.utmCampaign,
+          });
+          break;
+        case 'APP_FILE_UPLOADED':
+          window.posthog.capture('app_file_uploaded', {
+            flow_id: event.flowId,
+            tool_id: event.toolId,
+            file_count: event.fileCount,
+            mime_category: event.mimeCategory,
+            total_bytes: event.totalBytes,
+            source: event.source,
+          });
+          break;
+        case 'OUTPUT_DOWNLOADED':
+          window.posthog.capture('app_output_downloaded', {
+            flow_id: event.flowId,
+            run_id: event.runId,
+            tool_id: event.toolId,
+            output_count: event.outputCount,
+            surface: event.surface,
+          });
+          break;
+        case 'TOOL_RUN_ABANDONED':
+          window.posthog.capture('app_tool_run_abandoned', {
+            flow_id: event.flowId,
+            run_id: event.runId,
+            tool_id: event.toolId,
+            reason: event.reason,
+          });
+          break;
         case 'TOOL_RUN_STARTED':
           window.posthog.capture('app_tool_run_started', {
             tool_id: event.toolId,

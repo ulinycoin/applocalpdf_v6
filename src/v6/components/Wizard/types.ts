@@ -63,7 +63,7 @@ export interface UseWizardFlowResult {
   handleFilesAdded: (files: File[]) => Promise<void>;
   hydrateFromFileIds: (fileIds: string[]) => Promise<void>;
   startProcessing: (options?: Record<string, unknown>) => Promise<void>;
-  cancelProcessing: () => void;
+  cancelProcessing: (reason?: 'cancel' | 'navigation' | 'pagehide' | 'visibility_hidden') => void;
   resetFlow: (deleteInputs?: boolean) => Promise<void>;
   retryConfigLoad: () => void;
   dismissToast: () => void;

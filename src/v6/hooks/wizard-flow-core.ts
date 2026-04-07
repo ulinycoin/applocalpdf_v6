@@ -1,4 +1,5 @@
 import type { PlatformRuntime } from '../../app/platform/create-platform';
+import { getOrCreateFlowId } from '../../app/platform/browser-context';
 import type { IWorkerCommand, ToolRunContext } from '../../core/public/contracts';
 import { isVfsQuotaExceededError } from '../../app/platform/error-utils';
 import type { LimitService, WizardState } from '../components/Wizard/types';
@@ -25,6 +26,20 @@ function toErrorMessage(error: unknown, fallback: string): string {
 
 function isQuotaExceededError(error: unknown): boolean {
   return isVfsQuotaExceededError(error);
+}
+
+function getMimeCategory(files: File[]): string {
+  const first = files.find((file) => typeof file.type === 'string' && file.type.trim().length > 0);
+  if (!first) {
+    return 'unknown';
+  }
+  if (first.type === 'application/pdf') {
+    return 'pdf';
+  }
+  if (first.type.startsWith('image/')) {
+    return 'image';
+  }
+  return first.type.split('/')[0] || 'unknown';
 }
 
 async function deleteMany(fileIds: string[], removeById: (fileId: string) => Promise<void>): Promise<void> {
@@ -59,7 +74,20 @@ export class WizardFlowCore {
     return this.state;
   }
 
-  cancelProcessing(): void {
+  cancelProcessing(reason: 'cancel' | 'navigation' | 'pagehide' | 'visibility_hidden' = 'cancel'): void {
+    if (this.state.currentRunId) {
+      this.deps.runtime.telemetry.track({
+        type: 'TOOL_RUN_ABANDONED',
+        flowId: getOrCreateFlowId(),
+        runId: this.state.currentRunId,
+        toolId: this.deps.toolId,
+        reason,
+      });
+      this.state = {
+        ...this.state,
+        currentRunId: null,
+      };
+    }
     this.abortController?.abort();
   }
 
@@ -158,6 +186,15 @@ export class WizardFlowCore {
         isValidating: false,
         error: null,
       };
+      this.deps.runtime.telemetry.track({
+        type: 'APP_FILE_UPLOADED',
+        flowId: getOrCreateFlowId(),
+        toolId: this.deps.toolId,
+        fileCount: writtenFileIds.length,
+        mimeCategory: getMimeCategory(files),
+        totalBytes: files.reduce((sum, file) => sum + file.size, 0),
+        source: 'wizard',
+      });
       return this.state;
     } catch (error) {
       await deleteMany(writtenFileIds, async (fileId) => {
@@ -259,6 +296,7 @@ export class WizardFlowCore {
     const effectiveInputIds = overrideInputIds && overrideInputIds.length > 0 ? overrideInputIds : this.state.fileIds;
 
     const controller = new AbortController();
+    const runId = crypto.randomUUID();
     this.abortController = controller;
 
     this.state = {
@@ -266,11 +304,12 @@ export class WizardFlowCore {
       step: 'processing',
       progress: 0,
       isProcessing: true,
+      currentRunId: runId,
       error: null,
     };
 
     const command: IWorkerCommand = {
-      id: crypto.randomUUID(),
+      id: runId,
       type: 'COMMAND',
       payload: {
         type: 'PROCESS_TOOL',
@@ -303,6 +342,7 @@ export class WizardFlowCore {
         step: 'config',
         isProcessing: false,
         progress: 0,
+        currentRunId: null,
         error: 'Processing canceled',
       };
       return this.state;
@@ -314,6 +354,7 @@ export class WizardFlowCore {
         step: 'config',
         isProcessing: false,
         progress: 0,
+        currentRunId: null,
         error: payload.payload.message,
       };
       return this.state;
@@ -325,6 +366,7 @@ export class WizardFlowCore {
         step: 'config',
         isProcessing: false,
         progress: 0,
+        currentRunId: null,
         error: 'Unexpected worker event',
       };
       return this.state;
@@ -336,6 +378,7 @@ export class WizardFlowCore {
       outputIds: payload.payload.outputIds,
       isProcessing: false,
       progress: 100,
+      currentRunId: null,
       error: null,
     };
     return this.state;

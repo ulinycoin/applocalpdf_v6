@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { createContext, useContext, useEffect, useMemo } from 'react';
 import { bootstrapPlatform, type PlatformBootstrap } from '../platform/bootstrap';
+import { buildSessionAttributedEvent } from '../platform/browser-context';
 import type { WorkerPdfTextLayerSpan } from '../../core/public/contracts';
 
 const PlatformContext = createContext<PlatformBootstrap | null>(null);
@@ -10,6 +11,7 @@ export function PlatformProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     value.runtime.billing.initialize().catch(console.error);
+    value.runtime.telemetry.track(buildSessionAttributedEvent());
     
     if (typeof window === 'undefined') {
       return;

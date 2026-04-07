@@ -56,9 +56,31 @@ export function useWizardFlow(toolId: string, options: WizardFlowOptions): UseWi
   useEffect(() => {
     setState(core.getState());
     return () => {
-      core.cancelProcessing();
+      core.cancelProcessing('navigation');
     };
   }, [core]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || !state.isProcessing || !state.currentRunId) {
+      return;
+    }
+
+    const handlePageHide = () => {
+      core.cancelProcessing('pagehide');
+    };
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') {
+        core.cancelProcessing('visibility_hidden');
+      }
+    };
+
+    window.addEventListener('pagehide', handlePageHide);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      window.removeEventListener('pagehide', handlePageHide);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [core, state.currentRunId, state.isProcessing]);
 
   const configComponent = useMemo(() => {
     const toolDef = runtime.registry.get(toolId);
@@ -98,8 +120,8 @@ export function useWizardFlow(toolId: string, options: WizardFlowOptions): UseWi
     [core],
   );
 
-  const cancelProcessing = useCallback(() => {
-    core.cancelProcessing();
+  const cancelProcessing = useCallback((reason: 'cancel' | 'navigation' | 'pagehide' | 'visibility_hidden' = 'cancel') => {
+    core.cancelProcessing(reason);
   }, [core]);
 
   const dismissToast = useCallback(() => {
@@ -129,4 +151,3 @@ export function useWizardFlow(toolId: string, options: WizardFlowOptions): UseWi
     dismissUpsell,
   };
 }
-

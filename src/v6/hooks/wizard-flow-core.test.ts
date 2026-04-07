@@ -15,6 +15,7 @@ function createRuntime(params?: {
   dispatchImpl?: WorkerOrchestrator['dispatch'];
 }) {
   let index = 0;
+  const telemetryEvents: unknown[] = [];
   const runtime = {
     vfs: {
       write: params?.writeImpl ?? (async () => ({ id: `file-${++index}` })),
@@ -33,9 +34,12 @@ function createRuntime(params?: {
           return { id: 'x', type: 'EVENT', payload: { type: 'RESULT', payload: { outputIds: ['out-1'] } } };
         }),
     },
+    telemetry: {
+      track: (event: unknown) => telemetryEvents.push(event),
+    },
   };
 
-  return runtime as any;
+  return { runtime: runtime as any, telemetryEvents };
 }
 
 const allowAllLimitService: LimitService = {
@@ -44,7 +48,7 @@ const allowAllLimitService: LimitService = {
 
 test('WizardFlowCore: quota error keeps step on upload and emits toast', async () => {
   const toasts: string[] = [];
-  const runtime = createRuntime({
+  const { runtime } = createRuntime({
     writeImpl: async () => {
       throw new VfsQuotaExceededError('VFS total quota exceeded');
     },
@@ -69,7 +73,7 @@ test('WizardFlowCore: quota error keeps step on upload and emits toast', async (
 
 test('WizardFlowCore: limit fail cleans uploaded files and shows upsell', async () => {
   const deletedIds: string[] = [];
-  const runtime = createRuntime({
+  const { runtime } = createRuntime({
     deleteImpl: async (id) => {
       deletedIds.push(id);
     },
@@ -94,8 +98,41 @@ test('WizardFlowCore: limit fail cleans uploaded files and shows upsell', async 
   assert.deepEqual(deletedIds.sort(), ['file-1', 'file-2']);
 });
 
+test('WizardFlowCore: successful upload emits APP_FILE_UPLOADED telemetry', async () => {
+  const { runtime, telemetryEvents } = createRuntime();
+  const core = new WizardFlowCore({
+    runtime,
+    toolId: 'merge-pdf',
+    context: { userId: 'u1', plan: 'pro', entitlements: ['pdf.merge'] },
+    limitService: allowAllLimitService,
+  });
+
+  await core.handleFilesAdded([createFile('a'), createFile('b')]);
+
+  const event = telemetryEvents[0] as {
+    type: 'APP_FILE_UPLOADED';
+    flowId: string;
+    toolId: string;
+    fileCount: number;
+    mimeCategory: string;
+    totalBytes: number;
+    source: 'wizard';
+  };
+
+  assert.equal(telemetryEvents.length, 1);
+  assert.deepEqual(event, {
+    type: 'APP_FILE_UPLOADED',
+    flowId: event.flowId,
+    toolId: 'merge-pdf',
+    fileCount: 2,
+    mimeCategory: 'pdf',
+    totalBytes: createFile('a').size + createFile('b').size,
+    source: 'wizard',
+  });
+});
+
 test('WizardFlowCore: cancelProcessing moves flow back to config with canceled error', async () => {
-  const runtime = createRuntime({
+  const { runtime } = createRuntime({
     dispatchImpl: async (_command, _onEvent, signal) =>
       new Promise((resolve) => {
         signal?.addEventListener('abort', () => {
@@ -126,8 +163,51 @@ test('WizardFlowCore: cancelProcessing moves flow back to config with canceled e
   assert.equal(state.error, 'Processing canceled');
 });
 
+test('WizardFlowCore: cancelProcessing emits TOOL_RUN_ABANDONED telemetry', async () => {
+  const { runtime, telemetryEvents } = createRuntime({
+    dispatchImpl: async (_command, _onEvent, signal) =>
+      new Promise((resolve) => {
+        signal?.addEventListener('abort', () => {
+          resolve({
+            id: 'run-1',
+            type: 'EVENT',
+            payload: { type: 'ERROR', payload: { code: 'WORKER_ABORTED', message: 'Worker execution aborted' } },
+          });
+        });
+      }),
+  });
+
+  const core = new WizardFlowCore({
+    runtime,
+    toolId: 'merge-pdf',
+    context: { userId: 'u1', plan: 'pro', entitlements: ['pdf.merge'] },
+    limitService: allowAllLimitService,
+  });
+
+  await core.handleFilesAdded([createFile('a')]);
+  const processingPromise = core.startProcessing({});
+  core.cancelProcessing('cancel');
+  await processingPromise;
+
+  const abandonment = telemetryEvents.find((event) => (event as { type?: string }).type === 'TOOL_RUN_ABANDONED') as
+    | {
+        type: 'TOOL_RUN_ABANDONED';
+        flowId: string;
+        runId?: string;
+        toolId: string;
+        reason: 'pagehide' | 'visibility_hidden' | 'navigation' | 'cancel';
+      }
+    | undefined;
+
+  assert.ok(abandonment);
+  assert.equal(abandonment?.toolId, 'merge-pdf');
+  assert.equal(abandonment?.reason, 'cancel');
+  assert.equal(typeof abandonment?.flowId, 'string');
+  assert.equal(typeof abandonment?.runId, 'string');
+});
+
 test('WizardFlowCore: successful processing reaches result and stores outputs', async () => {
-  const runtime = createRuntime();
+  const { runtime } = createRuntime();
   const core = new WizardFlowCore({
     runtime,
     toolId: 'merge-pdf',
@@ -144,7 +224,7 @@ test('WizardFlowCore: successful processing reaches result and stores outputs', 
 });
 
 test('WizardFlowCore: worker timeout returns to config with timeout error', async () => {
-  const runtime = createRuntime({
+  const { runtime } = createRuntime({
     dispatchImpl: async () => ({
       id: 'run-timeout',
       type: 'EVENT',
@@ -169,7 +249,7 @@ test('WizardFlowCore: worker timeout returns to config with timeout error', asyn
 
 test('WizardFlowCore: retry after transient worker error succeeds', async () => {
   let attempts = 0;
-  const runtime = createRuntime({
+  const { runtime } = createRuntime({
     dispatchImpl: async () => {
       attempts += 1;
       if (attempts === 1) {

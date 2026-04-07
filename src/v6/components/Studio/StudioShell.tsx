@@ -18,6 +18,7 @@ import { StudioInPlaceEditor } from './StudioInPlaceEditor';
 import { canAddDocumentToStudio, canCreateWorkspace, canUseDocumentWithPageCount } from '../../../app/platform/plan-limits';
 import { showStudioPaywall } from '../../../app/react/studio-paywall';
 import { useHistoryStore } from './store/history-store';
+import { getOrCreateFlowId } from '../../../app/platform/browser-context';
 export interface StudioShellProps {
     onFilesDropped?: (files: File[]) => void;
 }
@@ -360,6 +361,7 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
 
     const handleIncomingFiles = useCallback(async (files: File[], fromDrop: boolean) => {
         const drafts: NewDocumentDraft[] = [];
+        const uploadedFiles: File[] = [];
         if (files.length === 0) {
             return;
         }
@@ -452,6 +454,7 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
 
                 // Clean up pdf object
                 await pdf.destroy();
+                uploadedFiles.push(file);
                 drafts.push({
                     id: crypto.randomUUID(),
                     name: file.name,
@@ -473,6 +476,19 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
             addDocument(doc);
         }
         if (positionedDocs.length > 0) {
+            runtime.telemetry.track({
+                type: 'APP_FILE_UPLOADED',
+                flowId: getOrCreateFlowId(),
+                toolId: 'studio',
+                fileCount: uploadedFiles.length,
+                mimeCategory: uploadedFiles[0]?.type.startsWith('image/')
+                  ? 'image'
+                  : uploadedFiles[0]?.type === 'application/pdf'
+                    ? 'pdf'
+                    : (uploadedFiles[0]?.type.split('/')[0] || 'unknown'),
+                totalBytes: uploadedFiles.reduce((sum, file) => sum + file.size, 0),
+                source: 'studio',
+            });
             fitToDocuments([...documents, ...positionedDocs]);
             void createCheckpoint(runtime.vfs, 'upload', `Uploaded ${positionedDocs.length} ${positionedDocs.length === 1 ? 'file' : 'files'}`);
         }

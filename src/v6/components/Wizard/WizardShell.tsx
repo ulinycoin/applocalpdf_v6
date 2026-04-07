@@ -563,7 +563,7 @@ export function WizardShell({ toolId, context, ioAdapter, limitService }: Wizard
             </div>
             <p style={{ marginTop: '0.5rem', fontWeight: 700 }}>{state.progress}%</p>
             <div className="wizard-action-row">
-              <button className="btn-danger" onClick={cancelProcessing}>
+              <button className="btn-danger" onClick={() => cancelProcessing()}>
                 <span className="btn-inline">
                   <LinearIcon name="x" className="linear-icon" />
                   Cancel
