@@ -49,7 +49,7 @@ export const featurePages: FeaturePageData[] = [
     metaDescription: 'Edit PDF text, overlays, and sensitive sections locally with LocalPDF. Change PDFs without sending the document through an upload-first editor.',
     socialImage: 'https://localpdf.online/og/edit-pdf.svg',
     intro: 'Use LocalPDF when you need to change a PDF directly without sending a sensitive file through an upload-first editor.',
-    appHash: 'edit-text',
+    appHash: 'studio',
     eyebrow: 'Edit PDF',
     capabilities: [
       'Replace or cover existing text in a PDF',
@@ -127,7 +127,7 @@ export const featurePages: FeaturePageData[] = [
     metaDescription: 'Merge PDF files with drag and drop in LocalPDF. Move pages between documents, reorder visually, and build one clean output without upload-first friction.',
     socialImage: 'https://localpdf.online/og/merge-pdf.svg',
     intro: 'Merge should feel visual. Grab pages, drag them into place, reorder the packet, and export one clean PDF without fighting menus or waiting on upload loops.',
-    appHash: 'merge',
+    appHash: 'studio',
     eyebrow: 'Merge PDF',
     capabilities: [
       'Merge PDFs by dragging pages into one output',
@@ -283,7 +283,7 @@ export const featurePages: FeaturePageData[] = [
     metaDescription: 'Compress PDF files locally with LocalPDF before sharing, uploading, or archiving large documents.',
     socialImage: 'https://localpdf.online/og/compress-pdf.svg',
     intro: 'Compression is a practical workflow. It should be fast, predictable, and not require an upload loop before you can send a file.',
-    appHash: 'compress',
+    appHash: 'studio',
     eyebrow: 'Compress PDF',
     capabilities: [
       'Reduce PDF size before sharing',
@@ -361,7 +361,7 @@ export const featurePages: FeaturePageData[] = [
     metaDescription: 'Split PDF files with LocalPDF by pulling out the pages you need. Extract, separate, and reorganize pages visually in a local-first workflow.',
     socialImage: 'https://localpdf.online/og/split-pdf.svg',
     intro: 'Use Split PDF when one document needs to become several smaller outputs and the easiest path is visual: grab the pages you need, pull them out, and export only what should leave the file.',
-    appHash: 'split',
+    appHash: 'studio',
     eyebrow: 'Split PDF',
     capabilities: [
       'Pull pages out of a PDF into smaller outputs',
@@ -432,7 +432,7 @@ export const featurePages: FeaturePageData[] = [
     metaDescription: 'Sign PDF documents locally with LocalPDF for quick approvals and lightweight document workflows.',
     socialImage: 'https://localpdf.online/og/sign-pdf.svg',
     intro: 'Signing is a trust-sensitive workflow because signatures are personal, reusable, and easy to mishandle in weak tools.',
-    appHash: 'sign',
+    appHash: 'studio',
     eyebrow: 'Sign PDF',
     capabilities: [
       'Place a signature into a PDF workflow',
@@ -503,7 +503,7 @@ export const featurePages: FeaturePageData[] = [
     metaDescription: 'Convert PDF, Word, and image formats in one LocalPDF workflow, including PDF to Word, Word to PDF, and PDF to image paths.',
     socialImage: 'https://localpdf.online/og/convert-pdf.svg',
     intro: 'Use Convert PDF when you need PDF to Word, Word to PDF, PDF to image, or image to PDF conversion without leaving the main workflow.',
-    appHash: 'pdf-to-word',
+    appHash: 'studio',
     eyebrow: 'Convert PDF',
     capabilities: [
       'Handle common PDF, Word, and image conversion workflows in one place',
