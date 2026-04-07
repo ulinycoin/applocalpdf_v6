@@ -77,6 +77,7 @@ function resolveAppAssetPath(relativePath: string): string {
 
 const TESSERACT_WORKER_PATH = resolveAppAssetPath('vendor/tesseract/worker.min.js');
 const TESSERACT_CORE_PATH = resolveAppAssetPath('vendor/tesseract/core');
+const TESSERACT_LANG_PATH = resolveAppAssetPath('vendor/tesseract/lang');
 
 function isLanguagePackError(error: unknown): boolean {
   const message = error instanceof Error ? error.message : String(error ?? '');
@@ -147,6 +148,7 @@ class TesseractOcrEngine implements OcrEngine {
     const result = await this.tesseract.recognize(blob, language, {
       workerPath: TESSERACT_WORKER_PATH,
       corePath: TESSERACT_CORE_PATH,
+      langPath: TESSERACT_LANG_PATH,
       workerBlobURL: false,
       cacheMethod: TESSERACT_CACHE_METHOD,
     });

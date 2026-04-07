@@ -10,8 +10,10 @@ const rootDir = path.resolve(__dirname, '..');
 
 const targetRoot = path.join(rootDir, 'public', 'vendor', 'tesseract');
 const targetCoreDir = path.join(targetRoot, 'core');
+const targetLangDir = path.join(targetRoot, 'lang');
 const sourceWorkerDir = path.join(rootDir, 'node_modules', 'tesseract.js', 'dist');
 const sourceCoreDir = path.join(rootDir, 'node_modules', 'tesseract.js-core');
+const sourceLangPackageRoot = path.join(rootDir, 'node_modules', '@tesseract.js-data');
 
 const coreFiles = [
   'tesseract-core-lstm.wasm.js',
@@ -22,6 +24,21 @@ const coreFiles = [
   'tesseract-core.wasm',
   'tesseract-core-simd.wasm.js',
   'tesseract-core-simd.wasm',
+];
+
+const languagePacks = [
+  'eng',
+  'rus',
+  'ukr',
+  'deu',
+  'fra',
+  'spa',
+  'ita',
+  'por',
+  'jpn',
+  'chi_sim',
+  'hin',
+  'ara',
 ];
 
 function copyFile(source, destination) {
@@ -36,6 +53,12 @@ function main() {
   copyFile(path.join(sourceWorkerDir, 'worker.min.js'), path.join(targetRoot, 'worker.min.js'));
   for (const file of coreFiles) {
     copyFile(path.join(sourceCoreDir, file), path.join(targetCoreDir, file));
+  }
+  for (const language of languagePacks) {
+    copyFile(
+      path.join(sourceLangPackageRoot, language, '4.0.0', `${language}.traineddata.gz`),
+      path.join(targetLangDir, `${language}.traineddata.gz`),
+    );
   }
   console.log('Copied Tesseract worker/core assets to public/vendor/tesseract');
 }
