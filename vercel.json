@@ -207,6 +207,18 @@
       "destination": "/app/index.html"
     },
     {
+      "source": "/app/studio",
+      "destination": "/app/index.html"
+    },
+    {
+      "source": "/app/studio/edit",
+      "destination": "/app/index.html"
+    },
+    {
+      "source": "/app/studio/convert",
+      "destination": "/app/index.html"
+    },
+    {
       "source": "/app/:path*",
       "destination": "/app/index.html"
     },
