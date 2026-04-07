@@ -66,10 +66,5 @@ export function buildAppPath(target?: string): string {
 }
 
 export function getAppOriginUrl(target?: string): string {
-  if (!target) {
-    return `${APP_DEV_ORIGIN}${buildAppPath(target)}`;
-  }
-
-  const targetRoute = resolveAppRoute(target).replace(/^\//, '');
-  return `${APP_DEV_ORIGIN}${APP_BASE_PATH}?tool=${encodeURIComponent(targetRoute)}`;
+  return `${APP_DEV_ORIGIN}${buildAppPath(target)}`;
 }

@@ -205,7 +205,7 @@ export const featurePages: FeaturePageData[] = [
     metaDescription: 'Run OCR on PDF files locally with LocalPDF and turn scans into searchable documents without sending them away first.',
     socialImage: 'https://localpdf.online/og/ocr-pdf.svg',
     intro: 'OCR is a trust-heavy workflow because scanned PDFs often contain legal, medical, or financial information.',
-    appHash: 'ocr',
+    appHash: 'studio',
     eyebrow: 'OCR PDF',
     capabilities: [
       'Extract text from scanned PDFs',
