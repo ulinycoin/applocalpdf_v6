@@ -118,10 +118,24 @@ try {
     copyRecursive(websitePublicPath, appDistPath, []);
   }
 
+  // STEP 4: Add physical SPA fallbacks for nested app routes so direct refreshes
+  // can resolve even if edge rewrites are not applied.
+  const appIndexHtml = path.join(appDistPath, 'app', 'index.html');
+  const spaFallbackRoutes = [
+    path.join('app', 'studio'),
+    path.join('app', 'studio', 'edit'),
+    path.join('app', 'studio', 'convert'),
+  ];
+  for (const route of spaFallbackRoutes) {
+    const routeIndex = path.join(appDistPath, route, 'index.html');
+    fs.mkdirSync(path.dirname(routeIndex), { recursive: true });
+    fs.copyFileSync(appIndexHtml, routeIndex);
+  }
+
   console.log('✅ Builds merged successfully');
   console.log('');
 
-  // Step 4: Verify structure
+  // Step 5: Verify structure
   console.log('📋 Deployment structure:');
   console.log('========================');
   const distContents = fs.readdirSync(appDistPath);
@@ -148,6 +162,20 @@ try {
     console.log('✓ /app → React app (SPA)');
   } else {
     console.error('✗ React app MISSING!');
+  }
+
+  const appNestedRoutes = [
+    path.join('app', 'studio', 'index.html'),
+    path.join('app', 'studio', 'edit', 'index.html'),
+    path.join('app', 'studio', 'convert', 'index.html'),
+  ];
+  for (const nestedRoute of appNestedRoutes) {
+    const nestedRoutePath = path.join(appDistPath, nestedRoute);
+    if (fs.existsSync(nestedRoutePath)) {
+      console.log(`✓ /${nestedRoute.replace(/\\/g, '/').replace(/\/index\.html$/, '')} → SPA fallback`);
+    } else {
+      console.error(`✗ /${nestedRoute} MISSING!`);
+    }
   }
 
   // Check canonical website routes
