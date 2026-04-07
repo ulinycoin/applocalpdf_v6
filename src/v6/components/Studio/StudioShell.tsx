@@ -78,6 +78,43 @@ function clampScale(scale: number): number {
     return Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, scale));
 }
 
+async function normalizeImageFileForPdf(file: File): Promise<File> {
+    if (!file.type.startsWith('image/')) {
+        return file;
+    }
+
+    const preferredMime = file.type === 'image/png' ? 'image/png' : 'image/jpeg';
+
+    if (typeof createImageBitmap !== 'function' || typeof document === 'undefined') {
+        return file;
+    }
+
+    try {
+        const bitmap = await createImageBitmap(file);
+        try {
+            const canvas = document.createElement('canvas');
+            canvas.width = bitmap.width;
+            canvas.height = bitmap.height;
+            const ctx = canvas.getContext('2d');
+            if (!ctx) {
+                return file;
+            }
+            ctx.drawImage(bitmap, 0, 0);
+            const normalizedBlob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, preferredMime, 0.92));
+            if (!normalizedBlob) {
+                return file;
+            }
+            const nextExt = preferredMime === 'image/png' ? 'png' : 'jpg';
+            const baseName = file.name.replace(/\.[^.]+$/u, '');
+            return new File([normalizedBlob], `${baseName || 'image'}.${nextExt}`, { type: preferredMime });
+        } finally {
+            bitmap.close();
+        }
+    } catch {
+        return file;
+    }
+}
+
 function estimateDocumentWidth(pageCount: number, gridColumns: number): number {
     const cols = Math.min(pageCount || 1, gridColumns);
     return Math.max(240, cols * (CARD_WIDTH + CARD_GAP) + 20);
@@ -347,16 +384,17 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
 
                 // If it's an image, wrap it in a PDF on the fly
                 if (file.type.startsWith('image/')) {
+                    const normalizedImage = await normalizeImageFileForPdf(file);
                     const { PDFDocument } = await getPdfLib();
                     const pdfDoc = await PDFDocument.create();
-                    const imageBytes = await file.arrayBuffer();
+                    const imageBytes = await normalizedImage.arrayBuffer();
                     let embeddedImage;
-                    if (file.type === 'image/jpeg' || file.type === 'image/jpg') {
+                    if (normalizedImage.type === 'image/jpeg' || normalizedImage.type === 'image/jpg' || normalizedImage.type === 'image/webp') {
                         embeddedImage = await pdfDoc.embedJpg(imageBytes);
-                    } else if (file.type === 'image/png') {
+                    } else if (normalizedImage.type === 'image/png') {
                         embeddedImage = await pdfDoc.embedPng(imageBytes);
                     } else {
-                        throw new Error(`Unsupported image type: ${file.type}`);
+                        throw new Error(`Unsupported image type: ${normalizedImage.type}`);
                     }
 
                     const { width, height } = embeddedImage.scale(1);

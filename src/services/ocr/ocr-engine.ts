@@ -57,7 +57,41 @@ interface TesseractModule {
 
 function isLanguagePackError(error: unknown): boolean {
   const message = error instanceof Error ? error.message : String(error ?? '');
-  return /language|traineddata|load|fetch/i.test(message);
+  return /language|traineddata|load|fetch|worker|network|import/i.test(message);
+}
+
+function buildLanguageFallbackChain(requestedLanguage: string): string[] {
+  const normalized = requestedLanguage
+    .split('+')
+    .map((token) => token.trim())
+    .filter(Boolean);
+
+  const unique = Array.from(new Set(normalized));
+  if (unique.length === 0) {
+    return ['eng'];
+  }
+
+  const chain: string[] = [];
+  chain.push(unique.join('+'));
+
+  if (unique.length > 1) {
+    if (unique.includes('eng')) {
+      chain.push('eng');
+    }
+
+    for (const token of unique) {
+      chain.push(token);
+    }
+
+    const nonEnglish = unique.filter((token) => token !== 'eng');
+    if (nonEnglish.length > 0) {
+      chain.push(nonEnglish[0]!);
+    }
+  } else {
+    chain.push('eng');
+  }
+
+  return Array.from(new Set(chain.filter(Boolean)));
 }
 
 function normalizeWords(words: TesseractWord[] | undefined): OcrWord[] {
@@ -104,36 +138,36 @@ class TesseractOcrEngine implements OcrEngine {
     }
 
     const requestedLanguage = options.language?.trim() || 'eng';
-    try {
-      const primary = await this.runRecognize(blob, requestedLanguage);
-      if (options.detectLanguage) {
-        primary.detectedLanguage = detectDocumentLanguage(primary.text);
-      }
-      return primary;
-    } catch (error) {
-      if (requestedLanguage !== 'eng' && isLanguagePackError(error)) {
-        try {
-          const fallback = await this.runRecognize(blob, 'eng');
-          if (options.detectLanguage) {
-            fallback.detectedLanguage = detectDocumentLanguage(fallback.text);
-          }
-          return {
-            ...fallback,
-            requestedLanguage,
-            languageFallbackUsed: true,
-          };
-        } catch {
+    const fallbackChain = buildLanguageFallbackChain(requestedLanguage);
+    let lastLanguageError: unknown = null;
+
+    for (let i = 0; i < fallbackChain.length; i += 1) {
+      const candidateLanguage = fallbackChain[i]!;
+      try {
+        const result = await this.runRecognize(blob, candidateLanguage);
+        if (options.detectLanguage) {
+          result.detectedLanguage = detectDocumentLanguage(result.text);
+        }
+        return {
+          ...result,
+          requestedLanguage,
+          languageFallbackUsed: candidateLanguage !== requestedLanguage,
+        };
+      } catch (error) {
+        if (!isLanguagePackError(error)) {
           throw new OcrPipelineError(
-            'OCR_LANGUAGE_PACK_UNAVAILABLE',
-            `OCR language pack "${requestedLanguage}" is unavailable`,
+            'OCR_RECOGNITION_FAILED',
+            `OCR failed: ${error instanceof Error ? error.message : 'unknown error'}`,
           );
         }
+        lastLanguageError = error;
       }
-      throw new OcrPipelineError(
-        'OCR_RECOGNITION_FAILED',
-        `OCR failed: ${error instanceof Error ? error.message : 'unknown error'}`,
-      );
     }
+
+    throw new OcrPipelineError(
+      'OCR_LANGUAGE_PACK_UNAVAILABLE',
+      `OCR language pack "${requestedLanguage}" is unavailable${lastLanguageError instanceof Error && lastLanguageError.message ? `: ${lastLanguageError.message}` : ''}`,
+    );
   }
 }
 

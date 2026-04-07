@@ -89,7 +89,7 @@ async function remapWordsToRenderBlob(words: OcrWord[], ocrBlob: Blob, renderBlo
 
 const SUPPORTED_LANGUAGES: SupportedOcrLanguage[] = ['eng', 'rus', 'ukr', 'deu', 'fra', 'spa', 'ita', 'por', 'jpn', 'chi_sim', 'hin'];
 const DEFAULT_LANGUAGE: SupportedOcrLanguage = 'eng';
-const AUTO_PROBE_LANGUAGE_PACK = SUPPORTED_LANGUAGES.join('+');
+const AUTO_PROBE_LANGUAGE_PACK = DEFAULT_LANGUAGE;
 const LOW_CONFIDENCE_THRESHOLD = 78;
 const LOW_CONFIDENCE_TEXT_MIN = 40;
 const LOW_CONFIDENCE_MAX_RETRY_PAGES = 6;

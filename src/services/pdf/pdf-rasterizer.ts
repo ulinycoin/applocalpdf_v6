@@ -132,9 +132,20 @@ export async function createPdfRasterizer(): Promise<PdfRasterizer | null> {
   try {
     const pdfjs = (await import('pdfjs-dist/legacy/build/pdf.mjs')) as unknown as PdfJsLike;
     if (pdfjs.GlobalWorkerOptions && !pdfjs.GlobalWorkerOptions.workerSrc) {
-      const workerSrcMod = (await import('pdfjs-dist/legacy/build/pdf.worker.min.mjs?url')) as { default?: string };
-      if (workerSrcMod.default) {
-        pdfjs.GlobalWorkerOptions.workerSrc = workerSrcMod.default;
+      const workerLoaders: Array<() => Promise<{ default?: string }>> = [
+        () => import('pdfjs-dist/legacy/build/pdf.worker.min.mjs?url'),
+        () => import('pdfjs-dist/build/pdf.worker.min.mjs?url'),
+      ];
+      for (const loadWorkerSrc of workerLoaders) {
+        try {
+          const workerSrcMod = await loadWorkerSrc();
+          if (workerSrcMod.default) {
+            pdfjs.GlobalWorkerOptions.workerSrc = workerSrcMod.default;
+            break;
+          }
+        } catch {
+          // Try next worker bundle candidate.
+        }
       }
     }
     return new PdfJsRasterizer(pdfjs);
