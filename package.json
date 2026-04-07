@@ -7,9 +7,12 @@
     "node": ">=22.0.0"
   },
   "scripts": {
+    "predev": "node scripts/copy-tesseract-assets.mjs",
     "dev": "vite --host 127.0.0.1 --port 3001",
     "dev:web": "astro dev --root website --port 3002",
     "dev:all": "concurrently \"npm run dev\" \"npm run dev:web\" --names \"APP,WEB\" --prefix-colors \"cyan,magenta\"",
+    "prebuild": "node scripts/copy-tesseract-assets.mjs",
+    "prebuild:web": "node scripts/copy-tesseract-assets.mjs",
     "lint": "node -e \"console.log('lint: no-op')\"",
     "preview:e2e": "vite preview --host 127.0.0.1 --port 4173 --strictPort",
     "build": "tsc -p tsconfig.json && vite build",

@@ -52,8 +52,31 @@ interface TesseractWord {
 }
 
 interface TesseractModule {
-  recognize(input: Blob, language: string): Promise<TesseractResult>;
+  recognize(
+    input: Blob,
+    language: string,
+    options?: {
+      corePath?: string;
+      langPath?: string;
+      workerBlobURL?: boolean;
+      workerPath?: string;
+      cacheMethod?: string;
+    },
+  ): Promise<TesseractResult>;
 }
+
+const TESSERACT_CACHE_METHOD = 'none';
+
+function resolveAppAssetPath(relativePath: string): string {
+  const baseUrl = typeof import.meta !== 'undefined' && typeof import.meta.env?.BASE_URL === 'string'
+    ? import.meta.env.BASE_URL
+    : '/';
+  const normalizedBase = baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`;
+  return `${normalizedBase}${relativePath.replace(/^\//, '')}`;
+}
+
+const TESSERACT_WORKER_PATH = resolveAppAssetPath('vendor/tesseract/worker.min.js');
+const TESSERACT_CORE_PATH = resolveAppAssetPath('vendor/tesseract/core');
 
 function isLanguagePackError(error: unknown): boolean {
   const message = error instanceof Error ? error.message : String(error ?? '');
@@ -121,7 +144,12 @@ class TesseractOcrEngine implements OcrEngine {
   constructor(private readonly tesseract: TesseractModule) { }
 
   private async runRecognize(blob: Blob, language: string): Promise<OcrResult> {
-    const result = await this.tesseract.recognize(blob, language);
+    const result = await this.tesseract.recognize(blob, language, {
+      workerPath: TESSERACT_WORKER_PATH,
+      corePath: TESSERACT_CORE_PATH,
+      workerBlobURL: false,
+      cacheMethod: TESSERACT_CACHE_METHOD,
+    });
     return {
       text: result.data?.text ?? '',
       confidence: typeof result.data?.confidence === 'number' ? Number(result.data.confidence.toFixed(2)) : null,

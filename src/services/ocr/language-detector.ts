@@ -158,10 +158,22 @@ export function detectDocumentLanguage(text: string): LanguageDetectionResult {
 }
 
 export function selectAutoOcrLanguagePack(detection: LanguageDetectionResult): string {
-  const base = detection.primaryLanguage;
-  const second = detection.candidates[1];
-  if (second && second.score > 0 && second.score >= detection.candidates[0].score * 0.6) {
-    return `${base}+${second.language}`;
+  const top = detection.candidates[0];
+  if (!top) {
+    return detection.primaryLanguage;
   }
-  return base;
+
+  const minScore = top.score > 0 ? top.score * 0.45 : 0;
+  const selected = [top.language];
+
+  for (const candidate of detection.candidates.slice(1)) {
+    if (candidate.score < minScore) {
+      continue;
+    }
+    if (!selected.includes(candidate.language)) {
+      selected.push(candidate.language);
+    }
+  }
+
+  return selected.join('+');
 }

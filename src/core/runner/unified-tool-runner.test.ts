@@ -4,6 +4,7 @@ import { GlobalRegistry } from '../registry/global-registry';
 import type { RunnerTelemetryEvent, TelemetrySink } from '../telemetry/telemetry';
 import type { IFileEntry, IFileSystem, IToolDefinition, IWorkerCommand, IWorkerEvent } from '../types/contracts';
 import { UnifiedToolRunner } from './unified-tool-runner';
+import { createValidPdfBlob } from '../../shared/test/create-valid-pdf';
 
 class InMemoryFileEntry implements IFileEntry {
   constructor(readonly id: string, private readonly blob: Blob) {}
@@ -155,6 +156,58 @@ test('UnifiedToolRunner dispatches worker and returns TOOL_RESULT', async () => 
   );
 
   assert.deepEqual(result, { type: 'TOOL_RESULT', outputIds: ['out-1'] });
+});
+
+test('UnifiedToolRunner routes OCR through the worker path', async () => {
+  const registry = new GlobalRegistry();
+  let logicLoaderCalled = false;
+  registry.register({
+    ...tool,
+    id: 'ocr-pdf',
+    name: 'OCR PDF',
+    entitlements: ['pdf.ocr'],
+    limits: {
+      featureTier: 'basic',
+      monthlyQuota: { free: 1, pro: 100 },
+    },
+    logicLoader: async () => {
+      logicLoaderCalled = true;
+      return {
+        run: async () => {
+          throw new Error('logic should not run in-process');
+        },
+      };
+    },
+  });
+
+  const fs = new InMemoryFileSystem();
+  fs.seed('f1', await createValidPdfBlob(1));
+
+  let dispatchCount = 0;
+  const runner = new UnifiedToolRunner(
+    registry,
+    {
+      dispatch: async (command: IWorkerCommand): Promise<IWorkerEvent> => {
+        dispatchCount += 1;
+        return {
+          id: command.id,
+          type: 'EVENT',
+          payload: { type: 'RESULT', payload: { outputIds: ['ocr-out'] } },
+        };
+      },
+    },
+    fs,
+  );
+
+  const result = await runner.execute(
+    'ocr-pdf',
+    { inputIds: ['f1'] },
+    { userId: 'u1', plan: 'basic', entitlements: ['pdf.ocr'] },
+  );
+
+  assert.equal(logicLoaderCalled, false);
+  assert.equal(dispatchCount, 1);
+  assert.deepEqual(result, { type: 'TOOL_RESULT', outputIds: ['ocr-out'] });
 });
 
 test('UnifiedToolRunner forwards PROGRESS events', async () => {

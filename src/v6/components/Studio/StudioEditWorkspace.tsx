@@ -200,6 +200,9 @@ export function StudioEditWorkspace() {
     // Calculation for canvas wrapper sizing
     const scaledWidth = canvasSize.width * zoom.zoomLevel;
     const scaledHeight = canvasSize.height * zoom.zoomLevel;
+    const canvasPadding = 40;
+    const stageWidth = Math.max(canvasSize.width, scaledWidth) + canvasPadding * 2;
+    const stageHeight = Math.max(canvasSize.height, scaledHeight) + canvasPadding * 2;
     const selectedTextElement = ctrl.selectedElementId
         ? ctrl.elements.find(e => e.id === ctrl.selectedElementId && e.type === 'text') as import('./editor-types').TextElement | undefined
         : undefined;
@@ -591,16 +594,15 @@ export function StudioEditWorkspace() {
                 <div
                     ref={zoom.containerRef}
                     className="studio-edit-canvas-wrap custom-scrollbar"
-                    style={{ flex: 1, overflow: 'auto', display: 'flex', justifyContent: 'center', alignItems: 'flex-start', position: 'relative' }}
+                    style={{ flex: 1, overflow: 'auto', display: 'block', position: 'relative' }}
                 >
                     <div style={{
-                        // Provide enough space to keep it centered when zoom is small, but scrollable when big
-                        minWidth: '100%',
-                        minHeight: '100%',
+                        width: stageWidth,
+                        height: stageHeight,
                         display: 'flex',
                         justifyContent: 'center',
                         alignItems: 'center',
-                        padding: '40px' // Add some padding so we can scroll past edges
+                        margin: '0 auto'
                     }}>
                         <div
                             ref={surfaceRef}
@@ -612,8 +614,6 @@ export function StudioEditWorkspace() {
                                 transform: `scale(${zoom.zoomLevel})`,
                                 transformOrigin: 'center center',
                                 flexShrink: 0,
-                                // These margins keep the flexing box aware of the transform size constraints
-                                margin: `${Math.max(0, (scaledHeight - canvasSize.height) / 2)}px ${Math.max(0, (scaledWidth - canvasSize.width) / 2)}px`,
                             }}
                         >
                             <img

@@ -75,10 +75,6 @@ export class UnifiedToolRunner {
 
     const runId = crypto.randomUUID();
     const startedAt = Date.now();
-    if (this.shouldRunInProcess(toolId)) {
-      return this.executeInProcess(toolId, input, runId, startedAt, onProgress);
-    }
-
     const command: IWorkerCommand = {
       id: crypto.randomUUID(),
       type: 'COMMAND',
@@ -154,59 +150,6 @@ export class UnifiedToolRunner {
     });
     this.publishErrorToast(runId, toolId, 'Unexpected worker event type');
     return { type: 'TOOL_ERROR', message: 'Unexpected worker event type', code: 'INVALID_WORKER_EVENT' };
-  }
-
-  private shouldRunInProcess(toolId: string): boolean {
-    return toolId === 'ocr-pdf';
-  }
-
-  private async executeInProcess(
-    toolId: string,
-    input: ToolRunInput,
-    runId: string,
-    startedAt: number,
-    onProgress?: (event: RunnerProgressEvent) => void,
-  ): Promise<RunnerExecuteResult> {
-    try {
-      const definition = this.registry.get(toolId);
-      const logicModule = await definition.logicLoader();
-      const output = await logicModule.run({
-        inputIds: input.inputIds,
-        options: input.options,
-        fs: this.fileSystem,
-        emitProgress: (progress) => {
-          this.telemetry.track({
-            type: 'TOOL_RUN_PROGRESS',
-            runId,
-            toolId,
-            progress,
-          });
-          onProgress?.({ type: 'TOOL_PROGRESS', progress });
-        },
-      });
-      this.telemetry.track({
-        type: 'TOOL_RUN_RESULT',
-        runId,
-        toolId,
-        durationMs: Date.now() - startedAt,
-        outputCount: output.outputIds.length,
-      });
-      return { type: 'TOOL_RESULT', outputIds: output.outputIds };
-    } catch (error) {
-      const typed = error as { code?: unknown; message?: unknown };
-      const code = typeof typed.code === 'string' ? typed.code : 'TOOL_EXECUTION_FAILED';
-      const message = typeof typed.message === 'string' ? typed.message : 'Tool execution failed';
-      this.telemetry.track({
-        type: 'TOOL_RUN_ERROR',
-        runId,
-        toolId,
-        durationMs: Date.now() - startedAt,
-        code,
-        message,
-      });
-      this.publishErrorToast(runId, toolId, message);
-      return { type: 'TOOL_ERROR', message, code };
-    }
   }
 
   private publishErrorToast(runId: string, toolId: string, message: string): void {
