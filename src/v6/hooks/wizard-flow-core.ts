@@ -1,4 +1,5 @@
 import type { PlatformRuntime } from '../../app/platform/create-platform';
+import { getOrCreateFlowId } from '../../core/telemetry/browser-context';
 import type { IWorkerCommand, ToolRunContext } from '../../core/public/contracts';
 import { isVfsQuotaExceededError } from '../../app/platform/error-utils';
 import type { LimitService, WizardState } from '../components/Wizard/types';
@@ -10,6 +11,7 @@ export const INITIAL_WIZARD_STATE: WizardState = {
   progress: 0,
   isValidating: false,
   isProcessing: false,
+  currentRunId: null,
   error: null,
   toast: null,
   upsellReason: null,

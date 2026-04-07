@@ -17,6 +17,7 @@ import { useNavigate } from 'react-router-dom';
 import { usePlatform } from '../../../app/react/platform-context';
 import { LinearIcon } from '../icons/linear-icon';
 import { useWizardFlow } from '../../hooks/useWizardFlow';
+import { getOrCreateFlowId } from '../../../core/telemetry/browser-context';
 
 import { useFilePreviews } from '../../hooks/use-file-previews';
 import { PreviewPanel } from './PreviewPanel';

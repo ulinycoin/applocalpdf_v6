@@ -30,8 +30,16 @@ export function formatEvent(event: RunnerTelemetryEvent): string {
       return `${event.type} ${event.toolId} file=${event.fileId} page=${event.pageIndex} code=${event.code ?? 'n/a'} msg=${event.message}`;
     case 'STUDIO_EDIT_SAVE_ACTION':
       return `${event.type} ${event.toolId} action=${event.action} scope=${event.scope} ok=${event.pagesSucceeded}/${event.pagesTotal} failed=${event.pagesFailed}${event.overflowCount !== undefined ? ` overflow=${event.overflowCount}` : ''}${event.message ? ` msg=${event.message}` : ''}`;
+    case 'APP_SESSION_ATTRIBUTED':
+      return `${event.type} flow=${event.flowId} entry=${event.entryPath}`;
+    case 'APP_FILE_UPLOADED':
+      return `${event.type} ${event.toolId} files=${event.fileCount} source=${event.source} bytes=${event.totalBytes}`;
+    case 'TOOL_RUN_ABANDONED':
+      return `${event.type} ${event.toolId} run=${event.runId ?? 'n/a'} reason=${event.reason}`;
+    case 'OUTPUT_DOWNLOADED':
+      return `${event.type} ${event.toolId} run=${event.runId ?? 'n/a'} outputs=${event.outputCount ?? 0} surface=${event.surface}`;
     default:
-      return `${event.type} ${event.toolId}`;
+      return `${event.type} ${'toolId' in event ? event.toolId : 'app'}`;
   }
 }
 
@@ -58,11 +66,14 @@ export function TelemetryPanel() {
           {events.length === 0 ? (
             <div className="telemetry-empty">Awaiting local events...</div>
           ) : (
-            events.map((event, idx) => (
-              <div key={`${event.runId}-${event.type}-${idx}`} className="telemetry-event">
-                <span className="telemetry-id">[{event.runId.slice(0, 8)}]</span> {formatEvent(event)}
-              </div>
-            ))
+            events.map((event, idx) => {
+              const eventRunId = 'runId' in event && typeof event.runId === 'string' ? event.runId : 'app';
+              return (
+                <div key={`${eventRunId}-${event.type}-${idx}`} className="telemetry-event">
+                  <span className="telemetry-id">[{eventRunId.slice(0, 8)}]</span> {formatEvent(event)}
+                </div>
+              );
+            })
           )}
         </div>
       )}

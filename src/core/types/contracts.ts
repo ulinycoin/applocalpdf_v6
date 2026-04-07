@@ -308,4 +308,8 @@ export type RunnerTelemetryEvent =
   }
   | { type: 'STUDIO_EDIT_TOOL_SELECTED'; runId: string; toolId: string; tool: string; method: 'ui' | 'shortcut' }
   | { type: 'STUDIO_EDIT_ZOOM_CHANGED'; runId: string; toolId: string; source: 'wheel' | 'button' | 'preset'; preset?: 'fitPage' | 'fitWidth' | '100'; scaleLevel: number }
-  | { type: 'STUDIO_EDIT_FLOATING_MENU_ACTION'; runId: string; toolId: string; action: 'duplicate' | 'delete' | 'update'; changeType?: string };
+  | { type: 'STUDIO_EDIT_FLOATING_MENU_ACTION'; runId: string; toolId: string; action: 'duplicate' | 'delete' | 'update'; changeType?: string }
+  | { type: 'APP_SESSION_ATTRIBUTED'; flowId: string; entryUrl: string; entryPath: string; referrer: string; referringDomain: string; utmSource?: string; utmMedium?: string; utmCampaign?: string }
+  | { type: 'APP_FILE_UPLOADED'; flowId: string; toolId: string; fileCount: number; mimeCategory: string; totalBytes: number; source: 'wizard' | 'studio' }
+  | { type: 'TOOL_RUN_ABANDONED'; flowId: string; runId?: string; toolId: string; reason: 'pagehide' | 'visibility_hidden' | 'navigation' | 'cancel' }
+  | { type: 'OUTPUT_DOWNLOADED'; flowId: string; runId?: string; toolId: string; outputCount?: number; surface: 'wizard' | 'studio' };

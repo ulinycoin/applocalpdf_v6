@@ -1,5 +1,6 @@
 import { usePlatform } from '../../platform-context';
 import { downloadOutputFiles } from '../../../platform/download-output-files';
+import { getOrCreateFlowId } from '../../../../core/telemetry/browser-context';
 
 interface ResultStageProps {
     outputIds: string[];
@@ -11,6 +12,13 @@ export function ResultStage({ outputIds, baseName = 'result', onRestart }: Resul
     const { runtime } = usePlatform();
 
     const handleDownload = async () => {
+        runtime.telemetry.track({
+            type: 'OUTPUT_DOWNLOADED',
+            flowId: getOrCreateFlowId(),
+            toolId: 'wizard',
+            outputCount: outputIds.length,
+            surface: 'wizard',
+        });
         await downloadOutputFiles(runtime, outputIds, { baseName });
     };
 

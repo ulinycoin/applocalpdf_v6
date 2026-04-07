@@ -16,6 +16,7 @@ import {
   type WorkerOrchestrator,
 } from '../../core/workers/worker-orchestrator';
 import { PostHogTelemetrySink } from '../../core/telemetry/posthog-sink';
+import { buildSessionAttributedEvent, getOrCreateFlowId } from '../../core/telemetry/browser-context';
 import { BillingService } from './billing-service';
 
 

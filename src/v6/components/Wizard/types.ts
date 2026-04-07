@@ -11,6 +11,7 @@ export interface WizardState {
   progress: number;
   isValidating: boolean;
   isProcessing: boolean;
+  currentRunId: string | null;
   error: string | null;
   toast: string | null;
   upsellReason: string | null;

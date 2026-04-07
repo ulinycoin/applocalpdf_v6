@@ -9,6 +9,7 @@ import type { IPipelineRecipe } from '../../v6/studio/pipeline/types';
 import { openBillingPlans } from './billing';
 import { canAddDocumentToStudio } from '../platform/plan-limits';
 import { showStudioPaywall } from './studio-paywall';
+import { getOrCreateFlowId } from '../../core/telemetry/browser-context';
 
 const DEFAULT_MARKETING_SITE_URL = 'http://127.0.0.1:4321';
 
@@ -185,6 +186,13 @@ export function StudioTopNav({ telemetryEnabled, onToggleTelemetry, telemetryOpe
 
       try {
         await exportDocument(activeDocument, `${safeName}.pdf`);
+        runtime.telemetry.track({
+          type: 'OUTPUT_DOWNLOADED',
+          flowId: getOrCreateFlowId(),
+          toolId: 'studio',
+          outputCount: 1,
+          surface: 'studio',
+        });
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Export failed';
         console.error(message);
