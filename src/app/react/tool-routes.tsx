@@ -1,5 +1,5 @@
 import { Suspense, lazy } from 'react';
-import { Navigate, Route, Routes } from 'react-router-dom';
+import { Navigate, Route, Routes, useSearchParams } from 'react-router-dom';
 import { usePlatform } from './platform-context';
 
 const V6WizardShell = lazy(async () => {
@@ -35,6 +35,17 @@ function EmptyToolsState() {
   return <div>No tools are registered.</div>;
 }
 
+function AppEntryRedirect() {
+  const [searchParams] = useSearchParams();
+  const tool = searchParams.get('tool');
+
+  if (tool) {
+    return <Navigate to={`/${tool.replace(/^\/+/, '')}`} replace />;
+  }
+
+  return <Navigate to="/studio" replace />;
+}
+
 export function ToolRoutes() {
   const { routes } = usePlatform();
 
@@ -45,7 +56,7 @@ export function ToolRoutes() {
   return (
     <Suspense fallback={<LoadingScreen />}>
       <Routes>
-        <Route path="/" element={<Navigate to="/studio" replace />} />
+        <Route path="/" element={<AppEntryRedirect />} />
         {routes.map((toolRoute) => {
           return (
             <Route
