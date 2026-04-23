@@ -14,3 +14,33 @@ test-output
 .idea
 .vscode
 .env
+
+# AI tool data
+.gemini-home/
+.claude/
+
+# Internal AI-operational files (old Codex CLI format — no longer used)
+AGENTS.md
+LLM_GUARD.md
+MODEL.md
+FAILURE_MODES.md
+TESTING_RULES.md
+QA_AUDIT_REPORT.md
+MEMORY.md
+docs/
+
+# Skills: keep agent skills, ignore old SEO references dist
+skills/localpdf-seo/references/
+skills/dist/
+
+# IndexNow operational files
+.well-known/
+website/blog/
+website/blog-urls.txt
+website/INDEXNOW_SETUP_SUMMARY.md
+website/indexnow-submit.js
+website/submit-batch.js
+
+# Temp PDF generators
+generate-large.js
+generate-large.mjs
