@@ -321,13 +321,13 @@ export const PageObject: React.FC<PageObjectProps> = ({ page, docId, x, y, curre
                     height={PAGE_HEIGHT + 20}
                     x={-10}
                     y={-10}
-                    fill="rgba(56, 189, 248, 0.42)"
-                    stroke="rgba(125, 211, 252, 0.95)"
-                    strokeWidth={3}
+                    fill="transparent"
+                    stroke="#2383e2"
+                    strokeWidth={2}
                     cornerRadius={12}
-                    shadowColor="#38bdf8"
-                    shadowBlur={24}
-                    shadowOpacity={0.9}
+                    shadowColor="#2383e2"
+                    shadowBlur={6}
+                    shadowOpacity={0.25}
                 />
             )}
 
@@ -335,9 +335,12 @@ export const PageObject: React.FC<PageObjectProps> = ({ page, docId, x, y, curre
             <Rect
                 width={PAGE_WIDTH}
                 height={PAGE_HEIGHT}
-                fill="white"
-                shadowBlur={10}
-                shadowOpacity={0.3}
+                fill="#ffffff"
+                stroke="#e9e9e7"
+                strokeWidth={1}
+                shadowColor="#000000"
+                shadowBlur={4}
+                shadowOpacity={0.08}
                 cornerRadius={4}
             />
 
@@ -380,10 +383,10 @@ export const PageObject: React.FC<PageObjectProps> = ({ page, docId, x, y, curre
 
             {/* Page Number Badge */}
             <Group x={PAGE_WIDTH - 24} y={PAGE_HEIGHT - 24}>
-                <Rect width={20} height={20} fill="rgba(0,0,0,0.6)" cornerRadius={4} />
+                <Rect width={20} height={20} fill="#f1f1ef" stroke="#e9e9e7" strokeWidth={1} cornerRadius={4} />
                 <Text
                     text={`${currentIndex + 1}`}
-                    fill="white"
+                    fill="#b3b3af"
                     fontSize={10}
                     x={5}
                     y={5}
@@ -396,7 +399,7 @@ export const PageObject: React.FC<PageObjectProps> = ({ page, docId, x, y, curre
                 width={PAGE_WIDTH}
                 height={PAGE_HEIGHT}
                 fill="transparent"
-                stroke={isSelected ? "#7dd3fc" : "transparent"}
+                stroke={isSelected ? "#2383e2" : "transparent"}
                 strokeWidth={isSelected ? 3 : 2}
                 cornerRadius={4}
             />

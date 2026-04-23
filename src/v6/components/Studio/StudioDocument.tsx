@@ -1,5 +1,5 @@
 import React from 'react';
-import { Group, Rect, Text } from 'react-konva';
+import { Circle, Group, Rect, Text } from 'react-konva';
 import type { KonvaEventObject } from 'konva/lib/Node';
 import { PageObject } from './PageObject';
 import { StudioDocument as IStudioDocument, StudioState, useStudioStore } from './studio-store';
@@ -34,7 +34,8 @@ export const StudioDocument: React.FC<StudioDocumentProps> = ({ doc }) => {
     const CARD_HEIGHT = 280;
     const GAP_X = 20;
     const GAP_Y = 30;
-    const MODIFIED_BADGE_WIDTH = 22;
+    const STATUS_DOT_RADIUS = 4;
+    const PAGE_COUNT_WIDTH = 54;
 
     // Calculate grid dimensions
     const cols = Math.min(doc.pages.length || 1, gridColumns);
@@ -43,7 +44,7 @@ export const StudioDocument: React.FC<StudioDocumentProps> = ({ doc }) => {
     // Bounds based on grid Layout
     const width = Math.max(CARD_WIDTH + GAP_X, cols * (CARD_WIDTH + GAP_X));
     const height = rows * (CARD_HEIGHT + GAP_Y);
-    const labelMaxWidth = Math.max(120, width - (doc.isModified ? MODIFIED_BADGE_WIDTH + 12 : 0));
+    const labelMaxWidth = Math.max(120, width - PAGE_COUNT_WIDTH);
 
     const isActiveDocument = activeDocumentId === doc.id && selection.length === 0;
 
@@ -72,20 +73,14 @@ export const StudioDocument: React.FC<StudioDocumentProps> = ({ doc }) => {
                 height={height + 40}
                 x={-10}
                 y={-30}
-                fillLinearGradientStartPoint={{ x: -10, y: -30 }}
-                fillLinearGradientEndPoint={{ x: width + 10, y: height + 10 }}
-                fillLinearGradientColorStops={
-                    isDropTarget
-                        ? [0, 'rgba(255, 255, 255, 0.12)', 1, 'rgba(28, 52, 74, 0.3)']
-                        : [0, 'rgba(255, 255, 255, 0.08)', 1, 'rgba(28, 52, 74, 0.18)']
-                }
-                stroke={isDropTarget ? "rgba(255, 255, 255, 0.28)" : "rgba(255, 255, 255, 0.12)"}
+                fill="#ffffff"
+                stroke={isDropTarget ? '#2383e2' : '#e9e9e7'}
                 strokeWidth={isDropTarget ? 2 : 1}
                 cornerRadius={16}
-                shadowBlur={isDropTarget ? 24 : 14}
-                shadowColor="rgba(4, 12, 20, 0.9)"
-                shadowOpacity={isDropTarget ? 0.3 : 0.18}
-                shadowOffset={{ x: 0, y: 12 }}
+                shadowColor="#000000"
+                shadowBlur={4}
+                shadowOpacity={0.08}
+                shadowOffset={{ x: 0, y: 2 }}
             />
             {isActiveDocument && !isDropTarget && (
                 <>
@@ -100,11 +95,11 @@ export const StudioDocument: React.FC<StudioDocumentProps> = ({ doc }) => {
                         fillRadialGradientEndRadius={Math.max(width, height) * 0.78}
                         fillRadialGradientColorStops={[
                             0,
-                            'rgba(96, 165, 250, 0.2)',
+                            'rgba(35, 131, 226, 0.14)',
                             0.45,
-                            'rgba(59, 130, 246, 0.12)',
+                            'rgba(35, 131, 226, 0.08)',
                             1,
-                            'rgba(59, 130, 246, 0)',
+                            'rgba(35, 131, 226, 0)',
                         ]}
                         listening={false}
                     />
@@ -113,22 +108,13 @@ export const StudioDocument: React.FC<StudioDocumentProps> = ({ doc }) => {
                         height={height + 40}
                         x={-10}
                         y={-30}
-                        fillLinearGradientStartPoint={{ x: -10, y: -30 }}
-                        fillLinearGradientEndPoint={{ x: width + 10, y: height + 10 }}
-                        fillLinearGradientColorStops={[
-                            0,
-                            'rgba(255, 255, 255, 0.08)',
-                            0.2,
-                            'rgba(125, 211, 252, 0.18)',
-                            1,
-                            'rgba(28, 52, 74, 0.12)',
-                        ]}
-                        stroke="rgba(147, 197, 253, 0.98)"
+                        fill="transparent"
+                        stroke="#2383e2"
                         strokeWidth={2.5}
                         cornerRadius={16}
-                        shadowColor="rgba(96, 165, 250, 0.95)"
-                        shadowBlur={34}
-                        shadowOpacity={0.5}
+                        shadowColor="#2383e2"
+                        shadowBlur={10}
+                        shadowOpacity={0.18}
                         shadowOffset={{ x: 0, y: 0 }}
                         listening={false}
                     />
@@ -138,7 +124,7 @@ export const StudioDocument: React.FC<StudioDocumentProps> = ({ doc }) => {
                         x={-4}
                         y={-24}
                         fill="transparent"
-                        stroke="rgba(255, 255, 255, 0.22)"
+                        stroke="#ffffff"
                         strokeWidth={1}
                         cornerRadius={12}
                         listening={false}
@@ -161,22 +147,31 @@ export const StudioDocument: React.FC<StudioDocumentProps> = ({ doc }) => {
                 }}
                 style={{ cursor: 'pointer' }}
             >
+                <Circle
+                    x={6}
+                    y={7}
+                    radius={STATUS_DOT_RADIUS}
+                    fill={doc.isModified ? '#dfab01' : '#0f7b6c'}
+                />
                 <Text
                     text={doc.name}
-                    fill="rgba(255,255,255,0.8)"
+                    x={16}
+                    fill="#1a1a18"
                     fontSize={14}
                     fontStyle="bold"
-                    width={labelMaxWidth}
+                    width={labelMaxWidth - 64}
                     wrap="none"
                     ellipsis
                 />
-                {/* Modified Indicator */}
-                {doc.isModified && (
-                    <Group x={labelMaxWidth + 8}>
-                        <Rect width={22} height={18} fill="#22c55e" cornerRadius={4} />
-                        <Text text="M" fill="white" fontSize={11} x={7} y={3} fontStyle="bold" />
-                    </Group>
-                )}
+                <Text
+                    text={`${doc.pages.length} page${doc.pages.length === 1 ? '' : 's'}`}
+                    x={labelMaxWidth - 54}
+                    fill="#b3b3af"
+                    fontSize={12}
+                    fontStyle="600"
+                    align="right"
+                    width={54}
+                />
             </Group>
 
             {/* Grid Pages Row inside Document with Viewport Culling */}
@@ -187,15 +182,15 @@ export const StudioDocument: React.FC<StudioDocumentProps> = ({ doc }) => {
                         height={CARD_HEIGHT}
                         fillLinearGradientStartPoint={{ x: 10, y: 10 }}
                         fillLinearGradientEndPoint={{ x: CARD_WIDTH + 10, y: CARD_HEIGHT + 10 }}
-                        fillLinearGradientColorStops={[0, 'rgba(255, 255, 255, 0.06)', 1, 'rgba(28, 52, 74, 0.16)']}
-                        stroke="rgba(255, 255, 255, 0.26)"
+                        fillLinearGradientColorStops={[0, '#ffffff', 1, '#f1f1ef']}
+                        stroke="#e9e9e7"
                         strokeWidth={1.5}
                         dash={[8, 6]}
                         cornerRadius={12}
                     />
                     <Text
                         text="Drop pages here"
-                        fill="rgba(241, 245, 249, 0.82)"
+                        fill="#b3b3af"
                         fontSize={14}
                         fontStyle="bold"
                         align="center"

@@ -9,6 +9,7 @@ import { useStudioStore, PageItem, StudioDocument as IStudioDocument, StudioStat
 import { StudioDocument } from './StudioDocument';
 import { DetachedPageObject } from './DetachedPageObject';
 import { StudioFloatingMenu } from './StudioFloatingMenu';
+import { StudioToolRail } from './StudioToolRail';
 import { LinearIcon } from '../icons/linear-icon';
 import { ThumbnailService } from '../../studio/thumbnail/thumbnail-service';
 import { StudioTimeline } from './branching/StudioTimeline';
@@ -35,6 +36,7 @@ export interface StudioShellProps {
 }
 
 type StudioConvertToolId = 'ocr-pdf' | 'pdf-to-jpg' | 'extract-images' | 'compress-pdf';
+const STUDIO_TOOL_RAIL_WIDTH = 220;
 
 const CARD_WIDTH = 200;
 const CARD_HEIGHT = 280;
@@ -247,30 +249,21 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
     const hasFiles = documents.length > 0 || detachedPages.length > 0;
     const pageClipboardRef = useRef<PageItem[]>([]);
     const [hasClipboardPages, setHasClipboardPages] = useState(false);
+    const canvasDimensions = useMemo(
+        () => ({
+            width: Math.max(0, dimensions.width - STUDIO_TOOL_RAIL_WIDTH),
+            height: dimensions.height,
+        }),
+        [dimensions.height, dimensions.width],
+    );
 
     // Active tool overlay — 'edit' or convert tool id
     type OverlayMode = 'edit' | StudioConvertToolId;
     const [overlayMode, setOverlayMode] = useState<OverlayMode | null>(null);
 
-    const editTools: Array<{ tool: StudioEditToolId; icon: Parameters<typeof LinearIcon>[0]['name']; label: string }> = [
-        { tool: 'text', icon: 'text', label: 'Text' },
-        { tool: 'annotate', icon: 'highlighter', label: 'Annotate' },
-        { tool: 'sign', icon: 'signature', label: 'Sign' },
-        { tool: 'whiteout', icon: 'eraser', label: 'Whiteout' },
-        { tool: 'watermark', icon: 'stamp', label: 'Watermark' },
-        { tool: 'forms', icon: 'file-input', label: 'Forms' },
-        { tool: 'protect', icon: 'lock', label: 'Protect' },
-    ];
-    const convertTools: Array<{ tool: StudioConvertToolId; icon: Parameters<typeof LinearIcon>[0]['name']; label: string }> = [
-        { tool: 'ocr-pdf', icon: 'ocr', label: 'OCR' },
-        { tool: 'pdf-to-jpg', icon: 'image', label: 'JPG' },
-        { tool: 'extract-images', icon: 'image', label: 'Images' },
-        { tool: 'compress-pdf', icon: 'compress', label: 'Compress' },
-    ];
-
     useEffect(() => {
-        setStudioViewport(viewScale, viewPosition, dimensions);
-    }, [setStudioViewport, viewPosition, viewScale, dimensions]);
+        setStudioViewport(viewScale, viewPosition, canvasDimensions);
+    }, [canvasDimensions, setStudioViewport, viewPosition, viewScale]);
 
     const notifyStudioError = useCallback((message: string) => {
         runtime.telemetry.track({
@@ -294,17 +287,17 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
         const boundsHeight = Math.max(1, bounds.maxY - bounds.minY);
         const padding = 56;
         const fitScale = clampScale(Math.min(
-            (dimensions.width - padding * 2) / boundsWidth,
-            (dimensions.height - padding * 2) / boundsHeight,
+            (canvasDimensions.width - padding * 2) / boundsWidth,
+            (canvasDimensions.height - padding * 2) / boundsHeight,
         ));
         const contentWidth = boundsWidth * fitScale;
         const contentHeight = boundsHeight * fitScale;
-        const nextX = (dimensions.width - contentWidth) / 2 - bounds.minX * fitScale;
-        const nextY = (dimensions.height - contentHeight) / 2 - bounds.minY * fitScale;
+        const nextX = (canvasDimensions.width - contentWidth) / 2 - bounds.minX * fitScale;
+        const nextY = (canvasDimensions.height - contentHeight) / 2 - bounds.minY * fitScale;
 
         setViewScale(fitScale);
         setViewPosition({ x: nextX, y: nextY });
-    }, [dimensions.height, dimensions.width, gridColumns]);
+    }, [canvasDimensions.height, canvasDimensions.width, gridColumns]);
 
     const resolveEditTarget = useCallback(() => {
         const selectedPage = selection.length >= 1
@@ -331,18 +324,18 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
         const docHeight = estimateDocumentHeight(doc.pages.length, gridColumns);
         const padding = 56;
         const fitScale = clampScale(Math.min(
-            (dimensions.width - padding * 2) / docWidth,
-            (dimensions.height - padding * 2) / docHeight,
+            (canvasDimensions.width - padding * 2) / docWidth,
+            (canvasDimensions.height - padding * 2) / docHeight,
         ));
         const targetScale = Math.max(MIN_READABLE_SCALE, fitScale);
         const contentWidth = docWidth * targetScale;
         const contentHeight = docHeight * targetScale;
-        const nextX = (dimensions.width - contentWidth) / 2 - doc.x * targetScale;
-        const nextY = (dimensions.height - contentHeight) / 2 - doc.y * targetScale;
+        const nextX = (canvasDimensions.width - contentWidth) / 2 - doc.x * targetScale;
+        const nextY = (canvasDimensions.height - contentHeight) / 2 - doc.y * targetScale;
 
         setViewScale(targetScale);
         setViewPosition({ x: nextX, y: nextY });
-    }, [viewScale, dimensions, gridColumns]);
+    }, [canvasDimensions.height, canvasDimensions.width, gridColumns, viewScale]);
 
     const handleOverlayClose = useCallback(() => {
         setOverlayMode(null);
@@ -372,7 +365,7 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
         setOverlayMode(tool);
     }, [hasFiles, setInteractionMode]);
 
-    const handleToolClick = useCallback((tool: StudioEditToolId | StudioConvertToolId) => {
+    const handleToolClick = useCallback((tool: string) => {
         const editToolIds: string[] = ['text', 'annotate', 'sign', 'whiteout', 'watermark', 'forms', 'protect'];
         if (editToolIds.includes(tool)) {
             startEditFromCanvas(tool as StudioEditToolId);
@@ -380,6 +373,44 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
             startConvertFromCanvas(tool as StudioConvertToolId);
         }
     }, [startEditFromCanvas, startConvertFromCanvas]);
+
+    const handleHistoryToggle = useCallback(() => {
+        setHistoryOpen(!isHistoryOpen);
+    }, [isHistoryOpen, setHistoryOpen]);
+
+    const handleNewSpace = useCallback(() => {
+        const billingContext = runtime.billing.getContext();
+        const limitCheck = canAddDocumentToStudio(billingContext, documents.length, 0);
+        if (!limitCheck.allowed) {
+            showStudioPaywall(
+                runtime.telemetry,
+                limitCheck.reason === 'workspace_limit'
+                    ? 'Free includes up to 3 workspaces. Upgrade to Pro for unlimited workspaces.'
+                    : 'Free supports documents up to 25 pages. Upgrade to Pro to open larger PDFs.',
+                import.meta.env.VITE_BILLING_URL,
+            );
+            return;
+        }
+
+        const maxY = documents.reduce((acc, doc) => Math.max(acc, doc.y + 120), 80);
+        const nextDocId = crypto.randomUUID();
+        addDocument({
+            id: nextDocId,
+            name: `Workspace ${documents.length + 1}`,
+            x: 100,
+            y: hasFiles ? maxY + 40 : 100,
+            pages: [],
+            allowEmpty: true,
+            includeInExport: true,
+            isModified: true,
+        });
+        setActiveDocument(nextDocId);
+        void createCheckpoint(runtime.vfs, 'system', 'Created Workspace');
+    }, [addDocument, createCheckpoint, documents, hasFiles, runtime.billing, runtime.telemetry, runtime.vfs, setActiveDocument]);
+
+    const railActiveTool = overlayMode === 'edit'
+        ? editSession?.activeTool ?? null
+        : overlayMode ?? editSession?.activeTool ?? null;
 
     const zoomAtScreenPoint = useCallback((point: { x: number; y: number }, direction: 'in' | 'out') => {
         const oldScale = viewScale;
@@ -595,7 +626,7 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
             }
         }
 
-        const positionedDocs = placeNewDocumentsInRows(documents, drafts, dimensions.width, gridColumns);
+        const positionedDocs = placeNewDocumentsInRows(documents, drafts, canvasDimensions.width, gridColumns);
         for (const doc of positionedDocs) {
             addDocument(doc);
         }
@@ -616,7 +647,7 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
             fitToDocuments([...documents, ...positionedDocs]);
             void createCheckpoint(runtime.vfs, 'upload', `Uploaded ${positionedDocs.length} ${positionedDocs.length === 1 ? 'file' : 'files'}`);
         }
-    }, [addDocument, createCheckpoint, dimensions.width, documents, fitToDocuments, notifyStudioError, onFilesDropped, runtime.telemetry, runtime.vfs, gridColumns]);
+    }, [addDocument, canvasDimensions.width, createCheckpoint, documents, fitToDocuments, notifyStudioError, onFilesDropped, runtime.telemetry, runtime.vfs, gridColumns]);
 
     const handleDrop = useCallback(async (e: React.DragEvent) => {
         e.preventDefault();
@@ -759,12 +790,12 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
     }, [zoomAtScreenPoint]);
 
     const zoomIn = useCallback(() => {
-        zoomAtScreenPoint({ x: dimensions.width / 2, y: dimensions.height / 2 }, 'in');
-    }, [dimensions.height, dimensions.width, zoomAtScreenPoint]);
+        zoomAtScreenPoint({ x: canvasDimensions.width / 2, y: canvasDimensions.height / 2 }, 'in');
+    }, [canvasDimensions.height, canvasDimensions.width, zoomAtScreenPoint]);
 
     const zoomOut = useCallback(() => {
-        zoomAtScreenPoint({ x: dimensions.width / 2, y: dimensions.height / 2 }, 'out');
-    }, [dimensions.height, dimensions.width, zoomAtScreenPoint]);
+        zoomAtScreenPoint({ x: canvasDimensions.width / 2, y: canvasDimensions.height / 2 }, 'out');
+    }, [canvasDimensions.height, canvasDimensions.width, zoomAtScreenPoint]);
 
     useEffect(() => {
         const routeState = (location.state as StudioToolRouteState | null) ?? null;
@@ -947,155 +978,127 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
         >
-            <Stage
-                ref={stageRef}
-                width={dimensions.width}
-                height={dimensions.height}
-                pixelRatio={stagePixelRatio}
-                draggable={hasFiles}
-                x={viewPosition.x}
-                y={viewPosition.y}
-                scaleX={viewScale}
-                scaleY={viewScale}
-                onWheel={handleStageWheel}
-                onDragEnd={(event) => {
-                    if (event.target !== event.currentTarget) {
-                        return;
-                    }
-                    setViewPosition({
-                        x: event.currentTarget.x(),
-                        y: event.currentTarget.y(),
-                    });
-                }}
-            >
-                <Layer>
-                    <Rect
-                        x={-5000}
-                        y={-5000}
-                        width={10000}
-                        height={10000}
-                        fillLinearGradientStartPoint={{ x: -5000, y: -5000 }}
-                        fillLinearGradientEndPoint={{ x: 5000, y: 5000 }}
-                        fillLinearGradientColorStops={[
-                            0,
-                            'rgba(28, 52, 74, 0.72)',
-                            0.45,
-                            'rgba(20, 38, 56, 0.66)',
-                            1,
-                            'rgba(10, 20, 30, 0.58)',
-                        ]}
-                    />
-                    {hasFiles && (
-                        <>
-                            {documents.map((doc: IStudioDocument) => (
-                                <StudioDocument key={doc.id} doc={doc} />
-                            ))}
-                            {detachedPages.map((page) => (
-                                <DetachedPageObject key={page.id} page={page} />
-                            ))}
-                        </>
+            <div className="studio-shell-workspace">
+                <StudioToolRail
+                    activeTool={railActiveTool}
+                    onToolClick={handleToolClick}
+                    onUpload={openUploadDialog}
+                    hasFiles={hasFiles}
+                    onNewSpace={handleNewSpace}
+                    onHistoryToggle={handleHistoryToggle}
+                    isHistoryOpen={isHistoryOpen}
+                />
+                <div className="studio-shell-canvas">
+                    <Stage
+                        ref={stageRef}
+                        width={canvasDimensions.width}
+                        height={canvasDimensions.height}
+                        pixelRatio={stagePixelRatio}
+                        draggable={hasFiles}
+                        x={viewPosition.x}
+                        y={viewPosition.y}
+                        scaleX={viewScale}
+                        scaleY={viewScale}
+                        onWheel={handleStageWheel}
+                        onDragEnd={(event) => {
+                            if (event.target !== event.currentTarget) {
+                                return;
+                            }
+                            setViewPosition({
+                                x: event.currentTarget.x(),
+                                y: event.currentTarget.y(),
+                            });
+                        }}
+                    >
+                        <Layer>
+                            <Rect
+                                x={-5000}
+                                y={-5000}
+                                width={10000}
+                                height={10000}
+                                fill="#f0efed"
+                            />
+                            {hasFiles && (
+                                <>
+                                    {documents.map((doc: IStudioDocument) => (
+                                        <StudioDocument key={doc.id} doc={doc} />
+                                    ))}
+                                    {detachedPages.map((page) => (
+                                        <DetachedPageObject key={page.id} page={page} />
+                                    ))}
+                                </>
+                            )}
+                        </Layer>
+                    </Stage>
+                    {!hasFiles && (
+                        <div className="studio-empty-state" aria-live="polite">
+                            <div className="studio-empty-state-panel">
+                                <div className="studio-empty-state-icon" aria-hidden="true">
+                                    <LinearIcon name="upload" size={26} />
+                                </div>
+                                <h2 className="studio-empty-state-title">Drop a PDF to get started</h2>
+                                <p className="studio-empty-state-copy">Files never leave your device</p>
+                                <div className="studio-empty-state-hints" aria-label="Studio shortcuts">
+                                    <span className="studio-empty-state-hint">U</span>
+                                    <span className="studio-empty-state-hint">⌘O</span>
+                                    <span className="studio-empty-state-hint">Drag &amp; drop</span>
+                                </div>
+                            </div>
+                        </div>
                     )}
-                </Layer>
-            </Stage>
-            <div className="studio-viewport-controls animate-fade-in">
-                <div className="studio-viewport-layout">
-                    <div className="studio-viewport-rail">
-                        <div className="studio-viewport-rail-group">
-                            <div className="studio-viewport-rail-buttons">
-                                {editTools.map((item) => (
-                                    <button
-                                        key={item.tool}
-                                        type="button"
-                                        className="studio-viewport-tool-btn"
-                                        title={`Edit with ${item.label}`}
-                                        aria-label={`Edit with ${item.label}`}
-                                        onClick={() => { handleToolClick(item.tool); }}
-                                        disabled={!hasFiles}
-                                    >
-                                        <LinearIcon name={item.icon} size={15} />
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
-                        <div className="studio-viewport-divider studio-viewport-divider-vertical" />
-                        <div className="studio-viewport-rail-group">
-                            <div className="studio-viewport-rail-buttons">
-                                {convertTools.map((item) => (
-                                    <button
-                                        key={item.tool}
-                                        type="button"
-                                        className="studio-viewport-tool-btn"
-                                        title={`Run ${item.label}`}
-                                        aria-label={`Run ${item.label}`}
-                                        onClick={() => { handleToolClick(item.tool); }}
-                                        disabled={!hasFiles}
-                                    >
-                                        <LinearIcon name={item.icon} size={15} />
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
-                    </div>
-                    <div className="studio-viewport-toolbar">
-                        <div className="studio-viewport-toolbar-group">
-                            <div className="studio-viewport-tool-group-label">Selection</div>
-                            <button
-                                className="studio-viewport-btn"
-                                onClick={() => { copySelectedPages(); }}
-                                title="Copy selected pages (Ctrl/Cmd+C)"
-                                disabled={selection.length === 0}
-                            >
-                                Copy
-                            </button>
-                            <button
-                                className="studio-viewport-btn"
-                                onClick={() => { pasteSelectedPages(); }}
-                                title="Paste copied pages (Ctrl/Cmd+V)"
-                                disabled={!activeDocumentId || !hasClipboardPages}
-                            >
-                                Paste
-                            </button>
-                        </div>
-                        <div className="studio-viewport-divider" />
-                        <div className="studio-viewport-toolbar-group">
-                            <div className="studio-viewport-tool-group-label">View</div>
-                            <button className="studio-viewport-btn" onClick={zoomOut} title="Zoom out" disabled={!hasFiles}>-</button>
-                            <span className="studio-viewport-scale">{Math.round(viewScale * 100)}%</span>
-                            <button className="studio-viewport-btn" onClick={zoomIn} title="Zoom in" disabled={!hasFiles}>+</button>
-                            <button className="studio-viewport-btn studio-viewport-btn-fit" onClick={() => fitToDocuments(documents)} title="Fit all documents" disabled={!hasFiles}>
-                                Fit
-                            </button>
-                            <button
-                                className={`studio-viewport-btn ${gridColumns === 3 ? 'active' : ''}`}
-                                onClick={() => setGridColumns(3)}
-                                title="Grid: 3 columns"
-                                disabled={!hasFiles}
-                            >
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect></svg>
-                            </button>
-                            <button
-                                className={`studio-viewport-btn ${gridColumns === 5 ? 'active' : ''}`}
-                                onClick={() => setGridColumns(5)}
-                                title="Grid: 5 columns overview"
-                                disabled={!hasFiles}
-                            >
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="3" y1="15" x2="21" y2="15"></line><line x1="9" y1="3" x2="9" y2="21"></line><line x1="15" y1="3" x2="15" y2="21"></line></svg>
-                            </button>
-                        </div>
-                        <div className="studio-viewport-divider" />
-                        <div className="studio-viewport-toolbar-group studio-viewport-toolbar-group-right">
-                            <button
-                                className={`studio-viewport-btn ${isHistoryOpen ? 'active' : ''}`}
-                                onClick={() => setHistoryOpen(!isHistoryOpen)}
-                                title={isHistoryOpen ? 'Hide history' : 'Show history'}
-                            >
-                                <LinearIcon name="history" size={14} />
-                                <span>History</span>
-                            </button>
-                            <button type="button" className="studio-viewport-btn studio-viewport-btn-upload" onClick={openUploadDialog} title="Upload files (U or Ctrl/Cmd+O)">
-                                Upload
-                            </button>
-                        </div>
+                    <div className="studio-viewport-controls animate-fade-in">
+                        <button className="studio-viewport-btn" onClick={zoomOut} title="Zoom out" disabled={!hasFiles}>-</button>
+                        <span className="studio-viewport-scale">{Math.round(viewScale * 100)}%</span>
+                        <button className="studio-viewport-btn" onClick={zoomIn} title="Zoom in" disabled={!hasFiles}>+</button>
+                        <button className="studio-viewport-btn studio-viewport-btn-fit" onClick={() => fitToDocuments(documents)} title="Fit to screen" disabled={!hasFiles}>
+                            Fit
+                        </button>
+                        <button
+                            className={`studio-viewport-btn ${gridColumns === 3 ? 'active' : ''}`}
+                            onClick={() => setGridColumns(3)}
+                            title="Grid: 3 columns"
+                            disabled={!hasFiles}
+                        >
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect></svg>
+                        </button>
+                        <button
+                            className={`studio-viewport-btn ${gridColumns === 5 ? 'active' : ''}`}
+                            onClick={() => setGridColumns(5)}
+                            title="Grid: 5 columns overview"
+                            disabled={!hasFiles}
+                        >
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="3" y1="15" x2="21" y2="15"></line><line x1="9" y1="3" x2="9" y2="21"></line><line x1="15" y1="3" x2="15" y2="21"></line></svg>
+                        </button>
+                        <button
+                            className="studio-viewport-btn"
+                            onClick={() => { copySelectedPages(); }}
+                            title="Copy selected pages (Ctrl/Cmd+C)"
+                            disabled={selection.length === 0}
+                        >
+                            Copy
+                        </button>
+                        <button
+                            className="studio-viewport-btn"
+                            onClick={() => { pasteSelectedPages(); }}
+                            title="Paste copied pages (Ctrl/Cmd+V)"
+                            disabled={selection.length === 0 || !activeDocumentId || !hasClipboardPages}
+                        >
+                            Paste
+                        </button>
+                        {selection.length > 0 && (
+                            <span className="studio-viewport-selection-count" title={`${selection.length} selected pages`}>
+                                {selection.length}
+                            </span>
+                        )}
+                        <span className="studio-viewport-spacer" />
+                        <button
+                            className={`studio-viewport-btn ${isHistoryOpen ? 'active' : ''}`}
+                            onClick={() => setHistoryOpen(!isHistoryOpen)}
+                            title={isHistoryOpen ? 'Hide history' : 'Show history'}
+                        >
+                            <LinearIcon name="history" size={14} />
+                            <span>History</span>
+                        </button>
                     </div>
                 </div>
             </div>

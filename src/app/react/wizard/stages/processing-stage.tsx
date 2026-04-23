@@ -6,58 +6,37 @@ interface ProcessingStageProps {
 
 export function ProcessingStage({ progress, statusMessage, onCancel }: ProcessingStageProps) {
     return (
-        <div className="animate-fade-in" style={{ textAlign: 'center', padding: '2rem 0' }}>
+        <div className="animate-fade-in wizard-stage" style={{ textAlign: 'center' }}>
             <h2 className="stage-title">Processing...</h2>
             <p className="stage-description">
                 {statusMessage || 'Analyzing and processing your files locally.'}
             </p>
 
-            <div style={{ maxWidth: '400px', margin: '2rem auto' }}>
+            <div className="wizard-processing-meter">
                 <div
-                    style={{
-                        height: '8px',
-                        backgroundColor: '#e2e8f0',
-                        borderRadius: '4px',
-                        overflow: 'hidden',
-                        marginBottom: '1rem'
-                    }}
+                    className="wizard-progress-track"
+                    style={{ marginTop: 0 }}
                 >
                     <div
-                        style={{
-                            height: '100%',
-                            backgroundColor: 'var(--primary)',
-                            width: `${progress}%`,
-                            transition: 'width 0.3s ease'
-                        }}
+                        className="wizard-progress-bar wizard-progress-bar--shimmer"
+                        style={{ width: `${progress}%` }}
                     />
                 </div>
-                <p style={{ fontWeight: 600, color: 'var(--primary)' }}>{progress}%</p>
+                <p className="wizard-progress-value">{progress}%</p>
             </div>
 
-            <div className="glass-card" style={{ padding: '1.5rem', display: 'inline-block' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                    <div className="spinner" style={{
-                        width: '20px',
-                        height: '20px',
-                        border: '2px solid rgba(37, 99, 235, 0.2)',
-                        borderTopColor: 'var(--primary)',
-                        borderRadius: '50%',
-                        animation: 'spin 1s linear infinite'
-                    }} />
-                    <span style={{ fontSize: '0.875rem' }}>Worker is executing in private sandbox</span>
+            <div className="wizard-status-card">
+                <div className="wizard-status-row">
+                    <div className="wizard-spinner" />
+                    <span>Worker is executing in private sandbox</span>
                 </div>
             </div>
-
-            <style>{`
-        @keyframes spin {
-          to { transform: rotate(360deg); }
-        }
-      `}</style>
+            <p className="wizard-privacy-note">0 bytes sent to server</p>
 
             {onCancel && (
-                <div style={{ marginTop: '2rem' }}>
+                <div style={{ marginTop: '1.5rem' }}>
                     <button
-                        style={{ background: 'transparent', color: '#ef4444', border: '1px solid #fee2e2' }}
+                        className="btn-ghost"
                         onClick={onCancel}
                     >
                         Cancel Task

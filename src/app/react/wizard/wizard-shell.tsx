@@ -1,7 +1,6 @@
-import { useState, Suspense, lazy } from 'react';
+import { useState, Suspense, lazy, type ComponentType } from 'react';
 import { usePlatform } from '../platform-context';
 import { useToolExecution } from '../use-tool-execution';
-import { UploadStage } from './stages/upload-stage';
 import { ProcessingStage } from './stages/processing-stage';
 import { ResultStage } from './stages/result-stage';
 import type { ToolRunContext } from '../../../core/public/contracts';
@@ -38,28 +37,14 @@ interface ToolConfigProps {
 
 export function WizardShell({ toolId }: WizardShellProps) {
     const { runtime } = usePlatform();
-    const [step, setStep] = useState<WizardStep>('upload');
+    const [step, setStep] = useState<WizardStep>('config');
     const [inputIds, setInputIds] = useState<string[]>([]);
     const [error, setError] = useState<string | null>(null);
 
     const { execute, progress, statusMessage, lastResult } = useToolExecution(toolId, demoContext);
 
     const toolDef = runtime.registry.get(toolId);
-    const ToolConfigUI = lazy(toolDef.uiLoader) as any as React.ComponentType<ToolConfigProps>;
-
-    const handleUpload = async (ids: string[]) => {
-        setInputIds(ids);
-        setError(null);
-
-        // EntitlementGate: Pre-execution access check
-        const accessDenied = await runtime.runner.validateAccess(toolId, ids, demoContext);
-        if (accessDenied) {
-            setError(accessDenied.details || 'Access denied for this tool with these files.');
-            return;
-        }
-
-        setStep('config');
-    };
+    const ToolConfigUI = lazy(toolDef.uiLoader) as unknown as ComponentType<ToolConfigProps>;
 
     const handleStart = async (configOptions: Record<string, unknown>) => {
         const finalInputIds = (configOptions.inputIds as string[]) || inputIds;
@@ -77,38 +62,50 @@ export function WizardShell({ toolId }: WizardShellProps) {
             setStep('config'); // Return to config on error
         } else if (result.type === 'TOOL_ACCESS_DENIED') {
             setError(result.details || 'Access denied');
-            setStep('upload');
+            setStep('config');
         }
     };
 
     const handleRestart = () => {
-        setStep('upload');
+        setStep('config');
         setInputIds([]);
         setError(null);
     };
 
     return (
-        <div className="wizard-container glass-card">
+        <div className="wizard-container">
+            <div className="wizard-header">
+                <div className="wizard-tool-header">
+                    <div className="wizard-tool-icon" aria-hidden="true">
+                        {toolDef.name.slice(0, 1).toUpperCase()}
+                    </div>
+                    <div className="wizard-tool-copy">
+                        <h1 className="wizard-title">{toolDef.name}</h1>
+                        <p className="wizard-subtitle">{toolDef.description}</p>
+                    </div>
+                </div>
+                <span className="wizard-privacy-badge">Private</span>
+            </div>
+
+            <div className="wizard-progress-track" aria-hidden="true">
+                <div
+                    className="wizard-progress-bar wizard-progress-bar--shimmer"
+                    style={{ width: step === 'config' ? '33%' : step === 'processing' ? '66%' : '100%' }}
+                />
+            </div>
+
             {error && (
                 <div style={{
-                    backgroundColor: '#fef2f2',
-                    color: '#b91c1c',
+                    backgroundColor: 'var(--green-bg)',
+                    color: 'var(--text)',
                     padding: '1rem',
                     borderRadius: '8px',
                     marginBottom: '1rem',
                     fontSize: '0.875rem',
-                    border: '1px solid #fee2e2'
+                    border: '1px solid rgba(15,123,108,0.15)'
                 }}>
-                    <strong>Error:</strong> {error}
+                    <strong style={{ color: 'var(--red)' }}>Error:</strong> {error}
                 </div>
-            )}
-
-            {step === 'upload' && (
-                <UploadStage
-                    onUpload={handleUpload}
-                    accept={toolId === 'excel-to-pdf' ? '.xlsx' : (toolId === 'word-to-pdf' ? '.docx' : 'application/pdf')}
-                    multiple={toolId !== 'ocr-pdf' && toolId !== 'pdf-to-jpg'}
-                />
             )}
 
             {step === 'config' && (

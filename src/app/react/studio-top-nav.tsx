@@ -1,15 +1,12 @@
-import { useEffect, useMemo, useState } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useMemo, useState } from 'react';
 import { useStudioStore, type PageItem, type StudioDocument, type StudioState } from '../../v6/components/Studio/studio-store';
 import { LinearIcon } from '../../v6/components/icons/linear-icon';
 import { usePlatform } from './platform-context';
 import { PipelineRunner } from '../../v6/studio/pipeline/PipelineRunner';
-import { useHistoryStore } from '../../v6/components/Studio/store/history-store';
 import type { IPipelineRecipe } from '../../v6/studio/pipeline/types';
 import { openBillingPlans } from './billing';
-import { canAddDocumentToStudio } from '../platform/plan-limits';
-import { showStudioPaywall } from './studio-paywall';
 import { getOrCreateFlowId } from '../platform/browser-context';
+import { StudioDownloadModal } from './StudioDownloadModal';
 
 const DEFAULT_MARKETING_SITE_URL = 'http://127.0.0.1:4321';
 
@@ -40,40 +37,22 @@ function canExportAsSourceFile(pages: PageItem[]): { fileId: string } | null {
 }
 
 export function StudioTopNav({ telemetryEnabled, onToggleTelemetry, telemetryOpen }: StudioTopNavProps) {
-  const location = useLocation();
   const { runtime } = usePlatform();
-  const [deleteArmedDocId, setDeleteArmedDocId] = useState<string | null>(null);
+  const [isDownloadModalOpen, setIsDownloadModalOpen] = useState(false);
+  const [downloadFileName, setDownloadFileName] = useState('');
+  const [downloadTargetDocumentId, setDownloadTargetDocumentId] = useState<string | null>(null);
   const documents = useStudioStore((s: StudioState) => s.documents);
-  const workspaceVersion = useStudioStore((s: StudioState) => s.workspaceVersion);
-  const lastExportedVersion = useStudioStore((s: StudioState) => s.lastExportedVersion);
   const activeDocumentId = useStudioStore((s: StudioState) => s.activeDocumentId);
-  const addDocument = useStudioStore((s: StudioState) => s.addDocument);
-  const removeDocument = useStudioStore((s: StudioState) => s.removeDocument);
-  const setActiveDocument = useStudioStore((s: StudioState) => s.setActiveDocument);
-  const setSelection = useStudioStore((s: StudioState) => s.setSelection);
-  const requestInlineTool = useStudioStore((s: StudioState) => s.requestInlineTool);
   const markWorkspaceExported = useStudioStore((s: StudioState) => s.markWorkspaceExported);
-  const createCheckpoint = useHistoryStore((s) => s.createCheckpoint);
 
   const activeDocument = useMemo(
     () => documents.find((doc: StudioDocument) => doc.id === activeDocumentId) ?? null,
     [activeDocumentId, documents],
   );
   const hasActivePages = (activeDocument?.pages.length ?? 0) > 0;
-  const hasWorkspaceChanges = documents.some((doc: StudioDocument) => Boolean(doc.isModified))
-    || workspaceVersion !== lastExportedVersion;
   const marketingSiteUrl = import.meta.env.DEV
     ? (import.meta.env.VITE_MARKETING_SITE_URL?.trim() || DEFAULT_MARKETING_SITE_URL)
     : '/';
-  const deleteButtonCopy = activeDocument && deleteArmedDocId === activeDocument.id
-    ? 'Confirm Delete'
-    : 'Delete Space';
-
-  useEffect(() => {
-    if (!activeDocument || deleteArmedDocId !== activeDocument.id) {
-      setDeleteArmedDocId(null);
-    }
-  }, [activeDocument, deleteArmedDocId]);
 
   const exportDocument = async (doc: StudioDocument, fileName: string): Promise<void> => {
     const directSource = canExportAsSourceFile(doc.pages);
@@ -123,94 +102,42 @@ export function StudioTopNav({ telemetryEnabled, onToggleTelemetry, telemetryOpe
     markWorkspaceExported();
   };
 
-  const handleCreateSpace = (): void => {
-    const billingContext = runtime.billing.getContext();
-    const limitCheck = canAddDocumentToStudio(billingContext, documents.length, 0);
-    if (!limitCheck.allowed) {
-      showStudioPaywall(
-        runtime.telemetry,
-        limitCheck.reason === 'workspace_limit'
-          ? 'Free includes up to 3 workspaces. Upgrade to Pro for unlimited workspaces.'
-          : 'Free supports documents up to 25 pages. Upgrade to Pro to open larger PDFs.',
-        import.meta.env.VITE_BILLING_URL,
-      );
-      return;
-    }
-    const maxY = documents.reduce((acc, doc) => Math.max(acc, doc.y + 120), 80);
-    const name = `Workspace ${documents.length + 1}`;
-    const nextDocId = crypto.randomUUID();
-    addDocument({
-      id: nextDocId,
-      name: name,
-      x: 100,
-      y: documents.length > 0 ? maxY + 40 : 100,
-      pages: [],
-      allowEmpty: true,
-      includeInExport: true,
-      isModified: true,
-    });
-    setActiveDocument(nextDocId);
-    setTimeout(() => {
-      void createCheckpoint(runtime.vfs, 'space_new', `Created ${name}`);
-    }, 0);
-  };
-
-  const handleDeleteSpace = (): void => {
-    if (!activeDocument) {
-      return;
-    }
-    if (deleteArmedDocId !== activeDocument.id) {
-      setDeleteArmedDocId(activeDocument.id);
-      return;
-    }
-    setDeleteArmedDocId(null);
-    removeDocument(activeDocument.id);
-    setSelection([]);
-    requestInlineTool(null);
-    setTimeout(() => {
-      void createCheckpoint(runtime.vfs, 'space_delete', `Deleted ${activeDocument.name}`);
-    }, 0);
-  };
-
-  const handleDownload = () => {
+  const handleDownload = (): void => {
     if (!activeDocument || activeDocument.pages.length === 0) {
       return;
     }
-
-    setTimeout(async () => {
-      const userInput = window.prompt('Enter file name for export:', activeDocument.name);
-      if (userInput === null) return;
-
-      const fileName = userInput.trim() || activeDocument.name;
-      const safeName = fileName.replace(/[<>:"/\\|?*]/g, '_').slice(0, 64) || 'Workspace';
-
-      try {
-        await exportDocument(activeDocument, `${safeName}.pdf`);
-        runtime.telemetry.track({
-          type: 'OUTPUT_DOWNLOADED',
-          flowId: getOrCreateFlowId(),
-          toolId: 'studio',
-          outputCount: 1,
-          surface: 'studio',
-        });
-      } catch (error) {
-        const message = error instanceof Error ? error.message : 'Export failed';
-        console.error(message);
-      }
-    }, 50);
+    setDownloadTargetDocumentId(activeDocument.id);
+    setDownloadFileName(activeDocument.name);
+    setIsDownloadModalOpen(true);
   };
 
-  const handleBackToSite = (): void => {
-    const leavingEditWorkspace = location.pathname === '/studio/edit';
-    const shouldConfirm = hasWorkspaceChanges || leavingEditWorkspace;
-    if (shouldConfirm && !window.confirm('Leave LocalPDF and return to the website? Unsaved changes may be lost.')) {
+  const handleConfirmDownload = async (filename: string): Promise<void> => {
+    const targetDocument = downloadTargetDocumentId
+      ? documents.find((doc: StudioDocument) => doc.id === downloadTargetDocumentId) ?? null
+      : activeDocument;
+    if (!targetDocument || targetDocument.pages.length === 0) {
       return;
     }
-    window.location.assign(marketingSiteUrl);
-  };
 
-  const handleOpenPricing = (): void => {
-    openBillingPlans(import.meta.env.VITE_BILLING_URL);
+    const fileName = filename.trim() || targetDocument.name;
+    const safeName = fileName.replace(/[<>:"/\\|?*]/g, '_').slice(0, 64) || 'Workspace';
+
+    try {
+      await exportDocument(targetDocument, `${safeName}.pdf`);
+      runtime.telemetry.track({
+        type: 'OUTPUT_DOWNLOADED',
+        flowId: getOrCreateFlowId(),
+        toolId: 'studio',
+        outputCount: 1,
+        surface: 'studio',
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Export failed';
+      console.error(message);
+    } finally {
+      setIsDownloadModalOpen(false);
+      setDownloadTargetDocumentId(null);
+    }
   };
 
   return (
@@ -221,12 +148,22 @@ export function StudioTopNav({ telemetryEnabled, onToggleTelemetry, telemetryOpe
             <div className="studio-logo-title">LocalPDF</div>
             <div className="studio-logo-subtitle">
               <span>Studio</span>
-              {runtime.billing.getContext().plan === 'pro' && (
-                <div className="studio-badge-pro">PRO</div>
-              )}
             </div>
           </div>
         </a>
+        {runtime.billing.getContext().plan === 'pro' ? (
+          <div className="studio-badge-pro">PRO</div>
+        ) : (
+          <button
+            type="button"
+            className="studio-upgrade-btn"
+            onClick={() => {
+              openBillingPlans(import.meta.env.VITE_BILLING_URL);
+            }}
+          >
+            Upgrade
+          </button>
+        )}
       </div>
 
       <div className="studio-top-nav-center" aria-live="polite" />
@@ -235,58 +172,25 @@ export function StudioTopNav({ telemetryEnabled, onToggleTelemetry, telemetryOpe
         <button
           type="button"
           className="studio-tab-btn"
-          onClick={handleBackToSite}
-          title="Website"
-        >
-          <span>Website</span>
-        </button>
-        <button
-          type="button"
-          className="studio-tab-btn"
-          onClick={handleOpenPricing}
-          title="Pricing"
-        >
-          <span>Pricing</span>
-        </button>
-        <button
-          type="button"
-          className="studio-tab-btn"
-          onClick={handleCreateSpace}
-          title="Create workspace"
-        >
-          <span>New Space</span>
-        </button>
-        <button
-          type="button"
-          className="studio-tab-btn"
-          onClick={handleDeleteSpace}
-          disabled={!activeDocument}
-          title={!activeDocument ? 'No active workspace' : deleteButtonCopy}
-        >
-          <span>{deleteButtonCopy}</span>
-        </button>
-        <button
-          type="button"
-          className="studio-tab-btn"
-          onClick={() => { void handleDownload(); }}
+          onClick={handleDownload}
           disabled={!hasActivePages}
           title={!hasActivePages ? 'No pages in active workspace' : 'Download active workspace'}
         >
           <LinearIcon name="download" className="linear-icon" />
           <span>Download</span>
         </button>
-        {telemetryEnabled && (
-          <button
-            type="button"
-            className="studio-tab-btn"
-            onClick={onToggleTelemetry}
-            aria-expanded={telemetryOpen}
-          >
-            <LinearIcon name={telemetryOpen ? 'chevron-up' : 'chevron-down'} className="linear-icon" />
-            <span>Telemetry</span>
-          </button>
-        )}
       </div>
-    </header >
+      <StudioDownloadModal
+        isOpen={isDownloadModalOpen}
+        fileName={downloadFileName}
+        onClose={() => {
+          setIsDownloadModalOpen(false);
+          setDownloadTargetDocumentId(null);
+        }}
+        onDownload={(filename) => {
+          void handleConfirmDownload(filename);
+        }}
+      />
+    </header>
   );
 }

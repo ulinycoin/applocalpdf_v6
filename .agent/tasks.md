@@ -62,6 +62,69 @@ Last updated: 2026-04-23
 
 ---
 
+## UI Redesign — Light Theme Migration
+
+Full plan: `.agent/redesign-plan.md`
+
+### REDESIGN-01: CSS tokens
+- **Status:** `[x]` 2026-04-23
+- **Role:** ENGINEER
+- **Files:** `src/styles.css`, `src/v6/components/Studio/StudioShell.tsx`
+- **Goal:** (a) Replace `:root` tokens with light values. (b) Remove dark radial gradients from `body`. (c) Replace Konva canvas `Rect` dark gradient with `#f0efed`. (d) Rename old token references: `--text-main`→`--text`, `--stroke`→`--border`, `--accent-soft`→`--accent-hover`, `--ok`→`--green`.
+- **Note:** After this step some components will look broken (hardcoded dark rgba still present). Expected — fixed in Steps 2–6.
+
+### REDESIGN-02: Top Nav
+- **Status:** `[x]` 2026-04-23
+- **Role:** ENGINEER
+- **Files:** `src/app/react/studio-top-nav.tsx`, new `StudioDownloadModal.tsx`
+- **Goal:** Doc tabs, remove clutter, inline download modal (no window.prompt)
+- **Depends on:** REDESIGN-01
+
+### REDESIGN-03: Tool Rail
+- **Status:** `[x]` 2026-04-23
+- **Role:** ENGINEER
+- **Files:** new `src/v6/components/Studio/StudioToolRail.tsx`, `StudioShell.tsx`
+- **Goal:** Left vertical rail with icon + label, 220px wide
+- **Depends on:** REDESIGN-01
+
+### REDESIGN-04: Bottom Bar
+- **Status:** `[x]` 2026-04-23
+- **Role:** ENGINEER
+- **Files:** `src/v6/components/Studio/StudioShell.tsx`, `src/styles.css`
+- **Goal:** Slim 40px bar, zoom/grid/copy/history only
+- **Depends on:** REDESIGN-03
+
+### REDESIGN-05: Empty State
+- **Status:** `[x]` 2026-04-23
+- **Role:** ENGINEER
+- **Files:** `src/v6/components/Studio/StudioShell.tsx`
+- **Goal:** Light empty state matching mockup, verify after token change
+- **Depends on:** REDESIGN-01
+
+### REDESIGN-06: Tool Page Wizard
+- **Status:** `[x]` 2026-04-23
+- **Role:** ENGINEER
+- **Files:** `src/app/react/wizard/`, `src/styles.css`
+- **Goal:** Remove Upload stage, cards layout, light progress bar, result with "Also try"
+- **Depends on:** REDESIGN-01
+
+### REDESIGN-07: Canvas Doc Cards
+- **Status:** `[x]` 2026-04-23
+- **Role:** ENGINEER
+- **Files:** `src/v6/components/Studio/StudioDocument.tsx`, `PageObject.tsx`
+- **Goal:** White cards, light borders, correct dot colors
+- **Depends on:** REDESIGN-01
+
+### REDESIGN-08: Dead CSS removal
+- **Status:** `[x]` 2026-04-23
+- **Role:** ENGINEER
+- **Files:** `src/styles.css`
+- **Goal:** Delete all unused dark-theme classes and hardcoded rgba values. Confirm with grep before deleting each class.
+- **Candidates:** `.app-layout`, `.sidebar*`, `.main-shell`, `.glass-card`, `.drop-zone*`, `.stage-title`, `.stage-description`, `.studio-viewport-rail*`, all remaining `rgba(28,` `rgba(20,` `rgba(10,`
+- **Depends on:** REDESIGN-02 through REDESIGN-07 all complete
+
+---
+
 ## Level 3 — Backlog
 
 ### TASK-07: LemonSqueezy webhook → PostHog

@@ -23,28 +23,38 @@ export function ResultStage({ outputIds, baseName = 'result', onRestart }: Resul
     };
 
     return (
-        <div className="animate-fade-in" style={{ textAlign: 'center' }}>
-            <div style={{ fontSize: '4rem', marginBottom: '1.5rem' }}>✨</div>
+        <div className="animate-fade-in wizard-result-stage" style={{ textAlign: 'center' }}>
+            <div className="wizard-result-mark" aria-hidden="true">
+                ✓
+            </div>
             <h2 className="stage-title">All Done!</h2>
             <p className="stage-description">
                 Your file has been successfully processed and is ready for download.
             </p>
 
-            <div className="glass-card" style={{ padding: '2rem', marginBottom: '2rem' }}>
-                <p style={{ marginBottom: '1.5rem', fontWeight: 500 }}>
-                    {outputIds.length} file{outputIds.length > 1 ? 's' : ''} generated
-                </p>
-                <button className="primary" onClick={handleDownload} style={{ fontSize: '1.125rem', padding: '1rem 2.5rem' }}>
-                    Download Now
-                </button>
-            </div>
+            <div className="wizard-output-card">
+                <div className="wizard-output-row">
+                    <div className="wizard-output-file-icon" aria-hidden="true">⋯</div>
+                    <div className="wizard-output-file-meta">
+                        <p className="wizard-output-label">
+                            {outputIds.length} file{outputIds.length > 1 ? 's' : ''} generated
+                        </p>
+                        <p className="wizard-output-hint">Ready for download from the local workspace.</p>
+                    </div>
+                </div>
 
-            <button
-                style={{ background: 'transparent', color: 'var(--text-muted)' }}
-                onClick={onRestart}
-            >
-                ← Start Over
-            </button>
+                <div className="wizard-action-row wizard-result-actions">
+                    <button className="btn-primary wizard-download-btn" onClick={handleDownload}>
+                        Download
+                    </button>
+                    <button className="btn-ghost" onClick={onRestart}>
+                        Run again
+                    </button>
+                    <button className="btn-ghost" onClick={onRestart}>
+                        Back to Studio
+                    </button>
+                </div>
+            </div>
         </div>
     );
 }
