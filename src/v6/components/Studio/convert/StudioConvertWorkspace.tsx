@@ -9,9 +9,14 @@ import { StudioPdfToJpgSettingsPanel } from './StudioPdfToJpgSettingsPanel';
 import { getStudioConvertMessages } from './studio-convert-i18n';
 import { useStudioConvertController } from './use-studio-convert-controller';
 
-export function StudioConvertWorkspace() {
+interface StudioConvertWorkspaceProps {
+  onClose?: () => void;
+  initialTool?: string;
+}
+
+export function StudioConvertWorkspace({ onClose, initialTool }: StudioConvertWorkspaceProps = {}) {
   const ui = useMemo(() => getStudioConvertMessages(), []);
-  const ctrl = useStudioConvertController();
+  const ctrl = useStudioConvertController(initialTool as import('./use-studio-convert-controller').StudioConvertToolId | undefined);
   const compressSavedBytes = ctrl.compressResultSummary
     ? Math.max(0, ctrl.compressResultSummary.inputBytes - ctrl.compressResultSummary.outputBytes)
     : 0;
@@ -21,9 +26,9 @@ export function StudioConvertWorkspace() {
 
   useEffect(() => {
     if (!ctrl.activeDocument || ctrl.previewPages.length === 0) {
-      ctrl.navigateBack();
+      if (onClose) onClose(); else ctrl.navigateBack();
     }
-  }, [ctrl.activeDocument, ctrl.navigateBack, ctrl.previewPages.length]);
+  }, [ctrl.activeDocument, ctrl.navigateBack, ctrl.previewPages.length, onClose]);
 
   if (!ctrl.activeDocument || ctrl.previewPages.length === 0) {
     return null;
@@ -44,7 +49,7 @@ export function StudioConvertWorkspace() {
           <button
             type="button"
             className="studio-edit-back-btn"
-            onClick={ctrl.navigateBack}
+            onClick={onClose ?? ctrl.navigateBack}
             title={ui.backToStudio}
             style={{ padding: '6px 12px', whiteSpace: 'nowrap' }}
           >

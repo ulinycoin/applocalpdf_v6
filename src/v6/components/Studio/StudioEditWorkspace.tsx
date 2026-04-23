@@ -17,7 +17,11 @@ import { useStudioEditZoom } from './edit/use-studio-edit-zoom';
 import type { FormFieldElement, WatermarkElement } from './editor-types';
 import type { FontFamilyId } from './inline-text-utils';
 
-export function StudioEditWorkspace() {
+interface StudioEditWorkspaceProps {
+    onClose?: () => void;
+}
+
+export function StudioEditWorkspace({ onClose }: StudioEditWorkspaceProps = {}) {
     const ui = useMemo(() => getStudioEditMessages(), []);
 
     const ctrl = useStudioEditController(ui);
@@ -47,9 +51,13 @@ export function StudioEditWorkspace() {
     useEffect(() => {
         if (!ctrl.preview) {
             ctrl.clearEditSession();
-            ctrl.navigate('/studio');
+            if (onClose) {
+                onClose();
+            } else {
+                ctrl.navigate('/studio');
+            }
         }
-    }, [ctrl.clearEditSession, ctrl.navigate, ctrl.preview]);
+    }, [ctrl.clearEditSession, ctrl.navigate, ctrl.preview, onClose]);
 
     useEffect(() => {
         const url = ctrl.preview?.page.thumbnailUrl;
@@ -190,8 +198,12 @@ export function StudioEditWorkspace() {
             return;
         }
         ctrl.clearEditSession();
-        ctrl.navigate('/studio');
-    }, [ctrl, ui.unsavedConfirm]);
+        if (onClose) {
+            onClose();
+        } else {
+            ctrl.navigate('/studio');
+        }
+    }, [ctrl, onClose, ui.unsavedConfirm]);
 
     useEffect(() => {
         const onKeyDown = (event: KeyboardEvent) => {
@@ -544,10 +556,11 @@ export function StudioEditWorkspace() {
                     </div>
                 )}
 
-                <div className="studio-edit-canvas-stage">
+                <div className="studio-edit-canvas-stage" style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column' }}>
                     <div
                         ref={zoom.containerRef}
                         className="studio-edit-canvas-wrap custom-scrollbar"
+                        style={{ flex: 1, overflow: 'auto', width: '100%', display: 'flex', justifyContent: 'center' }}
                     >
                         <div style={{
                             width: stageWidth,
@@ -555,7 +568,7 @@ export function StudioEditWorkspace() {
                             display: 'flex',
                             justifyContent: 'center',
                             alignItems: 'center',
-                            margin: '0 auto'
+                            flexShrink: 0,
                         }}>
                             <div
                                 ref={surfaceRef}
@@ -619,7 +632,7 @@ export function StudioEditWorkspace() {
                                     }}
                                     onDiscard={() => {
                                         if (ctrl.hasDirtyChanges && !window.confirm(ui.unsavedConfirm)) return;
-                                        ctrl.navigate('/studio');
+                                        if (onClose) { onClose(); } else { ctrl.navigate('/studio'); }
                                     }}
                                 />
                             </div>

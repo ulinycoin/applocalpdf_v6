@@ -156,7 +156,7 @@ function maybePdfName(fileName: string): boolean {
   return fileName.toLowerCase().endsWith('.pdf');
 }
 
-export function useStudioConvertController() {
+export function useStudioConvertController(initialToolOverride?: StudioConvertToolId) {
   const { runtime } = usePlatform();
   const location = useLocation();
   const navigate = useNavigate();
@@ -170,6 +170,7 @@ export function useStudioConvertController() {
   const setInteractionMode = useStudioStore((s: StudioState) => s.setInteractionMode);
 
   const [activeTool, setActiveTool] = useState<StudioConvertToolId | null>(() => {
+    if (initialToolOverride) return initialToolOverride;
     const routeState = (location.state as StudioToolRouteState | null) ?? null;
     return routeState?.studioConvertTool ?? 'ocr-pdf';
   });

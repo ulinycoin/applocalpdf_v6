@@ -1,4 +1,5 @@
-import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
+import { useState, useRef, useEffect, useCallback, useMemo, lazy, Suspense } from 'react';
+import { createPortal } from 'react-dom';
 import { Stage, Layer, Rect } from 'react-konva';
 import type Konva from 'konva';
 import type { KonvaEventObject } from 'konva/lib/Node';
@@ -18,6 +19,17 @@ import { canAddDocumentToStudio, canCreateWorkspace, canUseDocumentWithPageCount
 import { showStudioPaywall } from '../../../app/react/studio-paywall';
 import { useHistoryStore } from './store/history-store';
 import { getOrCreateFlowId } from '../../../app/platform/browser-context';
+
+const StudioEditWorkspace = lazy(async () => {
+    const m = await import('./StudioEditWorkspace');
+    return { default: m.StudioEditWorkspace };
+});
+
+const StudioConvertWorkspace = lazy(async () => {
+    const m = await import('./convert/StudioConvertWorkspace');
+    return { default: m.StudioConvertWorkspace };
+});
+
 export interface StudioShellProps {
     onFilesDropped?: (files: File[]) => void;
 }
@@ -224,6 +236,10 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
     const selection = useStudioStore((s: StudioState) => s.selection);
     const setSelection = useStudioStore((s: StudioState) => s.setSelection);
     const setInteractionMode = useStudioStore((s: StudioState) => s.setInteractionMode);
+    const startEditSession = useStudioStore((s: StudioState) => s.startEditSession);
+    const setActiveEditPageId = useStudioStore((s: StudioState) => s.setActiveEditPageId);
+    const editSession = useStudioStore((s: StudioState) => s.editSession);
+    const clearEditSession = useStudioStore((s: StudioState) => s.clearEditSession);
     const activeDocument = useMemo(
         () => documents.find((doc) => doc.id === activeDocumentId) ?? null,
         [activeDocumentId, documents],
@@ -231,6 +247,11 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
     const hasFiles = documents.length > 0 || detachedPages.length > 0;
     const pageClipboardRef = useRef<PageItem[]>([]);
     const [hasClipboardPages, setHasClipboardPages] = useState(false);
+
+    // Active tool overlay — 'edit' or convert tool id
+    type OverlayMode = 'edit' | StudioConvertToolId;
+    const [overlayMode, setOverlayMode] = useState<OverlayMode | null>(null);
+
     const editTools: Array<{ tool: StudioEditToolId; icon: Parameters<typeof LinearIcon>[0]['name']; label: string }> = [
         { tool: 'text', icon: 'text', label: 'Text' },
         { tool: 'annotate', icon: 'highlighter', label: 'Annotate' },
@@ -285,8 +306,8 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
         setViewPosition({ x: nextX, y: nextY });
     }, [dimensions.height, dimensions.width, gridColumns]);
 
-    const startEditFromCanvas = useCallback((initialTool: StudioEditToolId) => {
-        const selectedPage = selection.length === 1
+    const resolveEditTarget = useCallback(() => {
+        const selectedPage = selection.length >= 1
             ? (() => {
                 const target = selection[0];
                 const doc = documents.find((item) => item.id === target.docId) ?? null;
@@ -294,23 +315,46 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
                 return doc && page ? { doc, page } : null;
             })()
             : null;
-
         const activeDocWithPage = activeDocument?.pages[0]
             ? { doc: activeDocument, page: activeDocument.pages[0] }
             : null;
-
         const fallbackDoc = documents.find((doc) => doc.pages[0]) ?? null;
         const fallbackPage = fallbackDoc?.pages[0] ?? null;
+        return selectedPage ?? activeDocWithPage ?? (fallbackDoc && fallbackPage ? { doc: fallbackDoc, page: fallbackPage } : null);
+    }, [activeDocument, documents, selection]);
 
-        const target = selectedPage
-            ?? activeDocWithPage
-            ?? (fallbackDoc && fallbackPage ? { doc: fallbackDoc, page: fallbackPage } : null);
+    const zoomToDocument = useCallback((doc: IStudioDocument) => {
+        const MIN_READABLE_SCALE = 1.4;
+        if (viewScale >= MIN_READABLE_SCALE) return;
 
-        if (!target) {
-            return;
-        }
+        const docWidth = estimateDocumentWidth(doc.pages.length, gridColumns);
+        const docHeight = estimateDocumentHeight(doc.pages.length, gridColumns);
+        const padding = 56;
+        const fitScale = clampScale(Math.min(
+            (dimensions.width - padding * 2) / docWidth,
+            (dimensions.height - padding * 2) / docHeight,
+        ));
+        const targetScale = Math.max(MIN_READABLE_SCALE, fitScale);
+        const contentWidth = docWidth * targetScale;
+        const contentHeight = docHeight * targetScale;
+        const nextX = (dimensions.width - contentWidth) / 2 - doc.x * targetScale;
+        const nextY = (dimensions.height - contentHeight) / 2 - doc.y * targetScale;
 
-        useStudioStore.getState().startEditSession({
+        setViewScale(targetScale);
+        setViewPosition({ x: nextX, y: nextY });
+    }, [viewScale, dimensions, gridColumns]);
+
+    const handleOverlayClose = useCallback(() => {
+        setOverlayMode(null);
+        clearEditSession();
+        setInteractionMode(null);
+    }, [clearEditSession, setInteractionMode]);
+
+    const startEditFromCanvas = useCallback((initialTool: StudioEditToolId) => {
+        const target = resolveEditTarget();
+        if (!target) return;
+
+        startEditSession({
             docId: target.doc.id,
             pageId: target.page.id,
             pageIndex: target.page.pageIndex,
@@ -319,30 +363,23 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
         });
         setSelection([{ docId: target.doc.id, pageId: target.page.id }]);
         setInteractionMode('edit');
-
-        const params = new URLSearchParams(window.location.search);
-        if (params.get('inplace_edit') === '1') {
-            useStudioStore.getState().setActiveEditPageId(target.page.id);
-            setSelection([]);
-            return;
-        }
-
-        navigate('/studio/edit');
-    }, [activeDocument, documents, navigate, selection, setInteractionMode, setSelection]);
+        setOverlayMode('edit');
+    }, [resolveEditTarget, startEditSession, setSelection, setInteractionMode]);
 
     const startConvertFromCanvas = useCallback((tool: StudioConvertToolId) => {
-        if (!hasFiles) {
-            return;
-        }
-
+        if (!hasFiles) return;
         setInteractionMode('convert');
-        navigate('/studio/convert', {
-            state: {
-                source: 'studio',
-                studioConvertTool: tool,
-            } satisfies StudioToolRouteState,
-        });
-    }, [hasFiles, navigate, setInteractionMode]);
+        setOverlayMode(tool);
+    }, [hasFiles, setInteractionMode]);
+
+    const handleToolClick = useCallback((tool: StudioEditToolId | StudioConvertToolId) => {
+        const editToolIds: string[] = ['text', 'annotate', 'sign', 'whiteout', 'watermark', 'forms', 'protect'];
+        if (editToolIds.includes(tool)) {
+            startEditFromCanvas(tool as StudioEditToolId);
+        } else {
+            startConvertFromCanvas(tool as StudioConvertToolId);
+        }
+    }, [startEditFromCanvas, startConvertFromCanvas]);
 
     const zoomAtScreenPoint = useCallback((point: { x: number; y: number }, direction: 'in' | 'out') => {
         const oldScale = viewScale;
@@ -972,7 +1009,7 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
                                         className="studio-viewport-tool-btn"
                                         title={`Edit with ${item.label}`}
                                         aria-label={`Edit with ${item.label}`}
-                                        onClick={() => { startEditFromCanvas(item.tool); }}
+                                        onClick={() => { handleToolClick(item.tool); }}
                                         disabled={!hasFiles}
                                     >
                                         <LinearIcon name={item.icon} size={15} />
@@ -990,7 +1027,7 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
                                         className="studio-viewport-tool-btn"
                                         title={`Run ${item.label}`}
                                         aria-label={`Run ${item.label}`}
-                                        onClick={() => { startConvertFromCanvas(item.tool); }}
+                                        onClick={() => { handleToolClick(item.tool); }}
                                         disabled={!hasFiles}
                                     >
                                         <LinearIcon name={item.icon} size={15} />
@@ -1071,8 +1108,19 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
                 onChange={handleUploadInputChange}
             />
             {isHistoryOpen && <StudioTimeline />}
-            {!useStudioStore.getState().activeEditPageId && <StudioFloatingMenu />}
+            {!overlayMode && <StudioFloatingMenu />}
             <StudioInPlaceEditor stageRef={stageRef} />
+            {overlayMode && createPortal(
+                <div className="studio-tool-overlay">
+                    <Suspense fallback={null}>
+                        {overlayMode === 'edit'
+                            ? <StudioEditWorkspace onClose={handleOverlayClose} />
+                            : <StudioConvertWorkspace onClose={handleOverlayClose} initialTool={overlayMode} />
+                        }
+                    </Suspense>
+                </div>,
+                document.body
+            )}
         </div>
     );
 }
