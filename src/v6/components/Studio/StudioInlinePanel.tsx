@@ -627,10 +627,10 @@ export function StudioInlinePanel({
         if (activeTool === 'protect') {
             actionButtons = (
                 <>
-                    <button type="button" className="studio-viewport-btn studio-viewport-btn-upload" onClick={() => { void ctrl.protectAndReturnToStudio(ctrl.protectOptions ?? {}); }} disabled={isApplying}>
+                    <button type="button" className="studio-inline-panel-run-btn" onClick={() => { void ctrl.protectAndReturnToStudio(ctrl.protectOptions ?? {}); }} disabled={isApplying}>
                         {isApplying ? 'Applying…' : 'Apply'}
                     </button>
-                    <button type="button" className="studio-viewport-btn" onClick={onClose}>Cancel</button>
+                    <button type="button" className="studio-inline-panel-cancel-btn" onClick={onClose}>Cancel</button>
                 </>
             );
         } else {
@@ -638,13 +638,13 @@ export function StudioInlinePanel({
                 <>
                     <button
                         type="button"
-                        className="studio-viewport-btn studio-viewport-btn-upload"
+                        className="studio-inline-panel-run-btn"
                         onClick={handleSaveEdit}
                         disabled={isApplying || !hasPendingChanges}
                     >
                         {isApplying ? 'Saving…' : 'Save'}
                     </button>
-                    <button type="button" className="studio-viewport-btn" onClick={handleDiscardEdit}>
+                    <button type="button" className="studio-inline-panel-cancel-btn" onClick={handleDiscardEdit}>
                         Discard
                     </button>
                 </>
@@ -655,25 +655,23 @@ export function StudioInlinePanel({
             actionButtons = (
                 <button
                     type="button"
-                    className="studio-viewport-btn studio-viewport-btn-upload"
+                    className="studio-inline-panel-run-btn"
                     onClick={() => { void runConvert(); }}
                     disabled={selectedConvertPages.length === 0 || (activeTool === 'extract-images' && selectedExtractImageCandidates.length === 0)}
                 >
-                    Run
+                    {activeTool === 'ocr-pdf' ? `Run OCR on ${selectedConvertPages.length} page${selectedConvertPages.length !== 1 ? 's' : ''}` : 'Run'}
                 </button>
             );
         } else if (convertStep === 'processing') {
-            actionButtons = (
-                <span style={{ fontSize: 13, opacity: 0.8 }}>Processing… {Math.round(convertProgress)}%</span>
-            );
+            actionButtons = null;
         } else {
             actionButtons = (
                 <>
-                    <button type="button" className="studio-viewport-btn studio-viewport-btn-upload" onClick={() => { void downloadResults(); }}>
+                    <button type="button" className="studio-inline-panel-run-btn" onClick={() => { void downloadResults(); }}>
                         Download
                     </button>
-                    <button type="button" className="studio-viewport-btn" onClick={() => { setConvertStep('config'); setOutputIds([]); setOcrResult(null); setJpgResults([]); setCompressResultSummary(null); }}>
-                        Again
+                    <button type="button" className="studio-inline-panel-cancel-btn" onClick={() => { setConvertStep('config'); setOutputIds([]); setOcrResult(null); setJpgResults([]); setCompressResultSummary(null); }}>
+                        Run again
                     </button>
                 </>
             );
@@ -720,39 +718,56 @@ export function StudioInlinePanel({
         </div>
     );
 
+    const toolMeta: Record<string, { label: string; icon: React.ReactNode }> = {
+        text:           { label: 'Text',           icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={`var(--accent)`} strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18"/></svg> },
+        annotate:       { label: 'Annotate',       icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={`var(--accent)`} strokeWidth="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg> },
+        sign:           { label: 'Sign',           icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={`var(--accent)`} strokeWidth="2"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg> },
+        whiteout:       { label: 'Whiteout',       icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={`var(--accent)`} strokeWidth="2"><path d="M20 20H7L3 16l9.5-9.5 7 7Z"/></svg> },
+        watermark:      { label: 'Watermark',      icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={`var(--accent)`} strokeWidth="2"><circle cx="12" cy="12" r="10"/><path d="M8 12h8M12 8v8"/></svg> },
+        forms:          { label: 'Forms',          icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={`var(--accent)`} strokeWidth="2"><rect x="9" y="11" width="13" height="13" rx="2"/><path d="M5 7H3a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h2"/></svg> },
+        protect:        { label: 'Protect',        icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={`var(--accent)`} strokeWidth="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg> },
+        'ocr-pdf':      { label: 'OCR',            icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={`var(--accent)`} strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M7 8h10M7 12h6M7 16h4"/></svg> },
+        'pdf-to-jpg':   { label: 'PDF to JPG',     icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={`var(--accent)`} strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg> },
+        'compress-pdf': { label: 'Compress',       icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={`var(--accent)`} strokeWidth="2"><polyline points="4 14 10 14 10 20"/><polyline points="20 10 14 10 14 4"/><line x1="10" y1="14" x2="21" y2="3"/><line x1="3" y1="21" x2="14" y2="10"/></svg> },
+        'extract-images': { label: 'Extract Images', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={`var(--accent)`} strokeWidth="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg> },
+    };
+    const meta = toolMeta[activeTool] ?? { label: activeTool, icon: null };
+
     return (
         <div className="studio-inline-panel animate-fade-in">
             <div className="studio-inline-panel-bar">
-                {/* Close button */}
-                <button type="button" className="studio-viewport-btn" onClick={onClose} title="Close tool" style={{ flexShrink: 0 }}>
-                    <LinearIcon name="x" size={14} />
-                </button>
-
-                <div className="studio-inline-panel-divider" />
-
-                {/* Settings */}
-                <div className="studio-inline-panel-settings">
-                    {settingsContent}
+                {/* Header */}
+                <div className="studio-inline-panel-header">
+                    <div className="studio-inline-panel-header-icon">{meta.icon}</div>
+                    <div>
+                        <div className="studio-inline-panel-title">{meta.label}</div>
+                    </div>
+                    <button type="button" className="studio-inline-panel-close" onClick={onClose} title="Close">✕</button>
                 </div>
 
-                {/* Convert progress bar in bar */}
+                {/* Settings body */}
+                <div className="studio-inline-panel-body">
+                    <div className="studio-inline-panel-settings">
+                        {settingsContent}
+                    </div>
+                </div>
+
+                {/* Convert progress */}
                 {isConvertTool(activeTool) && convertStep === 'processing' && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginRight: 8 }}>
-                        <div style={{ width: 120, height: 6, background: 'rgba(255,255,255,0.1)', borderRadius: 3, overflow: 'hidden' }}>
-                            <div style={{ height: '100%', width: `${convertProgress}%`, background: 'rgba(56,189,248,0.8)', borderRadius: 3, transition: 'width 0.2s' }} />
+                    <div style={{ padding: '0 14px 10px', display: 'flex', flexDirection: 'column', gap: 6 }}>
+                        <div style={{ height: 4, background: 'var(--bg-2)', borderRadius: 2, overflow: 'hidden', border: '1px solid var(--border)' }}>
+                            <div style={{ height: '100%', width: `${convertProgress}%`, background: 'var(--accent)', borderRadius: 2, transition: 'width 0.2s' }} />
                         </div>
-                        <span style={{ fontSize: 12, opacity: 0.75 }}>{Math.round(convertProgress)}%</span>
+                        <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{Math.round(convertProgress)}%</span>
                     </div>
                 )}
 
                 {/* Error */}
-                {(convertError) && (
-                    <span style={{ fontSize: 12, color: 'rgba(252,165,165,0.9)', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={convertError}>
+                {convertError && (
+                    <div style={{ padding: '0 14px 10px', fontSize: 12, color: 'var(--red)' }} title={convertError}>
                         {convertError}
-                    </span>
+                    </div>
                 )}
-
-                <div style={{ flex: 1 }} />
 
                 {/* Action buttons */}
                 <div className="studio-inline-panel-actions">
@@ -760,7 +775,7 @@ export function StudioInlinePanel({
                 </div>
             </div>
 
-            {/* Result overlay below the bar */}
+            {/* Result overlay */}
             {convertResultOverlay}
         </div>
     );

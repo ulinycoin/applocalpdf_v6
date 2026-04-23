@@ -8,6 +8,15 @@ import { openBillingPlans } from './billing';
 import { getOrCreateFlowId } from '../platform/browser-context';
 import { StudioDownloadModal } from './StudioDownloadModal';
 
+function truncateFileName(name: string, maxLen = 22): string {
+  if (name.length <= maxLen) return name;
+  const ext = name.lastIndexOf('.');
+  if (ext > 0 && name.length - ext <= 5) {
+    return name.slice(0, maxLen - 3 - (name.length - ext)) + '…' + name.slice(ext);
+  }
+  return name.slice(0, maxLen - 1) + '…';
+}
+
 const DEFAULT_MARKETING_SITE_URL = 'http://127.0.0.1:4321';
 
 interface StudioTopNavProps {
@@ -43,6 +52,9 @@ export function StudioTopNav({ telemetryEnabled, onToggleTelemetry, telemetryOpe
   const [downloadTargetDocumentId, setDownloadTargetDocumentId] = useState<string | null>(null);
   const documents = useStudioStore((s: StudioState) => s.documents);
   const activeDocumentId = useStudioStore((s: StudioState) => s.activeDocumentId);
+  const setActiveDocument = useStudioStore((s: StudioState) => s.setActiveDocument);
+  const removeDocument = useStudioStore((s: StudioState) => s.removeDocument);
+  const addDocument = useStudioStore((s: StudioState) => s.addDocument);
   const markWorkspaceExported = useStudioStore((s: StudioState) => s.markWorkspaceExported);
 
   const activeDocument = useMemo(
@@ -142,44 +154,67 @@ export function StudioTopNav({ telemetryEnabled, onToggleTelemetry, telemetryOpe
 
   return (
     <header className="studio-top-nav" aria-label="Studio top navigation">
-      <div className="studio-top-nav-left">
-        <a href={marketingSiteUrl} className="studio-logo">
-          <div className="studio-logo-text">
-            <div className="studio-logo-title">LocalPDF</div>
-            <div className="studio-logo-subtitle">
-              <span>Studio</span>
+      <a href={marketingSiteUrl} className="studio-logo" style={{ flexShrink: 0 }}>
+        <div className="studio-nav-logo-icon">L</div>
+        <span className="studio-logo-title">LocalPDF</span>
+      </a>
+      <span className="studio-nav-sep">/</span>
+
+      <div className="studio-nav-tabs" role="tablist" aria-label="Open workspaces">
+        {documents.map((doc) => {
+          const isActive = doc.id === activeDocumentId;
+          return (
+            <div
+              key={doc.id}
+              role="tab"
+              aria-selected={isActive}
+              className={`studio-nav-tab${isActive ? ' active' : ''}`}
+              onClick={() => { setActiveDocument(doc.id); }}
+              title={doc.name}
+            >
+              <span className={`studio-nav-tab-dot${doc.isModified ? '' : ' saved'}`} />
+              <span className="studio-nav-tab-name">{truncateFileName(doc.name)}</span>
+              <span className="studio-nav-tab-close" aria-label="Close workspace" onClick={(e) => {
+                e.stopPropagation();
+                removeDocument(doc.id);
+              }}>✕</span>
             </div>
-          </div>
-        </a>
+          );
+        })}
+        <div
+          className="studio-nav-tab-add"
+          title="New workspace"
+          onClick={() => {
+            const id = crypto.randomUUID();
+            addDocument({ id, name: `Workspace ${documents.length + 1}`, x: 100, y: 100, pages: [], allowEmpty: true, includeInExport: true, isModified: true });
+          }}
+        >+</div>
+      </div>
+
+      <div className="studio-nav-actions">
+        <button
+          type="button"
+          className="studio-nav-btn"
+          onClick={handleDownload}
+          disabled={!hasActivePages}
+          title={!hasActivePages ? 'No pages in active workspace' : 'Download active workspace'}
+        >
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Download
+        </button>
         {runtime.billing.getContext().plan === 'pro' ? (
           <div className="studio-badge-pro">PRO</div>
         ) : (
           <button
             type="button"
             className="studio-upgrade-btn"
-            onClick={() => {
-              openBillingPlans(import.meta.env.VITE_BILLING_URL);
-            }}
+            onClick={() => { openBillingPlans(import.meta.env.VITE_BILLING_URL); }}
           >
             Upgrade
           </button>
         )}
       </div>
 
-      <div className="studio-top-nav-center" aria-live="polite" />
-
-      <div className="studio-top-nav-right">
-        <button
-          type="button"
-          className="studio-tab-btn"
-          onClick={handleDownload}
-          disabled={!hasActivePages}
-          title={!hasActivePages ? 'No pages in active workspace' : 'Download active workspace'}
-        >
-          <LinearIcon name="download" className="linear-icon" />
-          <span>Download</span>
-        </button>
-      </div>
       <StudioDownloadModal
         isOpen={isDownloadModalOpen}
         fileName={downloadFileName}

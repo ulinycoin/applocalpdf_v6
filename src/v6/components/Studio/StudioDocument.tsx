@@ -36,6 +36,7 @@ export const StudioDocument: React.FC<StudioDocumentProps> = ({ doc }) => {
     const GAP_Y = 30;
     const STATUS_DOT_RADIUS = 4;
     const PAGE_COUNT_WIDTH = 54;
+    const PAGE_PADDING = 10;
 
     // Calculate grid dimensions
     const cols = Math.min(doc.pages.length || 1, gridColumns);
@@ -67,73 +68,49 @@ export const StudioDocument: React.FC<StudioDocumentProps> = ({ doc }) => {
             onDragLeave={() => setIsDropTarget(false)}
             onDrop={() => setIsDropTarget(false)}
         >
-            {/* Hit Area & Background */}
+            {/* ── Header row (white bg, border, rounded top) */}
             <Rect
-                width={width + 20}
-                height={height + 40}
-                x={-10}
-                y={-30}
+                width={width + PAGE_PADDING * 2}
+                height={30}
+                x={-PAGE_PADDING}
+                y={-32}
                 fill="#ffffff"
-                stroke={isDropTarget ? '#2383e2' : '#e9e9e7'}
-                strokeWidth={isDropTarget ? 2 : 1}
-                cornerRadius={16}
+                stroke={isDropTarget ? '#2383e2' : (isActiveDocument ? '#2383e2' : '#e9e9e7')}
+                strokeWidth={isDropTarget || isActiveDocument ? 1.5 : 1}
+                cornerRadius={[6, 6, 0, 0]}
                 shadowColor="#000000"
-                shadowBlur={4}
-                shadowOpacity={0.08}
-                shadowOffset={{ x: 0, y: 2 }}
+                shadowBlur={isActiveDocument ? 0 : 3}
+                shadowOpacity={0.06}
+                shadowOffset={{ x: 0, y: 1 }}
             />
-            {isActiveDocument && !isDropTarget && (
-                <>
-                    <Rect
-                        width={width + 52}
-                        height={height + 72}
-                        x={-26}
-                        y={-46}
-                        fillRadialGradientStartPoint={{ x: width / 2, y: height / 2 }}
-                        fillRadialGradientStartRadius={24}
-                        fillRadialGradientEndPoint={{ x: width / 2, y: height / 2 }}
-                        fillRadialGradientEndRadius={Math.max(width, height) * 0.78}
-                        fillRadialGradientColorStops={[
-                            0,
-                            'rgba(35, 131, 226, 0.14)',
-                            0.45,
-                            'rgba(35, 131, 226, 0.08)',
-                            1,
-                            'rgba(35, 131, 226, 0)',
-                        ]}
-                        listening={false}
-                    />
-                    <Rect
-                        width={width + 20}
-                        height={height + 40}
-                        x={-10}
-                        y={-30}
-                        fill="transparent"
-                        stroke="#2383e2"
-                        strokeWidth={2.5}
-                        cornerRadius={16}
-                        shadowColor="#2383e2"
-                        shadowBlur={10}
-                        shadowOpacity={0.18}
-                        shadowOffset={{ x: 0, y: 0 }}
-                        listening={false}
-                    />
-                    <Rect
-                        width={width + 8}
-                        height={height + 28}
-                        x={-4}
-                        y={-24}
-                        fill="transparent"
-                        stroke="#ffffff"
-                        strokeWidth={1}
-                        cornerRadius={12}
-                        listening={false}
-                    />
-                </>
-            )}
-            {/* Document Label */}
+            {/* ── Header bottom divider line */}
+            <Rect
+                width={width + PAGE_PADDING * 2}
+                height={1}
+                x={-PAGE_PADDING}
+                y={-2}
+                fill={isActiveDocument ? '#2383e2' : '#e9e9e7'}
+                opacity={isActiveDocument ? 0.35 : 1}
+                listening={false}
+            />
+            {/* ── Pages area (white bg, border no-top, rounded bottom) */}
+            <Rect
+                width={width + PAGE_PADDING * 2}
+                height={height + PAGE_PADDING * 2 + 10}
+                x={-PAGE_PADDING}
+                y={-1}
+                fill="#ffffff"
+                stroke={isDropTarget ? '#2383e2' : (isActiveDocument ? '#2383e2' : '#e9e9e7')}
+                strokeWidth={isDropTarget || isActiveDocument ? 1.5 : 1}
+                cornerRadius={[0, 0, 6, 6]}
+                shadowColor="#000000"
+                shadowBlur={3}
+                shadowOpacity={0.06}
+                shadowOffset={{ x: 0, y: 1 }}
+            />
+            {/* Document Label in header */}
             <Group
-                y={-25}
+                y={-32}
                 onClick={(e) => {
                     e.cancelBubble = true;
                     const userInput = window.prompt('Enter new name for the workspace:', doc.name);
@@ -148,35 +125,36 @@ export const StudioDocument: React.FC<StudioDocumentProps> = ({ doc }) => {
                 style={{ cursor: 'pointer' }}
             >
                 <Circle
-                    x={6}
-                    y={7}
+                    x={4}
+                    y={15}
                     radius={STATUS_DOT_RADIUS}
                     fill={doc.isModified ? '#dfab01' : '#0f7b6c'}
                 />
                 <Text
                     text={doc.name}
-                    x={16}
+                    x={15}
+                    y={7}
                     fill="#1a1a18"
-                    fontSize={14}
-                    fontStyle="bold"
-                    width={labelMaxWidth - 64}
+                    fontSize={12}
+                    fontStyle="500"
+                    width={labelMaxWidth - 60}
                     wrap="none"
                     ellipsis
                 />
                 <Text
                     text={`${doc.pages.length} page${doc.pages.length === 1 ? '' : 's'}`}
-                    x={labelMaxWidth - 54}
+                    x={labelMaxWidth - 50}
+                    y={7}
                     fill="#b3b3af"
-                    fontSize={12}
-                    fontStyle="600"
+                    fontSize={11}
                     align="right"
-                    width={54}
+                    width={50}
                 />
             </Group>
 
             {/* Grid Pages Row inside Document with Viewport Culling */}
             {doc.pages.length === 0 && (
-                <Group x={10} y={10}>
+                <Group x={PAGE_PADDING} y={PAGE_PADDING}>
                     <Rect
                         width={CARD_WIDTH}
                         height={CARD_HEIGHT}
@@ -203,8 +181,8 @@ export const StudioDocument: React.FC<StudioDocumentProps> = ({ doc }) => {
             {doc.pages.map((page, index) => {
                 const col = index % gridColumns;
                 const row = Math.floor(index / gridColumns);
-                const localX = col * (CARD_WIDTH + GAP_X);
-                const localY = row * (CARD_HEIGHT + GAP_Y);
+                const localX = PAGE_PADDING + col * (CARD_WIDTH + GAP_X);
+                const localY = PAGE_PADDING + row * (CARD_HEIGHT + GAP_Y);
 
                 // --- Viewport Culling Logic ---
                 // Convert page's local rect to world coordinates

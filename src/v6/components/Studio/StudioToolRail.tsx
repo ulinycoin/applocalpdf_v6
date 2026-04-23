@@ -86,7 +86,7 @@ export function StudioToolRail({
                 title="Upload files"
             >
                 <LinearIcon name="upload" size={20} />
-                <span>Upload</span>
+                <span>Upload file</span>
             </button>
 
             <div className="studio-tool-rail-section">
@@ -132,16 +132,6 @@ export function StudioToolRail({
                 >
                     <LinearIcon name="history" size={20} />
                     <span>History</span>
-                </button>
-                <button
-                    type="button"
-                    className="studio-tool-rail-btn"
-                    onClick={onNewSpace}
-                    disabled={!onNewSpace}
-                    title="Create a new space"
-                >
-                    <LinearIcon name="tool" size={20} />
-                    <span>New Space</span>
                 </button>
             </div>
         </aside>

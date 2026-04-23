@@ -1032,34 +1032,39 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
                     </Stage>
                     {!hasFiles && (
                         <div className="studio-empty-state" aria-live="polite">
-                            <div className="studio-empty-state-panel">
-                                <div className="studio-empty-state-icon" aria-hidden="true">
-                                    <LinearIcon name="upload" size={26} />
-                                </div>
-                                <h2 className="studio-empty-state-title">Drop a PDF to get started</h2>
-                                <p className="studio-empty-state-copy">Files never leave your device</p>
-                                <div className="studio-empty-state-hints" aria-label="Studio shortcuts">
-                                    <span className="studio-empty-state-hint">U</span>
-                                    <span className="studio-empty-state-hint">⌘O</span>
-                                    <span className="studio-empty-state-hint">Drag &amp; drop</span>
-                                </div>
+                            <div className="studio-empty-state-icon" aria-hidden="true">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                            </div>
+                            <h2 className="studio-empty-state-title">Drop a PDF to get started</h2>
+                            <p className="studio-empty-state-copy">All processing happens locally.<br/>Your files never leave your device.</p>
+                            <div className="studio-empty-state-hints" aria-label="Studio shortcuts">
+                                <span className="studio-empty-state-hint">U</span>
+                                <span className="studio-empty-state-hint-sep">upload</span>
+                                <span className="studio-empty-state-hint-sep">·</span>
+                                <span className="studio-empty-state-hint">⌘O</span>
+                                <span className="studio-empty-state-hint-sep">open</span>
+                                <span className="studio-empty-state-hint-sep">·</span>
+                                <span className="studio-empty-state-hint">drag &amp; drop</span>
                             </div>
                         </div>
                     )}
                     <div className="studio-viewport-controls animate-fade-in">
-                        <button className="studio-viewport-btn" onClick={zoomOut} title="Zoom out" disabled={!hasFiles}>-</button>
+                        <button className="studio-viewport-btn" onClick={zoomOut} title="Zoom out" disabled={!hasFiles}>−</button>
                         <span className="studio-viewport-scale">{Math.round(viewScale * 100)}%</span>
                         <button className="studio-viewport-btn" onClick={zoomIn} title="Zoom in" disabled={!hasFiles}>+</button>
                         <button className="studio-viewport-btn studio-viewport-btn-fit" onClick={() => fitToDocuments(documents)} title="Fit to screen" disabled={!hasFiles}>
                             Fit
                         </button>
+
+                        <span className="studio-viewport-bar-divider" />
+
                         <button
                             className={`studio-viewport-btn ${gridColumns === 3 ? 'active' : ''}`}
                             onClick={() => setGridColumns(3)}
                             title="Grid: 3 columns"
                             disabled={!hasFiles}
                         >
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect></svg>
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect></svg>
                         </button>
                         <button
                             className={`studio-viewport-btn ${gridColumns === 5 ? 'active' : ''}`}
@@ -1067,13 +1072,17 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
                             title="Grid: 5 columns overview"
                             disabled={!hasFiles}
                         >
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="3" y1="15" x2="21" y2="15"></line><line x1="9" y1="3" x2="9" y2="21"></line><line x1="15" y1="3" x2="15" y2="21"></line></svg>
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="3" y1="15" x2="21" y2="15"></line><line x1="9" y1="3" x2="9" y2="21"></line><line x1="15" y1="3" x2="15" y2="21"></line></svg>
                         </button>
+
+                        <span className="studio-viewport-bar-divider" />
+
                         <button
                             className="studio-viewport-btn"
                             onClick={() => { copySelectedPages(); }}
                             title="Copy selected pages (Ctrl/Cmd+C)"
                             disabled={selection.length === 0}
+                            style={selection.length === 0 ? { opacity: 0.4 } : undefined}
                         >
                             Copy
                         </button>
@@ -1082,22 +1091,24 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
                             onClick={() => { pasteSelectedPages(); }}
                             title="Paste copied pages (Ctrl/Cmd+V)"
                             disabled={selection.length === 0 || !activeDocumentId || !hasClipboardPages}
+                            style={(!hasClipboardPages || selection.length === 0) ? { opacity: 0.4 } : undefined}
                         >
                             Paste
                         </button>
+
+                        <span className="studio-viewport-spacer" />
+
                         {selection.length > 0 && (
                             <span className="studio-viewport-selection-count" title={`${selection.length} selected pages`}>
-                                {selection.length}
+                                {selection.length} selected
                             </span>
                         )}
-                        <span className="studio-viewport-spacer" />
                         <button
                             className={`studio-viewport-btn ${isHistoryOpen ? 'active' : ''}`}
                             onClick={() => setHistoryOpen(!isHistoryOpen)}
                             title={isHistoryOpen ? 'Hide history' : 'Show history'}
                         >
-                            <LinearIcon name="history" size={14} />
-                            <span>History</span>
+                            History
                         </button>
                     </div>
                 </div>

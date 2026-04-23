@@ -469,65 +469,49 @@ export function StudioEditWorkspace({ onClose }: StudioEditWorkspaceProps = {}) 
     return (
         <section className="studio-edit-shell" translate="no" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
             {/* Header Area */}
-            <div className="studio-edit-meta" style={{ padding: '8px 16px', background: 'rgba(15,23,42,0.4)', borderRadius: '0 0 12px 12px', marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div style={{ display: 'flex', gap: 12, flex: 1, alignItems: 'center' }}>
-                    <button
-                        type="button"
-                        className="studio-edit-back-btn"
-                        onClick={handleBackToCanvas}
-                        title={ui.backToCanvas}
-                        style={{ padding: '6px 12px' }}
-                    >
-                        <LinearIcon name="chevron-left" size={18} />
-                        <span>{ui.backToCanvas}</span>
-                    </button>
+            <div className="studio-edit-meta">
+                <button type="button" className="studio-edit-back-btn" onClick={handleBackToCanvas} title={ui.backToCanvas}>
+                    <LinearIcon name="chevron-left" size={16} />
+                    <span>{ui.backToCanvas}</span>
+                </button>
 
-                    <div style={{ display: 'flex', gap: 8, padding: '0 8px', borderLeft: '1px solid rgba(255,255,255,0.1)', borderRight: '1px solid rgba(255,255,255,0.1)' }}>
-                        <button type="button" data-testid="studio-edit-undo-btn" className="studio-edit-btn-cancel" onClick={ctrl.undo} disabled={ctrl.isApplying || ctrl.historyIndex <= 0} title={ui.undo} style={{ padding: '4px 8px', fontSize: 13, background: 'transparent' }}>
-                            {ui.undo}
-                        </button>
-                        <button type="button" data-testid="studio-edit-redo-btn" className="studio-edit-btn-cancel" onClick={ctrl.redo} disabled={ctrl.isApplying || ctrl.historyIndex >= ctrl.history.length - 1} title={ui.redo} style={{ padding: '4px 8px', fontSize: 13, background: 'transparent' }}>
-                            {ui.redo}
-                        </button>
-                    </div>
+                <span className="studio-viewport-bar-divider" />
 
-                    <span className="studio-edit-page-badge">{ctrl.preview.docName}</span>
+                <button type="button" data-testid="studio-edit-undo-btn" className="studio-edit-btn-cancel" onClick={ctrl.undo} disabled={ctrl.isApplying || ctrl.historyIndex <= 0} title={ui.undo} style={{ padding: '4px 8px' }}>
+                    {ui.undo}
+                </button>
+                <button type="button" data-testid="studio-edit-redo-btn" className="studio-edit-btn-cancel" onClick={ctrl.redo} disabled={ctrl.isApplying || ctrl.historyIndex >= ctrl.history.length - 1} title={ui.redo} style={{ padding: '4px 8px' }}>
+                    {ui.redo}
+                </button>
+
+                <span className="studio-viewport-bar-divider" />
+                <span className="studio-edit-page-badge">{ctrl.preview.docName}</span>
+
+                <div style={{ flex: 1 }} />
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                    <button type="button" className="studio-floating-btn" onClick={() => zoom.zoomOut()} title="Zoom Out"><LinearIcon name="minus" size={13} /></button>
+                    <span style={{ fontSize: 12, minWidth: 40, textAlign: 'center', color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>{Math.round(zoom.zoomLevel * 100)}%</span>
+                    <button type="button" className="studio-floating-btn" onClick={() => zoom.zoomIn()} title="Zoom In"><LinearIcon name="plus" size={13} /></button>
+                    <span className="studio-viewport-bar-divider" />
+                    <button type="button" className="studio-floating-btn" style={{ padding: '0 8px', width: 'auto' }} onClick={() => zoom.zoomToHundred()} title="100%">1:1</button>
+                    <button type="button" className="studio-floating-btn" onClick={() => zoom.fitToPage(canvasSize.width, canvasSize.height)} title="Fit to Page"><LinearIcon name="maximize" size={13} /></button>
+                    <button type="button" className="studio-floating-btn" onClick={() => zoom.fitToWidth(canvasSize.width)} title="Fit to Width"><LinearIcon name="move-horizontal" size={13} /></button>
                 </div>
 
-                <div style={{ flex: 1, display: 'flex', justifyContent: 'flex-end', gap: '12px', alignItems: 'center' }}>
-
-                    <div className="studio-edit-zoom-controls" style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'rgba(0,0,0,0.2)', padding: '4px 8px', borderRadius: 8 }}>
-                        <button type="button" className="studio-floating-btn" style={{ width: 24, height: 24 }} onClick={() => zoom.zoomOut()} title="Zoom Out">
-                            <LinearIcon name="minus" size={14} />
-                        </button>
-                        <span style={{ fontSize: 13, minWidth: 44, textAlign: 'center', color: 'rgba(255,255,255,0.9)' }}>{Math.round(zoom.zoomLevel * 100)}%</span>
-                        <button type="button" className="studio-floating-btn" style={{ width: 24, height: 24 }} onClick={() => zoom.zoomIn()} title="Zoom In">
-                            <LinearIcon name="plus" size={14} />
-                        </button>
-                        <div style={{ width: 1, height: 16, background: 'rgba(255,255,255,0.1)', margin: '0 4px' }} />
-                        <button type="button" className="studio-floating-btn" style={{ padding: '0 8px', height: 24, fontSize: 12 }} onClick={() => zoom.zoomToHundred()} title="100%">1:1</button>
-                        <button type="button" className="studio-floating-btn" style={{ width: 24, height: 24 }} onClick={() => zoom.fitToPage(canvasSize.width, canvasSize.height)} title="Fit to Page">
-                            <LinearIcon name="maximize" size={14} />
-                        </button>
-                        <button type="button" className="studio-floating-btn" style={{ width: 24, height: 24 }} onClick={() => zoom.fitToWidth(canvasSize.width)} title="Fit to Width">
-                            <LinearIcon name="move-horizontal" size={14} />
-                        </button>
-                    </div>
-
-                    <div style={{ width: 1, height: 24, background: 'rgba(255,255,255,0.1)' }} />
-
-                    {ctrl.saveUndoStack.length > 0 && (
-                        <button type="button" className="studio-edit-btn-cancel" onClick={ctrl.undoLastSave} disabled={ctrl.isApplying} aria-label={ui.undoSave} style={{ padding: '6px 12px' }}>
+                {ctrl.saveUndoStack.length > 0 && (
+                    <>
+                        <span className="studio-viewport-bar-divider" />
+                        <button type="button" className="studio-edit-btn-cancel" onClick={ctrl.undoLastSave} disabled={ctrl.isApplying} aria-label={ui.undoSave} style={{ padding: '4px 10px' }}>
                             {ui.undoSave}
                         </button>
-                    )}
-                    {ctrl.saveRedoStack.length > 0 && (
-                        <button type="button" className="studio-edit-btn-cancel" onClick={ctrl.redoLastSave} disabled={ctrl.isApplying} aria-label={ui.redoSave} style={{ padding: '6px 12px' }}>
-                            {ui.redoSave}
-                        </button>
-                    )}
-
-                </div>
+                    </>
+                )}
+                {ctrl.saveRedoStack.length > 0 && (
+                    <button type="button" className="studio-edit-btn-cancel" onClick={ctrl.redoLastSave} disabled={ctrl.isApplying} aria-label={ui.redoSave} style={{ padding: '4px 10px' }}>
+                        {ui.redoSave}
+                    </button>
+                )}
             </div>
             {/* Main Workspace Area (Tools + Canvas) */}
             <div

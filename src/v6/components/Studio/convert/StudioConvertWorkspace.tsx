@@ -1,12 +1,5 @@
 import { useEffect, useMemo } from 'react';
-import { createPortal } from 'react-dom';
 import { LinearIcon } from '../../icons/linear-icon';
-import { StudioCompressPdfSettingsPanel } from './StudioCompressPdfSettingsPanel';
-import { StudioConvertToolbar } from './StudioConvertToolbar';
-import { StudioExtractImagesSettingsPanel } from './StudioExtractImagesSettingsPanel';
-import { StudioOcrSettingsPanel } from './StudioOcrSettingsPanel';
-import { StudioPdfToJpgSettingsPanel } from './StudioPdfToJpgSettingsPanel';
-import { getStudioConvertMessages } from './studio-convert-i18n';
 import { useStudioConvertController } from './use-studio-convert-controller';
 
 interface StudioConvertWorkspaceProps {
@@ -14,15 +7,67 @@ interface StudioConvertWorkspaceProps {
   initialTool?: string;
 }
 
+const TOOL_META: Record<string, { title: string; desc: string; runLabel: (pageCount: number) => string }> = {
+  'ocr-pdf': {
+    title: 'OCR PDF',
+    desc: 'Extract text from scanned PDFs. Makes your document searchable and copy-pasteable.',
+    runLabel: (n) => `Run OCR on ${n} page${n !== 1 ? 's' : ''}`,
+  },
+  'pdf-to-jpg': {
+    title: 'PDF to JPG',
+    desc: 'Convert each PDF page to a high-quality JPG image.',
+    runLabel: (n) => `Convert ${n} page${n !== 1 ? 's' : ''} to JPG`,
+  },
+  'compress-pdf': {
+    title: 'Compress PDF',
+    desc: 'Reduce PDF file size while preserving quality.',
+    runLabel: () => 'Compress PDF',
+  },
+  'extract-images': {
+    title: 'Extract Images',
+    desc: 'Extract embedded images from your PDF and download them.',
+    runLabel: (n) => `Extract ${n} image${n !== 1 ? 's' : ''}`,
+  },
+};
+
+const TOOL_ICONS: Record<string, string> = {
+  'ocr-pdf': 'ocr',
+  'pdf-to-jpg': 'image',
+  'compress-pdf': 'compress',
+  'extract-images': 'image',
+};
+
+const ALSO_TRY = [
+  { tool: 'compress-pdf', label: 'Compress PDF', icon: 'compress' },
+  { tool: 'pdf-to-jpg', label: 'PDF to JPG', icon: 'image' },
+  { tool: 'ocr-pdf', label: 'OCR PDF', icon: 'ocr' },
+  { tool: 'extract-images', label: 'Extract Images', icon: 'image' },
+] as const;
+
 export function StudioConvertWorkspace({ onClose, initialTool }: StudioConvertWorkspaceProps = {}) {
-  const ui = useMemo(() => getStudioConvertMessages(), []);
   const ctrl = useStudioConvertController(initialTool as import('./use-studio-convert-controller').StudioConvertToolId | undefined);
+
+  const meta = useMemo(() => (ctrl.activeTool ? (TOOL_META[ctrl.activeTool] ?? TOOL_META['ocr-pdf']) : TOOL_META['ocr-pdf']), [ctrl.activeTool]);
+  const toolIconName = ctrl.activeTool ? (TOOL_ICONS[ctrl.activeTool] ?? 'file') : 'file';
+
+  const pageCount = ctrl.activeTool === 'extract-images'
+    ? ctrl.selectedExtractImageCandidates.length
+    : ctrl.selectedPages.length;
+
+  const runLabel = meta.runLabel(pageCount);
+
+  const runDisabled = ctrl.activeTool === null
+    || ctrl.selectedPages.length === 0
+    || (ctrl.activeTool === 'extract-images' && ctrl.selectedExtractImageCandidates.length === 0);
+
   const compressSavedBytes = ctrl.compressResultSummary
     ? Math.max(0, ctrl.compressResultSummary.inputBytes - ctrl.compressResultSummary.outputBytes)
     : 0;
   const compressSavedPercent = ctrl.compressResultSummary && ctrl.compressResultSummary.inputBytes > 0
     ? Math.max(0, Math.round((compressSavedBytes / ctrl.compressResultSummary.inputBytes) * 100))
     : 0;
+
+  const alsoTry = ALSO_TRY.filter((item) => item.tool !== ctrl.activeTool);
 
   useEffect(() => {
     if (!ctrl.activeDocument || ctrl.previewPages.length === 0) {
@@ -34,290 +79,512 @@ export function StudioConvertWorkspace({ onClose, initialTool }: StudioConvertWo
     return null;
   }
 
-  const runLabel = ctrl.activeTool === 'pdf-to-jpg'
-    ? ui.runPdfToJpg
-    : ctrl.activeTool === 'extract-images'
-      ? ui.runExtractImages
-      : ctrl.activeTool === 'compress-pdf'
-        ? ui.runCompressPdf
-        : ui.runOcr;
+  const stepIndex = ctrl.step === 'config' ? 0 : ctrl.step === 'processing' ? 1 : 2;
 
   return (
-    <section className="studio-edit-shell" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      <div className="studio-edit-meta" style={{ padding: '8px 16px', background: 'rgba(15,23,42,0.4)', borderRadius: '0 0 12px 12px', marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div style={{ display: 'flex', gap: 12, flex: 1, alignItems: 'center' }}>
-          <button
-            type="button"
-            className="studio-edit-back-btn"
-            onClick={onClose ?? ctrl.navigateBack}
-            title={ui.backToStudio}
-            style={{ padding: '6px 12px', whiteSpace: 'nowrap' }}
-          >
-            <LinearIcon name="chevron-left" size={18} />
-            <span>{ui.backToStudio}</span>
-          </button>
-          <span className="studio-edit-page-badge">{ctrl.activeDocument.name}</span>
-          <span className="studio-edit-page-badge">{ctrl.operationScope === 'selection' ? ui.selectionScope : ui.documentScope}</span>
-          <span className="studio-edit-page-badge">{ctrl.selectedPages.length} {ui.selectedPages}</span>
-        </div>
+    <div className="cvt-shell">
+      {/* Nav */}
+      <nav className="cvt-nav">
+        <a className="studio-logo" href="#" onClick={(e) => { e.preventDefault(); (onClose ?? ctrl.navigateBack)(); }}>
+          <div className="studio-nav-logo-icon">L</div>
+          <span className="studio-logo-title">LocalPDF</span>
+        </a>
+        <span className="studio-nav-sep">/</span>
+        <span className="cvt-nav-tool">{meta.title}</span>
+        <div style={{ flex: 1 }} />
+        <button type="button" className="cvt-nav-btn" onClick={onClose ?? ctrl.navigateBack}>
+          <LinearIcon name="chevron-left" size={12} />
+          All tools
+        </button>
+        <button type="button" className="cvt-nav-btn" onClick={onClose ?? ctrl.navigateBack}>
+          Studio
+        </button>
+      </nav>
 
-        <div style={{ flex: 1, display: 'flex', justifyContent: 'flex-end', gap: '12px', alignItems: 'center' }}>
-          <div className="studio-edit-zoom-controls" style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'rgba(0,0,0,0.2)', padding: '4px 8px', borderRadius: 8 }}>
-            <button type="button" className="studio-floating-btn" style={{ width: 24, height: 24 }} onClick={ctrl.zoomOut} title="Zoom Out" disabled={ctrl.step !== 'config'}>
-              <LinearIcon name="minus" size={14} />
-            </button>
-            <span style={{ fontSize: 13, minWidth: 44, textAlign: 'center', color: 'rgba(255,255,255,0.9)' }}>{Math.round(ctrl.zoomLevel * 100)}%</span>
-            <button type="button" className="studio-floating-btn" style={{ width: 24, height: 24 }} onClick={ctrl.zoomIn} title="Zoom In" disabled={ctrl.step !== 'config'}>
-              <LinearIcon name="plus" size={14} />
-            </button>
-            <div style={{ width: 1, height: 16, background: 'rgba(255,255,255,0.1)', margin: '0 4px' }} />
-            <button type="button" className="studio-floating-btn" style={{ padding: '0 8px', height: 24, fontSize: 12 }} onClick={ctrl.zoomToHundred} title="100%" disabled={ctrl.step !== 'config'}>1:1</button>
-            <button type="button" className="studio-floating-btn" style={{ padding: '0 8px', height: 24, fontSize: 12 }} onClick={ctrl.fitToWidth} title="Fit to width" disabled={ctrl.step !== 'config'}>Fit</button>
+      {/* Scrollable page */}
+      <div className="cvt-page-wrap custom-scrollbar">
+        <div className="cvt-page">
+
+          {/* Tool header */}
+          <div className="cvt-tool-header">
+            <div className="cvt-tool-icon">
+              <LinearIcon name={toolIconName as import('../../icons/linear-icon').LinearIconName} size={20} />
+            </div>
+            <div>
+              <div className="cvt-tool-title">{meta.title}</div>
+              <div className="cvt-tool-desc">{meta.desc}</div>
+              <div className="cvt-privacy-badge">
+                <LinearIcon name="lock" size={10} />
+                Processed locally · files never leave your device
+              </div>
+            </div>
           </div>
-        </div>
-      </div>
 
-      <div style={{ display: 'flex', flex: 1, overflow: 'hidden', position: 'relative' }}>
-        {ctrl.step !== 'processing' && (
-          <div style={{ padding: '0 16px', zIndex: 10 }}>
-            <StudioConvertToolbar
-              activeTool={ctrl.activeTool}
-              onSelectTool={ctrl.setActiveTool}
-            />
-            {ctrl.activeTool === 'ocr-pdf' && (
-              <StudioOcrSettingsPanel
-                settings={ctrl.ocrSettings}
-                onChange={ctrl.setOcrSettings}
-              />
-            )}
-            {ctrl.activeTool === 'pdf-to-jpg' && (
-              <StudioPdfToJpgSettingsPanel
-                settings={ctrl.pdfToJpgSettings}
-                onChange={ctrl.setPdfToJpgSettings}
-              />
-            )}
-            {ctrl.activeTool === 'extract-images' && (
-              <StudioExtractImagesSettingsPanel
-                settings={ctrl.extractImagesSettings}
-                onChange={ctrl.setExtractImagesSettings}
-                foundCount={ctrl.extractImageCandidates.length}
-                selectedCount={ctrl.selectedExtractImageCandidates.length}
-              />
-            )}
-            {ctrl.activeTool === 'compress-pdf' && (
-              <StudioCompressPdfSettingsPanel
-                settings={ctrl.compressPdfSettings}
-                onChange={ctrl.setCompressPdfSettings}
-              />
-            )}
-          </div>
-        )}
-
-        <div
-          className="studio-edit-canvas-wrap custom-scrollbar"
-          style={{ flex: 1, overflow: 'auto', position: 'relative', padding: '20px 24px 100px' }}
-        >
-          {ctrl.step === 'config' && (
-            <div style={{ display: 'grid', gap: 20, justifyContent: 'center' }}>
-              {ctrl.previewPages.map((page) => (
-                <button
-                  key={page.pageId}
-                  type="button"
-                  onClick={() => {
-                    if (ctrl.activeTool !== 'compress-pdf') {
-                      ctrl.togglePage(page.pageId);
-                    }
-                  }}
-                  style={{
-                    width: Math.round(420 * ctrl.zoomLevel),
-                    borderRadius: 12,
-                    border: page.selected ? '2px solid rgba(56, 189, 248, 0.85)' : '1px solid rgba(148,163,184,0.35)',
-                    background: 'rgba(15,23,42,0.45)',
-                    cursor: 'pointer',
-                    padding: 10,
-                    textAlign: 'left',
-                    color: 'inherit',
-                  }}
-                >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8, fontSize: 12, opacity: 0.85 }}>
-                    <span>Page {page.pageIndex + 1}</span>
-                    <span>{page.selected ? 'Selected' : 'Not selected'}</span>
+          {/* Steps */}
+          <div className="cvt-steps">
+            {(['Configure', 'Processing', 'Result'] as const).map((label, i) => (
+              <>
+                <div key={label} className={`cvt-step${i === stepIndex ? ' active' : ''}${i < stepIndex ? ' done' : ''}`}>
+                  <div className="cvt-step-num">
+                    {i < stepIndex ? '✓' : String(i + 1)}
                   </div>
-                  {page.thumbnailUrl ? (
-                    <div style={{ position: 'relative' }}>
-                      <img
-                        src={page.thumbnailUrl}
-                        alt={`Page ${page.pageIndex + 1}`}
-                        style={{ width: '100%', display: 'block', borderRadius: 8, background: '#fff' }}
-                        draggable={false}
+                  {label}
+                </div>
+                {i < 2 && (
+                  <div key={`line-${i}`} className={`cvt-step-line${i < stepIndex ? ' done' : ''}`} />
+                )}
+              </>
+            ))}
+          </div>
+
+          {/* ── Configure ────────────────────────────────────── */}
+          {ctrl.step === 'config' && (
+            <div className="cvt-stage">
+              {/* File item */}
+              <div className="cvt-file-item">
+                <div className="cvt-file-icon">
+                  <LinearIcon name="word" size={16} />
+                </div>
+                <div>
+                  <div className="cvt-file-name">{ctrl.activeDocument.name}</div>
+                  <div className="cvt-file-meta">
+                    {ctrl.previewPages.length} page{ctrl.previewPages.length !== 1 ? 's' : ''}
+                    {ctrl.operationScope === 'selection' && ` · ${ctrl.selectedPages.length} selected`}
+                  </div>
+                </div>
+              </div>
+
+              {/* Settings card — OCR */}
+              {ctrl.activeTool === 'ocr-pdf' && (
+                <div className="cvt-card">
+                  <div className="cvt-card-header">
+                    <div className="cvt-card-header-icon"><LinearIcon name="tool" size={12} /></div>
+                    Options
+                  </div>
+                  <div className="cvt-card-body">
+                    <div className="cvt-field-row">
+                      <div className="cvt-field">
+                        <div className="cvt-field-label">Language mode</div>
+                        <select
+                          className="cvt-select"
+                          value={ctrl.ocrSettings.languageMode}
+                          onChange={(e) => ctrl.setOcrSettings({ ...ctrl.ocrSettings, languageMode: e.target.value === 'manual' ? 'manual' : 'auto' })}
+                        >
+                          <option value="auto">Auto detect</option>
+                          <option value="manual">Manual</option>
+                        </select>
+                      </div>
+                      <div className="cvt-field">
+                        <div className="cvt-field-label">Language</div>
+                        <select
+                          className="cvt-select"
+                          value={ctrl.ocrSettings.language}
+                          disabled={ctrl.ocrSettings.languageMode !== 'manual'}
+                          onChange={(e) => ctrl.setOcrSettings({ ...ctrl.ocrSettings, language: e.target.value })}
+                        >
+                          <option value="rus+eng">Russian + English</option>
+                          <option value="eng">English</option>
+                          <option value="rus">Russian</option>
+                          <option value="ukr">Ukrainian</option>
+                          <option value="deu">German</option>
+                          <option value="fra">French</option>
+                          <option value="spa">Spanish</option>
+                          <option value="ita">Italian</option>
+                          <option value="por">Portuguese</option>
+                          <option value="jpn">Japanese</option>
+                          <option value="chi_sim">Chinese (Simplified)</option>
+                          <option value="hin">Hindi</option>
+                          <option value="ara">Arabic</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div className="cvt-field">
+                      <div className="cvt-field-label">Output format</div>
+                      <select
+                        className="cvt-select"
+                        value={ctrl.ocrSettings.outputFormat}
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          ctrl.setOcrSettings({ ...ctrl.ocrSettings, outputFormat: v === 'json' ? 'json' : v === 'searchable-pdf' ? 'searchable-pdf' : 'txt' });
+                        }}
+                      >
+                        <option value="txt">Plain text (.txt)</option>
+                        <option value="searchable-pdf">Searchable PDF</option>
+                        <option value="json">JSON</option>
+                      </select>
+                    </div>
+                    <div className="cvt-field">
+                      <div className="cvt-field-label">Quality</div>
+                      <div className="cvt-seg">
+                        {(['fast', 'accurate'] as const).map((m) => (
+                          <button
+                            key={m}
+                            type="button"
+                            className={`cvt-seg-btn${ctrl.ocrSettings.mode === m ? ' active' : ''}`}
+                            onClick={() => ctrl.setOcrSettings({ ...ctrl.ocrSettings, mode: m })}
+                          >
+                            {m === 'fast' ? 'Fast' : 'Accurate'}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="cvt-card-header" style={{ borderTop: '1px solid var(--border)', borderBottom: 'none' }}>
+                    <div className="cvt-card-header-icon"><LinearIcon name="check" size={12} /></div>
+                    Advanced
+                  </div>
+                  <div className="cvt-card-body" style={{ paddingTop: 10, paddingBottom: 10 }}>
+                    <div className="cvt-toggle-row">
+                      <div>
+                        <div className="cvt-toggle-label">Preserve formatting</div>
+                        <div className="cvt-toggle-desc">Keep original layout and columns</div>
+                      </div>
+                      <div
+                        className={`cvt-toggle${ctrl.ocrSettings.preserveFormatting ? ' on' : ''}`}
+                        role="switch"
+                        aria-checked={ctrl.ocrSettings.preserveFormatting}
+                        tabIndex={0}
+                        onClick={() => ctrl.setOcrSettings({ ...ctrl.ocrSettings, preserveFormatting: !ctrl.ocrSettings.preserveFormatting })}
+                        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') ctrl.setOcrSettings({ ...ctrl.ocrSettings, preserveFormatting: !ctrl.ocrSettings.preserveFormatting }); }}
                       />
-                      {ctrl.activeTool === 'extract-images' && (ctrl.imageCandidatesByPage[page.pageId]?.length ?? 0) > 0 && (
-                        <div style={{ position: 'absolute', inset: 0 }}>
-                          {ctrl.imageCandidatesByPage[page.pageId]!.map((candidate) => {
-                            const isSelected = ctrl.selectedImageIds.includes(candidate.globalId);
-                            return (
-                              <div
-                                key={candidate.globalId}
-                                onClick={(event) => {
-                                  event.preventDefault();
-                                  event.stopPropagation();
-                                  ctrl.toggleImageCandidate(candidate.globalId);
-                                }}
-                                title={`${candidate.pixelWidth}×${candidate.pixelHeight}px`}
-                                role="button"
-                                tabIndex={0}
-                                onKeyDown={(event) => {
-                                  if (event.key === 'Enter' || event.key === ' ') {
-                                    event.preventDefault();
-                                    event.stopPropagation();
-                                    ctrl.toggleImageCandidate(candidate.globalId);
-                                  }
-                                }}
-                                style={{
-                                  position: 'absolute',
-                                  left: `${candidate.xRatio * 100}%`,
-                                  top: `${candidate.yRatio * 100}%`,
-                                  width: `${candidate.widthRatio * 100}%`,
-                                  height: `${candidate.heightRatio * 100}%`,
-                                  borderRadius: 6,
-                                  border: isSelected ? '2px solid rgba(14,165,233,0.95)' : '2px solid rgba(248,250,252,0.85)',
-                                  background: isSelected ? 'rgba(14,165,233,0.18)' : 'rgba(15,23,42,0.08)',
-                                  boxShadow: isSelected ? '0 0 0 1px rgba(2,132,199,0.4)' : 'inset 0 0 0 1px rgba(15,23,42,0.12)',
-                                  cursor: 'pointer',
-                                }}
-                              />
-                            );
-                          })}
-                        </div>
-                      )}
-                      {ctrl.activeTool === 'extract-images' && ctrl.imageScanPendingByPage[page.pageId] && (
-                        <div style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', borderRadius: 8, background: 'rgba(15,23,42,0.18)', fontSize: 12, fontWeight: 600 }}>
-                          Scanning images...
-                        </div>
-                      )}
                     </div>
-                  ) : (
-                    <div style={{ height: 320, borderRadius: 8, background: 'rgba(2,6,23,0.55)', display: 'grid', placeItems: 'center', fontSize: 13 }}>
-                      Preview unavailable
+                    <div className="cvt-toggle-row">
+                      <div>
+                        <div className="cvt-toggle-label">Detect tables</div>
+                        <div className="cvt-toggle-desc">Recognize tabular data</div>
+                      </div>
+                      <div
+                        className={`cvt-toggle${ctrl.ocrSettings.detectTables ? ' on' : ''}`}
+                        role="switch"
+                        aria-checked={ctrl.ocrSettings.detectTables}
+                        tabIndex={0}
+                        onClick={() => ctrl.setOcrSettings({ ...ctrl.ocrSettings, detectTables: !ctrl.ocrSettings.detectTables })}
+                        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') ctrl.setOcrSettings({ ...ctrl.ocrSettings, detectTables: !ctrl.ocrSettings.detectTables }); }}
+                      />
                     </div>
-                  )}
+                  </div>
+                </div>
+              )}
+
+              {/* Settings card — PDF to JPG */}
+              {ctrl.activeTool === 'pdf-to-jpg' && (
+                <div className="cvt-card">
+                  <div className="cvt-card-header">
+                    <div className="cvt-card-header-icon"><LinearIcon name="tool" size={12} /></div>
+                    Options
+                  </div>
+                  <div className="cvt-card-body">
+                    <div className="cvt-field">
+                      <div className="cvt-field-label">Quality — {ctrl.pdfToJpgSettings.quality}%</div>
+                      <input
+                        type="range" min={20} max={100} step={1}
+                        value={ctrl.pdfToJpgSettings.quality}
+                        onChange={(e) => ctrl.setPdfToJpgSettings({ ...ctrl.pdfToJpgSettings, quality: Number(e.target.value) })}
+                        style={{ width: '100%' }}
+                      />
+                    </div>
+                    <div className="cvt-field">
+                      <div className="cvt-field-label">Resolution — {ctrl.pdfToJpgSettings.dpi} DPI</div>
+                      <input
+                        type="range" min={72} max={300} step={1}
+                        value={ctrl.pdfToJpgSettings.dpi}
+                        onChange={(e) => ctrl.setPdfToJpgSettings({ ...ctrl.pdfToJpgSettings, dpi: Number(e.target.value) })}
+                        style={{ width: '100%' }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Settings card — Compress PDF */}
+              {ctrl.activeTool === 'compress-pdf' && (
+                <div className="cvt-card">
+                  <div className="cvt-card-header">
+                    <div className="cvt-card-header-icon"><LinearIcon name="tool" size={12} /></div>
+                    Compression level
+                  </div>
+                  <div className="cvt-card-body">
+                    <div className="cvt-seg" style={{ flexDirection: 'column', gap: 6 }}>
+                      {([
+                        { value: 'low', label: 'Low compression', hint: 'Higher quality, larger file size' },
+                        { value: 'medium', label: 'Balanced', hint: 'Good default for most documents' },
+                        { value: 'high', label: 'High compression', hint: 'Smaller file, more aggressive' },
+                      ] as const).map((opt) => (
+                        <button
+                          key={opt.value}
+                          type="button"
+                          className={`cvt-seg-btn${ctrl.compressPdfSettings.quality === opt.value ? ' active' : ''}`}
+                          style={{ textAlign: 'left', flexDirection: 'column', alignItems: 'flex-start', padding: '8px 12px' }}
+                          onClick={() => ctrl.setCompressPdfSettings({ quality: opt.value })}
+                        >
+                          <span style={{ fontWeight: 600 }}>{opt.label}</span>
+                          <span style={{ fontSize: 12, opacity: 0.75, fontWeight: 400 }}>{opt.hint}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Settings card — Extract Images */}
+              {ctrl.activeTool === 'extract-images' && (
+                <div className="cvt-card">
+                  <div className="cvt-card-header">
+                    <div className="cvt-card-header-icon"><LinearIcon name="tool" size={12} /></div>
+                    Options
+                  </div>
+                  <div className="cvt-card-body">
+                    <div className="cvt-field-row">
+                      <div className="cvt-field">
+                        <div className="cvt-field-label">Format</div>
+                        <select
+                          className="cvt-select"
+                          value={ctrl.extractImagesSettings.format}
+                          onChange={(e) => ctrl.setExtractImagesSettings({ ...ctrl.extractImagesSettings, format: e.target.value as 'png' | 'jpeg' })}
+                        >
+                          <option value="png">PNG</option>
+                          <option value="jpeg">JPEG</option>
+                        </select>
+                      </div>
+                      <div className="cvt-field">
+                        <div className="cvt-field-label">Found / Selected</div>
+                        <div style={{ fontSize: 13, paddingTop: 6 }}>
+                          {ctrl.extractImageCandidates.length} / {ctrl.selectedExtractImageCandidates.length}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="cvt-toggle-row">
+                      <div>
+                        <div className="cvt-toggle-label">Include inline images</div>
+                      </div>
+                      <div
+                        className={`cvt-toggle${ctrl.extractImagesSettings.includeInlineImages ? ' on' : ''}`}
+                        role="switch"
+                        aria-checked={ctrl.extractImagesSettings.includeInlineImages}
+                        tabIndex={0}
+                        onClick={() => ctrl.setExtractImagesSettings({ ...ctrl.extractImagesSettings, includeInlineImages: !ctrl.extractImagesSettings.includeInlineImages })}
+                        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') ctrl.setExtractImagesSettings({ ...ctrl.extractImagesSettings, includeInlineImages: !ctrl.extractImagesSettings.includeInlineImages }); }}
+                      />
+                    </div>
+                    <div className="cvt-toggle-row">
+                      <div>
+                        <div className="cvt-toggle-label">Deduplicate images</div>
+                      </div>
+                      <div
+                        className={`cvt-toggle${ctrl.extractImagesSettings.dedupe ? ' on' : ''}`}
+                        role="switch"
+                        aria-checked={ctrl.extractImagesSettings.dedupe}
+                        tabIndex={0}
+                        onClick={() => ctrl.setExtractImagesSettings({ ...ctrl.extractImagesSettings, dedupe: !ctrl.extractImagesSettings.dedupe })}
+                        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') ctrl.setExtractImagesSettings({ ...ctrl.extractImagesSettings, dedupe: !ctrl.extractImagesSettings.dedupe }); }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Actions */}
+              <div className="cvt-actions">
+                <button
+                  type="button"
+                  className="cvt-btn-primary"
+                  onClick={() => { void ctrl.runTool(); }}
+                  disabled={runDisabled}
+                >
+                  <LinearIcon name="play" size={13} />
+                  {runLabel}
                 </button>
-              ))}
+                <button
+                  type="button"
+                  className="cvt-btn-ghost"
+                  onClick={onClose ?? ctrl.navigateBack}
+                >
+                  ← Back to Studio
+                </button>
+              </div>
             </div>
           )}
 
+          {/* ── Processing ───────────────────────────────────── */}
           {ctrl.step === 'processing' && (
-            <div style={{ minHeight: 'calc(100vh - 280px)', display: 'grid', placeItems: 'center' }}>
-              <div className="tool-config-card" style={{ width: 'min(720px, 92%)', display: 'grid', gap: 14, textAlign: 'center' }}>
-                <div className="ocr-concept-spinner" style={{ margin: '0 auto' }} />
-                <h3 style={{ margin: 0 }}>Processing...</h3>
-                <p style={{ margin: 0, opacity: 0.9 }}>{Math.round(ctrl.progress)}%</p>
-                <div className="wizard-progress-track" style={{ height: 10 }}>
-                  <div className="wizard-progress-bar" style={{ width: `${Math.round(ctrl.progress)}%` }} />
+            <div className="cvt-stage">
+              <div className="cvt-card">
+                <div className="cvt-card-body" style={{ padding: '24px 20px' }}>
+                  <div style={{ marginBottom: 20 }}>
+                    <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 5 }}>
+                      {ctrl.activeTool === 'ocr-pdf' ? 'Running OCR…'
+                        : ctrl.activeTool === 'pdf-to-jpg' ? 'Converting pages…'
+                        : ctrl.activeTool === 'compress-pdf' ? 'Compressing PDF…'
+                        : 'Extracting images…'}
+                    </div>
+                    <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>
+                      Processing in your browser. Your file stays on your device.
+                    </div>
+                  </div>
+                  <div className="cvt-progress-track">
+                    <div className="cvt-progress-fill" style={{ width: `${Math.round(ctrl.progress)}%` }} />
+                  </div>
+                  <div className="cvt-progress-labels">
+                    <span>Processing…</span>
+                    <span className="cvt-progress-pct">{Math.round(ctrl.progress)}%</span>
+                  </div>
+                  <div className="cvt-processing-note">
+                    <div className="cvt-spinner" />
+                    Worker executing in private sandbox · 0 bytes sent to server
+                  </div>
                 </div>
               </div>
             </div>
           )}
 
+          {/* ── Result ───────────────────────────────────────── */}
           {ctrl.step === 'result' && (
-            <div style={{ display: 'grid', gap: 16 }}>
+            <div className="cvt-stage">
+              {/* Compress result */}
+              {ctrl.activeTool === 'compress-pdf' && ctrl.compressResultSummary && (
+                <div className="cvt-card">
+                  <div className="cvt-result-hero">
+                    <div className="cvt-result-check">✓</div>
+                    <div className="cvt-result-title">Done</div>
+                    <div className="cvt-result-sub">
+                      Saved {ctrl.formatBytes(compressSavedBytes)} ({compressSavedPercent}%)
+                      · {ctrl.formatBytes(ctrl.compressResultSummary.inputBytes)} → {ctrl.formatBytes(ctrl.compressResultSummary.outputBytes)}
+                    </div>
+                  </div>
+                  <div className="cvt-output-row">
+                    <div className="cvt-output-icon">
+                      <LinearIcon name="word" size={16} />
+                    </div>
+                    <div>
+                      <div className="cvt-output-name">{ctrl.compressResultSummary.outputFileName}</div>
+                      <div className="cvt-output-meta">{ctrl.formatBytes(ctrl.compressResultSummary.outputBytes)}</div>
+                    </div>
+                    <button type="button" className="cvt-btn-download" onClick={() => { void ctrl.downloadResults(); }}>
+                      <LinearIcon name="download" size={12} />
+                      Download
+                    </button>
+                  </div>
+                  <div className="cvt-result-actions">
+                    <button type="button" className="cvt-btn-ghost" onClick={ctrl.resetWorkspace}>
+                      <LinearIcon name="rotate" size={11} />
+                      Run again
+                    </button>
+                    <button type="button" className="cvt-btn-ghost" style={{ marginLeft: 'auto' }} onClick={onClose ?? ctrl.navigateBack}>
+                      ← Back to Studio
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* OCR result */}
+              {ctrl.activeTool === 'ocr-pdf' && ctrl.ocrResult && (
+                <div className="cvt-card">
+                  <div className="cvt-result-hero">
+                    <div className="cvt-result-check">✓</div>
+                    <div className="cvt-result-title">Done</div>
+                    <div className="cvt-result-sub">{ctrl.selectedPages.length} page{ctrl.selectedPages.length !== 1 ? 's' : ''} processed · text layer added</div>
+                  </div>
+                  {ctrl.ocrResult.kind === 'pdf' && ctrl.ocrResult.pdfUrl ? (
+                    <div className="cvt-output-row">
+                      <div className="cvt-output-icon">
+                        <LinearIcon name="word" size={16} />
+                      </div>
+                      <div>
+                        <div className="cvt-output-name">{ctrl.ocrResult.fileName}</div>
+                        <div className="cvt-output-meta">searchable PDF</div>
+                      </div>
+                      <button type="button" className="cvt-btn-download" onClick={() => { void ctrl.downloadResults(); }}>
+                        <LinearIcon name="download" size={12} />
+                        Download
+                      </button>
+                    </div>
+                  ) : (
+                    <div style={{ padding: '0 18px 18px' }}>
+                      <textarea
+                        value={ctrl.ocrResult.content || ''}
+                        onChange={(e) => ctrl.updateOcrResultContent(e.target.value)}
+                        style={{ width: '100%', minHeight: 320, border: '1px solid var(--border)', borderRadius: 6, background: 'var(--bg-1)', resize: 'vertical', outline: 'none', color: 'inherit', fontFamily: 'monospace', padding: 12, lineHeight: 1.6, fontSize: 13 }}
+                        spellCheck={false}
+                        placeholder="No text content available."
+                      />
+                      <button type="button" className="cvt-btn-download" style={{ marginTop: 10 }} onClick={() => { void ctrl.downloadResults(); }}>
+                        <LinearIcon name="download" size={12} />
+                        Download
+                      </button>
+                    </div>
+                  )}
+                  <div className="cvt-result-actions">
+                    <button type="button" className="cvt-btn-ghost" onClick={ctrl.resetWorkspace}>
+                      <LinearIcon name="rotate" size={11} />
+                      Run again
+                    </button>
+                    <button type="button" className="cvt-btn-ghost" style={{ marginLeft: 'auto' }} onClick={onClose ?? ctrl.navigateBack}>
+                      ← Back to Studio
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* JPG / Extract Images result */}
               {(ctrl.activeTool === 'pdf-to-jpg' || ctrl.activeTool === 'extract-images') && (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 14 }}>
+                <div className="cvt-card">
+                  <div className="cvt-result-hero">
+                    <div className="cvt-result-check">✓</div>
+                    <div className="cvt-result-title">Done</div>
+                    <div className="cvt-result-sub">{ctrl.jpgResults.length} file{ctrl.jpgResults.length !== 1 ? 's' : ''} ready</div>
+                  </div>
                   {ctrl.jpgResults.map((item) => (
-                    <div key={item.outputId} className="tool-config-card" style={{ padding: 10 }}>
-                      <div style={{ fontSize: 12, marginBottom: 8, opacity: 0.85, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.name}</div>
-                      {item.url ? (
-                        <img src={item.url} alt={item.name} style={{ width: '100%', borderRadius: 8, background: '#fff' }} />
-                      ) : (
-                        <div style={{ height: 200, borderRadius: 8, display: 'grid', placeItems: 'center', background: 'rgba(2,6,23,0.55)' }}>Preview unavailable</div>
-                      )}
+                    <div key={item.outputId} className="cvt-output-row">
+                      <div className="cvt-output-icon">
+                        {item.url
+                          ? <img src={item.url} alt={item.name} style={{ width: 34, height: 34, objectFit: 'cover', borderRadius: 4 }} />
+                          : <LinearIcon name="image" size={16} />}
+                      </div>
+                      <div>
+                        <div className="cvt-output-name">{item.name}</div>
+                      </div>
                     </div>
                   ))}
-                </div>
-              )}
-
-              {ctrl.activeTool === 'ocr-pdf' && ctrl.ocrResult && (
-                <div className="tool-config-card" style={{ minHeight: 420 }}>
-                  {ctrl.ocrResult.kind === 'pdf' && ctrl.ocrResult.pdfUrl ? (
-                    <iframe
-                      title="OCR PDF result"
-                      src={`${ctrl.ocrResult.pdfUrl}#toolbar=0&navpanes=0`}
-                      style={{ width: '100%', height: 620, border: 'none', borderRadius: 10, background: '#fff' }}
-                    />
-                  ) : (
-                    <textarea
-                      value={ctrl.ocrResult.content || ''}
-                      onChange={(e) => ctrl.updateOcrResultContent(e.target.value)}
-                      style={{ width: '100%', minHeight: 620, border: '1px solid rgba(148,163,184,0.2)', borderRadius: 6, background: 'rgba(0,0,0,0.1)', resize: 'vertical', outline: 'none', color: 'inherit', fontFamily: 'monospace', padding: 16, lineHeight: 1.6 }}
-                      spellCheck={false}
-                      placeholder="No text content available."
-                    />
-                  )}
-                </div>
-              )}
-
-              {ctrl.activeTool === 'compress-pdf' && ctrl.compressResultSummary && (
-                <div className="tool-config-card" style={{ display: 'grid', gap: 16, minHeight: 220 }}>
-                  <div style={{ display: 'grid', gap: 6 }}>
-                    <h3 style={{ margin: 0 }}>Compression complete</h3>
-                    <p style={{ margin: 0, opacity: 0.8 }}>{ctrl.compressResultSummary.outputFileName}</p>
-                  </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 12 }}>
-                    <div style={{ padding: 12, borderRadius: 10, background: 'rgba(15,23,42,0.28)' }}>
-                      <div style={{ fontSize: 12, opacity: 0.75, marginBottom: 6 }}>Before</div>
-                      <strong>{ctrl.formatBytes(ctrl.compressResultSummary.inputBytes)}</strong>
-                    </div>
-                    <div style={{ padding: 12, borderRadius: 10, background: 'rgba(15,23,42,0.28)' }}>
-                      <div style={{ fontSize: 12, opacity: 0.75, marginBottom: 6 }}>After</div>
-                      <strong>{ctrl.formatBytes(ctrl.compressResultSummary.outputBytes)}</strong>
-                    </div>
-                    <div style={{ padding: 12, borderRadius: 10, background: 'rgba(14,165,233,0.14)' }}>
-                      <div style={{ fontSize: 12, opacity: 0.75, marginBottom: 6 }}>Saved</div>
-                      <strong>{ctrl.formatBytes(compressSavedBytes)} ({compressSavedPercent}%)</strong>
-                    </div>
+                  <div className="cvt-result-actions">
+                    <button type="button" className="cvt-btn-download" onClick={() => { void ctrl.downloadResults(); }} disabled={ctrl.outputIds.length === 0}>
+                      <LinearIcon name="download" size={12} />
+                      Download all
+                    </button>
+                    <button type="button" className="cvt-btn-ghost" onClick={ctrl.resetWorkspace}>
+                      <LinearIcon name="rotate" size={11} />
+                      Run again
+                    </button>
+                    <button type="button" className="cvt-btn-ghost" style={{ marginLeft: 'auto' }} onClick={onClose ?? ctrl.navigateBack}>
+                      ← Back to Studio
+                    </button>
                   </div>
                 </div>
               )}
+
+              {/* Also try */}
+              <div className="cvt-also-try">
+                <div className="cvt-also-try-label">Also try</div>
+                <div className="cvt-also-try-list">
+                  {alsoTry.map((item) => (
+                    <button
+                      key={item.tool}
+                      type="button"
+                      className="cvt-also-try-item"
+                      onClick={() => { ctrl.setActiveTool(item.tool); ctrl.resetWorkspace(); }}
+                    >
+                      <LinearIcon name={item.icon as import('../../icons/linear-icon').LinearIconName} size={12} />
+                      {item.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
           )}
+
         </div>
       </div>
 
-      {ctrl.step === 'config' && typeof document !== 'undefined' && createPortal(
-        <div className="studio-edit-bottom-save-wrap">
-          <button
-            type="button"
-            className="studio-edit-btn-apply studio-edit-fixed-save-btn"
-            onClick={() => { void ctrl.runTool(); }}
-            disabled={ctrl.activeTool === null || ctrl.selectedPages.length === 0 || (ctrl.activeTool === 'extract-images' && ctrl.selectedExtractImageCandidates.length === 0)}
-          >
-            {runLabel}
-          </button>
-        </div>,
-        document.body,
-      )}
-
-      {ctrl.step === 'result' && typeof document !== 'undefined' && createPortal(
-        <div className="studio-edit-bottom-save-wrap" style={{ display: 'flex', gap: 10 }}>
-          <button
-            type="button"
-            className="studio-edit-btn-apply studio-edit-fixed-save-btn"
-            onClick={() => { void ctrl.downloadResults(); }}
-            disabled={ctrl.outputIds.length === 0}
-          >
-            Download Results
-          </button>
-          <button
-            type="button"
-            className="studio-edit-btn-cancel studio-edit-fixed-save-btn"
-            onClick={ctrl.resetWorkspace}
-          >
-            Start Over
-          </button>
-        </div>,
-        document.body,
-      )}
-
+      {/* Error / message toast */}
       {(ctrl.message || ctrl.error) && (
         <div className="studio-edit-message-overlay">
           <p className="studio-edit-message-text">{ctrl.error ?? ctrl.message}</p>
@@ -326,6 +593,6 @@ export function StudioConvertWorkspace({ onClose, initialTool }: StudioConvertWo
           </button>
         </div>
       )}
-    </section>
+    </div>
   );
 }
