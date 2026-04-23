@@ -831,25 +831,6 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
         >
-            {!hasFiles && (
-                <div className={`studio-empty-state${isDraggingFile ? ' studio-empty-state--drag-active' : ''}`}>
-                    <div className="studio-empty-drop-zone" onClick={openUploadDialog}>
-                        <svg className="studio-empty-icon" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                            <polyline points="14 2 14 8 20 8"/>
-                            <line x1="12" y1="18" x2="12" y2="12"/>
-                            <line x1="9" y1="15" x2="15" y2="15"/>
-                        </svg>
-                        <p className="studio-empty-title">
-                            {isDraggingFile ? 'Drop to open' : 'Drop PDFs or images here'}
-                        </p>
-                        <p className="studio-empty-subtitle">
-                            {isDraggingFile ? '' : 'or click to browse · PDF, PNG, JPG, WEBP'}
-                        </p>
-                        <kbd className="studio-empty-kbd">U</kbd>
-                    </div>
-                </div>
-            )}
             <Stage
                 ref={stageRef}
                 width={dimensions.width}
