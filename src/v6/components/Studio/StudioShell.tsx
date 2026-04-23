@@ -436,7 +436,7 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
                 if (!documentCheck.allowed) {
                     showStudioPaywall(
                         runtime.telemetry,
-                        'Free supports documents up to 25 pages. Upgrade to Pro to open larger PDFs.',
+                        `This document has ${numPages} pages. Free plan supports up to 25 — upgrade to Pro for unlimited.`,
                         import.meta.env.VITE_BILLING_URL,
                     );
                     await pdf.destroy();

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { usePlatform } from './platform-context';
 import type { RunnerTelemetryEvent } from '../../core/public/contracts';
-import { openBillingPlans } from './billing';
+import { openBillingPlans, openCheckout } from './billing';
 import { trackMonetizationEvent } from './monetization-telemetry';
 
 interface UiToastItem {
@@ -107,17 +107,17 @@ export function UxFeedbackOverlay() {
       {upsell && (
         <div className="ux-upsell-overlay">
           <div className="ux-upsell-modal">
-            <h3 className="ux-upsell-title">Free for quick tasks. Pro for recurring PDF work.</h3>
-            <p className="ux-upsell-reason">{upsell.reason}</p>
-            <p className="ux-upsell-tool">You’re in {upsell.toolId}. Upgrade when this becomes part of recurring PDF work instead of a one-off task.</p>
+            <h3 className="ux-upsell-title">{upsell.reason}</h3>
+            <p className="ux-upsell-sub">Unlock Pro for $3.99/mo — unlimited workspaces, unlimited pages.</p>
             <div className="ux-upsell-actions">
               <button className="btn-ghost" onClick={() => setUpsell(null)}>
-                Close
+                Not now
               </button>
               <button
                 className="btn-primary"
                 onClick={() => {
-                  const destination = openBillingPlans(import.meta.env.VITE_BILLING_URL);
+                  const checkoutUrl = import.meta.env.VITE_LS_CHECKOUT_URL_PRO_MONTHLY;
+                  const destination = checkoutUrl ?? openBillingPlans(import.meta.env.VITE_BILLING_URL);
                   runtime.telemetry.track({
                     type: 'UI_UPSELL_CTA_CLICKED',
                     runId: upsell.runId,
@@ -127,16 +127,29 @@ export function UxFeedbackOverlay() {
                   trackMonetizationEvent('paywall_cta_clicked', {
                     source: 'upsell_overlay',
                     toolId: upsell.toolId,
-                    trigger: 'view_plans',
+                    trigger: 'upgrade_pro',
                     destination,
                     userState: 'local',
-                    hadPriorSuccessfulRun: false,
+                    hadPriorSuccessfulRun: true,
                     flowId: upsell.runId,
                   });
+                  if (checkoutUrl) {
+                    openCheckout(checkoutUrl, {
+                      source: 'upsell_overlay',
+                      trigger: 'upgrade_pro',
+                      plan: 'pro',
+                      variant: 'monthly',
+                      userState: 'local',
+                      hadPriorSuccessfulRun: true,
+                      flowId: upsell.runId,
+                    });
+                  } else {
+                    openBillingPlans(import.meta.env.VITE_BILLING_URL);
+                  }
                   setUpsell(null);
                 }}
               >
-                View plans
+                Upgrade to Pro
               </button>
             </div>
           </div>
