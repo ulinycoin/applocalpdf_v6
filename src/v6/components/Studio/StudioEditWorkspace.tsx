@@ -13,7 +13,7 @@ import { StudioSignSettingsPanel } from './edit/StudioSignSettingsPanel';
 import { LinearIcon } from '../icons/linear-icon';
 import { getStudioEditMessages } from './studio-edit-i18n';
 import { StudioPageEditor, type StudioPageEditorHandle } from './StudioPageEditor';
-import { clampScale, useStudioEditZoom } from './edit/use-studio-edit-zoom';
+import { useStudioEditZoom } from './edit/use-studio-edit-zoom';
 import type { FormFieldElement, WatermarkElement } from './editor-types';
 import type { FontFamilyId } from './inline-text-utils';
 
@@ -27,10 +27,9 @@ export function StudioEditWorkspace() {
     const editorRef = useRef<StudioPageEditorHandle | null>(null);
     const autoFitPreviewKeyRef = useRef<string | null>(null);
     const [canvasSize, setCanvasSize] = useState<{ width: number; height: number }>({ width: 620, height: 840 });
-    const [floatingPanelLayout, setFloatingPanelLayout] = useState<{ left: number; width: number } | null>(null);
     const [hasPendingDrawnSignature, setHasPendingDrawnSignature] = useState(false);
     const [hasPendingAnnotatePenDraft, setHasPendingAnnotatePenDraft] = useState(false);
-    const hasFloatingTopPanel = ctrl.tool !== null
+    const hasSidebarSettingsPanel = ctrl.tool !== null
         && ['text', 'forms', 'sign', 'protect', 'watermark', 'whiteout', 'annotate'].includes(ctrl.tool);
 
     useEffect(() => {
@@ -93,65 +92,6 @@ export function StudioEditWorkspace() {
             window.cancelAnimationFrame(frameId);
         };
     }, [canvasSize.width, ctrl.preview?.page.id, zoom]);
-
-    useEffect(() => {
-        if (!hasFloatingTopPanel) {
-            setFloatingPanelLayout(null);
-            return;
-        }
-
-        let frameId = 0;
-        const refreshLayout = () => {
-            if (frameId) {
-                window.cancelAnimationFrame(frameId);
-            }
-            frameId = window.requestAnimationFrame(() => {
-                const surfaceEl = surfaceRef.current;
-                if (!surfaceEl) {
-                    setFloatingPanelLayout(null);
-                    return;
-                }
-                const rect = surfaceEl.getBoundingClientRect();
-                const viewportWidth = window.innerWidth || document.documentElement.clientWidth || 0;
-                const safeViewportWidth = Math.max(0, viewportWidth - 24);
-                const containerRect = zoom.containerRef.current?.getBoundingClientRect();
-                const fitWidthScale = containerRect
-                    ? clampScale(Math.max(1, containerRect.width - 96) / canvasSize.width)
-                    : zoom.zoomLevel;
-                const fitWidthWidth = Math.max(280, Math.min(canvasSize.width * fitWidthScale, safeViewportWidth));
-                const desiredWidth = Math.min(
-                    safeViewportWidth,
-                    fitWidthWidth,
-                );
-                const centerX = rect.left + rect.width / 2;
-                const minCenter = desiredWidth / 2 + 12;
-                const maxCenter = Math.max(minCenter, viewportWidth - desiredWidth / 2 - 12);
-                const clampedCenter = Math.min(maxCenter, Math.max(minCenter, centerX));
-                setFloatingPanelLayout((prev) => {
-                    if (prev && Math.abs(prev.left - clampedCenter) < 0.5 && Math.abs(prev.width - desiredWidth) < 0.5) {
-                        return prev;
-                    }
-                    return { left: clampedCenter, width: desiredWidth };
-                });
-            });
-        };
-
-        refreshLayout();
-
-        const onResize = () => refreshLayout();
-        window.addEventListener('resize', onResize);
-        const scrollHost = zoom.containerRef.current;
-        const onScroll = () => refreshLayout();
-        scrollHost?.addEventListener('scroll', onScroll, { passive: true });
-
-        return () => {
-            if (frameId) {
-                window.cancelAnimationFrame(frameId);
-            }
-            window.removeEventListener('resize', onResize);
-            scrollHost?.removeEventListener('scroll', onScroll);
-        };
-    }, [hasFloatingTopPanel, zoom.containerRef, zoom.zoomLevel, canvasSize.width, canvasSize.height, ctrl.tool, ctrl.preview?.page.id]);
 
     const selectedFormField = ctrl.selectedElementId
         ? ctrl.elements.find(
@@ -577,9 +517,16 @@ export function StudioEditWorkspace() {
 
                 </div>
             </div>
-            {/* Main Workspace Area (Toolbar + Canvas) */}
-            <div style={{ display: 'flex', flex: 1, overflow: 'hidden', position: 'relative' }}>
-                <div style={{ padding: '0 16px', zIndex: 10 }}>
+            {/* Main Workspace Area (Tools + Canvas) */}
+            <div
+                className="studio-edit-workspace-body"
+                style={{
+                    ['--studio-edit-workspace-columns' as string]: hasSidebarSettingsPanel
+                        ? '88px 340px minmax(0, 1fr)'
+                        : '88px minmax(0, 1fr)',
+                }}
+            >
+                <div className="studio-edit-tool-rail">
                     <StudioEditToolbar
                         ui={ui}
                         tool={ctrl.tool}
@@ -591,86 +538,91 @@ export function StudioEditWorkspace() {
                     />
                 </div>
 
-                <div
-                    ref={zoom.containerRef}
-                    className="studio-edit-canvas-wrap custom-scrollbar"
-                    style={{ flex: 1, overflow: 'auto', display: 'block', position: 'relative' }}
-                >
-                    <div style={{
-                        width: stageWidth,
-                        height: stageHeight,
-                        display: 'flex',
-                        justifyContent: 'center',
-                        alignItems: 'center',
-                        margin: '0 auto'
-                    }}>
-                        <div
-                            ref={surfaceRef}
-                            className="studio-edit-canvas-surface"
-                            style={{
-                                width: canvasSize.width,
-                                height: canvasSize.height,
-                                position: 'relative',
-                                transform: `scale(${zoom.zoomLevel})`,
-                                transformOrigin: 'center center',
-                                flexShrink: 0,
-                            }}
-                        >
-                            <img
-                                ref={imageRef}
-                                src={ctrl.preview.page.thumbnailUrl}
-                                alt={`Page ${ctrl.preview.page.pageIndex + 1}`}
-                                className="studio-edit-page-image"
-                                crossOrigin="anonymous"
-                                draggable={false}
-                                style={{ width: '100%', height: '100%', position: 'absolute', inset: 0 }}
-                            />
-                            <StudioPageEditor
-                                ref={editorRef}
-                                page={ctrl.preview.page}
-                                width={canvasSize.width}
-                                height={canvasSize.height}
-                                activeTool={ctrl.tool}
-                                onActiveToolChange={ctrl.setTool}
-                                textLayerSpans={ctrl.textLayerSpans}
-                                isSelectMode={ctrl.isSelectMode}
-                                setIsSelectMode={ctrl.setIsSelectMode}
-                                textSelectionMode={ctrl.textSelectionMode}
-                                onTextSelectionModeChange={ctrl.setTextSelectionMode}
-                                textInteractionMode={ctrl.textInteractionMode}
-                                annotateColor={ctrl.annotateColor}
-                                annotateMode={ctrl.annotateMode}
-                                annotateStrokeWidth={ctrl.annotateMode === 'shapes' ? ctrl.shapeStrokeWidth : ctrl.annotateStrokeWidth}
-                                signMode={ctrl.signMode}
-                                signColor={ctrl.signDrawColor}
-                                signStrokeWidth={ctrl.signDrawStrokeWidth}
-                                onPendingSignDraftChange={setHasPendingDrawnSignature}
-                                onPendingAnnotatePenDraftChange={setHasPendingAnnotatePenDraft}
-                                shapePreset={ctrl.shapePreset}
-                                shapeColor={ctrl.shapeColor}
-                                shapeStrokeWidth={ctrl.shapeStrokeWidth}
-                                whiteoutColor={ctrl.whiteoutColor}
-                                watermarkOptions={ctrl.watermarkOptions}
-                                elements={ctrl.elements}
-                                onElementsChange={ctrl.setElements}
-                                onPushHistory={ctrl.pushHistory}
-                                selectedElementId={ctrl.selectedElementId}
-                                onSelectedElementIdChange={ctrl.setSelectedElementId}
-                                textEditor={ctrl.textEditor}
-                                onTextEditorChange={ctrl.setTextEditor}
-                                onInlineUiStateChange={ctrl.setInlineUiState}
-                                onMessageChange={ctrl.setMessage}
-                                onFinish={() => {
-                                    if (ctrl.textEditor) ctrl.commitTextEditor();
-                                    handleSave();
-                                }}
-                                onDiscard={() => {
-                                    if (ctrl.hasDirtyChanges && !window.confirm(ui.unsavedConfirm)) return;
-                                    ctrl.navigate('/studio');
-                                }}
-                            />
+                {topSettingsPanel && (
+                    <div className="studio-edit-settings-rail">
+                        {topSettingsPanel}
+                    </div>
+                )}
 
-
+                <div className="studio-edit-canvas-stage">
+                    <div
+                        ref={zoom.containerRef}
+                        className="studio-edit-canvas-wrap custom-scrollbar"
+                    >
+                        <div style={{
+                            width: stageWidth,
+                            height: stageHeight,
+                            display: 'flex',
+                            justifyContent: 'center',
+                            alignItems: 'center',
+                            margin: '0 auto'
+                        }}>
+                            <div
+                                ref={surfaceRef}
+                                className="studio-edit-canvas-surface"
+                                style={{
+                                    width: canvasSize.width,
+                                    height: canvasSize.height,
+                                    position: 'relative',
+                                    transform: `scale(${zoom.zoomLevel})`,
+                                    transformOrigin: 'center center',
+                                    flexShrink: 0,
+                                }}
+                            >
+                                <img
+                                    ref={imageRef}
+                                    src={ctrl.preview.page.thumbnailUrl}
+                                    alt={`Page ${ctrl.preview.page.pageIndex + 1}`}
+                                    className="studio-edit-page-image"
+                                    crossOrigin="anonymous"
+                                    draggable={false}
+                                    style={{ width: '100%', height: '100%', position: 'absolute', inset: 0 }}
+                                />
+                                <StudioPageEditor
+                                    ref={editorRef}
+                                    page={ctrl.preview.page}
+                                    width={canvasSize.width}
+                                    height={canvasSize.height}
+                                    activeTool={ctrl.tool}
+                                    onActiveToolChange={ctrl.setTool}
+                                    textLayerSpans={ctrl.textLayerSpans}
+                                    isSelectMode={ctrl.isSelectMode}
+                                    setIsSelectMode={ctrl.setIsSelectMode}
+                                    textSelectionMode={ctrl.textSelectionMode}
+                                    onTextSelectionModeChange={ctrl.setTextSelectionMode}
+                                    textInteractionMode={ctrl.textInteractionMode}
+                                    annotateColor={ctrl.annotateColor}
+                                    annotateMode={ctrl.annotateMode}
+                                    annotateStrokeWidth={ctrl.annotateMode === 'shapes' ? ctrl.shapeStrokeWidth : ctrl.annotateStrokeWidth}
+                                    signMode={ctrl.signMode}
+                                    signColor={ctrl.signDrawColor}
+                                    signStrokeWidth={ctrl.signDrawStrokeWidth}
+                                    onPendingSignDraftChange={setHasPendingDrawnSignature}
+                                    onPendingAnnotatePenDraftChange={setHasPendingAnnotatePenDraft}
+                                    shapePreset={ctrl.shapePreset}
+                                    shapeColor={ctrl.shapeColor}
+                                    shapeStrokeWidth={ctrl.shapeStrokeWidth}
+                                    whiteoutColor={ctrl.whiteoutColor}
+                                    watermarkOptions={ctrl.watermarkOptions}
+                                    elements={ctrl.elements}
+                                    onElementsChange={ctrl.setElements}
+                                    onPushHistory={ctrl.pushHistory}
+                                    selectedElementId={ctrl.selectedElementId}
+                                    onSelectedElementIdChange={ctrl.setSelectedElementId}
+                                    textEditor={ctrl.textEditor}
+                                    onTextEditorChange={ctrl.setTextEditor}
+                                    onInlineUiStateChange={ctrl.setInlineUiState}
+                                    onMessageChange={ctrl.setMessage}
+                                    onFinish={() => {
+                                        if (ctrl.textEditor) ctrl.commitTextEditor();
+                                        handleSave();
+                                    }}
+                                    onDiscard={() => {
+                                        if (ctrl.hasDirtyChanges && !window.confirm(ui.unsavedConfirm)) return;
+                                        ctrl.navigate('/studio');
+                                    }}
+                                />
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -708,17 +660,6 @@ export function StudioEditWorkspace() {
                 document.body
             )}
 
-            {topSettingsPanel && typeof document !== 'undefined' && createPortal(
-                <div
-                    className="studio-edit-floating-top-panel"
-                    style={floatingPanelLayout
-                        ? { left: `${floatingPanelLayout.left}px`, width: `${floatingPanelLayout.width}px`, transform: 'translateX(-50%)' }
-                        : undefined}
-                >
-                    {topSettingsPanel}
-                </div>,
-                document.body
-            )}
         </section>
     );
 }

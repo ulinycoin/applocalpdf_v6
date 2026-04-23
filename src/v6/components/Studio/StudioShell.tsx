@@ -1,14 +1,13 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { Stage, Layer, Rect } from 'react-konva';
 import type Konva from 'konva';
 import type { KonvaEventObject } from 'konva/lib/Node';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { usePlatform } from '../../../app/react/platform-context';
-import { useStudioStore, PageItem, StudioDocument as IStudioDocument, StudioState } from './studio-store';
+import { useStudioStore, PageItem, StudioDocument as IStudioDocument, StudioState, StudioEditToolId } from './studio-store';
 import { StudioDocument } from './StudioDocument';
 import { DetachedPageObject } from './DetachedPageObject';
 import { StudioFloatingMenu } from './StudioFloatingMenu';
-import { StudioModeSwitcher } from './StudioModeSwitcher';
 import { LinearIcon } from '../icons/linear-icon';
 import { ThumbnailService } from '../../studio/thumbnail/thumbnail-service';
 import { StudioTimeline } from './branching/StudioTimeline';
@@ -22,6 +21,8 @@ import { getOrCreateFlowId } from '../../../app/platform/browser-context';
 export interface StudioShellProps {
     onFilesDropped?: (files: File[]) => void;
 }
+
+type StudioConvertToolId = 'ocr-pdf' | 'pdf-to-jpg' | 'extract-images' | 'compress-pdf';
 
 const CARD_WIDTH = 200;
 const CARD_HEIGHT = 280;
@@ -223,9 +224,28 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
     const selection = useStudioStore((s: StudioState) => s.selection);
     const setSelection = useStudioStore((s: StudioState) => s.setSelection);
     const setInteractionMode = useStudioStore((s: StudioState) => s.setInteractionMode);
+    const activeDocument = useMemo(
+        () => documents.find((doc) => doc.id === activeDocumentId) ?? null,
+        [activeDocumentId, documents],
+    );
     const hasFiles = documents.length > 0 || detachedPages.length > 0;
     const pageClipboardRef = useRef<PageItem[]>([]);
     const [hasClipboardPages, setHasClipboardPages] = useState(false);
+    const editTools: Array<{ tool: StudioEditToolId; icon: Parameters<typeof LinearIcon>[0]['name']; label: string }> = [
+        { tool: 'text', icon: 'text', label: 'Text' },
+        { tool: 'annotate', icon: 'highlighter', label: 'Annotate' },
+        { tool: 'sign', icon: 'signature', label: 'Sign' },
+        { tool: 'whiteout', icon: 'eraser', label: 'Whiteout' },
+        { tool: 'watermark', icon: 'stamp', label: 'Watermark' },
+        { tool: 'forms', icon: 'file-input', label: 'Forms' },
+        { tool: 'protect', icon: 'lock', label: 'Protect' },
+    ];
+    const convertTools: Array<{ tool: StudioConvertToolId; icon: Parameters<typeof LinearIcon>[0]['name']; label: string }> = [
+        { tool: 'ocr-pdf', icon: 'ocr', label: 'OCR' },
+        { tool: 'pdf-to-jpg', icon: 'image', label: 'JPG' },
+        { tool: 'extract-images', icon: 'image', label: 'Images' },
+        { tool: 'compress-pdf', icon: 'compress', label: 'Compress' },
+    ];
 
     useEffect(() => {
         setStudioViewport(viewScale, viewPosition, dimensions);
@@ -264,6 +284,65 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
         setViewScale(fitScale);
         setViewPosition({ x: nextX, y: nextY });
     }, [dimensions.height, dimensions.width, gridColumns]);
+
+    const startEditFromCanvas = useCallback((initialTool: StudioEditToolId) => {
+        const selectedPage = selection.length === 1
+            ? (() => {
+                const target = selection[0];
+                const doc = documents.find((item) => item.id === target.docId) ?? null;
+                const page = doc?.pages.find((item) => item.id === target.pageId) ?? null;
+                return doc && page ? { doc, page } : null;
+            })()
+            : null;
+
+        const activeDocWithPage = activeDocument?.pages[0]
+            ? { doc: activeDocument, page: activeDocument.pages[0] }
+            : null;
+
+        const fallbackDoc = documents.find((doc) => doc.pages[0]) ?? null;
+        const fallbackPage = fallbackDoc?.pages[0] ?? null;
+
+        const target = selectedPage
+            ?? activeDocWithPage
+            ?? (fallbackDoc && fallbackPage ? { doc: fallbackDoc, page: fallbackPage } : null);
+
+        if (!target) {
+            return;
+        }
+
+        useStudioStore.getState().startEditSession({
+            docId: target.doc.id,
+            pageId: target.page.id,
+            pageIndex: target.page.pageIndex,
+            fileId: target.page.fileId,
+            initialTool,
+        });
+        setSelection([{ docId: target.doc.id, pageId: target.page.id }]);
+        setInteractionMode('edit');
+
+        const params = new URLSearchParams(window.location.search);
+        if (params.get('inplace_edit') === '1') {
+            useStudioStore.getState().setActiveEditPageId(target.page.id);
+            setSelection([]);
+            return;
+        }
+
+        navigate('/studio/edit');
+    }, [activeDocument, documents, navigate, selection, setInteractionMode, setSelection]);
+
+    const startConvertFromCanvas = useCallback((tool: StudioConvertToolId) => {
+        if (!hasFiles) {
+            return;
+        }
+
+        setInteractionMode('convert');
+        navigate('/studio/convert', {
+            state: {
+                source: 'studio',
+                studioConvertTool: tool,
+            } satisfies StudioToolRouteState,
+        });
+    }, [hasFiles, navigate, setInteractionMode]);
 
     const zoomAtScreenPoint = useCallback((point: { x: number; y: number }, direction: 'in' | 'out') => {
         const oldScale = viewScale;
@@ -882,63 +961,105 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
                 </Layer>
             </Stage>
             <div className="studio-viewport-controls animate-fade-in">
-                <div className="studio-viewport-section studio-viewport-section-left">
-                    <StudioModeSwitcher />
-                </div>
-                <div className="studio-viewport-section studio-viewport-section-center">
-                    <button
-                        className="studio-viewport-btn"
-                        onClick={() => { copySelectedPages(); }}
-                        title="Copy selected pages (Ctrl/Cmd+C)"
-                        disabled={selection.length === 0}
-                    >
-                        Copy
-                    </button>
-                    <button
-                        className="studio-viewport-btn"
-                        onClick={() => { pasteSelectedPages(); }}
-                        title="Paste copied pages (Ctrl/Cmd+V)"
-                        disabled={!activeDocumentId || !hasClipboardPages}
-                    >
-                        Paste
-                    </button>
-                    <div className="studio-viewport-divider" />
-                    <button className="studio-viewport-btn" onClick={zoomOut} title="Zoom out" disabled={!hasFiles}>-</button>
-                    <span className="studio-viewport-scale">{Math.round(viewScale * 100)}%</span>
-                    <button className="studio-viewport-btn" onClick={zoomIn} title="Zoom in" disabled={!hasFiles}>+</button>
-                    <button className="studio-viewport-btn studio-viewport-btn-fit" onClick={() => fitToDocuments(documents)} title="Fit all documents" disabled={!hasFiles}>
-                        Fit
-                    </button>
-                    <div className="studio-viewport-divider" />
-                    <button
-                        className={`studio-viewport-btn ${gridColumns === 3 ? 'active' : ''}`}
-                        onClick={() => setGridColumns(3)}
-                        title="Grid: 3 columns"
-                        disabled={!hasFiles}
-                    >
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect></svg>
-                    </button>
-                    <button
-                        className={`studio-viewport-btn ${gridColumns === 5 ? 'active' : ''}`}
-                        onClick={() => setGridColumns(5)}
-                        title="Grid: 5 columns overview"
-                        disabled={!hasFiles}
-                    >
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="3" y1="15" x2="21" y2="15"></line><line x1="9" y1="3" x2="9" y2="21"></line><line x1="15" y1="3" x2="15" y2="21"></line></svg>
-                    </button>
-                </div>
-                <div className="studio-viewport-section studio-viewport-section-right">
-                    <button
-                        className={`studio-viewport-btn ${isHistoryOpen ? 'active' : ''}`}
-                        onClick={() => setHistoryOpen(!isHistoryOpen)}
-                        title={isHistoryOpen ? 'Hide history' : 'Show history'}
-                    >
-                        <LinearIcon name="history" size={14} />
-                        <span>History</span>
-                    </button>
-                    <button className="studio-viewport-btn studio-viewport-btn-upload" onClick={openUploadDialog} title="Upload files (U or Ctrl/Cmd+O)">
-                    Upload
-                    </button>
+                <div className="studio-viewport-layout">
+                    <div className="studio-viewport-rail">
+                        <div className="studio-viewport-rail-group">
+                            <div className="studio-viewport-rail-buttons">
+                                {editTools.map((item) => (
+                                    <button
+                                        key={item.tool}
+                                        type="button"
+                                        className="studio-viewport-tool-btn"
+                                        title={`Edit with ${item.label}`}
+                                        aria-label={`Edit with ${item.label}`}
+                                        onClick={() => { startEditFromCanvas(item.tool); }}
+                                        disabled={!hasFiles}
+                                    >
+                                        <LinearIcon name={item.icon} size={15} />
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                        <div className="studio-viewport-divider studio-viewport-divider-vertical" />
+                        <div className="studio-viewport-rail-group">
+                            <div className="studio-viewport-rail-buttons">
+                                {convertTools.map((item) => (
+                                    <button
+                                        key={item.tool}
+                                        type="button"
+                                        className="studio-viewport-tool-btn"
+                                        title={`Run ${item.label}`}
+                                        aria-label={`Run ${item.label}`}
+                                        onClick={() => { startConvertFromCanvas(item.tool); }}
+                                        disabled={!hasFiles}
+                                    >
+                                        <LinearIcon name={item.icon} size={15} />
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                    <div className="studio-viewport-toolbar">
+                        <div className="studio-viewport-toolbar-group">
+                            <div className="studio-viewport-tool-group-label">Selection</div>
+                            <button
+                                className="studio-viewport-btn"
+                                onClick={() => { copySelectedPages(); }}
+                                title="Copy selected pages (Ctrl/Cmd+C)"
+                                disabled={selection.length === 0}
+                            >
+                                Copy
+                            </button>
+                            <button
+                                className="studio-viewport-btn"
+                                onClick={() => { pasteSelectedPages(); }}
+                                title="Paste copied pages (Ctrl/Cmd+V)"
+                                disabled={!activeDocumentId || !hasClipboardPages}
+                            >
+                                Paste
+                            </button>
+                        </div>
+                        <div className="studio-viewport-divider" />
+                        <div className="studio-viewport-toolbar-group">
+                            <div className="studio-viewport-tool-group-label">View</div>
+                            <button className="studio-viewport-btn" onClick={zoomOut} title="Zoom out" disabled={!hasFiles}>-</button>
+                            <span className="studio-viewport-scale">{Math.round(viewScale * 100)}%</span>
+                            <button className="studio-viewport-btn" onClick={zoomIn} title="Zoom in" disabled={!hasFiles}>+</button>
+                            <button className="studio-viewport-btn studio-viewport-btn-fit" onClick={() => fitToDocuments(documents)} title="Fit all documents" disabled={!hasFiles}>
+                                Fit
+                            </button>
+                            <button
+                                className={`studio-viewport-btn ${gridColumns === 3 ? 'active' : ''}`}
+                                onClick={() => setGridColumns(3)}
+                                title="Grid: 3 columns"
+                                disabled={!hasFiles}
+                            >
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect></svg>
+                            </button>
+                            <button
+                                className={`studio-viewport-btn ${gridColumns === 5 ? 'active' : ''}`}
+                                onClick={() => setGridColumns(5)}
+                                title="Grid: 5 columns overview"
+                                disabled={!hasFiles}
+                            >
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="3" y1="15" x2="21" y2="15"></line><line x1="9" y1="3" x2="9" y2="21"></line><line x1="15" y1="3" x2="15" y2="21"></line></svg>
+                            </button>
+                        </div>
+                        <div className="studio-viewport-divider" />
+                        <div className="studio-viewport-toolbar-group studio-viewport-toolbar-group-right">
+                            <button
+                                className={`studio-viewport-btn ${isHistoryOpen ? 'active' : ''}`}
+                                onClick={() => setHistoryOpen(!isHistoryOpen)}
+                                title={isHistoryOpen ? 'Hide history' : 'Show history'}
+                            >
+                                <LinearIcon name="history" size={14} />
+                                <span>History</span>
+                            </button>
+                            <button type="button" className="studio-viewport-btn studio-viewport-btn-upload" onClick={openUploadDialog} title="Upload files (U or Ctrl/Cmd+O)">
+                                Upload
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
             <input

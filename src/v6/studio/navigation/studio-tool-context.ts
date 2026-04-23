@@ -29,6 +29,7 @@ export interface StudioToolRouteState {
   preloadedFileIds?: string[];
   source?: 'studio';
   studioContext?: StudioToolLaunchContext;
+  studioConvertTool?: 'ocr-pdf' | 'pdf-to-jpg' | 'extract-images' | 'compress-pdf';
   studioToolResult?: StudioToolResultState;
   studioReturnContext?: StudioReturnContext;
 }

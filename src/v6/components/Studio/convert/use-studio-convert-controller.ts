@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { usePlatform } from '../../../../app/react/platform-context';
 
 import { defaultFilePreviewService } from '../../../preview/preview-service';
@@ -10,6 +10,7 @@ import type { WorkerPdfImageCandidate } from '../../../../core/public/contracts'
 import { createZipBlob } from '../../../utils/zip';
 import { type PageItem, type StudioDocument, type StudioState, useStudioStore } from '../studio-store';
 import { useHistoryStore } from '../store/history-store';
+import type { StudioToolRouteState } from '../../../studio/navigation/studio-tool-context';
 
 export type StudioConvertToolId = 'ocr-pdf' | 'pdf-to-jpg' | 'extract-images' | 'compress-pdf';
 export type StudioConvertStep = 'config' | 'processing' | 'result';
@@ -157,6 +158,7 @@ function maybePdfName(fileName: string): boolean {
 
 export function useStudioConvertController() {
   const { runtime } = usePlatform();
+  const location = useLocation();
   const navigate = useNavigate();
 
   const documents = useStudioStore((s: StudioState) => s.documents);
@@ -167,7 +169,10 @@ export function useStudioConvertController() {
   const setStudioViewport = useStudioStore((s: StudioState) => s.setStudioViewport);
   const setInteractionMode = useStudioStore((s: StudioState) => s.setInteractionMode);
 
-  const [activeTool, setActiveTool] = useState<StudioConvertToolId | null>('ocr-pdf');
+  const [activeTool, setActiveTool] = useState<StudioConvertToolId | null>(() => {
+    const routeState = (location.state as StudioToolRouteState | null) ?? null;
+    return routeState?.studioConvertTool ?? 'ocr-pdf';
+  });
   const [step, setStep] = useState<StudioConvertStep>('config');
   const [progress, setProgress] = useState(0);
   const [ocrSettings, setOcrSettings] = useState<StudioOcrSettings>({
