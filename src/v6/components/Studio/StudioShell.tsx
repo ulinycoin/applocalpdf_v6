@@ -335,6 +335,14 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
     }, [setActiveDocument, setInteractionMode, setSelection]);
 
     useEffect(() => {
+        const params = new URLSearchParams(window.location.search);
+        if (params.get('upload') === '1') {
+            uploadInputRef.current?.click();
+            navigate('/studio', { replace: true, state: location.state });
+        }
+    }, []);
+
+    useEffect(() => {
         const handleResize = () => {
             if (containerRef.current) {
                 setDimensions({

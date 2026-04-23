@@ -9,7 +9,7 @@ interface Props {
 
 const { page } = Astro.props;
 const canonical = `https://localpdf.online/features/${page.slug}`;
-const appUrl = getAppUrl(page.appHash);
+const appUrl = getAppUrl(page.appHash, { upload: '1' });
 const relatedPages = featurePages.filter((item) => item.slug !== page.slug).slice(0, 3);
 const schema = [
   {
