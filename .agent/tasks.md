@@ -13,7 +13,7 @@ Last updated: 2026-04-23
 ## Level 1 — Current sprint
 
 ### TASK-01: Empty state in Studio
-- **Status:** `[ ]`
+- **Status:** `[x]` 2026-04-23
 - **Role:** ENGINEER
 - **File:** `src/v6/components/Studio/StudioShell.tsx`
 - **Goal:** When no documents loaded, show drag-and-drop zone instead of empty dark canvas
