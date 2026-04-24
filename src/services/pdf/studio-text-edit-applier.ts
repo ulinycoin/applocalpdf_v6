@@ -891,15 +891,22 @@ export async function applyStudioTextEditsToPdfBytes(params: {
   for (const target of textElements) {
     const sanitizedText = sanitizeInlineText(target.text || ' ');
     const movedFromOriginal = textElementMovedFromOriginal(target);
-    const replaceText = movedFromOriginal ? '' : sanitizedText;
     const targetRect = target.originalRect ?? { x: target.x, y: target.y, w: target.w, h: target.h };
-    if (!canEncodeAsLatin1(replaceText) || !streamState) {
-      trueReplaceFallbackReason = !streamState ? 'STREAM_DECODE_FAILED' : 'NON_LATIN1_TEXT';
+    if (!streamState) {
+      trueReplaceFallbackReason = 'STREAM_DECODE_FAILED';
       continue;
     }
+
+    // Prefer to write the new text directly. If the new text is non-Latin1 (e.g. CJK, Cyrillic),
+    // we can't embed it as a raw Tj literal — write an empty string instead so the original
+    // glyph run is erased from the stream. The overlay drawText path below renders the
+    // actual replacement text using an embedded font.
+    const isNonLatin1 = !canEncodeAsLatin1(sanitizedText);
+    const patchText = movedFromOriginal || isNonLatin1 ? '' : sanitizedText;
+
     const result = tryPatchStreamOperator({
       state: streamState,
-      text: replaceText,
+      text: patchText,
       targetXRatio: targetRect.x,
       targetYRatio: targetRect.y,
       targetWidthRatio: targetRect.w,
@@ -909,7 +916,8 @@ export async function applyStudioTextEditsToPdfBytes(params: {
       pageHeight,
     });
     if (result.applied) {
-      if (!movedFromOriginal) {
+      // Only skip overlay drawText when the text was written inline (not erased).
+      if (!movedFromOriginal && !isNonLatin1) {
         consumedTextIds.add(target.id);
       }
       trueReplaceApplied = true;
