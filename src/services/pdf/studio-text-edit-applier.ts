@@ -581,9 +581,7 @@ function tryPatchStreamOperator(params: {
     return { applied: false, reason: 'STREAM_NOT_FOUND' };
   }
 
-  const replacement = target.operator.operator === 'Tj'
-    ? `(${escapePdfLiteralString(text)}) Tj`
-    : `[(${escapePdfLiteralString(text)})] TJ`;
+  const replacement = `(${escapePdfLiteralString(text)}) Tj`;
   const updatedContent = `${streamTarget.content.slice(0, target.operator.start)}${replacement}${streamTarget.content.slice(target.operator.end)}`;
 
   // Update the in-memory decoded content so subsequent patches in the same pass see the change.
@@ -636,6 +634,17 @@ async function tryApplyTrueReplaceSingleTextOperator(params: {
     pageWidth: params.pageWidth,
     pageHeight: params.pageHeight,
   });
+}
+
+function textElementMovedFromOriginal(element: WorkerStudioEditElement): boolean {
+  if (element.type !== 'text' || !element.originalRect) {
+    return false;
+  }
+  const tolerance = 0.0025;
+  return (
+    Math.abs(element.x - element.originalRect.x) > tolerance
+    || Math.abs(element.y - element.originalRect.y) > tolerance
+  );
 }
 
 export async function applyStudioTextEditsToPdfBytes(params: {
@@ -881,23 +890,28 @@ export async function applyStudioTextEditsToPdfBytes(params: {
   const streamState = await loadPageStreamState(pdf, params.pageIndex);
   for (const target of textElements) {
     const sanitizedText = sanitizeInlineText(target.text || ' ');
-    if (!canEncodeAsLatin1(sanitizedText) || !streamState) {
+    const movedFromOriginal = textElementMovedFromOriginal(target);
+    const replaceText = movedFromOriginal ? '' : sanitizedText;
+    const targetRect = target.originalRect ?? { x: target.x, y: target.y, w: target.w, h: target.h };
+    if (!canEncodeAsLatin1(replaceText) || !streamState) {
       trueReplaceFallbackReason = !streamState ? 'STREAM_DECODE_FAILED' : 'NON_LATIN1_TEXT';
       continue;
     }
     const result = tryPatchStreamOperator({
       state: streamState,
-      text: sanitizedText,
-      targetXRatio: target.x,
-      targetYRatio: target.y,
-      targetWidthRatio: target.w,
-      targetHeightRatio: target.h,
+      text: replaceText,
+      targetXRatio: targetRect.x,
+      targetYRatio: targetRect.y,
+      targetWidthRatio: targetRect.w,
+      targetHeightRatio: targetRect.h,
       targetTextAlign: target.textAlign,
       pageWidth,
       pageHeight,
     });
     if (result.applied) {
-      consumedTextIds.add(target.id);
+      if (!movedFromOriginal) {
+        consumedTextIds.add(target.id);
+      }
       trueReplaceApplied = true;
       trueReplaceFallbackReason = undefined;
     } else {

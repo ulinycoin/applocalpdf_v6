@@ -31,6 +31,7 @@ interface PdfEditorRawEdit {
   ascentRatio?: unknown;
   descentRatio?: unknown;
   sourceFontSizeRatio?: unknown;
+  originalRect?: unknown;
 }
 
 interface PreparedPageEdits {
@@ -113,6 +114,21 @@ function normalizeOpacity(value: unknown): number {
 
 function normalizeHorizontalScaling(value: unknown): number {
   return clamp(toFiniteNumber(value, 1), 0.5, 3);
+}
+
+function normalizeOriginalRect(value: unknown): { x: number; y: number; w: number; h: number } | undefined {
+  if (!value || typeof value !== 'object') {
+    return undefined;
+  }
+  const raw = value as Record<string, unknown>;
+  const x = clamp(toFiniteNumber(raw.x, Number.NaN) / 100, 0, 1);
+  const y = clamp(toFiniteNumber(raw.y, Number.NaN) / 100, 0, 1);
+  const w = clamp(toFiniteNumber(raw.w, Number.NaN) / 100, 0.001, 1);
+  const h = clamp(toFiniteNumber(raw.h, Number.NaN) / 100, 0.001, 1);
+  if (![x, y, w, h].every(Number.isFinite)) {
+    return undefined;
+  }
+  return { x, y, w, h };
 }
 
 function sanitizeText(value: unknown): string {
@@ -223,6 +239,7 @@ function collectPreparedEdits(options?: Record<string, unknown>): PreparedPageEd
     const rawAscentRatio = typeof raw.ascentRatio === 'number' && Number.isFinite(raw.ascentRatio) ? raw.ascentRatio : undefined;
     const rawDescentRatio = typeof raw.descentRatio === 'number' && Number.isFinite(raw.descentRatio) ? raw.descentRatio : undefined;
     const rawSourceFontSizeRatio = typeof raw.sourceFontSizeRatio === 'number' && Number.isFinite(raw.sourceFontSizeRatio) ? raw.sourceFontSizeRatio : undefined;
+    const originalRect = normalizeOriginalRect(raw.originalRect);
     current.push({
       id: `pdf-editor-${pageIndex}-${index}`,
       type: 'text',
@@ -243,6 +260,7 @@ function collectPreparedEdits(options?: Record<string, unknown>): PreparedPageEd
       ...(rawAscentRatio !== undefined ? { ascentRatio: rawAscentRatio } : {}),
       ...(rawDescentRatio !== undefined ? { descentRatio: rawDescentRatio } : {}),
       ...(rawSourceFontSizeRatio !== undefined ? { sourceFontSizeRatio: rawSourceFontSizeRatio } : {}),
+      ...(originalRect ? { originalRect } : {}),
     });
     grouped.set(pageIndex, current);
   }

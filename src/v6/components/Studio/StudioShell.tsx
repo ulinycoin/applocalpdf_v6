@@ -270,7 +270,7 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
             ctx.arc(size / 2, size / 2, 1, 0, Math.PI * 2);
             ctx.fill();
         }
-        return c;
+        return c as unknown as HTMLImageElement;
     }, []);
 
     // Active tool overlay — 'edit' or convert tool id

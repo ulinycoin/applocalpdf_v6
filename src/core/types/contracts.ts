@@ -145,6 +145,12 @@ export interface WorkerStudioTextEditElement {
   sourceFontName?: string;
   sourceFontFamilyHint?: string;
   sourceFontSizeRatio?: number;
+  originalRect?: {
+    x: number;
+    y: number;
+    w: number;
+    h: number;
+  };
 }
 
 export interface WorkerStudioStrokeEditElement {

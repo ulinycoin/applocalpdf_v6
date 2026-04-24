@@ -1,9 +1,18 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent, type DragEvent as ReactDragEvent, type MouseEvent as ReactMouseEvent } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ChangeEvent,
+  type DragEvent as ReactDragEvent,
+  type MouseEvent as ReactMouseEvent,
+} from 'react';
 import { usePlatform } from '../../../app/react/platform-context';
 import { defaultFilePreviewService } from '../../../v6/preview/preview-service';
 import { LinearIcon } from '../../../v6/components/icons/linear-icon';
 
-interface PdfEditorConfigProps {
+interface Props {
   inputFiles: string[];
   onStart: (options: Record<string, unknown>) => void;
   onBack: () => void;
@@ -15,83 +24,57 @@ interface PdfEditorConfigProps {
   onDownload?: () => void | Promise<void>;
 }
 
-interface TextEditDraft {
-  type: 'text';
-  id: string;
-  pageIndex: number;
-  text: string;
-  xRatio: number; // Percentage 0-100
-  yRatio: number; // Percentage 0-100
-  widthRatio: number;
-  heightRatio: number;
-  fontSize: number;
-  fontFamily: string;
-  color: string;
-  backgroundColor: string;
-  bold: boolean;
-  italic: boolean;
-  opacity: number;
-  rotation: number;
-  textAlign: 'left' | 'center' | 'right';
-  horizontalScaling: number;
-  ascentRatio?: number;
-  descentRatio?: number;
-  sourceFontSizeRatio?: number;
-  originalRect?: {
-    x: number;
-    y: number;
-    w: number;
-    h: number;
+type TextAlign = 'left' | 'center' | 'right';
+type ShapeTool = 'rect' | 'whiteout' | 'circle' | 'line';
+
+type EditorElement =
+  | {
+    type: 'text';
+    id: string;
+    pageIndex: number;
+    text: string;
+    xRatio: number;
+    yRatio: number;
+    widthRatio: number;
+    heightRatio: number;
+    fontSize: number;
+    fontFamily: string;
+    color: string;
+    backgroundColor: string;
+    bold: boolean;
+    italic: boolean;
+    opacity: number;
+    textAlign: TextAlign;
+    horizontalScaling: number;
+    ascentRatio?: number;
+    descentRatio?: number;
+    sourceFontSizeRatio?: number;
+    originalRect?: { x: number; y: number; w: number; h: number };
+  }
+  | {
+    type: 'rect' | 'whiteout' | 'circle';
+    id: string;
+    pageIndex: number;
+    xRatio: number;
+    yRatio: number;
+    widthRatio: number;
+    heightRatio: number;
+    color: string;
+    strokeWidth: number;
+    opacity: number;
+  }
+  | {
+    type: 'line';
+    id: string;
+    pageIndex: number;
+    x1Ratio: number;
+    y1Ratio: number;
+    x2Ratio: number;
+    y2Ratio: number;
+    color: string;
+    strokeWidth: number;
+    opacity: number;
   };
-}
-
-interface RectEditDraft {
-  type: 'rect' | 'whiteout' | 'circle';
-  id: string;
-  pageIndex: number;
-  xRatio: number;
-  yRatio: number;
-  widthRatio: number;
-  heightRatio: number;
-  color: string;
-  strokeWidth: number;
-  opacity: number;
-}
-
-interface LineEditDraft {
-  type: 'line';
-  id: string;
-  pageIndex: number;
-  x1Ratio: number;
-  y1Ratio: number;
-  x2Ratio: number;
-  y2Ratio: number;
-  color: string;
-  strokeWidth: number;
-  opacity: number;
-}
-
-type EditorElementDraft = TextEditDraft | RectEditDraft | LineEditDraft;
-type ShapeTool = 'rect' | 'line' | 'whiteout' | 'circle';
-
-interface DrawingDraft {
-  tool: ShapeTool;
-  pageIndex: number;
-  startXRatio: number;
-  startYRatio: number;
-  currentXRatio: number;
-  currentYRatio: number;
-}
-
-interface DraggingEdit {
-  id: string;
-  startClientX: number;
-  startClientY: number;
-  origXRatio: number;
-  origYRatio: number;
-  stageWidth: number;
-  stageHeight: number;
-}
 
 interface TextLayerSpan {
   id: string;
@@ -104,99 +87,67 @@ interface TextLayerSpan {
   ascentRatio: number;
   descentRatio: number;
   fontName?: string;
+  fontFamilyHint?: string;
 }
 
 interface PdfJsLike {
   getDocument(params: { data: Uint8Array; disableWorker: boolean; verbosity?: number }): { promise: Promise<any> };
   GlobalWorkerOptions?: { workerSrc?: string };
   VerbosityLevel?: { ERRORS?: number };
-  Util?: {
-    transform: (m1: number[], m2: number[]) => number[];
-  };
+  Util: { transform: (m1: number[], m2: number[]) => number[] };
 }
 
-const ZOOM_MIN = 0.6;
-const ZOOM_MAX = 3;
-const ZOOM_STEP = 0.2;
+interface DraggingEdit {
+  id: string;
+  startClientX: number;
+  startClientY: number;
+  origXRatio: number;
+  origYRatio: number;
+  stageWidth: number;
+  stageHeight: number;
+}
+
+interface DrawingDraft {
+  tool: ShapeTool;
+  pageIndex: number;
+  startXRatio: number;
+  startYRatio: number;
+  currentXRatio: number;
+  currentYRatio: number;
+}
+
 const PREVIEW_SCALE = 2.1;
 const HISTORY_LIMIT = 80;
+const DEFAULT_PAGE_SIZE = { width: 595, height: 842 };
 
 let pdfJsPromise: Promise<PdfJsLike | null> | null = null;
 
 function clamp(value: number, min: number, max: number): number {
-  return Math.min(max, Math.max(min, value));
+  return Math.max(min, Math.min(max, value));
 }
 
-function cloneEditDraft(edit: EditorElementDraft): EditorElementDraft {
-  if (edit.type === 'text') {
-    return {
-      ...edit,
-      originalRect: edit.originalRect ? { ...edit.originalRect } : undefined,
-    };
-  }
-  return { ...edit };
+function createElementId(prefix: string): string {
+  return `${prefix}-${crypto.randomUUID()}`;
 }
 
-function cloneEditDraftList(edits: EditorElementDraft[]): EditorElementDraft[] {
-  return edits.map((edit) => cloneEditDraft(edit));
+function cloneElements(elements: EditorElement[]): EditorElement[] {
+  return elements.map((element) => (
+    element.type === 'text'
+      ? { ...element, originalRect: element.originalRect ? { ...element.originalRect } : undefined }
+      : { ...element }
+  ));
 }
 
-function serializeEdits(edits: EditorElementDraft[]): string {
-  return JSON.stringify(
-    edits.map((edit) => ({
-      type: edit.type,
-      id: edit.id,
-      pageIndex: edit.pageIndex,
-      ...(edit.type === 'text'
-        ? {
-          text: edit.text,
-          xRatio: edit.xRatio,
-          yRatio: edit.yRatio,
-          widthRatio: edit.widthRatio,
-          heightRatio: edit.heightRatio,
-          fontSize: edit.fontSize,
-          fontFamily: edit.fontFamily,
-          color: edit.color,
-          backgroundColor: edit.backgroundColor,
-          bold: edit.bold,
-          italic: edit.italic,
-          opacity: edit.opacity,
-          rotation: edit.rotation,
-          textAlign: edit.textAlign,
-          horizontalScaling: edit.horizontalScaling,
-          originalRect: edit.originalRect,
-        }
-        : edit.type === 'line'
-          ? {
-            x1Ratio: edit.x1Ratio,
-            y1Ratio: edit.y1Ratio,
-            x2Ratio: edit.x2Ratio,
-            y2Ratio: edit.y2Ratio,
-            color: edit.color,
-            strokeWidth: edit.strokeWidth,
-            opacity: edit.opacity,
-          }
-          : {
-            xRatio: edit.xRatio,
-            yRatio: edit.yRatio,
-            widthRatio: edit.widthRatio,
-            heightRatio: edit.heightRatio,
-            color: edit.color,
-            strokeWidth: edit.strokeWidth,
-            opacity: edit.opacity,
-          }),
-    })),
-  );
+function serializeElements(elements: EditorElement[]): string {
+  return JSON.stringify(elements);
 }
 
-function isEditableElement(target: EventTarget | null): boolean {
-  if (!target || !(target instanceof HTMLElement)) {
-    return false;
-  }
-  if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement) {
-    return true;
-  }
-  return target.isContentEditable;
+function isEditableTarget(target: EventTarget | null): boolean {
+  return target instanceof HTMLElement && (target.isContentEditable || target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement);
+}
+
+function normalizeText(value: string): string {
+  return value.replace(/\r\n/gu, '\n').replace(/\r/gu, '\n').replace(/\n+/gu, ' ').replace(/\s+/gu, ' ').trim();
 }
 
 async function loadPdfJs(): Promise<PdfJsLike | null> {
@@ -205,9 +156,9 @@ async function loadPdfJs(): Promise<PdfJsLike | null> {
       try {
         const pdfjs = (await import('pdfjs-dist/legacy/build/pdf.mjs')) as unknown as PdfJsLike;
         if (pdfjs.GlobalWorkerOptions && !pdfjs.GlobalWorkerOptions.workerSrc) {
-          const workerSrcMod = (await import('pdfjs-dist/legacy/build/pdf.worker.min.mjs?url')) as { default?: string };
-          if (workerSrcMod.default) {
-            pdfjs.GlobalWorkerOptions.workerSrc = workerSrcMod.default;
+          const workerSrcModule = await import('pdfjs-dist/legacy/build/pdf.worker.min.mjs?url') as { default?: string };
+          if (workerSrcModule.default) {
+            pdfjs.GlobalWorkerOptions.workerSrc = workerSrcModule.default;
           }
         }
         return pdfjs;
@@ -219,70 +170,138 @@ async function loadPdfJs(): Promise<PdfJsLike | null> {
   return pdfJsPromise;
 }
 
-async function buildTextLayerSpans(pdfBytes: Uint8Array, pageNumber: number): Promise<TextLayerSpan[]> {
+function getFontFamilyHint(style: unknown): string | undefined {
+  if (!style || typeof style !== 'object') {
+    return undefined;
+  }
+  const value = (style as { fontFamily?: unknown }).fontFamily;
+  return typeof value === 'string' ? value : undefined;
+}
+
+async function extractTextLayerSpans(params: {
+  pdfBytes: Uint8Array;
+  pageNumber: number;
+}): Promise<{ spans: TextLayerSpan[]; pageCount: number; width: number; height: number }> {
   const pdfjs = await loadPdfJs();
-  if (!pdfjs || !pdfjs.Util?.transform) {
-    return [];
+  if (!pdfjs) {
+    return { spans: [], pageCount: 1, ...DEFAULT_PAGE_SIZE };
   }
 
-  const loadingTask = pdfjs.getDocument({
-    data: pdfBytes,
+  const pdf = await pdfjs.getDocument({
+    data: new Uint8Array(params.pdfBytes),
     disableWorker: true,
     verbosity: pdfjs.VerbosityLevel?.ERRORS ?? 0,
-  });
-  const pdf = await loadingTask.promise;
+  }).promise;
+  const pageNumber = clamp(params.pageNumber, 1, Math.max(1, pdf.numPages));
   const page = await pdf.getPage(pageNumber);
   const viewport = page.getViewport({ scale: PREVIEW_SCALE });
-  const textContent = await page.getTextContent();
-  const textStyles = textContent.styles as Record<string, { ascent?: number; descent?: number }>;
-
+  const textContent = await page.getTextContent({ includeMarkedContent: false });
+  const styles = textContent.styles ?? {};
   const spans: TextLayerSpan[] = [];
-  for (let i = 0; i < textContent.items.length; i += 1) {
-    const item = textContent.items[i] as any;
-    if (!item || typeof item.str !== 'string' || item.str.trim().length === 0 || !Array.isArray(item.transform)) {
+
+  for (let index = 0; index < textContent.items.length; index += 1) {
+    const item = textContent.items[index] as {
+      str?: unknown;
+      transform?: unknown;
+      width?: unknown;
+      height?: unknown;
+      fontName?: unknown;
+    };
+    if (typeof item.str !== 'string' || item.str.trim().length === 0 || !Array.isArray(item.transform)) {
       continue;
     }
 
-    const tx = pdfjs.Util.transform(viewport.transform, item.transform);
-    const x = tx[4];
-    const y = tx[5];
-    const fontHeight = Math.hypot(tx[2], tx[3]) || (Number(item.height) * PREVIEW_SCALE) || 8;
-    const style = textStyles[item.fontName];
-    let fontAscent = fontHeight;
-    let fontDescent = 0;
-    if (style?.ascent) {
-      fontAscent = style.ascent * fontHeight;
-      fontDescent = style.descent !== undefined ? Math.abs(style.descent) * fontHeight : fontHeight - fontAscent;
-    } else if (style?.descent) {
-      fontAscent = (1 + style.descent) * fontHeight;
-      fontDescent = Math.abs(style.descent) * fontHeight;
-    }
-
-    // More precise width calculation. 
-    // item.width is often more reliable but can be bloated if it includes trailing spaces.
-    // fontHeight * chars * 0.5 is a decent estimate for proportional fonts if width is missing.
-    const estimatedWidth = fontHeight * item.str.length * 0.46;
-    const width = Math.max(1, (Number(item.width) * PREVIEW_SCALE || estimatedWidth));
-
-    // Height should be exactly the font height to avoid overlapping other lines.
-    const height = Math.max(1, (Number(item.height) * PREVIEW_SCALE || fontHeight * 1.1));
-    const top = y - fontAscent;
+    const tx = pdfjs.Util.transform(viewport.transform, item.transform as number[]);
+    const x = Number(tx[4]);
+    const y = Number(tx[5]);
+    const fontHeight = Math.hypot(Number(tx[2]), Number(tx[3])) || 8;
+    const fontName = typeof item.fontName === 'string' ? item.fontName : undefined;
+    const style = fontName ? styles[fontName] as { ascent?: number; descent?: number } | undefined : undefined;
+    const ascent = typeof style?.ascent === 'number' ? Math.max(0, style.ascent * fontHeight) : fontHeight * 0.82;
+    const descent = typeof style?.descent === 'number' ? Math.max(0, Math.abs(style.descent) * fontHeight) : fontHeight * 0.18;
+    const rawWidth = typeof item.width === 'number' ? item.width * PREVIEW_SCALE : 0;
+    const width = Math.max(1, rawWidth || fontHeight * item.str.length * 0.5);
+    const height = Math.max(1, ascent + descent);
+    const top = y - ascent;
 
     spans.push({
-      id: `span-${i}-${item.str.length}`,
+      id: `span-${pageNumber}-${index}`,
       text: item.str,
       xRatio: clamp(x / viewport.width, 0, 1),
       yRatio: clamp(top / viewport.height, 0, 1),
       widthRatio: clamp(width / viewport.width, 0.001, 1),
       heightRatio: clamp(height / viewport.height, 0.001, 1),
-      fontSizeRatio: clamp(fontHeight / viewport.height, 0.004, 0.25),
-      ascentRatio: clamp(fontAscent / viewport.height, 0.004, 0.25),
-      descentRatio: clamp(fontDescent / viewport.height, 0, 0.1),
-      fontName: item.fontName,
+      fontSizeRatio: clamp(fontHeight / viewport.height, 0.001, 1),
+      ascentRatio: clamp(ascent / viewport.height, 0, 1),
+      descentRatio: clamp(descent / viewport.height, 0, 1),
+      fontName,
+      fontFamilyHint: fontName ? getFontFamilyHint(styles[fontName]) : undefined,
     });
   }
 
-  return spans;
+  return { spans, pageCount: pdf.numPages, width: viewport.width, height: viewport.height };
+}
+
+function mergeLineSpans(anchor: TextLayerSpan, spans: TextLayerSpan[]): {
+  spans: TextLayerSpan[];
+  text: string;
+  rect: { x: number; y: number; w: number; h: number };
+  representative: TextLayerSpan;
+} {
+  const anchorBaseline = anchor.yRatio + anchor.ascentRatio;
+  const tolerance = Math.max(0.004, anchor.heightRatio * 0.65);
+  const lineSpans = spans
+    .filter((span) => Math.abs((span.yRatio + span.ascentRatio) - anchorBaseline) <= tolerance)
+    .sort((left, right) => left.xRatio - right.xRatio);
+
+  let text = '';
+  let left = anchor.xRatio;
+  let top = anchor.yRatio;
+  let right = anchor.xRatio + anchor.widthRatio;
+  let bottom = anchor.yRatio + anchor.heightRatio;
+
+  for (let index = 0; index < lineSpans.length; index += 1) {
+    const span = lineSpans[index]!;
+    const previous = lineSpans[index - 1];
+    if (previous) {
+      const gap = span.xRatio - (previous.xRatio + previous.widthRatio);
+      if (gap > Math.max(0.002, span.heightRatio * 0.25) && !text.endsWith(' ') && !span.text.startsWith(' ')) {
+        text += ' ';
+      }
+    }
+    text += span.text;
+    left = Math.min(left, span.xRatio);
+    top = Math.min(top, span.yRatio);
+    right = Math.max(right, span.xRatio + span.widthRatio);
+    bottom = Math.max(bottom, span.yRatio + span.heightRatio);
+  }
+
+  const representative = lineSpans.find((span) => span.id === anchor.id) ?? lineSpans[0] ?? anchor;
+  return {
+    spans: lineSpans,
+    text: normalizeText(text || anchor.text),
+    rect: {
+      x: left * 100,
+      y: top * 100,
+      w: Math.max(0.1, (right - left) * 100),
+      h: Math.max(0.1, (bottom - top) * 100),
+    },
+    representative,
+  };
+}
+
+function centerIsInsideRect(span: TextLayerSpan, rect: { x: number; y: number; w: number; h: number }): boolean {
+  const centerX = (span.xRatio + span.widthRatio / 2) * 100;
+  const centerY = (span.yRatio + span.heightRatio / 2) * 100;
+  return centerX >= rect.x && centerX <= rect.x + rect.w && centerY >= rect.y && centerY <= rect.y + rect.h;
+}
+
+function toStagePoint(event: ReactMouseEvent<HTMLElement>, stage: HTMLElement): { xRatio: number; yRatio: number } {
+  const rect = stage.getBoundingClientRect();
+  return {
+    xRatio: clamp(((event.clientX - rect.left) / rect.width) * 100, 0, 100),
+    yRatio: clamp(((event.clientY - rect.top) / rect.height) * 100, 0, 100),
+  };
 }
 
 export default function PdfEditorConfig({
@@ -291,1452 +310,735 @@ export default function PdfEditorConfig({
   onBack,
   onPickFiles,
   onClearFiles,
-  currentStep,
+  currentStep = 'config',
   progress = 0,
   outputCount = 0,
   onDownload,
-}: PdfEditorConfigProps) {
+}: Props) {
   const { runtime } = usePlatform();
-  const inputRef = useRef<HTMLInputElement | null>(null);
-  const previewRef = useRef<HTMLDivElement | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const stageRef = useRef<HTMLDivElement | null>(null);
+  const editingRef = useRef<HTMLDivElement | null>(null);
+  const dragRef = useRef<DraggingEdit | null>(null);
+  const historyRef = useRef<EditorElement[][]>([[]]);
+  const historyIndexRef = useRef(0);
 
   const [fileNames, setFileNames] = useState<string[]>([]);
-  const [currentPage, setCurrentPage] = useState(1);
+  const [pageNumber, setPageNumber] = useState(1);
   const [pageCount, setPageCount] = useState(1);
-  const [thumbnailUrl, setThumbnailUrl] = useState<string | null>(null);
-  const [isLoadingPreview, setIsLoadingPreview] = useState(false);
-  const [previewZoom, setPreviewZoom] = useState(1);
-  const [edits, setEdits] = useState<EditorElementDraft[]>([]);
-  const [selectedEditId, setSelectedEditId] = useState<string | null>(null);
-  const [isAddTextMode, setIsAddTextMode] = useState(false);
-  const [activeShapeTool, setActiveShapeTool] = useState<ShapeTool | null>(null);
-  const [drawingDraft, setDrawingDraft] = useState<DrawingDraft | null>(null);
-  const [savedEditsSignature, setSavedEditsSignature] = useState<string | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [stageSize, setStageSize] = useState(DEFAULT_PAGE_SIZE);
+  const [zoom, setZoom] = useState(1);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [spans, setSpans] = useState<TextLayerSpan[]>([]);
+  const [elements, setElements] = useState<EditorElement[]>([]);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [shapeTool, setShapeTool] = useState<ShapeTool | null>(null);
+  const [drawing, setDrawing] = useState<DrawingDraft | null>(null);
   const [historyVersion, setHistoryVersion] = useState(0);
-  const [textLayerSpans, setTextLayerSpans] = useState<TextLayerSpan[]>([]);
-  const [stageHeight, setStageHeight] = useState(0);
-  const [isUploadDragging, setIsUploadDragging] = useState(false);
-  const [editingTextId, setEditingTextId] = useState<string | null>(null);
-  const historyRef = useRef<EditorElementDraft[][]>([[]]);
-  const historyIndexRef = useRef(0);
-  const previousStepRef = useRef<typeof currentStep>(currentStep);
-  const suppressNextStageClickRef = useRef(false);
-  const draggingEditRef = useRef<DraggingEdit | null>(null);
-  const editingDivRef = useRef<HTMLDivElement | null>(null);
-  const uiRunId = useMemo(() => `pdf-editor-ui-${crypto.randomUUID()}`, []);
+  const [isDraggingUpload, setIsDraggingUpload] = useState(false);
 
   const fileId = inputFiles[0] ?? null;
-  const hasMultipleFiles = inputFiles.length > 1;
+  const pageIndex = pageNumber - 1;
+  const pageElements = useMemo(() => elements.filter((element) => element.pageIndex === pageIndex), [elements, pageIndex]);
+  const pageTextElements = useMemo(() => pageElements.filter((element): element is Extract<EditorElement, { type: 'text' }> => element.type === 'text'), [pageElements]);
+  const selectedElement = useMemo(() => elements.find((element) => element.id === selectedId) ?? null, [elements, selectedId]);
+  const canUndo = historyIndexRef.current > 0;
+  const canRedo = historyIndexRef.current < historyRef.current.length - 1;
 
-  const isProcessing = currentStep === 'processing';
-  const hasResult = currentStep === 'result' && outputCount > 0;
-  const loadingPercent = Math.max(0, Math.min(100, Math.round(progress)));
-
-  const renderStageHeight = stageHeight > 0 ? stageHeight : 842;
-
-  const pageEdits = useMemo(
-    () => edits.filter((edit) => edit.pageIndex === currentPage - 1),
-    [currentPage, edits],
-  );
-  const pageTextEdits = useMemo(
-    () => pageEdits.filter((edit): edit is TextEditDraft => edit.type === 'text'),
-    [pageEdits],
-  );
-  const pageShapeEdits = useMemo(
-    () => pageEdits.filter((edit): edit is RectEditDraft | LineEditDraft => edit.type !== 'text'),
-    [pageEdits],
-  );
-
-  const selectedEdit = useMemo(
-    () => edits.find((edit) => edit.id === selectedEditId) ?? null,
-    [edits, selectedEditId],
-  );
-  const selectedTextEdit = useMemo(
-    () => (selectedEdit?.type === 'text' ? selectedEdit : null),
-    [selectedEdit],
-  );
-
-  const editsSignature = useMemo(() => serializeEdits(edits), [edits]);
-  const hasUnsavedChanges = edits.length > 0 && editsSignature !== (savedEditsSignature ?? '');
-  const canUndo = useMemo(() => historyIndexRef.current > 0, [historyVersion]);
-  const canRedo = useMemo(() => historyIndexRef.current < historyRef.current.length - 1, [historyVersion]);
-  const trackEditorAction = useCallback(
-    (
-      action: 'apply' | 'undo' | 'redo',
-      message: string,
-      pagesTotal: number,
-      pagesSucceeded = pagesTotal,
-      pagesFailed = 0,
-    ) => {
-      runtime.telemetry.track({
-        type: 'STUDIO_EDIT_SAVE_ACTION',
-        runId: uiRunId,
-        toolId: 'pdf-editor',
-        action,
-        scope: pagesTotal > 1 ? 'selection' : 'single',
-        pagesTotal: Math.max(1, pagesTotal),
-        pagesSucceeded: Math.max(0, pagesSucceeded),
-        pagesFailed: Math.max(0, pagesFailed),
-        message,
-      });
-    },
-    [runtime.telemetry, uiRunId],
-  );
-
-  const pushHistorySnapshot = useCallback((elements: EditorElementDraft[]) => {
-    const snapshot = cloneEditDraftList(elements);
+  const pushHistory = useCallback((nextElements: EditorElement[]) => {
+    const snapshot = cloneElements(nextElements);
     const current = historyRef.current[historyIndexRef.current] ?? [];
-    if (serializeEdits(current) === serializeEdits(snapshot)) {
+    if (serializeElements(current) === serializeElements(snapshot)) {
       return;
     }
-
     let nextHistory = historyRef.current.slice(0, historyIndexRef.current + 1);
     nextHistory.push(snapshot);
     if (nextHistory.length > HISTORY_LIMIT) {
       nextHistory = nextHistory.slice(nextHistory.length - HISTORY_LIMIT);
     }
-
     historyRef.current = nextHistory;
     historyIndexRef.current = nextHistory.length - 1;
     setHistoryVersion((version) => version + 1);
   }, []);
 
-  const resetHistory = useCallback((elements: EditorElementDraft[]) => {
-    const snapshot = cloneEditDraftList(elements);
-    historyRef.current = [snapshot];
-    historyIndexRef.current = 0;
-    setHistoryVersion((version) => version + 1);
+  const applyElements = useCallback((nextElements: EditorElement[], history = true) => {
+    setElements(nextElements);
+    if (history) {
+      pushHistory(nextElements);
+    }
+  }, [pushHistory]);
+
+  const startInlineEdit = useCallback((id: string) => {
+    setSelectedId(id);
+    setEditingId(id);
+    setShapeTool(null);
+    setDrawing(null);
   }, []);
 
-  const undoEditChange = useCallback(() => {
+  const commitInlineEdit = useCallback(() => {
+    const target = editingRef.current;
+    if (!target || !editingId) {
+      return;
+    }
+    const nextText = normalizeText(target.innerText);
+    setElements((current) => {
+      const next = current.map((element) => (
+        element.id === editingId && element.type === 'text'
+          ? { ...element, text: nextText || element.text, backgroundColor: '#ffffff' }
+          : element
+      ));
+      pushHistory(next);
+      return next;
+    });
+    setEditingId(null);
+  }, [editingId, pushHistory]);
+
+  const undo = useCallback(() => {
     if (historyIndexRef.current <= 0) {
       return;
     }
     historyIndexRef.current -= 1;
-    const snapshot = historyRef.current[historyIndexRef.current] ?? [];
-    const next = cloneEditDraftList(snapshot);
-    setEdits(next);
-    setSelectedEditId((current) => (next.some((edit) => edit.id === current) ? current : null));
+    const snapshot = cloneElements(historyRef.current[historyIndexRef.current] ?? []);
+    setElements(snapshot);
+    setSelectedId((current) => (snapshot.some((element) => element.id === current) ? current : null));
+    setEditingId(null);
     setHistoryVersion((version) => version + 1);
-    trackEditorAction('undo', 'Undo edit', 1);
-  }, [trackEditorAction]);
+  }, []);
 
-  const redoEditChange = useCallback(() => {
+  const redo = useCallback(() => {
     if (historyIndexRef.current >= historyRef.current.length - 1) {
       return;
     }
     historyIndexRef.current += 1;
-    const snapshot = historyRef.current[historyIndexRef.current] ?? [];
-    const next = cloneEditDraftList(snapshot);
-    setEdits(next);
-    setSelectedEditId((current) => (next.some((edit) => edit.id === current) ? current : null));
+    const snapshot = cloneElements(historyRef.current[historyIndexRef.current] ?? []);
+    setElements(snapshot);
+    setSelectedId((current) => (snapshot.some((element) => element.id === current) ? current : null));
+    setEditingId(null);
     setHistoryVersion((version) => version + 1);
-    trackEditorAction('redo', 'Redo edit', 1);
-  }, [trackEditorAction]);
+  }, []);
 
   useEffect(() => {
-    setEdits([]);
-    setSelectedEditId(null);
-    setEditingTextId(null);
-    setCurrentPage(1);
-    setIsAddTextMode(false);
-    setActiveShapeTool(null);
-    setDrawingDraft(null);
-    setSavedEditsSignature(null);
-    resetHistory([]);
-    suppressNextStageClickRef.current = false;
-    draggingEditRef.current = null;
-  }, [fileId, resetHistory]);
+    const next = cloneElements(elements);
+    historyRef.current = [next];
+    historyIndexRef.current = 0;
+    setHistoryVersion((version) => version + 1);
+    setSelectedId(null);
+    setEditingId(null);
+    setPageNumber(1);
+  }, [fileId]);
 
   useEffect(() => {
-    const previousStep = previousStepRef.current;
-    if (currentStep === 'result' && previousStep !== 'result') {
-      setSavedEditsSignature(editsSignature);
-      if (edits.length > 0) {
-        const editedPages = new Set(edits.map((edit) => edit.pageIndex));
-        trackEditorAction('apply', 'PDF edits saved', editedPages.size);
-      }
-    }
-    previousStepRef.current = currentStep;
-  }, [currentStep, edits, editsSignature, trackEditorAction]);
-
-  useEffect(() => {
-    if (!selectedEditId) {
-      return;
-    }
-    if (!pageEdits.some((edit) => edit.id === selectedEditId)) {
-      setSelectedEditId(null);
-    }
-  }, [pageEdits, selectedEditId]);
-
-  useEffect(() => {
-    if (!hasUnsavedChanges) {
-      return;
-    }
-    const onBeforeUnload = (event: BeforeUnloadEvent): void => {
-      event.preventDefault();
-      event.returnValue = '';
-    };
-    window.addEventListener('beforeunload', onBeforeUnload);
-    return () => {
-      window.removeEventListener('beforeunload', onBeforeUnload);
-    };
-  }, [hasUnsavedChanges]);
-
-  useEffect(() => {
-    if (inputFiles.length === 0) {
-      setFileNames([]);
-      return;
-    }
-
-    void Promise.all(
-      inputFiles.map(async (id) => {
-        const entry = await runtime.vfs.read(id);
-        return entry.getName();
-      }),
-    ).then((names) => setFileNames(names));
-  }, [inputFiles, runtime.vfs]);
-
-  useEffect(() => {
-    if (!fileId) {
-      setThumbnailUrl(null);
-      setPageCount(1);
-      return;
-    }
-
-    const abortController = new AbortController();
-    setIsLoadingPreview(true);
-
-    void (async () => {
-      try {
-        const preview = await defaultFilePreviewService.getPdfPagePreview(
-          runtime,
-          fileId,
-          currentPage,
-          { scale: PREVIEW_SCALE },
-          abortController.signal,
-        );
-        if (abortController.signal.aborted) {
-          return;
-        }
-        setThumbnailUrl(preview.thumbnailUrl);
-        setPageCount(Math.max(1, preview.pageCount ?? 1));
-      } finally {
-        if (!abortController.signal.aborted) {
-          setIsLoadingPreview(false);
-        }
-      }
-    })();
-
-    return () => {
-      abortController.abort();
-    };
-  }, [currentPage, fileId, runtime]);
-
-  useEffect(() => {
-    if (!fileId) {
-      setTextLayerSpans([]);
-      return;
-    }
-
     let cancelled = false;
-    void (async () => {
-      try {
-        const entry = await runtime.vfs.read(fileId);
-        const blob = await entry.getBlob();
-        const bytes = new Uint8Array(await blob.arrayBuffer());
-        const spans = await buildTextLayerSpans(bytes, currentPage);
-        if (!cancelled) {
-          setTextLayerSpans(spans);
+    (async () => {
+      if (!fileId) {
+        setFileNames([]);
+        return;
+      }
+      const names = await Promise.all(inputFiles.map(async (id) => {
+        try {
+          const entry = await runtime.vfs.read(id);
+          return entry.getName();
+        } catch {
+          return id;
         }
-      } catch {
-        if (!cancelled) {
-          setTextLayerSpans([]);
-        }
+      }));
+      if (!cancelled) {
+        setFileNames(names);
       }
     })();
-
     return () => {
       cancelled = true;
     };
-  }, [currentPage, fileId, runtime.vfs]);
+  }, [fileId, inputFiles, runtime.vfs]);
 
-  const appendEditFromBounds = useCallback((params: {
-    text: string;
-    xRatio: number;
-    yRatio: number;
-    widthRatio?: number;
-    heightRatio?: number;
-    fontSize: number;
-    fontFamily?: string;
-    bold?: boolean;
-    italic?: boolean;
-    textAlign?: 'left' | 'center' | 'right';
-    ascentRatio?: number;
-    descentRatio?: number;
-    sourceFontSizeRatio?: number;
-    originalRect?: TextEditDraft['originalRect'];
-  }) => {
-    const text = params.text.trim();
-    if (!fileId || text.length === 0) {
-      return;
-    }
-
-    const normalizedHeight = clamp(params.heightRatio ?? 10, 1.6, 100);
-    const derivedFontSize = normalizedHeight * 8.42 * 0.86;
-
-    const nextEdit: TextEditDraft = {
-      type: 'text',
-      id: crypto.randomUUID(),
-      pageIndex: currentPage - 1,
-      text,
-      xRatio: clamp(params.xRatio, 0, 100),
-      yRatio: clamp(params.yRatio, 0, 100),
-      widthRatio: clamp(params.widthRatio ?? 30, 0.5, 100),
-      heightRatio: normalizedHeight,
-      fontSize: clamp(Math.max(params.fontSize, derivedFontSize), 8, 144),
-      fontFamily: params.fontFamily || 'Roboto',
-      color: '#000000',
-      backgroundColor: '#ffffff',
-      bold: params.bold || false,
-      italic: params.italic || false,
-      opacity: 100,
-      rotation: 0,
-      textAlign: params.textAlign || 'left',
-      horizontalScaling: 1.0,
-      ascentRatio: params.ascentRatio,
-      descentRatio: params.descentRatio,
-      sourceFontSizeRatio: params.sourceFontSizeRatio,
-      originalRect: params.originalRect,
-    };
-
-    setEdits((current) => {
-      const next = [...current, nextEdit];
-      pushHistorySnapshot(next);
-      return next;
-    });
-    setSelectedEditId(nextEdit.id);
-    return nextEdit.id;
-  }, [currentPage, fileId, pushHistorySnapshot]);
-
-  const pickInputFiles = useCallback(async (files: File[]): Promise<void> => {
-    if (files.length === 0 || !onPickFiles) {
-      setIsUploadDragging(false);
-      return;
-    }
-    if (hasUnsavedChanges) {
-      const confirmed = window.confirm('You have unsaved changes. Replace selected files and lose unsaved edits?');
-      if (!confirmed) {
-        setIsUploadDragging(false);
+  useEffect(() => {
+    const controller = new AbortController();
+    (async () => {
+      if (!fileId) {
+        setPreviewUrl(null);
+        setSpans([]);
+        setPageCount(1);
         return;
       }
-    }
-    setIsUploadDragging(false);
-    await onPickFiles(files);
-  }, [hasUnsavedChanges, onPickFiles]);
-
-  const handleFileInput = async (event: ChangeEvent<HTMLInputElement>): Promise<void> => {
-    const files = event.target.files ? Array.from(event.target.files) : [];
-    event.target.value = '';
-    await pickInputFiles(files);
-  };
-
-  const handleUploadDragOver = useCallback((event: ReactDragEvent<HTMLDivElement>) => {
-    if (!onPickFiles) {
-      return;
-    }
-    event.preventDefault();
-    event.stopPropagation();
-    event.dataTransfer.dropEffect = 'copy';
-    setIsUploadDragging(true);
-  }, [onPickFiles]);
-
-  const handleUploadDragLeave = useCallback((event: ReactDragEvent<HTMLDivElement>) => {
-    if (!onPickFiles) {
-      return;
-    }
-    event.preventDefault();
-    event.stopPropagation();
-    const nextTarget = event.relatedTarget;
-    if (nextTarget && event.currentTarget.contains(nextTarget as Node)) {
-      return;
-    }
-    setIsUploadDragging(false);
-  }, [onPickFiles]);
-
-  const handleUploadDrop = useCallback((event: ReactDragEvent<HTMLDivElement>) => {
-    if (!onPickFiles) {
-      return;
-    }
-    event.preventDefault();
-    event.stopPropagation();
-    const files = event.dataTransfer?.files ? Array.from(event.dataTransfer.files) : [];
-    void pickInputFiles(files);
-  }, [onPickFiles, pickInputFiles]);
-
-  const updateSelectedEdit = useCallback((updates: Partial<TextEditDraft>) => {
-    if (!selectedEditId) {
-      return;
-    }
-
-    setEdits((current) => {
-      const next = current.map((item) => {
-        if (item.id !== selectedEditId || item.type !== 'text') {
-          return item;
+      setLoading(true);
+      setError(null);
+      try {
+        const [preview, entry] = await Promise.all([
+          defaultFilePreviewService.getPdfPagePreview(runtime, fileId, pageNumber, { scale: PREVIEW_SCALE }, controller.signal),
+          runtime.vfs.read(fileId),
+        ]);
+        if (controller.signal.aborted) {
+          return;
         }
-
-        const merged = { ...item, ...updates };
-        return {
-          ...merged,
-          xRatio: clamp(merged.xRatio, 0, 100),
-          yRatio: clamp(merged.yRatio, 0, 100),
-          fontSize: clamp(merged.fontSize, 4, 144),
-        };
-      });
-      pushHistorySnapshot(next);
-      return next;
-    });
-  }, [pushHistorySnapshot, selectedEditId]);
-
-  const removeSelectedEdit = useCallback(() => {
-    if (!selectedEditId) {
-      return;
-    }
-
-    setEdits((current) => {
-      const next = current.filter((item) => item.id !== selectedEditId);
-      pushHistorySnapshot(next);
-      return next;
-    });
-    setSelectedEditId(null);
-  }, [pushHistorySnapshot, selectedEditId]);
-
-  const createEditFromSpan = useCallback((span: TextLayerSpan) => {
-    const lineThreshold = Math.max(0.0025, span.heightRatio * 0.55);
-    const lineSpans = textLayerSpans
-      .filter((candidate) => (
-        Math.abs(candidate.yRatio - span.yRatio) <= lineThreshold ||
-        Math.abs((candidate.yRatio + candidate.heightRatio) - (span.yRatio + span.heightRatio)) <= lineThreshold
-      ))
-      .sort((a, b) => a.xRatio - b.xRatio);
-
-    if (lineSpans.length === 0) {
-      return;
-    }
-
-    const left = Math.min(...lineSpans.map((s) => s.xRatio));
-    const top = Math.min(...lineSpans.map((s) => s.yRatio));
-    const right = Math.max(...lineSpans.map((s) => s.xRatio + s.widthRatio));
-    const bottom = Math.max(...lineSpans.map((s) => s.yRatio + s.heightRatio));
-    const width = right - left;
-    const height = bottom - top;
-
-    const ordered = [...lineSpans].sort((a, b) => a.xRatio - b.xRatio);
-    let mergedText = '';
-    for (let i = 0; i < ordered.length; i += 1) {
-      const current = ordered[i];
-      if (i > 0) {
-        const prev = ordered[i - 1];
-        const gap = current.xRatio - (prev.xRatio + prev.widthRatio);
-        if (gap > Math.max(0.0015, current.heightRatio * 0.2) && !mergedText.endsWith(' ') && !current.text.startsWith(' ')) {
-          mergedText += ' ';
+        setPreviewUrl(preview.thumbnailUrl);
+        if (preview.pageCount) {
+          setPageCount(preview.pageCount);
+        }
+        const bytes = new Uint8Array(await (await entry.getBlob()).arrayBuffer());
+        const layer = await extractTextLayerSpans({ pdfBytes: bytes, pageNumber });
+        if (controller.signal.aborted) {
+          return;
+        }
+        setSpans(layer.spans);
+        setStageSize({ width: layer.width, height: layer.height });
+        setPageCount(layer.pageCount);
+      } catch {
+        if (!controller.signal.aborted) {
+          setError('Could not load PDF preview.');
+          setPreviewUrl(null);
+          setSpans([]);
+        }
+      } finally {
+        if (!controller.signal.aborted) {
+          setLoading(false);
         }
       }
-      mergedText += current.text;
-    }
-    mergedText = mergedText.replace(/\s+/g, ' ').trim();
-    if (!mergedText) {
+    })();
+    return () => controller.abort();
+  }, [fileId, pageNumber, runtime]);
+
+  useEffect(() => {
+    if (!editingId || !editingRef.current) {
       return;
     }
+    const node = editingRef.current;
+    node.focus();
+    const range = document.createRange();
+    range.selectNodeContents(node);
+    range.collapse(false);
+    const selection = window.getSelection();
+    selection?.removeAllRanges();
+    selection?.addRange(range);
+  }, [editingId]);
 
-    const rect = {
-      x: left * 100,
-      y: top * 100,
-      w: width * 100,
-      h: Math.max(height * 100, 1.6),
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (isEditableTarget(event.target)) {
+        if (event.key === 'Escape') {
+          event.preventDefault();
+          commitInlineEdit();
+        }
+        return;
+      }
+      const meta = event.metaKey || event.ctrlKey;
+      if (meta && event.key.toLowerCase() === 'z') {
+        event.preventDefault();
+        if (event.shiftKey) {
+          redo();
+        } else {
+          undo();
+        }
+        return;
+      }
+      if ((event.key === 'Delete' || event.key === 'Backspace') && selectedId) {
+        event.preventDefault();
+        const next = elements.filter((element) => element.id !== selectedId);
+        setSelectedId(null);
+        setEditingId(null);
+        applyElements(next);
+      }
     };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [applyElements, commitInlineEdit, elements, redo, selectedId, undo]);
 
-    const existing = edits.find((edit) => (
-      edit.type === 'text' &&
-      edit.pageIndex === currentPage - 1 &&
-      edit.originalRect &&
-      Math.abs(edit.originalRect.x - rect.x) < 0.6 &&
-      Math.abs(edit.originalRect.y - rect.y) < 0.6 &&
-      Math.abs(edit.originalRect.w - rect.w) < 0.8 &&
-      Math.abs(edit.originalRect.h - rect.h) < 0.8
+  const createTextEditFromSpan = useCallback((span: TextLayerSpan) => {
+    const line = mergeLineSpans(span, spans);
+    const existing = pageTextElements.find((element) => (
+      element.originalRect && centerIsInsideRect(span, element.originalRect)
     ));
     if (existing) {
       startInlineEdit(existing.id);
       return;
     }
+    const textElement: EditorElement = {
+      type: 'text',
+      id: createElementId('text'),
+      pageIndex,
+      text: line.text || span.text,
+      xRatio: line.rect.x,
+      yRatio: line.rect.y,
+      widthRatio: line.rect.w,
+      heightRatio: line.rect.h,
+      fontSize: Math.max(6, line.representative.fontSizeRatio * stageSize.height),
+      fontFamily: line.representative.fontFamilyHint || 'Roboto',
+      color: '#000000',
+      backgroundColor: '#ffffff',
+      bold: /bold|black|heavy/iu.test(line.representative.fontName ?? ''),
+      italic: /italic|oblique/iu.test(line.representative.fontName ?? ''),
+      opacity: 1,
+      textAlign: 'left',
+      horizontalScaling: 1,
+      ascentRatio: line.representative.ascentRatio,
+      descentRatio: line.representative.descentRatio,
+      sourceFontSizeRatio: line.representative.fontSizeRatio,
+      originalRect: line.rect,
+    };
+    const next = [...elements, textElement];
+    applyElements(next);
+    startInlineEdit(textElement.id);
+  }, [applyElements, elements, pageIndex, pageTextElements, spans, stageSize.height, startInlineEdit]);
 
-    const representativeSpan = lineSpans.find((s) => s.id === span.id) ?? lineSpans[0]!;
-    const newId = appendEditFromBounds({
-      text: mergedText,
-      xRatio: rect.x,
-      yRatio: rect.y,
-      widthRatio: rect.w,
-      heightRatio: rect.h,
-      fontSize: (rect.h / 100) * 842 * 0.9,
+  const createNewText = useCallback((xRatio: number, yRatio: number) => {
+    const textElement: EditorElement = {
+      type: 'text',
+      id: createElementId('text'),
+      pageIndex,
+      text: 'Add text',
+      xRatio,
+      yRatio,
+      widthRatio: 28,
+      heightRatio: 3,
+      fontSize: 18,
       fontFamily: 'Roboto',
-      ascentRatio: representativeSpan.ascentRatio,
-      descentRatio: representativeSpan.descentRatio,
-      sourceFontSizeRatio: representativeSpan.fontSizeRatio,
-      originalRect: rect,
-    });
-    if (newId) {
-      setEditingTextId(newId);
-    }
-  }, [appendEditFromBounds, currentPage, edits, textLayerSpans]);
-
-  const commitInlineEdit = useCallback(() => {
-    const div = editingDivRef.current;
-    if (!div || !editingTextId) {
-      return;
-    }
-    const newText = div.innerText.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
-    setEdits((current) => {
-      const next = current.map((item) => {
-        if (item.id !== editingTextId || item.type !== 'text') {
-          return item;
-        }
-        return { ...item, text: newText || item.text };
-      });
-      pushHistorySnapshot(next);
-      return next;
-    });
-    setEditingTextId(null);
-  }, [editingTextId, pushHistorySnapshot]);
-
-  const startInlineEdit = useCallback((id: string) => {
-    setSelectedEditId(id);
-    setEditingTextId(id);
-    setIsAddTextMode(false);
-    setActiveShapeTool(null);
-    setDrawingDraft(null);
-  }, []);
-
-  const toStageRatiosFromEvent = useCallback((event: ReactMouseEvent<HTMLDivElement>) => {
-    const stage = stageRef.current;
-    if (!stage) {
-      return null;
-    }
-    const rect = stage.getBoundingClientRect();
-    if (rect.width <= 0 || rect.height <= 0) {
-      return null;
-    }
-    const xRatio = clamp(((event.clientX - rect.left) / rect.width) * 100, 0, 100);
-    const yRatio = clamp(((event.clientY - rect.top) / rect.height) * 100, 0, 100);
-    return { xRatio, yRatio };
-  }, []);
-
-  const commitShapeFromDrawing = useCallback((draft: DrawingDraft) => {
-    const minX = Math.min(draft.startXRatio, draft.currentXRatio);
-    const minY = Math.min(draft.startYRatio, draft.currentYRatio);
-    const maxX = Math.max(draft.startXRatio, draft.currentXRatio);
-    const maxY = Math.max(draft.startYRatio, draft.currentYRatio);
-    const width = maxX - minX;
-    const height = maxY - minY;
-
-    let nextShape: RectEditDraft | LineEditDraft | null = null;
-    if (draft.tool === 'line') {
-      const length = Math.hypot(draft.currentXRatio - draft.startXRatio, draft.currentYRatio - draft.startYRatio);
-      if (length < 0.6) {
-        return;
-      }
-      nextShape = {
-        type: 'line',
-        id: crypto.randomUUID(),
-        pageIndex: draft.pageIndex,
-        x1Ratio: draft.startXRatio,
-        y1Ratio: draft.startYRatio,
-        x2Ratio: draft.currentXRatio,
-        y2Ratio: draft.currentYRatio,
-        color: '#dc2626',
-        strokeWidth: 2,
-        opacity: 100,
-      };
-    } else {
-      if (width < 0.6 || height < 0.6) {
-        return;
-      }
-      nextShape = {
-        type: draft.tool,
-        id: crypto.randomUUID(),
-        pageIndex: draft.pageIndex,
-        xRatio: minX,
-        yRatio: minY,
-        widthRatio: width,
-        heightRatio: height,
-        color: draft.tool === 'whiteout' ? '#ffffff' : '#0f172a',
-        strokeWidth: draft.tool === 'whiteout' ? 0 : 2,
-        opacity: 100,
-      };
-    }
-
-    if (!nextShape) {
-      return;
-    }
-
-    setEdits((current) => {
-      const next = [...current, nextShape as EditorElementDraft];
-      pushHistorySnapshot(next);
-      return next;
-    });
-    setSelectedEditId(null);
-    trackEditorAction('apply', `Add ${nextShape.type}`, 1);
-  }, [pushHistorySnapshot, trackEditorAction]);
+      color: '#000000',
+      backgroundColor: '#ffffff',
+      bold: false,
+      italic: false,
+      opacity: 1,
+      textAlign: 'left',
+      horizontalScaling: 1,
+    };
+    const next = [...elements, textElement];
+    applyElements(next);
+    startInlineEdit(textElement.id);
+  }, [applyElements, elements, pageIndex, startInlineEdit]);
 
   const handleStageMouseDown = useCallback((event: ReactMouseEvent<HTMLDivElement>) => {
-    if (!fileId || isAddTextMode || !activeShapeTool || event.button !== 0) {
+    if (event.button !== 0 || isEditableTarget(event.target)) {
       return;
     }
-    const ratios = toStageRatiosFromEvent(event);
-    if (!ratios) {
+    if (event.target !== event.currentTarget && !(event.target instanceof HTMLImageElement)) {
       return;
     }
-    setDrawingDraft({
-      tool: activeShapeTool,
-      pageIndex: currentPage - 1,
-      startXRatio: ratios.xRatio,
-      startYRatio: ratios.yRatio,
-      currentXRatio: ratios.xRatio,
-      currentYRatio: ratios.yRatio,
-    });
-    setSelectedEditId(null);
-    event.preventDefault();
-    event.stopPropagation();
-  }, [activeShapeTool, currentPage, fileId, isAddTextMode, toStageRatiosFromEvent]);
+    const point = toStagePoint(event, event.currentTarget);
+    setSelectedId(null);
+    setEditingId(null);
+    if (shapeTool) {
+      setDrawing({
+        tool: shapeTool,
+        pageIndex,
+        startXRatio: point.xRatio,
+        startYRatio: point.yRatio,
+        currentXRatio: point.xRatio,
+        currentYRatio: point.yRatio,
+      });
+      return;
+    }
+    createNewText(point.xRatio, point.yRatio);
+  }, [createNewText, pageIndex, shapeTool]);
 
   const handleStageMouseMove = useCallback((event: ReactMouseEvent<HTMLDivElement>) => {
-    const drag = draggingEditRef.current;
+    const drag = dragRef.current;
     if (drag) {
       const dx = ((event.clientX - drag.startClientX) / drag.stageWidth) * 100;
       const dy = ((event.clientY - drag.startClientY) / drag.stageHeight) * 100;
-      const nextX = clamp(drag.origXRatio + dx, 0, 100);
-      const nextY = clamp(drag.origYRatio + dy, 0, 100);
-      setEdits((current) => current.map((item) => (
-        item.id === drag.id && item.type === 'text'
-          ? { ...item, xRatio: nextX, yRatio: nextY }
-          : item
-      )));
-      event.preventDefault();
-      return;
-    }
-    if (!drawingDraft) {
-      return;
-    }
-    const ratios = toStageRatiosFromEvent(event);
-    if (!ratios) {
-      return;
-    }
-    setDrawingDraft((current) => (current ? { ...current, currentXRatio: ratios.xRatio, currentYRatio: ratios.yRatio } : null));
-    event.preventDefault();
-  }, [drawingDraft, toStageRatiosFromEvent]);
-
-  const handleStageMouseUp = useCallback((event: ReactMouseEvent<HTMLDivElement>) => {
-    const drag = draggingEditRef.current;
-    if (drag) {
-      draggingEditRef.current = null;
-      setEdits((current) => {
-        pushHistorySnapshot(current);
-        return current;
-      });
-      suppressNextStageClickRef.current = true;
-      event.preventDefault();
-      event.stopPropagation();
-      return;
-    }
-    if (!drawingDraft) {
-      return;
-    }
-    const ratios = toStageRatiosFromEvent(event);
-    const finalized = ratios
-      ? { ...drawingDraft, currentXRatio: ratios.xRatio, currentYRatio: ratios.yRatio }
-      : drawingDraft;
-    setDrawingDraft(null);
-    commitShapeFromDrawing(finalized);
-    suppressNextStageClickRef.current = true;
-    event.preventDefault();
-    event.stopPropagation();
-  }, [commitShapeFromDrawing, drawingDraft, pushHistorySnapshot, toStageRatiosFromEvent]);
-
-  useEffect(() => {
-    if (!thumbnailUrl) return;
-    const host = previewRef.current;
-    if (!host) return;
-    const stage = host.querySelector('.pdf-editor-preview-stage');
-    if (stage) {
-      setStageHeight(stage.clientHeight);
-    }
-  }, [thumbnailUrl]);
-
-  useEffect(() => {
-    const stage = stageRef.current;
-    if (!stage || typeof ResizeObserver === 'undefined') {
-      return;
-    }
-
-    const update = () => {
-      if (stage.clientHeight > 0) {
-        setStageHeight(stage.clientHeight);
-      }
-    };
-    update();
-
-    const observer = new ResizeObserver(() => update());
-    observer.observe(stage);
-    return () => observer.disconnect();
-  }, [previewZoom, thumbnailUrl, currentPage, fileId]);
-
-  useEffect(() => {
-    if (!editingTextId) {
-      return;
-    }
-    const div = editingDivRef.current;
-    if (!div) {
-      return;
-    }
-    div.focus();
-    // Place cursor at end
-    const range = document.createRange();
-    const sel = window.getSelection();
-    range.selectNodeContents(div);
-    range.collapse(false);
-    sel?.removeAllRanges();
-    sel?.addRange(range);
-  }, [editingTextId]);
-
-  useEffect(() => {
-    const onWindowKeyDown = (event: KeyboardEvent): void => {
-      const key = event.key.toLowerCase();
-      const hasModifier = event.metaKey || event.ctrlKey;
-      const editable = isEditableElement(event.target);
-
-      if (hasModifier && key === 'z' && !editable) {
-        event.preventDefault();
-        if (event.shiftKey) {
-          redoEditChange();
-          return;
+      setElements((current) => current.map((element) => {
+        if (element.id !== drag.id || element.type !== 'text') {
+          return element;
         }
-        undoEditChange();
-        return;
-      }
-
-      if ((event.key === 'Delete' || event.key === 'Backspace') && selectedEditId && !editable) {
-        event.preventDefault();
-        removeSelectedEdit();
-      }
-    };
-
-    window.addEventListener('keydown', onWindowKeyDown);
-    return () => {
-      window.removeEventListener('keydown', onWindowKeyDown);
-    };
-  }, [redoEditChange, removeSelectedEdit, selectedEditId, undoEditChange]);
-
-  const startProcessing = useCallback(() => {
-    const payload = edits.map((edit) => {
-      if (edit.type === 'text') {
         return {
-          type: 'text' as const,
-          pageIndex: edit.pageIndex,
-          text: edit.text,
-          xRatio: edit.xRatio,
-          yRatio: edit.yRatio,
-          widthRatio: edit.widthRatio,
-          heightRatio: edit.heightRatio,
-          fontSize: edit.fontSize,
-          fontFamily: edit.fontFamily,
-          color: edit.color,
-          backgroundColor: edit.backgroundColor,
-          bold: edit.bold,
-          italic: edit.italic,
-          opacity: edit.opacity,
-          rotation: edit.rotation,
-          textAlign: edit.textAlign,
-          horizontalScaling: edit.horizontalScaling,
-          ascentRatio: edit.ascentRatio,
-          descentRatio: edit.descentRatio,
-          sourceFontSizeRatio: edit.sourceFontSizeRatio,
-          originalRect: edit.originalRect,
+          ...element,
+          xRatio: clamp(drag.origXRatio + dx, 0, 100 - element.widthRatio),
+          yRatio: clamp(drag.origYRatio + dy, 0, 100 - element.heightRatio),
         };
-      }
-      if (edit.type === 'line') {
-        return {
-          type: 'line' as const,
-          pageIndex: edit.pageIndex,
-          x1Ratio: edit.x1Ratio,
-          y1Ratio: edit.y1Ratio,
-          x2Ratio: edit.x2Ratio,
-          y2Ratio: edit.y2Ratio,
-          color: edit.color,
-          strokeWidth: edit.strokeWidth,
-          opacity: edit.opacity,
-        };
-      }
-      return {
-        type: edit.type,
-        pageIndex: edit.pageIndex,
-        xRatio: edit.xRatio,
-        yRatio: edit.yRatio,
-        widthRatio: edit.widthRatio,
-        heightRatio: edit.heightRatio,
-        color: edit.color,
-        strokeWidth: edit.strokeWidth,
-        opacity: edit.opacity,
-      };
-    });
-
-    onStart({ elements: payload, edits: payload.filter((item) => item.type === 'text') });
-  }, [edits, onStart]);
-
-  const hasDownloadReady = hasResult && !hasUnsavedChanges;
-  const canSubmitEdits = Boolean(fileId) && edits.length > 0 && !isProcessing;
-  const primaryActionLabel = hasDownloadReady
-    ? 'Download File'
-    : isProcessing
-      ? `Saving ${loadingPercent}%`
-      : 'Save PDF';
-  const handleBack = useCallback(() => {
-    if (hasUnsavedChanges) {
-      const confirmed = window.confirm('You have unsaved changes. Leave editor without saving?');
-      if (!confirmed) {
-        return;
-      }
-    }
-    onBack();
-  }, [hasUnsavedChanges, onBack]);
-  const handleClearFiles = useCallback(() => {
-    if (!onClearFiles) {
+      }));
       return;
     }
-    if (hasUnsavedChanges) {
-      const confirmed = window.confirm('You have unsaved changes. Clear files and lose unsaved edits?');
-      if (!confirmed) {
-        return;
-      }
+    if (drawing) {
+      const point = toStagePoint(event, event.currentTarget);
+      setDrawing({ ...drawing, currentXRatio: point.xRatio, currentYRatio: point.yRatio });
     }
-    void onClearFiles();
-  }, [hasUnsavedChanges, onClearFiles]);
+  }, [drawing]);
+
+  const finishPointerAction = useCallback(() => {
+    if (dragRef.current) {
+      dragRef.current = null;
+      pushHistory(elements);
+    }
+    if (drawing) {
+      const left = Math.min(drawing.startXRatio, drawing.currentXRatio);
+      const top = Math.min(drawing.startYRatio, drawing.currentYRatio);
+      const width = Math.abs(drawing.currentXRatio - drawing.startXRatio);
+      const height = Math.abs(drawing.currentYRatio - drawing.startYRatio);
+      if (width >= 0.4 || height >= 0.4) {
+        const nextElement: EditorElement = drawing.tool === 'line'
+          ? {
+            type: 'line',
+            id: createElementId('line'),
+            pageIndex: drawing.pageIndex,
+            x1Ratio: drawing.startXRatio,
+            y1Ratio: drawing.startYRatio,
+            x2Ratio: drawing.currentXRatio,
+            y2Ratio: drawing.currentYRatio,
+            color: '#000000',
+            strokeWidth: 2,
+            opacity: 1,
+          }
+          : {
+            type: drawing.tool,
+            id: createElementId(drawing.tool),
+            pageIndex: drawing.pageIndex,
+            xRatio: left,
+            yRatio: top,
+            widthRatio: Math.max(width, 0.4),
+            heightRatio: Math.max(height, 0.4),
+            color: drawing.tool === 'whiteout' ? '#ffffff' : '#000000',
+            strokeWidth: drawing.tool === 'whiteout' ? 0 : 2,
+            opacity: 1,
+          };
+        const next = [...elements, nextElement];
+        setSelectedId(nextElement.id);
+        applyElements(next);
+      }
+      setDrawing(null);
+    }
+  }, [applyElements, drawing, elements, pushHistory]);
+
+  const handleOverlayMouseDown = useCallback((event: ReactMouseEvent<HTMLDivElement>, element: EditorElement) => {
+    if (event.button !== 0 || element.type !== 'text' || isEditableTarget(event.target)) {
+      return;
+    }
+    const stage = stageRef.current;
+    if (!stage) {
+      return;
+    }
+    event.stopPropagation();
+    const rect = stage.getBoundingClientRect();
+    dragRef.current = {
+      id: element.id,
+      startClientX: event.clientX,
+      startClientY: event.clientY,
+      origXRatio: element.xRatio,
+      origYRatio: element.yRatio,
+      stageWidth: rect.width,
+      stageHeight: rect.height,
+    };
+    setSelectedId(element.id);
+    setEditingId(null);
+  }, []);
+
+  const handleFiles = useCallback(async (files: FileList | File[]) => {
+    const picked = Array.from(files).filter((file) => file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf'));
+    if (picked.length > 0) {
+      await onPickFiles?.(picked);
+    }
+  }, [onPickFiles]);
+
+  const handleFileInput = useCallback((event: ChangeEvent<HTMLInputElement>) => {
+    if (event.target.files) {
+      void handleFiles(event.target.files);
+      event.target.value = '';
+    }
+  }, [handleFiles]);
+
+  const handleDrop = useCallback((event: ReactDragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    setIsDraggingUpload(false);
+    void handleFiles(event.dataTransfer.files);
+  }, [handleFiles]);
+
+  const save = useCallback(() => {
+    commitInlineEdit();
+    onStart({ elements: cloneElements(elements) });
+  }, [commitInlineEdit, elements, onStart]);
+
+  const updateSelectedText = useCallback((patch: Partial<Extract<EditorElement, { type: 'text' }>>) => {
+    if (!selectedId) {
+      return;
+    }
+    const next = elements.map((element) => (
+      element.id === selectedId && element.type === 'text'
+        ? { ...element, ...patch, backgroundColor: '#ffffff' }
+        : element
+    ));
+    applyElements(next);
+  }, [applyElements, elements, selectedId]);
+
+  const renderShapePreview = drawing ? {
+    left: Math.min(drawing.startXRatio, drawing.currentXRatio),
+    top: Math.min(drawing.startYRatio, drawing.currentYRatio),
+    width: Math.abs(drawing.currentXRatio - drawing.startXRatio),
+    height: Math.abs(drawing.currentYRatio - drawing.startYRatio),
+  } : null;
 
   return (
     <div className="tool-config-root pdf-editor-concept-root">
       <div className="ocr-concept-workspace">
         <section className="tool-config-card ocr-concept-left pdf-editor-left">
-          <h3 className="pdf-editor-title">Edit PDF Text</h3>
-          <p className="tool-config-copy">
-            Edit text, add shapes, use whiteout, then save.
-          </p>
+          <h3 className="pdf-editor-title">PDF Text Editor</h3>
 
           <div
-            className={`ocr-concept-upload ${isUploadDragging ? 'dragging' : ''} ${onPickFiles ? '' : 'upload-readonly'}`}
-            role={onPickFiles ? 'button' : undefined}
-            tabIndex={onPickFiles ? 0 : -1}
-            onDragOver={handleUploadDragOver}
-            onDragEnter={handleUploadDragOver}
-            onDragLeave={handleUploadDragLeave}
-            onDrop={handleUploadDrop}
-            onClick={() => {
-              if (onPickFiles) {
-                inputRef.current?.click();
-              }
+            className={`ocr-concept-upload ${isDraggingUpload ? 'dragging' : ''}`}
+            onDragOver={(event) => {
+              event.preventDefault();
+              setIsDraggingUpload(true);
             }}
-            onKeyDown={(event) => {
-              if (!onPickFiles) {
-                return;
-              }
-              if (event.key === 'Enter' || event.key === ' ') {
-                event.preventDefault();
-                inputRef.current?.click();
-              }
-            }}
+            onDragLeave={() => setIsDraggingUpload(false)}
+            onDrop={handleDrop}
+            onClick={() => fileInputRef.current?.click()}
           >
-            <input
-              ref={inputRef}
-              type="file"
-              accept="application/pdf"
-              multiple
-              style={{ display: 'none' }}
-              onChange={(event) => {
-                void handleFileInput(event);
-              }}
-            />
-            <span className="ocr-concept-upload-icon" aria-hidden="true">
-              <LinearIcon name="upload" className="linear-icon icon-md" />
-            </span>
-            <p className="ocr-concept-upload-title">Drop files or click to upload</p>
-            <p className="ocr-concept-upload-copy">PDF only. Editing runs locally in browser.</p>
+            <input ref={fileInputRef} type="file" accept="application/pdf,.pdf" multiple hidden onChange={handleFileInput} />
+            <div className="ocr-concept-upload-icon">
+              <LinearIcon name="upload" className="linear-icon icon-lg" />
+            </div>
+            <p className="ocr-concept-upload-title">{fileId ? 'Selected PDF' : 'Drop PDF here'}</p>
+            <p className="ocr-concept-upload-copy">{fileNames[0] ?? 'Choose a local PDF file'}</p>
+          </div>
 
+          {inputFiles.length > 0 && (
             <div className="ocr-concept-file-chip">
-              <span className="ocr-concept-file-name">{fileNames.length > 0 ? fileNames.join(', ') : 'No file selected'}</span>
-              {fileNames.length > 0 && onClearFiles ? (
-                <button
-                  type="button"
-                  className="ocr-concept-clear-btn"
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    handleClearFiles();
-                  }}
-                  aria-label="Clear selected files"
-                >
-                  <LinearIcon name="x" className="linear-icon" />
-                </button>
-              ) : (
-                <LinearIcon name="refresh" className="linear-icon" />
-              )}
+              <span className="ocr-concept-file-name">{fileNames.join(', ')}</span>
+              <button className="ocr-concept-clear-btn" type="button" onClick={() => void onClearFiles?.()}>
+                <LinearIcon name="x" className="linear-icon" />
+              </button>
+            </div>
+          )}
+
+          <div className="ocr-concept-settings">
+            <label className="pdf-editor-field">
+              <span>Text</span>
+              <textarea
+                className="tool-config-input pdf-editor-textarea"
+                disabled={!selectedElement || selectedElement.type !== 'text'}
+                value={selectedElement?.type === 'text' ? selectedElement.text : ''}
+                onChange={(event) => updateSelectedText({ text: event.target.value })}
+              />
+            </label>
+            <div className="pdf-editor-color-row">
+              <label className="pdf-editor-field">
+                <span>Color</span>
+                <input
+                  className="tool-config-input"
+                  type="color"
+                  disabled={!selectedElement || selectedElement.type !== 'text'}
+                  value={selectedElement?.type === 'text' ? selectedElement.color : '#000000'}
+                  onChange={(event) => updateSelectedText({ color: event.target.value })}
+                />
+              </label>
+              <label className="pdf-editor-field">
+                <span>Size</span>
+                <input
+                  className="tool-config-input"
+                  type="number"
+                  min={6}
+                  max={144}
+                  disabled={!selectedElement || selectedElement.type !== 'text'}
+                  value={selectedElement?.type === 'text' ? Math.round(selectedElement.fontSize) : 16}
+                  onChange={(event) => updateSelectedText({ fontSize: clamp(Number(event.target.value), 6, 144) })}
+                />
+              </label>
             </div>
           </div>
 
-          {hasMultipleFiles && (
-            <p className="pdf-editor-warning">
-              Multiple files selected: the same edits are applied to each file.
-            </p>
+          {error && <p className="pdf-editor-warning">{error}</p>}
+          {currentStep === 'processing' && (
+            <div className="ocr-concept-progress-track">
+              <span style={{ width: `${clamp(progress, 0, 100)}%` }} />
+            </div>
           )}
-
-          {hasUnsavedChanges && (
-            <p className="pdf-editor-warning">
-              You have unsaved changes.
-            </p>
-          )}
-
-          {activeShapeTool && (
-            <p className="pdf-editor-warning">
-              Drawing tool active: {activeShapeTool}. Drag on page to draw.
-            </p>
-          )}
-
-          {selectedTextEdit && (
-            <>
-              <label className="pdf-editor-field">
-                <span>Selected text</span>
-                <textarea
-                  className="ocr-concept-select pdf-editor-textarea"
-                  value={selectedTextEdit.text}
-                  onChange={(event) => updateSelectedEdit({ text: event.target.value })}
-                />
-              </label>
-
-              <label className="pdf-editor-field">
-                <span>Font size: {Math.round(selectedTextEdit.fontSize)} px</span>
-                <input
-                  className="pdf-editor-range"
-                  type="range"
-                  min={8}
-                  max={96}
-                  value={selectedTextEdit.fontSize}
-                  onChange={(event) => updateSelectedEdit({ fontSize: Number(event.target.value) })}
-                />
-              </label>
-
-              <div className="pdf-editor-color-row">
-                <label className="pdf-editor-field">
-                  <span>Text</span>
-                  <input
-                    type="color"
-                    value={selectedTextEdit.color}
-                    onChange={(event) => updateSelectedEdit({ color: event.target.value })}
-                  />
-                </label>
-                <label className="pdf-editor-field">
-                  <span>Background</span>
-                  <input
-                    type="color"
-                    value={selectedTextEdit.backgroundColor}
-                    onChange={(event) => updateSelectedEdit({ backgroundColor: event.target.value })}
-                  />
-                </label>
-              </div>
-
-              <div className="pdf-editor-toolbar-right">
-                <button
-                  type="button"
-                  className={`ocr-concept-tool-btn ${selectedTextEdit.bold ? 'pdf-editor-btn-active' : ''}`}
-                  onClick={() => updateSelectedEdit({ bold: !selectedTextEdit.bold })}
-                >
-                  Bold
-                </button>
-                <button
-                  type="button"
-                  className={`ocr-concept-tool-btn ${selectedTextEdit.italic ? 'pdf-editor-btn-active' : ''}`}
-                  onClick={() => updateSelectedEdit({ italic: !selectedTextEdit.italic })}
-                >
-                  Italic
-                </button>
-                <button
-                  type="button"
-                  className={`ocr-concept-tool-btn ${selectedTextEdit.textAlign === 'left' ? 'pdf-editor-btn-active' : ''}`}
-                  onClick={() => updateSelectedEdit({ textAlign: 'left' })}
-                >
-                  Left
-                </button>
-                <button
-                  type="button"
-                  className={`ocr-concept-tool-btn ${selectedTextEdit.textAlign === 'center' ? 'pdf-editor-btn-active' : ''}`}
-                  onClick={() => updateSelectedEdit({ textAlign: 'center' })}
-                >
-                  Center
-                </button>
-                <button
-                  type="button"
-                  className={`ocr-concept-tool-btn ${selectedTextEdit.textAlign === 'right' ? 'pdf-editor-btn-active' : ''}`}
-                  onClick={() => updateSelectedEdit({ textAlign: 'right' })}
-                >
-                  Right
-                </button>
-                <button
-                  type="button"
-                  className="ocr-concept-tool-btn"
-                  onClick={removeSelectedEdit}
-                >
-                  Delete
-                </button>
-              </div>
-            </>
+          {currentStep === 'result' && outputCount > 0 && (
+            <p className="tool-config-copy">{outputCount} edited PDF ready.</p>
           )}
 
           <div className="tool-config-actions ocr-concept-actions">
-            <button className="btn-ghost" onClick={handleBack}>Cancel</button>
-            <button
-              className="btn-primary"
-              onClick={() => {
-                if (hasDownloadReady && onDownload) {
-                  void onDownload();
-                  return;
-                }
-                startProcessing();
-              }}
-              disabled={hasDownloadReady ? false : !canSubmitEdits}
-            >
-              {primaryActionLabel}
+            <button className="btn-ghost" type="button" onClick={onBack}>
+              <span className="btn-inline"><LinearIcon name="chevron-left" className="linear-icon" />Back</span>
             </button>
+            {currentStep === 'result' && outputCount > 0 ? (
+              <button className="btn-primary" type="button" onClick={() => void onDownload?.()}>
+                <span className="btn-inline"><LinearIcon name="download" className="linear-icon" />Download</span>
+              </button>
+            ) : (
+              <button className="btn-primary" type="button" disabled={!fileId || currentStep === 'processing'} onClick={save}>
+                <span className="btn-inline"><LinearIcon name="check" className="linear-icon" />Save PDF</span>
+              </button>
+            )}
           </div>
         </section>
 
         <section className="tool-config-card ocr-concept-right pdf-editor-right">
-          {!fileId ? (
-            <div className="ocr-concept-empty">
-              <LinearIcon name="tool" className="linear-icon icon-md" />
-              <h4 className="ocr-concept-empty-title">PDF Editor</h4>
-              <p className="ocr-concept-empty-copy">Upload a PDF to start inline text editing.</p>
+          <div className="ocr-concept-toolbar pdf-editor-toolbar">
+            <div className="pdf-editor-pager">
+              <button className="ocr-concept-tool-btn" type="button" disabled={pageNumber <= 1} onClick={() => setPageNumber((value) => Math.max(1, value - 1))}>
+                <LinearIcon name="chevron-left" className="linear-icon" />
+              </button>
+              <span className="pdf-editor-page-copy">Page {pageNumber}/{pageCount}</span>
+              <button className="ocr-concept-tool-btn" type="button" disabled={pageNumber >= pageCount} onClick={() => setPageNumber((value) => Math.min(pageCount, value + 1))}>
+                <LinearIcon name="chevron-right" className="linear-icon" />
+              </button>
             </div>
-          ) : (
-            <>
-              <div className="ocr-concept-toolbar pdf-editor-toolbar">
-                <div className="pdf-editor-pager">
-                  <button
-                    type="button"
-                    className="ocr-concept-tool-btn"
-                    onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
-                    disabled={currentPage <= 1}
-                  >
-                    Prev
-                  </button>
-                  <span className="pdf-editor-page-copy">Page {currentPage}/{pageCount}</span>
-                  <button
-                    type="button"
-                    className="ocr-concept-tool-btn"
-                    onClick={() => setCurrentPage((page) => Math.min(pageCount, page + 1))}
-                    disabled={currentPage >= pageCount}
-                  >
-                    Next
-                  </button>
-                </div>
+            <div className="pdf-editor-toolbar-right">
+              <button className="ocr-concept-tool-btn" type="button" disabled={!canUndo} onClick={undo} title="Undo">
+                <LinearIcon name="rotate" className="linear-icon" />
+              </button>
+              <button className="ocr-concept-tool-btn" type="button" disabled={!canRedo} onClick={redo} title="Redo">
+                <LinearIcon name="refresh" className="linear-icon" />
+              </button>
+              {(['rect', 'circle', 'line', 'whiteout'] as ShapeTool[]).map((tool) => (
+                <button
+                  key={tool}
+                  className={`ocr-concept-tool-btn ${shapeTool === tool ? 'pdf-editor-btn-active' : ''}`}
+                  type="button"
+                  onClick={() => setShapeTool((current) => (current === tool ? null : tool))}
+                  title={tool}
+                >
+                  <LinearIcon name={tool === 'whiteout' ? 'eraser' : tool === 'line' ? 'minus' : 'shape'} className="linear-icon" />
+                </button>
+              ))}
+              <button className="ocr-concept-tool-btn" type="button" onClick={() => setZoom((value) => clamp(value - 0.1, 0.5, 2.5))}>
+                <LinearIcon name="minus" className="linear-icon" />
+              </button>
+              <span className="pdf-editor-zoom-copy">{Math.round(zoom * 100)}%</span>
+              <button className="ocr-concept-tool-btn" type="button" onClick={() => setZoom((value) => clamp(value + 0.1, 0.5, 2.5))}>
+                <LinearIcon name="plus" className="linear-icon" />
+              </button>
+            </div>
+          </div>
 
-                <div className="pdf-editor-toolbar-right">
-                  <button
-                    type="button"
-                    className={`ocr-concept-tool-btn ${isAddTextMode ? 'pdf-editor-btn-active' : ''}`}
-                    onClick={() => {
-                      setIsAddTextMode((current) => !current);
-                      setActiveShapeTool(null);
-                      setDrawingDraft(null);
-                      setSelectedEditId(null);
-                    }}
-                    aria-label="Add text block"
-                  >
-                    Add Text
-                  </button>
-                  <button
-                    type="button"
-                    className={`ocr-concept-tool-btn ${activeShapeTool === 'rect' ? 'pdf-editor-btn-active' : ''}`}
-                    onClick={() => {
-                      setActiveShapeTool((current) => (current === 'rect' ? null : 'rect'));
-                      setIsAddTextMode(false);
-                      setDrawingDraft(null);
-                      setSelectedEditId(null);
-                    }}
-                    aria-label="Draw rectangle"
-                  >
-                    Rectangle
-                  </button>
-                  <button
-                    type="button"
-                    className={`ocr-concept-tool-btn ${activeShapeTool === 'circle' ? 'pdf-editor-btn-active' : ''}`}
-                    onClick={() => {
-                      setActiveShapeTool((current) => (current === 'circle' ? null : 'circle'));
-                      setIsAddTextMode(false);
-                      setDrawingDraft(null);
-                      setSelectedEditId(null);
-                    }}
-                    aria-label="Draw circle"
-                  >
-                    Circle
-                  </button>
-                  <button
-                    type="button"
-                    className={`ocr-concept-tool-btn ${activeShapeTool === 'line' ? 'pdf-editor-btn-active' : ''}`}
-                    onClick={() => {
-                      setActiveShapeTool((current) => (current === 'line' ? null : 'line'));
-                      setIsAddTextMode(false);
-                      setDrawingDraft(null);
-                      setSelectedEditId(null);
-                    }}
-                    aria-label="Draw line"
-                  >
-                    Line
-                  </button>
-                  <button
-                    type="button"
-                    className={`ocr-concept-tool-btn ${activeShapeTool === 'whiteout' ? 'pdf-editor-btn-active' : ''}`}
-                    onClick={() => {
-                      setActiveShapeTool((current) => (current === 'whiteout' ? null : 'whiteout'));
-                      setIsAddTextMode(false);
-                      setDrawingDraft(null);
-                      setSelectedEditId(null);
-                    }}
-                    aria-label="Draw whiteout"
-                  >
-                    Whiteout
-                  </button>
-                  <button
-                    type="button"
-                    className="ocr-concept-tool-btn"
-                    onClick={undoEditChange}
-                    disabled={!canUndo}
-                    aria-label="Undo"
-                  >
-                    Undo
-                  </button>
-                  <button
-                    type="button"
-                    className="ocr-concept-tool-btn"
-                    onClick={redoEditChange}
-                    disabled={!canRedo}
-                    aria-label="Redo"
-                  >
-                    Redo
-                  </button>
-                  <button
-                    type="button"
-                    className="ocr-concept-tool-btn"
-                    onClick={() => setPreviewZoom((z) => clamp(Number((z - ZOOM_STEP).toFixed(2)), ZOOM_MIN, ZOOM_MAX))}
-                    disabled={previewZoom <= ZOOM_MIN}
-                    aria-label="Zoom out"
-                  >
-                    -
-                  </button>
-                  <span className="pdf-editor-zoom-copy">{Math.round(previewZoom * 100)}%</span>
-                  <button
-                    type="button"
-                    className="ocr-concept-tool-btn"
-                    onClick={() => setPreviewZoom((z) => clamp(Number((z + ZOOM_STEP).toFixed(2)), ZOOM_MIN, ZOOM_MAX))}
-                    disabled={previewZoom >= ZOOM_MAX}
-                    aria-label="Zoom in"
-                  >
-                    +
-                  </button>
-                  <button
-                    type="button"
-                    className="ocr-concept-tool-btn"
-                    onClick={() => setPreviewZoom(1)}
-                    disabled={previewZoom === 1}
-                  >
-                    Reset
-                  </button>
-                </div>
+          <div className="pdf-editor-preview-scroll">
+            {!fileId ? (
+              <div className="ocr-concept-empty">
+                <p className="ocr-concept-empty-title">No PDF selected</p>
+                <p className="ocr-concept-empty-copy">Upload a PDF to edit visible text locally.</p>
               </div>
-
-              <div className="ocr-concept-editor">
-                <div className="pdf-editor-preview-scroll" ref={previewRef}>
-                  <div
-                    className={`pdf-editor-preview-stage ${isAddTextMode || activeShapeTool ? 'pdf-editor-preview-add' : ''}`}
-                    ref={stageRef}
-                    style={{ width: `${previewZoom * 100}%` }}
-                    onClick={(event) => {
-                      if (suppressNextStageClickRef.current) {
-                        suppressNextStageClickRef.current = false;
-                        return;
+            ) : (
+              <div
+                ref={stageRef}
+                className={`pdf-editor-preview-stage ${shapeTool ? 'pdf-editor-preview-add' : ''}`}
+                style={{ width: stageSize.width * zoom, minHeight: stageSize.height * zoom }}
+                onMouseDown={handleStageMouseDown}
+                onMouseMove={handleStageMouseMove}
+                onMouseUp={finishPointerAction}
+                onMouseLeave={finishPointerAction}
+              >
+                {previewUrl && (
+                  <img
+                    className="pdf-editor-preview-image"
+                    src={previewUrl}
+                    alt="PDF page preview"
+                    draggable={false}
+                    style={{ width: stageSize.width * zoom, height: stageSize.height * zoom }}
+                    onLoad={(event) => {
+                      const image = event.currentTarget;
+                      if (image.naturalWidth > 0 && image.naturalHeight > 0) {
+                        setStageSize({ width: image.naturalWidth, height: image.naturalHeight });
                       }
-                      if (activeShapeTool) {
-                        return;
-                      }
-                      if (!isAddTextMode) {
-                        setSelectedEditId(null);
-                        return;
-                      }
-
-                      const ratios = toStageRatiosFromEvent(event);
-                      if (!ratios) {
-                        return;
-                      }
-
-                      appendEditFromBounds({
-                        text: 'New text',
-                        xRatio: ratios.xRatio,
-                        yRatio: ratios.yRatio,
-                        widthRatio: 28,
-                        heightRatio: 5,
-                        fontSize: 18,
-                        fontFamily: 'Roboto',
-                      });
-                      setIsAddTextMode(false);
                     }}
-                    onMouseDown={handleStageMouseDown}
-                    onMouseMove={handleStageMouseMove}
-                    onMouseUp={handleStageMouseUp}
-                    onMouseLeave={handleStageMouseUp}
-                  >
-                    {thumbnailUrl
-                      ? <img
-                        src={thumbnailUrl}
-                        alt={`PDF page ${currentPage}`}
-                        className="pdf-editor-preview-image"
-                        onLoad={(event) => {
-                          const image = event.currentTarget;
-                          if (image.clientHeight > 0) {
-                            setStageHeight(image.clientHeight);
-                          }
+                  />
+                )}
+                <div className="pdf-editor-text-layer">
+                  {spans.map((span) => {
+                    const hidden = pageTextElements.some((element) => element.originalRect && centerIsInsideRect(span, element.originalRect));
+                    return (
+                      <button
+                        key={span.id}
+                        className="pdf-editor-text-span"
+                        type="button"
+                        disabled={hidden}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          createTextEditFromSpan(span);
                         }}
+                        style={{
+                          left: `${span.xRatio * 100}%`,
+                          top: `${span.yRatio * 100}%`,
+                          width: `${span.widthRatio * 100}%`,
+                          height: `${span.heightRatio * 100}%`,
+                          opacity: hidden ? 0 : 1,
+                          pointerEvents: hidden ? 'none' : 'auto',
+                          fontSize: `${Math.max(1, span.fontSizeRatio * stageSize.height * zoom)}px`,
+                        }}
+                        aria-label={`Edit text ${span.text}`}
                       />
-                      : <div className="preview-fallback">No preview for this page</div>}
-
-                    {textLayerSpans.length > 0 && (
-                      <div
-                        className="pdf-editor-text-layer"
-                        aria-label="Text layer for inline editing"
-                        style={isAddTextMode || activeShapeTool || drawingDraft ? { pointerEvents: 'none' } : undefined}
-                      >
-                        {textLayerSpans.map((span) => {
-                          const coveredByEdit = pageTextEdits.some((edit) => {
-                            if (!edit.originalRect) {
-                              return false;
-                            }
-                            const rx = edit.originalRect.x / 100;
-                            const ry = edit.originalRect.y / 100;
-                            const rw = edit.originalRect.w / 100;
-                            const rh = edit.originalRect.h / 100;
-                            const spanCenterX = span.xRatio + span.widthRatio / 2;
-                            const spanCenterY = span.yRatio + span.heightRatio / 2;
-                            return (
-                              spanCenterX >= rx - 0.005 &&
-                              spanCenterX <= rx + rw + 0.005 &&
-                              spanCenterY >= ry - 0.005 &&
-                              spanCenterY <= ry + rh + 0.005
-                            );
-                          });
-                          return (
-                            <span
-                              key={span.id}
-                              className="pdf-editor-text-span"
-                              style={{
-                                left: `${span.xRatio * 100}%`,
-                                top: `${span.yRatio * 100}%`,
-                                width: `${span.widthRatio * 100}%`,
-                                height: `${span.heightRatio * 100}%`,
-                                fontSize: `${span.fontSizeRatio * renderStageHeight}px`,
-                                opacity: coveredByEdit ? 0 : undefined,
-                                pointerEvents: coveredByEdit ? 'none' : undefined,
-                              }}
-                              onClick={(event) => {
-                                event.stopPropagation();
-                                createEditFromSpan(span);
-                              }}
-                            >
-                              {span.text}
-                            </span>
-                          );
-                        })}
-                      </div>
+                    );
+                  })}
+                </div>
+                <div className="pdf-editor-shape-layer">
+                  <svg viewBox="0 0 100 100" preserveAspectRatio="none">
+                    {pageElements.map((element) => {
+                      if (element.type === 'line') {
+                        return <line key={element.id} x1={element.x1Ratio} y1={element.y1Ratio} x2={element.x2Ratio} y2={element.y2Ratio} stroke={element.color} strokeWidth={element.strokeWidth / 8} opacity={element.opacity} />;
+                      }
+                      if (element.type === 'text') {
+                        return null;
+                      }
+                      const common = {
+                        key: element.id,
+                        stroke: element.type === 'whiteout' ? '#ffffff' : element.color,
+                        strokeWidth: element.strokeWidth / 8,
+                        opacity: element.opacity,
+                        fill: element.type === 'whiteout' ? '#ffffff' : 'transparent',
+                      };
+                      return element.type === 'circle'
+                        ? <ellipse {...common} cx={element.xRatio + element.widthRatio / 2} cy={element.yRatio + element.heightRatio / 2} rx={element.widthRatio / 2} ry={element.heightRatio / 2} />
+                        : <rect {...common} x={element.xRatio} y={element.yRatio} width={element.widthRatio} height={element.heightRatio} />;
+                    })}
+                    {renderShapePreview && drawing && (
+                      drawing.tool === 'line'
+                        ? <line x1={drawing.startXRatio} y1={drawing.startYRatio} x2={drawing.currentXRatio} y2={drawing.currentYRatio} stroke="#2563eb" strokeWidth={0.25} />
+                        : <rect x={renderShapePreview.left} y={renderShapePreview.top} width={renderShapePreview.width} height={renderShapePreview.height} fill={drawing.tool === 'whiteout' ? '#ffffff' : 'transparent'} stroke="#2563eb" strokeWidth={0.25} />
                     )}
-
-                    <div className="pdf-editor-shape-layer" aria-hidden="true">
-                      <svg viewBox="0 0 100 100" preserveAspectRatio="none">
-                        {pageShapeEdits.map((shape) => (
-                          shape.type === 'line'
-                            ? (
-                              <line
-                                key={shape.id}
-                                x1={shape.x1Ratio}
-                                y1={shape.y1Ratio}
-                                x2={shape.x2Ratio}
-                                y2={shape.y2Ratio}
-                                stroke={shape.color}
-                                strokeWidth={shape.strokeWidth}
-                                strokeOpacity={shape.opacity / 100}
-                                strokeLinecap="round"
-                              />
-                            )
-                            : shape.type === 'circle'
-                              ? (
-                                <ellipse
-                                  key={shape.id}
-                                  cx={shape.xRatio + (shape.widthRatio / 2)}
-                                  cy={shape.yRatio + (shape.heightRatio / 2)}
-                                  rx={shape.widthRatio / 2}
-                                  ry={shape.heightRatio / 2}
-                                  fill="transparent"
-                                  stroke={shape.color}
-                                  strokeOpacity={shape.opacity / 100}
-                                  strokeWidth={shape.strokeWidth}
-                                />
-                              )
-                            : (
-                              <rect
-                                key={shape.id}
-                                x={shape.xRatio}
-                                y={shape.yRatio}
-                                width={shape.widthRatio}
-                                height={shape.heightRatio}
-                                fill={shape.type === 'whiteout' ? '#ffffff' : 'transparent'}
-                                fillOpacity={shape.type === 'whiteout' ? shape.opacity / 100 : 0}
-                                stroke={shape.type === 'whiteout' ? '#ffffff' : shape.color}
-                                strokeOpacity={shape.opacity / 100}
-                                strokeWidth={shape.strokeWidth}
-                              />
-                            )
-                        ))}
-                        {drawingDraft && drawingDraft.pageIndex === currentPage - 1 && (
-                          drawingDraft.tool === 'line'
-                            ? (
-                              <line
-                                x1={drawingDraft.startXRatio}
-                                y1={drawingDraft.startYRatio}
-                                x2={drawingDraft.currentXRatio}
-                                y2={drawingDraft.currentYRatio}
-                                stroke="#0f172a"
-                                strokeWidth={2}
-                                strokeOpacity={0.8}
-                                strokeDasharray="1.6 1.2"
-                              />
-                            )
-                            : drawingDraft.tool === 'circle'
-                              ? (
-                                <ellipse
-                                  cx={(drawingDraft.startXRatio + drawingDraft.currentXRatio) / 2}
-                                  cy={(drawingDraft.startYRatio + drawingDraft.currentYRatio) / 2}
-                                  rx={Math.abs(drawingDraft.currentXRatio - drawingDraft.startXRatio) / 2}
-                                  ry={Math.abs(drawingDraft.currentYRatio - drawingDraft.startYRatio) / 2}
-                                  fill="transparent"
-                                  stroke="#0f172a"
-                                  strokeWidth={2}
-                                  strokeOpacity={0.85}
-                                  strokeDasharray="1.6 1.2"
-                                />
-                              )
-                            : (
-                              <rect
-                                x={Math.min(drawingDraft.startXRatio, drawingDraft.currentXRatio)}
-                                y={Math.min(drawingDraft.startYRatio, drawingDraft.currentYRatio)}
-                                width={Math.abs(drawingDraft.currentXRatio - drawingDraft.startXRatio)}
-                                height={Math.abs(drawingDraft.currentYRatio - drawingDraft.startYRatio)}
-                                fill={drawingDraft.tool === 'whiteout' ? '#ffffff' : 'transparent'}
-                                fillOpacity={drawingDraft.tool === 'whiteout' ? 0.8 : 0}
-                                stroke={drawingDraft.tool === 'whiteout' ? '#ffffff' : '#0f172a'}
-                                strokeWidth={2}
-                                strokeOpacity={0.85}
-                                strokeDasharray="1.6 1.2"
-                              />
-                            )
-                        )}
-                      </svg>
-                    </div>
-
-                    {pageTextEdits.map((edit) => {
-                      const isSelected = edit.id === selectedEditId;
-                      const isEditing = edit.id === editingTextId;
-                      const overlayFontSize = Math.max(
-                        (edit.fontSize / 842) * renderStageHeight,
-                        (edit.heightRatio / 100) * renderStageHeight * 0.84,
-                      );
-                      return (
+                  </svg>
+                </div>
+                {pageTextElements.map((element) => {
+                  const isSelected = selectedId === element.id;
+                  const isEditing = editingId === element.id;
+                  return (
+                    <div
+                      key={element.id}
+                      className={`pdf-editor-overlay ${isSelected ? 'active' : ''}`}
+                      onMouseDown={(event) => handleOverlayMouseDown(event, element)}
+                      onDoubleClick={(event) => {
+                        event.stopPropagation();
+                        startInlineEdit(element.id);
+                      }}
+                      style={{
+                        left: `${element.xRatio}%`,
+                        top: `${element.yRatio}%`,
+                        width: `${element.widthRatio}%`,
+                        height: `${element.heightRatio}%`,
+                        backgroundColor: '#ffffff',
+                        color: element.color,
+                        opacity: element.opacity,
+                        fontFamily: element.fontFamily,
+                        fontSize: `${element.fontSize * zoom}px`,
+                        fontWeight: element.bold ? 700 : 400,
+                        fontStyle: element.italic ? 'italic' : 'normal',
+                        textAlign: element.textAlign,
+                        cursor: isSelected ? 'grab' : 'pointer',
+                        zIndex: isSelected ? 8 : 6,
+                      }}
+                    >
+                      {isEditing ? (
                         <div
-                          key={edit.id}
-                          className={`pdf-editor-overlay ${isSelected ? 'active' : ''} ${isEditing ? 'editing' : ''} ${isAddTextMode || activeShapeTool ? 'selection-disabled' : ''}`}
-                          style={{
-                            left: `${edit.xRatio}%`,
-                            top: `${edit.yRatio}%`,
-                            width: `${edit.widthRatio}%`,
-                            height: `${edit.heightRatio}%`,
-                            color: edit.color,
-                            backgroundColor: edit.backgroundColor,
-                            fontSize: `${overlayFontSize}px`,
-                            cursor: isEditing ? 'text' : isSelected ? 'grab' : 'pointer',
-                          }}
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            if (!isEditing) {
-                              setSelectedEditId(edit.id);
+                          ref={editingRef}
+                          className="pdf-editor-overlay-input"
+                          contentEditable
+                          suppressContentEditableWarning
+                          onBlur={commitInlineEdit}
+                          onKeyDown={(event) => {
+                            if (event.key === 'Escape') {
+                              event.preventDefault();
+                              commitInlineEdit();
                             }
-                          }}
-                          onDoubleClick={(event) => {
-                            event.stopPropagation();
-                            startInlineEdit(edit.id);
-                          }}
-                          onMouseDown={(event) => {
-                            if (isEditing || isAddTextMode || activeShapeTool || event.button !== 0) {
-                              return;
-                            }
-                            const stage = stageRef.current;
-                            if (!stage) {
-                              return;
-                            }
-                            const stageRect = stage.getBoundingClientRect();
-                            draggingEditRef.current = {
-                              id: edit.id,
-                              startClientX: event.clientX,
-                              startClientY: event.clientY,
-                              origXRatio: edit.xRatio,
-                              origYRatio: edit.yRatio,
-                              stageWidth: stageRect.width,
-                              stageHeight: stageRect.height,
-                            };
-                            setSelectedEditId(edit.id);
-                            event.stopPropagation();
                           }}
                         >
-                          {isEditing ? (
-                            <div
-                              ref={editingDivRef}
-                              className="pdf-editor-overlay-input"
-                              contentEditable
-                              suppressContentEditableWarning
-                              autoFocus
-                              style={{ fontSize: `${overlayFontSize}px` }}
-                              onBlur={commitInlineEdit}
-                              onKeyDown={(event) => {
-                                if (event.key === 'Escape') {
-                                  commitInlineEdit();
-                                }
-                                event.stopPropagation();
-                              }}
-                              onClick={(e) => e.stopPropagation()}
-                              dangerouslySetInnerHTML={{ __html: edit.text.replace(/\n/g, '<br>') }}
-                            />
-                          ) : (
-                            <span className="pdf-editor-overlay-text">{edit.text || 'Text'}</span>
-                          )}
+                          {element.text}
                         </div>
-                      );
-                    })}
-
-                    {isLoadingPreview && <div className="pdf-editor-preview-loading">Rendering preview...</div>}
-                  </div>
-                </div>
+                      ) : (
+                        <span className="pdf-editor-overlay-text">{element.text}</span>
+                      )}
+                    </div>
+                  );
+                })}
+                {loading && <div className="pdf-editor-preview-loading">Loading</div>}
               </div>
-            </>
-          )}
+            )}
+          </div>
         </section>
       </div>
     </div>
