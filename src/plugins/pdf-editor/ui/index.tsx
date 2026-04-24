@@ -34,6 +34,9 @@ interface TextEditDraft {
   rotation: number;
   textAlign: 'left' | 'center' | 'right';
   horizontalScaling: number;
+  ascentRatio?: number;
+  descentRatio?: number;
+  sourceFontSizeRatio?: number;
   originalRect?: {
     x: number;
     y: number;
@@ -80,6 +83,16 @@ interface DrawingDraft {
   currentYRatio: number;
 }
 
+interface DraggingEdit {
+  id: string;
+  startClientX: number;
+  startClientY: number;
+  origXRatio: number;
+  origYRatio: number;
+  stageWidth: number;
+  stageHeight: number;
+}
+
 interface TextLayerSpan {
   id: string;
   text: string;
@@ -88,6 +101,8 @@ interface TextLayerSpan {
   widthRatio: number;
   heightRatio: number;
   fontSizeRatio: number;
+  ascentRatio: number;
+  descentRatio: number;
   fontName?: string;
 }
 
@@ -234,10 +249,13 @@ async function buildTextLayerSpans(pdfBytes: Uint8Array, pageNumber: number): Pr
     const fontHeight = Math.hypot(tx[2], tx[3]) || (Number(item.height) * PREVIEW_SCALE) || 8;
     const style = textStyles[item.fontName];
     let fontAscent = fontHeight;
+    let fontDescent = 0;
     if (style?.ascent) {
       fontAscent = style.ascent * fontHeight;
+      fontDescent = style.descent !== undefined ? Math.abs(style.descent) * fontHeight : fontHeight - fontAscent;
     } else if (style?.descent) {
       fontAscent = (1 + style.descent) * fontHeight;
+      fontDescent = Math.abs(style.descent) * fontHeight;
     }
 
     // More precise width calculation. 
@@ -258,6 +276,8 @@ async function buildTextLayerSpans(pdfBytes: Uint8Array, pageNumber: number): Pr
       widthRatio: clamp(width / viewport.width, 0.001, 1),
       heightRatio: clamp(height / viewport.height, 0.001, 1),
       fontSizeRatio: clamp(fontHeight / viewport.height, 0.004, 0.25),
+      ascentRatio: clamp(fontAscent / viewport.height, 0.004, 0.25),
+      descentRatio: clamp(fontDescent / viewport.height, 0, 0.1),
       fontName: item.fontName,
     });
   }
@@ -297,10 +317,13 @@ export default function PdfEditorConfig({
   const [textLayerSpans, setTextLayerSpans] = useState<TextLayerSpan[]>([]);
   const [stageHeight, setStageHeight] = useState(0);
   const [isUploadDragging, setIsUploadDragging] = useState(false);
+  const [editingTextId, setEditingTextId] = useState<string | null>(null);
   const historyRef = useRef<EditorElementDraft[][]>([[]]);
   const historyIndexRef = useRef(0);
   const previousStepRef = useRef<typeof currentStep>(currentStep);
   const suppressNextStageClickRef = useRef(false);
+  const draggingEditRef = useRef<DraggingEdit | null>(null);
+  const editingDivRef = useRef<HTMLDivElement | null>(null);
   const uiRunId = useMemo(() => `pdf-editor-ui-${crypto.randomUUID()}`, []);
 
   const fileId = inputFiles[0] ?? null;
@@ -415,6 +438,7 @@ export default function PdfEditorConfig({
   useEffect(() => {
     setEdits([]);
     setSelectedEditId(null);
+    setEditingTextId(null);
     setCurrentPage(1);
     setIsAddTextMode(false);
     setActiveShapeTool(null);
@@ -422,6 +446,7 @@ export default function PdfEditorConfig({
     setSavedEditsSignature(null);
     resetHistory([]);
     suppressNextStageClickRef.current = false;
+    draggingEditRef.current = null;
   }, [fileId, resetHistory]);
 
   useEffect(() => {
@@ -548,6 +573,9 @@ export default function PdfEditorConfig({
     bold?: boolean;
     italic?: boolean;
     textAlign?: 'left' | 'center' | 'right';
+    ascentRatio?: number;
+    descentRatio?: number;
+    sourceFontSizeRatio?: number;
     originalRect?: TextEditDraft['originalRect'];
   }) => {
     const text = params.text.trim();
@@ -577,6 +605,9 @@ export default function PdfEditorConfig({
       rotation: 0,
       textAlign: params.textAlign || 'left',
       horizontalScaling: 1.0,
+      ascentRatio: params.ascentRatio,
+      descentRatio: params.descentRatio,
+      sourceFontSizeRatio: params.sourceFontSizeRatio,
       originalRect: params.originalRect,
     };
 
@@ -586,6 +617,7 @@ export default function PdfEditorConfig({
       return next;
     });
     setSelectedEditId(nextEdit.id);
+    return nextEdit.id;
   }, [currentPage, fileId, pushHistorySnapshot]);
 
   const pickInputFiles = useCallback(async (files: File[]): Promise<void> => {
@@ -735,11 +767,12 @@ export default function PdfEditorConfig({
       Math.abs(edit.originalRect.h - rect.h) < 0.8
     ));
     if (existing) {
-      setSelectedEditId(existing.id);
+      startInlineEdit(existing.id);
       return;
     }
 
-    appendEditFromBounds({
+    const representativeSpan = lineSpans.find((s) => s.id === span.id) ?? lineSpans[0]!;
+    const newId = appendEditFromBounds({
       text: mergedText,
       xRatio: rect.x,
       yRatio: rect.y,
@@ -747,9 +780,42 @@ export default function PdfEditorConfig({
       heightRatio: rect.h,
       fontSize: (rect.h / 100) * 842 * 0.9,
       fontFamily: 'Roboto',
+      ascentRatio: representativeSpan.ascentRatio,
+      descentRatio: representativeSpan.descentRatio,
+      sourceFontSizeRatio: representativeSpan.fontSizeRatio,
       originalRect: rect,
     });
+    if (newId) {
+      setEditingTextId(newId);
+    }
   }, [appendEditFromBounds, currentPage, edits, textLayerSpans]);
+
+  const commitInlineEdit = useCallback(() => {
+    const div = editingDivRef.current;
+    if (!div || !editingTextId) {
+      return;
+    }
+    const newText = div.innerText.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+    setEdits((current) => {
+      const next = current.map((item) => {
+        if (item.id !== editingTextId || item.type !== 'text') {
+          return item;
+        }
+        return { ...item, text: newText || item.text };
+      });
+      pushHistorySnapshot(next);
+      return next;
+    });
+    setEditingTextId(null);
+  }, [editingTextId, pushHistorySnapshot]);
+
+  const startInlineEdit = useCallback((id: string) => {
+    setSelectedEditId(id);
+    setEditingTextId(id);
+    setIsAddTextMode(false);
+    setActiveShapeTool(null);
+    setDrawingDraft(null);
+  }, []);
 
   const toStageRatiosFromEvent = useCallback((event: ReactMouseEvent<HTMLDivElement>) => {
     const stage = stageRef.current;
@@ -844,6 +910,20 @@ export default function PdfEditorConfig({
   }, [activeShapeTool, currentPage, fileId, isAddTextMode, toStageRatiosFromEvent]);
 
   const handleStageMouseMove = useCallback((event: ReactMouseEvent<HTMLDivElement>) => {
+    const drag = draggingEditRef.current;
+    if (drag) {
+      const dx = ((event.clientX - drag.startClientX) / drag.stageWidth) * 100;
+      const dy = ((event.clientY - drag.startClientY) / drag.stageHeight) * 100;
+      const nextX = clamp(drag.origXRatio + dx, 0, 100);
+      const nextY = clamp(drag.origYRatio + dy, 0, 100);
+      setEdits((current) => current.map((item) => (
+        item.id === drag.id && item.type === 'text'
+          ? { ...item, xRatio: nextX, yRatio: nextY }
+          : item
+      )));
+      event.preventDefault();
+      return;
+    }
     if (!drawingDraft) {
       return;
     }
@@ -856,6 +936,18 @@ export default function PdfEditorConfig({
   }, [drawingDraft, toStageRatiosFromEvent]);
 
   const handleStageMouseUp = useCallback((event: ReactMouseEvent<HTMLDivElement>) => {
+    const drag = draggingEditRef.current;
+    if (drag) {
+      draggingEditRef.current = null;
+      setEdits((current) => {
+        pushHistorySnapshot(current);
+        return current;
+      });
+      suppressNextStageClickRef.current = true;
+      event.preventDefault();
+      event.stopPropagation();
+      return;
+    }
     if (!drawingDraft) {
       return;
     }
@@ -868,7 +960,7 @@ export default function PdfEditorConfig({
     suppressNextStageClickRef.current = true;
     event.preventDefault();
     event.stopPropagation();
-  }, [commitShapeFromDrawing, drawingDraft, toStageRatiosFromEvent]);
+  }, [commitShapeFromDrawing, drawingDraft, pushHistorySnapshot, toStageRatiosFromEvent]);
 
   useEffect(() => {
     if (!thumbnailUrl) return;
@@ -897,6 +989,24 @@ export default function PdfEditorConfig({
     observer.observe(stage);
     return () => observer.disconnect();
   }, [previewZoom, thumbnailUrl, currentPage, fileId]);
+
+  useEffect(() => {
+    if (!editingTextId) {
+      return;
+    }
+    const div = editingDivRef.current;
+    if (!div) {
+      return;
+    }
+    div.focus();
+    // Place cursor at end
+    const range = document.createRange();
+    const sel = window.getSelection();
+    range.selectNodeContents(div);
+    range.collapse(false);
+    sel?.removeAllRanges();
+    sel?.addRange(range);
+  }, [editingTextId]);
 
   useEffect(() => {
     const onWindowKeyDown = (event: KeyboardEvent): void => {
@@ -947,6 +1057,9 @@ export default function PdfEditorConfig({
           rotation: edit.rotation,
           textAlign: edit.textAlign,
           horizontalScaling: edit.horizontalScaling,
+          ascentRatio: edit.ascentRatio,
+          descentRatio: edit.descentRatio,
+          sourceFontSizeRatio: edit.sourceFontSizeRatio,
           originalRect: edit.originalRect,
         };
       }
@@ -1405,25 +1518,46 @@ export default function PdfEditorConfig({
                         aria-label="Text layer for inline editing"
                         style={isAddTextMode || activeShapeTool || drawingDraft ? { pointerEvents: 'none' } : undefined}
                       >
-                        {textLayerSpans.map((span) => (
-                          <span
-                            key={span.id}
-                            className="pdf-editor-text-span"
-                            style={{
-                              left: `${span.xRatio * 100}%`,
-                              top: `${span.yRatio * 100}%`,
-                              width: `${span.widthRatio * 100}%`,
-                              height: `${span.heightRatio * 100}%`,
-                              fontSize: `${span.fontSizeRatio * renderStageHeight}px`,
-                            }}
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              createEditFromSpan(span);
-                            }}
-                          >
-                            {span.text}
-                          </span>
-                        ))}
+                        {textLayerSpans.map((span) => {
+                          const coveredByEdit = pageTextEdits.some((edit) => {
+                            if (!edit.originalRect) {
+                              return false;
+                            }
+                            const rx = edit.originalRect.x / 100;
+                            const ry = edit.originalRect.y / 100;
+                            const rw = edit.originalRect.w / 100;
+                            const rh = edit.originalRect.h / 100;
+                            const spanCenterX = span.xRatio + span.widthRatio / 2;
+                            const spanCenterY = span.yRatio + span.heightRatio / 2;
+                            return (
+                              spanCenterX >= rx - 0.005 &&
+                              spanCenterX <= rx + rw + 0.005 &&
+                              spanCenterY >= ry - 0.005 &&
+                              spanCenterY <= ry + rh + 0.005
+                            );
+                          });
+                          return (
+                            <span
+                              key={span.id}
+                              className="pdf-editor-text-span"
+                              style={{
+                                left: `${span.xRatio * 100}%`,
+                                top: `${span.yRatio * 100}%`,
+                                width: `${span.widthRatio * 100}%`,
+                                height: `${span.heightRatio * 100}%`,
+                                fontSize: `${span.fontSizeRatio * renderStageHeight}px`,
+                                opacity: coveredByEdit ? 0 : undefined,
+                                pointerEvents: coveredByEdit ? 'none' : undefined,
+                              }}
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                createEditFromSpan(span);
+                              }}
+                            >
+                              {span.text}
+                            </span>
+                          );
+                        })}
                       </div>
                     )}
 
@@ -1519,37 +1653,83 @@ export default function PdfEditorConfig({
                       </svg>
                     </div>
 
-                    {pageTextEdits.map((edit) => (
-                      <div
-                        key={edit.id}
-                        className={`pdf-editor-overlay ${edit.id === selectedEditId ? 'active' : ''} ${isAddTextMode || activeShapeTool ? 'selection-disabled' : ''}`}
-                        style={{
-                          left: `${edit.xRatio}%`,
-                          top: `${edit.yRatio}%`,
-                          width: `${edit.widthRatio}%`,
-                          height: `${edit.heightRatio}%`,
-                          color: edit.color,
-                          backgroundColor: edit.id === selectedEditId ? edit.backgroundColor : 'transparent',
-                          fontSize: `${Math.max((edit.fontSize / 842) * renderStageHeight, (edit.heightRatio / 100) * renderStageHeight * 0.84)}px`,
-                        }}
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          setSelectedEditId(edit.id);
-                        }}
-                      >
-                        {edit.id === selectedEditId ? (
-                          <textarea
-                            className="pdf-editor-overlay-input"
-                            value={edit.text}
-                            autoFocus
-                            onChange={(e) => updateSelectedEdit({ text: e.target.value })}
-                            onClick={(e) => e.stopPropagation()}
-                          />
-                        ) : (
-                          <span className="pdf-editor-overlay-text">{edit.text || 'Text'}</span>
-                        )}
-                      </div>
-                    ))}
+                    {pageTextEdits.map((edit) => {
+                      const isSelected = edit.id === selectedEditId;
+                      const isEditing = edit.id === editingTextId;
+                      const overlayFontSize = Math.max(
+                        (edit.fontSize / 842) * renderStageHeight,
+                        (edit.heightRatio / 100) * renderStageHeight * 0.84,
+                      );
+                      return (
+                        <div
+                          key={edit.id}
+                          className={`pdf-editor-overlay ${isSelected ? 'active' : ''} ${isEditing ? 'editing' : ''} ${isAddTextMode || activeShapeTool ? 'selection-disabled' : ''}`}
+                          style={{
+                            left: `${edit.xRatio}%`,
+                            top: `${edit.yRatio}%`,
+                            width: `${edit.widthRatio}%`,
+                            height: `${edit.heightRatio}%`,
+                            color: edit.color,
+                            backgroundColor: edit.backgroundColor,
+                            fontSize: `${overlayFontSize}px`,
+                            cursor: isEditing ? 'text' : isSelected ? 'grab' : 'pointer',
+                          }}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            if (!isEditing) {
+                              setSelectedEditId(edit.id);
+                            }
+                          }}
+                          onDoubleClick={(event) => {
+                            event.stopPropagation();
+                            startInlineEdit(edit.id);
+                          }}
+                          onMouseDown={(event) => {
+                            if (isEditing || isAddTextMode || activeShapeTool || event.button !== 0) {
+                              return;
+                            }
+                            const stage = stageRef.current;
+                            if (!stage) {
+                              return;
+                            }
+                            const stageRect = stage.getBoundingClientRect();
+                            draggingEditRef.current = {
+                              id: edit.id,
+                              startClientX: event.clientX,
+                              startClientY: event.clientY,
+                              origXRatio: edit.xRatio,
+                              origYRatio: edit.yRatio,
+                              stageWidth: stageRect.width,
+                              stageHeight: stageRect.height,
+                            };
+                            setSelectedEditId(edit.id);
+                            event.stopPropagation();
+                          }}
+                        >
+                          {isEditing ? (
+                            <div
+                              ref={editingDivRef}
+                              className="pdf-editor-overlay-input"
+                              contentEditable
+                              suppressContentEditableWarning
+                              autoFocus
+                              style={{ fontSize: `${overlayFontSize}px` }}
+                              onBlur={commitInlineEdit}
+                              onKeyDown={(event) => {
+                                if (event.key === 'Escape') {
+                                  commitInlineEdit();
+                                }
+                                event.stopPropagation();
+                              }}
+                              onClick={(e) => e.stopPropagation()}
+                              dangerouslySetInnerHTML={{ __html: edit.text.replace(/\n/g, '<br>') }}
+                            />
+                          ) : (
+                            <span className="pdf-editor-overlay-text">{edit.text || 'Text'}</span>
+                          )}
+                        </div>
+                      );
+                    })}
 
                     {isLoadingPreview && <div className="pdf-editor-preview-loading">Rendering preview...</div>}
                   </div>

@@ -483,28 +483,20 @@ function selectOperatorCandidateByPosition(params: {
   return best.candidate;
 }
 
-async function tryApplyTrueReplaceSingleTextOperator(params: {
+interface PageStreamState {
   pdf: PDFDocument;
-  pageIndex: number;
-  text: string;
-  targetXRatio: number;
-  targetYRatio: number;
-  targetWidthRatio: number;
-  targetHeightRatio: number;
-  targetTextAlign: 'left' | 'center' | 'right';
-  pageWidth: number;
-  pageHeight: number;
-}): Promise<{ applied: boolean; reason?: string }> {
-  const { pdf, pageIndex, text } = params;
-  if (!canEncodeAsLatin1(text)) {
-    return { applied: false, reason: 'NON_LATIN1_TEXT' };
-  }
+  resolved: any;
+  decodedByStream: Array<{ index: number; content: string; operators: ReturnType<typeof parsePdfTextOperators> }>;
+  PDFName: typeof import('pdf-lib').PDFName;
+  page: ReturnType<PDFDocument['getPage']>;
+}
 
-  const page = pdf.getPage(pageIndex);
+async function loadPageStreamState(pdf: PDFDocument, pageIndex: number): Promise<PageStreamState | null> {
   const { PDFName } = await import('pdf-lib');
+  const page = pdf.getPage(pageIndex);
   const contentsRef = page.node.get(PDFName.of('Contents'));
   if (!contentsRef) {
-    return { applied: false, reason: 'CONTENTS_MISSING' };
+    return null;
   }
   const resolved = pdf.context.lookup(contentsRef as any) as any;
   const streamEntries: Array<{ stream: any; index: number }> = [];
@@ -517,7 +509,7 @@ async function tryApplyTrueReplaceSingleTextOperator(params: {
     streamEntries.push({ stream: resolved, index: 0 });
   }
   if (streamEntries.length === 0) {
-    return { applied: false, reason: 'CONTENTS_MISSING' };
+    return null;
   }
 
   const decodedByStream: Array<{ index: number; content: string; operators: ReturnType<typeof parsePdfTextOperators> }> = [];
@@ -533,8 +525,25 @@ async function tryApplyTrueReplaceSingleTextOperator(params: {
     });
   }
   if (decodedByStream.length === 0) {
-    return { applied: false, reason: 'STREAM_DECODE_FAILED' };
+    return null;
   }
+
+  return { pdf, resolved, decodedByStream, PDFName, page };
+}
+
+function tryPatchStreamOperator(params: {
+  state: PageStreamState;
+  text: string;
+  targetXRatio: number;
+  targetYRatio: number;
+  targetWidthRatio: number;
+  targetHeightRatio: number;
+  targetTextAlign: 'left' | 'center' | 'right';
+  pageWidth: number;
+  pageHeight: number;
+}): { applied: boolean; reason?: string } {
+  const { state, text } = params;
+  const { resolved, decodedByStream, PDFName, page } = state;
 
   const candidates = decodedByStream.flatMap((entry) => entry.operators.map((operator) => ({
     streamIndex: entry.index,
@@ -554,7 +563,7 @@ async function tryApplyTrueReplaceSingleTextOperator(params: {
       targetWidthRatio: params.targetWidthRatio,
       targetHeightRatio: params.targetHeightRatio,
       targetTextAlign: params.targetTextAlign,
-      targetText: params.text,
+      targetText: text,
     });
     if (!target) {
       return { applied: false, reason: 'AMBIGUOUS_TEXT_OPERATORS' };
@@ -567,7 +576,7 @@ async function tryApplyTrueReplaceSingleTextOperator(params: {
     return { applied: false, reason: 'TEXT_OPERATOR_UNSUPPORTED' };
   }
 
-  const streamTarget = decodedByStream.find((entry) => entry.index === target.streamIndex);
+  const streamTarget = decodedByStream.find((entry) => entry.index === target!.streamIndex);
   if (!streamTarget) {
     return { applied: false, reason: 'STREAM_NOT_FOUND' };
   }
@@ -576,9 +585,14 @@ async function tryApplyTrueReplaceSingleTextOperator(params: {
     ? `(${escapePdfLiteralString(text)}) Tj`
     : `[(${escapePdfLiteralString(text)})] TJ`;
   const updatedContent = `${streamTarget.content.slice(0, target.operator.start)}${replacement}${streamTarget.content.slice(target.operator.end)}`;
+
+  // Update the in-memory decoded content so subsequent patches in the same pass see the change.
+  streamTarget.content = updatedContent;
+  streamTarget.operators = parsePdfTextOperators(updatedContent);
+
   const updatedBytes = encodeLatin1(updatedContent);
-  const updatedStream = pdf.context.flateStream(updatedBytes);
-  const updatedRef = pdf.context.register(updatedStream);
+  const updatedStream = state.pdf.context.flateStream(updatedBytes);
+  const updatedRef = state.pdf.context.register(updatedStream);
 
   if (resolved && typeof resolved.size === 'function' && typeof resolved.set === 'function') {
     resolved.set(target.streamIndex, updatedRef);
@@ -586,6 +600,42 @@ async function tryApplyTrueReplaceSingleTextOperator(params: {
     page.node.set(PDFName.of('Contents'), updatedRef);
   }
   return { applied: true };
+}
+
+async function tryApplyTrueReplaceSingleTextOperator(params: {
+  pdf: PDFDocument;
+  pageIndex: number;
+  text: string;
+  targetXRatio: number;
+  targetYRatio: number;
+  targetWidthRatio: number;
+  targetHeightRatio: number;
+  targetTextAlign: 'left' | 'center' | 'right';
+  pageWidth: number;
+  pageHeight: number;
+  state?: PageStreamState;
+}): Promise<{ applied: boolean; reason?: string }> {
+  const { text } = params;
+  if (!canEncodeAsLatin1(text)) {
+    return { applied: false, reason: 'NON_LATIN1_TEXT' };
+  }
+
+  const state = params.state ?? await loadPageStreamState(params.pdf, params.pageIndex);
+  if (!state) {
+    return { applied: false, reason: 'STREAM_DECODE_FAILED' };
+  }
+
+  return tryPatchStreamOperator({
+    state,
+    text,
+    targetXRatio: params.targetXRatio,
+    targetYRatio: params.targetYRatio,
+    targetWidthRatio: params.targetWidthRatio,
+    targetHeightRatio: params.targetHeightRatio,
+    targetTextAlign: params.targetTextAlign,
+    pageWidth: params.pageWidth,
+    pageHeight: params.pageHeight,
+  });
 }
 
 export async function applyStudioTextEditsToPdfBytes(params: {
@@ -825,14 +875,18 @@ export async function applyStudioTextEditsToPdfBytes(params: {
   let trueReplaceApplied = false;
   let trueReplaceFallbackReason: string | undefined = 'INELIGIBLE_EDIT_PAYLOAD';
 
-  const canAttemptSafeTrueReplace = textElements.length === 1
-    && params.elements.every((element) => element.type === 'text' || isAutoWhiteoutRect(element));
-  if (canAttemptSafeTrueReplace) {
-    const target = textElements[0];
+  // Attempt True Replace for every text element — patches the PDF content stream directly
+  // so the original text operator is gone. This prevents pdfjs from seeing the old text
+  // on subsequent edits. Load stream state once and reuse across all elements.
+  const streamState = await loadPageStreamState(pdf, params.pageIndex);
+  for (const target of textElements) {
     const sanitizedText = sanitizeInlineText(target.text || ' ');
-    const trueReplaceResult = await tryApplyTrueReplaceSingleTextOperator({
-      pdf,
-      pageIndex: params.pageIndex,
+    if (!canEncodeAsLatin1(sanitizedText) || !streamState) {
+      trueReplaceFallbackReason = !streamState ? 'STREAM_DECODE_FAILED' : 'NON_LATIN1_TEXT';
+      continue;
+    }
+    const result = tryPatchStreamOperator({
+      state: streamState,
       text: sanitizedText,
       targetXRatio: target.x,
       targetYRatio: target.y,
@@ -842,12 +896,12 @@ export async function applyStudioTextEditsToPdfBytes(params: {
       pageWidth,
       pageHeight,
     });
-    trueReplaceApplied = trueReplaceResult.applied;
-    if (trueReplaceResult.applied) {
+    if (result.applied) {
       consumedTextIds.add(target.id);
+      trueReplaceApplied = true;
       trueReplaceFallbackReason = undefined;
     } else {
-      trueReplaceFallbackReason = trueReplaceResult.reason ?? 'TRUE_REPLACE_FAILED';
+      trueReplaceFallbackReason = result.reason ?? 'TRUE_REPLACE_FAILED';
     }
   }
 
@@ -867,8 +921,27 @@ export async function applyStudioTextEditsToPdfBytes(params: {
       const textToDraw = rendered.text || ' ';
       const { r, g, b } = hexToRgb(element.color);
       const blockWidth = element.w * pageWidth;
+      const blockHeight = element.h * pageHeight;
       const yTop = element.y * pageHeight;
-      const renderFontSize = clamp(element.fontSize || 12, 4, 144);
+
+      // Determine font size: start from requested, then shrink to fit width if needed.
+      // sourceFontSizeRatio gives us the exact original font size from pdfjs metrics.
+      const requestedFontSize = clamp(
+        element.sourceFontSizeRatio !== undefined
+          ? element.sourceFontSizeRatio * pageHeight
+          : (element.fontSize || 12),
+        4,
+        144,
+      );
+
+      // Fit-to-width: shrink font only when text genuinely overflows block width.
+      // Triggered for single-word replacements and span-sourced edits (where blockWidth is exact).
+      let renderFontSize = requestedFontSize;
+      const textWidth = measureTextWidthWithTracking(font, textToDraw, renderFontSize, element.letterSpacing ?? 0);
+      if (textWidth > blockWidth) {
+        renderFontSize = clamp((renderFontSize * blockWidth) / textWidth, 4, renderFontSize);
+      }
+
       const lineHeightFactor = typeof element.lineHeight === 'number' ? element.lineHeight : 1.2;
       const textLayout = layoutTextAtFixedFontSize({
         font,
@@ -877,24 +950,48 @@ export async function applyStudioTextEditsToPdfBytes(params: {
         fontSize: renderFontSize,
         tracking: element.letterSpacing ?? 0,
       });
-      overflowDetected ||= textLayout.overflow || (textLayout.lines.length * renderFontSize * Math.max(0.8, lineHeightFactor) > (element.h * pageHeight) + 0.5);
+      overflowDetected ||= textLayout.overflow || (textLayout.lines.length * renderFontSize * Math.max(0.8, lineHeightFactor) > blockHeight + 0.5);
 
       const lineHeightPt = Math.max(1, renderFontSize * Math.max(0.8, lineHeightFactor));
-      // If we have the exact ascent from extraction, use it. Otherwise use 0.82 heuristic.
-      const ascent = element.ascent ?? (renderFontSize * 0.82);
+
+      // ascent: prefer pdfjs-extracted ratio (most accurate), then existing pt value, then heuristic.
+      const ascent = element.ascentRatio !== undefined
+        ? element.ascentRatio * pageHeight
+        : element.ascent !== undefined
+          ? element.ascent
+          : renderFontSize * 0.82;
+
+      // descent: prefer pdfjs-extracted ratio; fall back to small heuristic (never derive from blockHeight).
+      const descent = element.descentRatio !== undefined
+        ? element.descentRatio * pageHeight
+        : renderFontSize * 0.18;
+
       const baseY = pageHeight - yTop - ascent;
 
+      // Auto-whiteout: cover exactly the glyph band — baseline−descent to baseline+ascent.
+      // No padding vertically: must not touch neighbouring lines.
+      const whiteoutPadX = Math.min(2, blockWidth * 0.008);
+      page.drawRectangle({
+        x: element.x * pageWidth - whiteoutPadX,
+        y: baseY - descent,
+        width: blockWidth + whiteoutPadX * 2,
+        height: ascent + descent,
+        color: rgb(1, 1, 1),
+        opacity: 1,
+        borderWidth: 0,
+      });
+
       for (let lineIndex = 0; lineIndex < textLayout.lines.length; lineIndex += 1) {
-        const line = textLayout.lines[lineIndex]!;
+        const layoutLine = textLayout.lines[lineIndex]!;
         let x = element.x * pageWidth;
         if (element.textAlign === 'center') {
-          x += Math.max(0, (blockWidth - line.width) / 2);
+          x += Math.max(0, (blockWidth - layoutLine.width) / 2);
         }
         if (element.textAlign === 'right') {
-          x += Math.max(0, blockWidth - line.width);
+          x += Math.max(0, blockWidth - layoutLine.width);
         }
         const y = baseY - (lineIndex * lineHeightPt);
-        page.drawText(line.text, {
+        page.drawText(layoutLine.text, {
           x,
           y,
           size: renderFontSize,

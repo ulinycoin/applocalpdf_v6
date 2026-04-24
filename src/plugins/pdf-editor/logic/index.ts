@@ -28,6 +28,9 @@ interface PdfEditorRawEdit {
   opacity?: unknown;
   textAlign?: unknown;
   horizontalScaling?: unknown;
+  ascentRatio?: unknown;
+  descentRatio?: unknown;
+  sourceFontSizeRatio?: unknown;
 }
 
 interface PreparedPageEdits {
@@ -217,6 +220,9 @@ function collectPreparedEdits(options?: Record<string, unknown>): PreparedPageEd
       continue;
     }
     const horizontalScaling = normalizeHorizontalScaling(raw.horizontalScaling);
+    const rawAscentRatio = typeof raw.ascentRatio === 'number' && Number.isFinite(raw.ascentRatio) ? raw.ascentRatio : undefined;
+    const rawDescentRatio = typeof raw.descentRatio === 'number' && Number.isFinite(raw.descentRatio) ? raw.descentRatio : undefined;
+    const rawSourceFontSizeRatio = typeof raw.sourceFontSizeRatio === 'number' && Number.isFinite(raw.sourceFontSizeRatio) ? raw.sourceFontSizeRatio : undefined;
     current.push({
       id: `pdf-editor-${pageIndex}-${index}`,
       type: 'text',
@@ -234,6 +240,9 @@ function collectPreparedEdits(options?: Record<string, unknown>): PreparedPageEd
       lineHeight: 1.2,
       letterSpacing: clamp((horizontalScaling - 1) * 3, -2, 20),
       opacity: normalizeOpacity(raw.opacity),
+      ...(rawAscentRatio !== undefined ? { ascentRatio: rawAscentRatio } : {}),
+      ...(rawDescentRatio !== undefined ? { descentRatio: rawDescentRatio } : {}),
+      ...(rawSourceFontSizeRatio !== undefined ? { sourceFontSizeRatio: rawSourceFontSizeRatio } : {}),
     });
     grouped.set(pageIndex, current);
   }

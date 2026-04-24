@@ -140,6 +140,8 @@ export interface WorkerStudioTextEditElement {
   letterSpacing?: number;
   opacity: number;
   ascent?: number;
+  ascentRatio?: number;
+  descentRatio?: number;
   sourceFontName?: string;
   sourceFontFamilyHint?: string;
   sourceFontSizeRatio?: number;
