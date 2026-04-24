@@ -9,86 +9,58 @@ interface StudioEditToolbarProps {
     onToggleTextInteractionMode: () => void;
 }
 
+interface ToolItem {
+    id: EditorToolId;
+    icon: string;
+    label: string;
+}
+
+const TOOLS: ToolItem[] = [
+    { id: 'text',      icon: 'text',       label: 'Text' },
+    { id: 'annotate',  icon: 'highlighter', label: 'Annotate' },
+    { id: 'sign',      icon: 'signature',  label: 'Sign' },
+    { id: 'whiteout',  icon: 'eraser',     label: 'Whiteout' },
+    { id: 'watermark', icon: 'stamp',      label: 'Watermark' },
+    { id: 'forms',     icon: 'file-input', label: 'Forms' },
+    { id: 'protect',   icon: 'lock',       label: 'Protect' },
+];
+
 export function StudioEditToolbar({ ui, tool, textInteractionMode, onSelectTool, onToggleTextInteractionMode }: StudioEditToolbarProps) {
     return (
         <div className="studio-editor-left-toolbar">
             <div className="studio-editor-toolbar-label">Tools</div>
-            <button
-                type="button"
-                className={`studio-edit-tool-btn ${tool === 'text' ? 'active' : ''}`}
-                onClick={() => { onSelectTool('text'); }}
-                title={ui.text}
-                aria-label={ui.text}
-            >
-                <LinearIcon name="text" size={22} />
-            </button>
-            {tool === 'text' && (
+
+            {TOOLS.map(({ id, icon, label }) => (
                 <button
+                    key={id}
                     type="button"
-                    className={`studio-edit-tool-btn ${textInteractionMode === 'move' ? 'active' : ''}`}
-                    onClick={onToggleTextInteractionMode}
-                    title={ui.moveText}
-                    aria-label={ui.moveText}
-                    aria-pressed={textInteractionMode === 'move'}
+                    className={`studio-edit-tool-btn${tool === id ? ' active' : ''}`}
+                    onClick={() => onSelectTool(id)}
+                    title={label}
+                    aria-label={label}
+                    aria-pressed={tool === id}
                 >
-                    <LinearIcon name="move" size={22} />
+                    <LinearIcon name={icon as any} size={16} />
+                    <span style={{ fontSize: 9, lineHeight: 1, letterSpacing: 0.1, marginTop: 1 }}>{label}</span>
                 </button>
+            ))}
+
+            {tool === 'text' && (
+                <>
+                    <div style={{ width: 28, height: 1, background: 'var(--border)', margin: '3px auto' }} />
+                    <button
+                        type="button"
+                        className={`studio-edit-tool-btn${textInteractionMode === 'move' ? ' active' : ''}`}
+                        onClick={onToggleTextInteractionMode}
+                        title={ui.moveText}
+                        aria-label={ui.moveText}
+                        aria-pressed={textInteractionMode === 'move'}
+                    >
+                        <LinearIcon name="move" size={16} />
+                        <span style={{ fontSize: 9, lineHeight: 1 }}>Move</span>
+                    </button>
+                </>
             )}
-            <button
-                type="button"
-                className={`studio-edit-tool-btn ${tool === 'annotate' ? 'active' : ''}`}
-                onClick={() => { onSelectTool('annotate'); }}
-                title={ui.annotate}
-                aria-label={ui.annotate}
-            >
-                <LinearIcon name="highlighter" size={22} />
-            </button>
-            <div style={{ width: 24, height: 1, background: 'rgba(255,255,255,0.1)', margin: '4px auto' }} />
-            <button
-                type="button"
-                className={`studio-edit-tool-btn ${tool === 'whiteout' ? 'active' : ''}`}
-                onClick={() => onSelectTool('whiteout')}
-                title={ui.whiteout}
-                aria-label={ui.whiteout}
-            >
-                <LinearIcon name="eraser" size={22} />
-            </button>
-            <button
-                type="button"
-                className={`studio-edit-tool-btn ${tool === 'watermark' ? 'active' : ''}`}
-                onClick={() => onSelectTool('watermark')}
-                title={ui.watermark}
-                aria-label={ui.watermark}
-            >
-                <LinearIcon name="stamp" size={22} />
-            </button>
-            <button
-                type="button"
-                className={`studio-edit-tool-btn ${tool === 'sign' ? 'active' : ''}`}
-                onClick={() => { onSelectTool('sign'); }}
-                title={ui.sign}
-                aria-label={ui.sign}
-            >
-                <LinearIcon name="signature" size={22} />
-            </button>
-            <button
-                type="button"
-                className={`studio-edit-tool-btn ${tool === 'forms' ? 'active' : ''}`}
-                onClick={() => onSelectTool('forms')}
-                title={ui.forms}
-                aria-label={ui.forms}
-            >
-                <LinearIcon name="file-input" size={22} />
-            </button>
-            <button
-                type="button"
-                className={`studio-edit-tool-btn ${tool === 'protect' ? 'active' : ''}`}
-                onClick={() => onSelectTool('protect')}
-                title={ui.protect}
-                aria-label={ui.protect}
-            >
-                <LinearIcon name="lock" size={22} />
-            </button>
         </div>
     );
 }

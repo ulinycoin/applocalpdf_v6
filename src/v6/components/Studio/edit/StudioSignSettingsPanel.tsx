@@ -41,7 +41,6 @@ function loadImageDimensions(dataUrl: string): Promise<{ width: number; height: 
 }
 
 export function StudioSignSettingsPanel({
-    title,
     mode,
     typedValue,
     typedFontSize,
@@ -72,164 +71,146 @@ export function StudioSignSettingsPanel({
             const dims = await loadImageDimensions(dataUrl);
             onUploadImage({ dataUrl, width: dims.width, height: dims.height });
         } catch {
-            // Ignore invalid images and preserve current workspace state.
+            // ignore
         }
     };
 
     return (
-        <div className="studio-annotate-quickbar-wrap">
-            <div className={`studio-annotate-quickbar studio-sign-quickbar ${mode === 'type' ? 'is-type' : 'is-draw'}`}>
-                <div className="studio-sign-quickbar-left">
-                    <span className="studio-annotate-quickbar-label">{title}</span>
-                    <div className="studio-annotate-mode-toggle" role="group" aria-label="Type">
-                        <button
-                            type="button"
-                            className={`studio-annotate-mode-btn ${mode === 'type' ? 'active' : ''}`}
-                            onClick={() => onModeChange('type')}
-                        >
-                            Type
-                        </button>
-                        <button
-                            type="button"
-                            className={`studio-annotate-mode-btn ${mode === 'draw' ? 'active' : ''}`}
-                            onClick={() => onModeChange('draw')}
-                        >
-                            Draw
-                        </button>
-                    </div>
-                </div>
+        <div className="ep">
+            <div className="ep-section-title">Sign</div>
 
-                <div className="studio-sign-quickbar-main">
-                    {mode === 'type' ? (
-                        <div className="studio-sign-type-toolbar">
-                            <div className="studio-sign-type-toolbar-row">
-                                <label className="studio-annotate-quickbar-custom-color">
-                                    <span>Size</span>
-                                    <input
-                                        type="number"
-                                        min={12}
-                                        max={96}
-                                        value={typedFontSize}
-                                        onChange={(event) => onTypedFontSizeChange(Math.max(12, Math.min(96, Number(event.target.value) || 30)))}
-                                        style={{ width: 56, height: 28, border: 'none', background: 'transparent', color: 'var(--studio-text)' }}
-                                    />
-                                </label>
-                                <button
-                                    type="button"
-                                    className="studio-floating-btn"
-                                    onClick={onInsertTyped}
-                                    title="Insert typed signature"
-                                    style={{ height: 32, padding: '0 10px', width: 'auto' }}
-                                >
-                                    Insert
-                                </button>
-                                <button
-                                    type="button"
-                                    className="studio-floating-btn"
-                                    onClick={() => fileInputRef.current?.click()}
-                                    title="Upload image"
-                                    style={{ width: 'auto', height: 32, padding: '0 10px', gap: 6 }}
-                                >
-                                    <LinearIcon name="upload" size={14} />
-                                    <span>Upload image</span>
-                                </button>
-                            </div>
+            {/* Mode */}
+            <div className="ep-seg">
+                <button
+                    type="button"
+                    className={`ep-seg-btn${mode === 'type' ? ' ep-seg-btn--on' : ''}`}
+                    onClick={() => onModeChange('type')}
+                >Type</button>
+                <button
+                    type="button"
+                    className={`ep-seg-btn${mode === 'draw' ? ' ep-seg-btn--on' : ''}`}
+                    onClick={() => onModeChange('draw')}
+                >Draw</button>
+            </div>
+
+            {mode === 'type' ? (
+                <>
+                    {/* Typed signature text */}
+                    <div className="ep-field">
+                        <span className="ep-field-label">Signature text</span>
+                        <input
+                            type="text"
+                            value={typedValue}
+                            onChange={(e) => onTypedValueChange(e.target.value)}
+                            placeholder="Your name"
+                            className="ep-input"
+                        />
+                    </div>
+
+                    {/* Size */}
+                    <div className="ep-row">
+                        <div className="ep-field ep-field--grow">
+                            <span className="ep-field-label">Size</span>
                             <input
-                                type="text"
-                                value={typedValue}
-                                onChange={(event) => onTypedValueChange(event.target.value)}
-                                placeholder="Type your signature"
-                                className="studio-floating-select"
-                                style={{ minWidth: 220, height: 32, width: '100%' }}
+                                type="number"
+                                min={12} max={96}
+                                value={typedFontSize}
+                                onChange={(e) => onTypedFontSizeChange(Math.max(12, Math.min(96, Number(e.target.value) || 30)))}
+                                className="ep-input ep-input--num"
                             />
                         </div>
-                    ) : (
-                        <>
-                            <label className="studio-annotate-quickbar-custom-color" title={drawColor}>
-                                <span>Color</span>
-                                <input type="color" value={drawColor} onChange={(event) => onDrawColorChange(event.target.value)} />
-                            </label>
-                            <label className="studio-annotate-quickbar-custom-color">
-                                <span>Pen size</span>
-                                <input
-                                    type="range"
-                                    min={1}
-                                    max={12}
-                                    step={1}
-                                    value={drawStrokeWidth}
-                                    onChange={(event) => onDrawStrokeWidthChange(Math.max(1, Math.min(12, Number(event.target.value) || 3)))}
-                                />
-                            </label>
-                            <button
-                                type="button"
-                                className="studio-floating-btn"
-                                onClick={onInsertDrawn}
-                                disabled={!hasPendingDrawnSignature}
-                                title="Insert drawn signature"
-                                style={{ height: 32, padding: '0 10px', width: 'auto' }}
-                            >
-                                Insert
-                            </button>
-                            <button
-                                type="button"
-                                className="studio-floating-btn"
-                                onClick={onClearDrawn}
-                                disabled={!hasPendingDrawnSignature}
-                                title="Clear drawn signature"
-                                style={{ height: 32, padding: '0 10px', width: 'auto' }}
-                            >
-                                Clear
-                            </button>
-                            <button
-                                type="button"
-                                className="studio-floating-btn"
-                                onClick={() => fileInputRef.current?.click()}
-                                title="Upload image"
-                                style={{ width: 'auto', height: 32, padding: '0 10px', gap: 6 }}
-                            >
-                                <LinearIcon name="upload" size={14} />
-                                <span>Upload image</span>
-                            </button>
-                            <span className="studio-annotate-quickbar-caption">Draw directly on page</span>
-                        </>
-                    )}
-                </div>
+                    </div>
 
-                <div className="studio-sign-quickbar-actions">
-                    {onDuplicate && (
+                    <button
+                        type="button"
+                        className="ep-action-btn ep-action-btn--primary"
+                        onClick={onInsertTyped}
+                        style={{ marginTop: 4 }}
+                    >
+                        Insert signature
+                    </button>
+                </>
+            ) : (
+                <>
+                    {/* Draw color */}
+                    <label className="ep-color-row">
+                        <div className="ep-color-preview" style={{ background: drawColor }}>
+                            <input type="color" value={drawColor} onChange={(e) => onDrawColorChange(e.target.value)} />
+                        </div>
+                        <span className="ep-color-value">{drawColor}</span>
+                        <span className="ep-color-name">Color</span>
+                    </label>
+
+                    {/* Stroke width */}
+                    <div className="ep-field">
+                        <span className="ep-field-label">Pen size</span>
+                        <div className="ep-row" style={{ gap: 8 }}>
+                            <input
+                                type="range"
+                                min={1} max={12} step={1}
+                                value={drawStrokeWidth}
+                                onChange={(e) => onDrawStrokeWidthChange(Math.max(1, Math.min(12, Number(e.target.value) || 3)))}
+                                className="ep-range"
+                            />
+                            <span className="ep-range-val">{drawStrokeWidth}</span>
+                        </div>
+                    </div>
+
+                    <p style={{ fontSize: 11, color: 'var(--text-dim)', margin: 0 }}>Draw directly on the page</p>
+
+                    <div className="ep-row" style={{ marginTop: 4 }}>
                         <button
                             type="button"
-                            className="studio-floating-btn"
-                            onClick={onDuplicate}
-                            title="Duplicate"
-                            style={{ width: 32, height: 32 }}
-                        >
-                            <LinearIcon name="copy" />
+                            className="ep-action-btn ep-action-btn--primary"
+                            onClick={onInsertDrawn}
+                            disabled={!hasPendingDrawnSignature}
+                            style={{ flex: 1 }}
+                        >Insert</button>
+                        <button
+                            type="button"
+                            className="ep-action-btn"
+                            onClick={onClearDrawn}
+                            disabled={!hasPendingDrawnSignature}
+                            style={{ flex: 1 }}
+                        >Clear</button>
+                    </div>
+                </>
+            )}
+
+            {/* Upload image */}
+            <button
+                type="button"
+                className="ep-action-btn"
+                onClick={() => fileInputRef.current?.click()}
+            >
+                <LinearIcon name="upload" size={12} />
+                Upload image
+            </button>
+
+            <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/png,image/jpeg,image/webp,image/gif"
+                style={{ display: 'none' }}
+                aria-hidden="true"
+                tabIndex={-1}
+                onChange={onUploadChange}
+            />
+
+            {(onDuplicate || onDelete) && (
+                <div className="ep-actions">
+                    {onDuplicate && (
+                        <button type="button" className="ep-action-btn" onClick={onDuplicate}>
+                            <LinearIcon name="copy" size={12} /> Duplicate
                         </button>
                     )}
                     {onDelete && (
-                        <button
-                            type="button"
-                            className="studio-floating-btn delete"
-                            onClick={onDelete}
-                            title="Delete"
-                            style={{ width: 32, height: 32, color: '#ef4444' }}
-                        >
-                            <LinearIcon name="x" />
+                        <button type="button" className="ep-action-btn ep-action-btn--danger" onClick={onDelete}>
+                            <LinearIcon name="x" size={12} /> Delete
                         </button>
                     )}
                 </div>
-                
-                <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/png,image/jpeg,image/webp,image/gif"
-                    style={{ display: 'none' }}
-                    aria-hidden="true"
-                    tabIndex={-1}
-                    onChange={onUploadChange}
-                />
-            </div>
+            )}
         </div>
     );
 }

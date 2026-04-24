@@ -10,52 +10,24 @@ interface StudioProtectSettingsPanelProps {
 type SecurityPreset = 'basic' | 'business' | 'confidential' | 'custom';
 type PrintingPermission = 'none' | 'low' | 'full';
 
-function ProtectToggle({
-  label,
-  checked,
-  onChange,
-}: {
-  label: string;
-  checked: boolean;
-  onChange: (checked: boolean) => void;
-}) {
-  return (
-    <label
-      style={{
-        display: 'inline-flex',
-        alignItems: 'center',
-        gap: 8,
-        fontSize: 12,
-        color: 'rgba(255,255,255,0.92)',
-        whiteSpace: 'nowrap',
-      }}
-    >
-      <input type="checkbox" checked={checked} onChange={(event) => onChange(event.target.checked)} />
-      <span>{label}</span>
-    </label>
-  );
-}
-
 export function StudioProtectSettingsPanel({ onOptionsChange, ui }: StudioProtectSettingsPanelProps) {
   const [permissionsOnly, setPermissionsOnly] = useState(true);
-  const [userPassword, setUserPassword] = useState('');
-  const [ownerPassword, setOwnerPassword] = useState('');
+  const [userPassword, setUserPassword]       = useState('');
+  const [ownerPassword, setOwnerPassword]     = useState('');
   const [useOwnerPassword, setUseOwnerPassword] = useState(false);
-  const [keyLength, setKeyLength] = useState<128 | 256>(256);
-  const [securityPreset, setSecurityPreset] = useState<SecurityPreset>('business');
-  const [showAdvanced, setShowAdvanced] = useState(false);
-  const [printing, setPrinting] = useState<PrintingPermission>('full');
-  const [copying, setCopying] = useState(false);
-  const [modifying, setModifying] = useState(false);
-  const [annotating, setAnnotating] = useState(false);
-  const [fillingForms, setFillingForms] = useState(true);
+  const [keyLength, setKeyLength]             = useState<128 | 256>(256);
+  const [securityPreset, setSecurityPreset]   = useState<SecurityPreset>('business');
+  const [showAdvanced, setShowAdvanced]       = useState(false);
+  const [printing, setPrinting]               = useState<PrintingPermission>('full');
+  const [copying, setCopying]                 = useState(false);
+  const [modifying, setModifying]             = useState(false);
+  const [annotating, setAnnotating]           = useState(false);
+  const [fillingForms, setFillingForms]       = useState(true);
   const [contentAccessibility, setContentAccessibility] = useState(true);
   const [documentAssembly, setDocumentAssembly] = useState(false);
 
   const passwordError = useMemo(() => {
-    if (!permissionsOnly && userPassword.trim().length === 0) {
-      return ui.protectPasswordRequired;
-    }
+    if (!permissionsOnly && userPassword.trim().length === 0) return ui.protectPasswordRequired;
     return null;
   }, [permissionsOnly, ui.protectPasswordRequired, userPassword]);
 
@@ -73,189 +45,144 @@ export function StudioProtectSettingsPanel({ onOptionsChange, ui }: StudioProtec
       contentAccessibility,
       documentAssembly,
     });
-  }, [
-    annotating,
-    contentAccessibility,
-    copying,
-    documentAssembly,
-    fillingForms,
-    keyLength,
-    modifying,
-    onOptionsChange,
-    ownerPassword,
-    permissionsOnly,
-    printing,
-    useOwnerPassword,
-    userPassword,
-  ]);
+  }, [annotating, contentAccessibility, copying, documentAssembly, fillingForms, keyLength,
+      modifying, onOptionsChange, ownerPassword, permissionsOnly, printing, useOwnerPassword, userPassword]);
 
   const applyPreset = (preset: SecurityPreset): void => {
     setSecurityPreset(preset);
-    if (preset === 'custom') {
-      return;
-    }
     if (preset === 'basic') {
-      setPrinting('full');
-      setCopying(true);
-      setModifying(false);
-      setAnnotating(true);
-      setFillingForms(true);
-      setContentAccessibility(true);
-      setDocumentAssembly(false);
-      setKeyLength(128);
-      return;
+      setPrinting('full'); setCopying(true); setModifying(false); setAnnotating(true);
+      setFillingForms(true); setContentAccessibility(true); setDocumentAssembly(false); setKeyLength(128);
+    } else if (preset === 'business') {
+      setPrinting('full'); setCopying(false); setModifying(false); setAnnotating(false);
+      setFillingForms(true); setContentAccessibility(true); setDocumentAssembly(false); setKeyLength(256);
+    } else if (preset === 'confidential') {
+      setPrinting('none'); setCopying(false); setModifying(false); setAnnotating(false);
+      setFillingForms(false); setContentAccessibility(true); setDocumentAssembly(false); setKeyLength(256);
     }
-    if (preset === 'business') {
-      setPrinting('full');
-      setCopying(false);
-      setModifying(false);
-      setAnnotating(false);
-      setFillingForms(true);
-      setContentAccessibility(true);
-      setDocumentAssembly(false);
-      setKeyLength(256);
-      return;
-    }
-    setPrinting('none');
-    setCopying(false);
-    setModifying(false);
-    setAnnotating(false);
-    setFillingForms(false);
-    setContentAccessibility(true);
-    setDocumentAssembly(false);
-    setKeyLength(256);
   };
 
   const markCustom = () => setSecurityPreset('custom');
 
   return (
-    <div className="studio-annotate-quickbar-wrap">
-      <div
-        className="studio-annotate-quickbar"
-        style={{
-          display: 'grid',
-          gap: 12,
-          alignItems: 'start',
-          maxWidth: 'min(100%, 1040px)',
-        }}
-      >
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
-          <span className="studio-annotate-quickbar-label" style={{ marginRight: 4 }}>Protect</span>
-          <button type="button" className={securityPreset === 'basic' ? 'btn-primary' : 'btn-ghost'} onClick={() => applyPreset('basic')}>Basic</button>
-          <button type="button" className={securityPreset === 'business' ? 'btn-primary' : 'btn-ghost'} onClick={() => applyPreset('business')}>Business</button>
-          <button type="button" className={securityPreset === 'confidential' ? 'btn-primary' : 'btn-ghost'} onClick={() => applyPreset('confidential')}>Confidential</button>
-          {securityPreset === 'custom' && <span style={{ fontSize: 12, opacity: 0.78 }}>Custom</span>}
-          <button
-            type="button"
-            className="studio-floating-btn"
-            onClick={() => setShowAdvanced((prev) => !prev)}
-            style={{ width: 'auto', height: 32, padding: '0 12px' }}
-          >
-            {showAdvanced ? 'Hide advanced' : 'Advanced'}
-          </button>
-        </div>
+    <div className="ep">
+      <div className="ep-section-title">Protect</div>
 
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'center' }}>
-          <ProtectToggle
-            label="Restrictions only"
-            checked={permissionsOnly}
-            onChange={(checked) => {
-              setPermissionsOnly(checked);
-              if (checked) {
-                setUserPassword('');
-              }
-            }}
-          />
-          <ProtectToggle
-            label="Separate owner password"
-            checked={useOwnerPassword}
-            onChange={setUseOwnerPassword}
-          />
-          <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 12 }}>
-            <span style={{ opacity: 0.8 }}>Encryption</span>
-            <select
-              className="studio-floating-select"
-              value={keyLength}
-              onChange={(event) => {
-                markCustom();
-                setKeyLength(Number(event.target.value) === 128 ? 128 : 256);
-              }}
-              style={{ height: 32, minWidth: 110 }}
+      {/* Preset */}
+      <div className="ep-field">
+        <span className="ep-field-label">Preset</span>
+        <div className="ep-seg ep-seg--wrap">
+          {(['basic', 'business', 'confidential'] as SecurityPreset[]).map((p) => (
+            <button
+              key={p}
+              type="button"
+              className={`ep-seg-btn${securityPreset === p ? ' ep-seg-btn--on' : ''}`}
+              onClick={() => applyPreset(p)}
             >
-              <option value={256}>AES-256</option>
-              <option value={128}>AES-128</option>
-            </select>
-          </label>
-          <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 12 }}>
-            <span style={{ opacity: 0.8 }}>Printing</span>
-            <select
-              className="studio-floating-select"
-              value={printing}
-              onChange={(event) => {
-                markCustom();
-                const value = event.target.value;
-                setPrinting(value === 'none' || value === 'low' ? value : 'full');
-              }}
-              style={{ height: 32, minWidth: 144 }}
-            >
-              <option value="none">No printing</option>
-              <option value="low">Low resolution</option>
-              <option value="full">High resolution</option>
-            </select>
-          </label>
+              {p.charAt(0).toUpperCase() + p.slice(1)}
+            </button>
+          ))}
         </div>
-
-        {(!permissionsOnly || useOwnerPassword) && (
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'center' }}>
-            {!permissionsOnly && (
-              <label style={{ display: 'grid', gap: 4, minWidth: 220 }}>
-                <span style={{ fontSize: 12, opacity: 0.8 }}>Open password</span>
-                <input
-                  className="tool-config-input"
-                  type="password"
-                  value={userPassword}
-                  onChange={(event) => setUserPassword(event.target.value)}
-                  placeholder="Required to open"
-                  style={{ height: 32 }}
-                />
-              </label>
-            )}
-            {useOwnerPassword && (
-              <label style={{ display: 'grid', gap: 4, minWidth: 220 }}>
-                <span style={{ fontSize: 12, opacity: 0.8 }}>Owner password</span>
-                <input
-                  className="tool-config-input"
-                  type="password"
-                  value={ownerPassword}
-                  onChange={(event) => setOwnerPassword(event.target.value)}
-                  placeholder="Required to change restrictions"
-                  style={{ height: 32 }}
-                />
-              </label>
-            )}
-            {passwordError && <span style={{ color: '#fca5a5', fontSize: 12 }}>{passwordError}</span>}
-          </div>
-        )}
-
-        {showAdvanced && (
-          <div
-            style={{
-              display: 'flex',
-              flexWrap: 'wrap',
-              gap: 14,
-              paddingTop: 10,
-              borderTop: '1px solid rgba(255,255,255,0.08)',
-            }}
-          >
-            <ProtectToggle label="Copy" checked={copying} onChange={(checked) => { markCustom(); setCopying(checked); }} />
-            <ProtectToggle label="Modify" checked={modifying} onChange={(checked) => { markCustom(); setModifying(checked); }} />
-            <ProtectToggle label="Annotations" checked={annotating} onChange={(checked) => { markCustom(); setAnnotating(checked); }} />
-            <ProtectToggle label="Forms" checked={fillingForms} onChange={(checked) => { markCustom(); setFillingForms(checked); }} />
-            <ProtectToggle label="Accessibility" checked={contentAccessibility} onChange={(checked) => { markCustom(); setContentAccessibility(checked); }} />
-            <ProtectToggle label="Assembly" checked={documentAssembly} onChange={(checked) => { markCustom(); setDocumentAssembly(checked); }} />
-          </div>
-        )}
       </div>
+
+      {/* Encryption */}
+      <div className="ep-field">
+        <span className="ep-field-label">Encryption</span>
+        <select
+          className="ep-select"
+          value={keyLength}
+          onChange={(e) => { markCustom(); setKeyLength(Number(e.target.value) === 128 ? 128 : 256); }}
+        >
+          <option value={256}>AES-256</option>
+          <option value={128}>AES-128</option>
+        </select>
+      </div>
+
+      {/* Printing */}
+      <div className="ep-field">
+        <span className="ep-field-label">Printing</span>
+        <select
+          className="ep-select"
+          value={printing}
+          onChange={(e) => { markCustom(); const v = e.target.value; setPrinting(v === 'none' || v === 'low' ? v : 'full'); }}
+        >
+          <option value="full">High resolution</option>
+          <option value="low">Low resolution</option>
+          <option value="none">No printing</option>
+        </select>
+      </div>
+
+      {/* Mode toggles */}
+      <div className="ep-section-title" style={{ marginTop: 4 }}>Access</div>
+      <div className="ep-toggles">
+        <label className="ep-toggle-row">
+          <input type="checkbox" checked={permissionsOnly}
+            onChange={(e) => { setPermissionsOnly(e.target.checked); if (e.target.checked) setUserPassword(''); }} />
+          <span>Restrictions only (no password to open)</span>
+        </label>
+        <label className="ep-toggle-row">
+          <input type="checkbox" checked={useOwnerPassword} onChange={(e) => setUseOwnerPassword(e.target.checked)} />
+          <span>Separate owner password</span>
+        </label>
+      </div>
+
+      {/* Passwords */}
+      {!permissionsOnly && (
+        <div className="ep-field">
+          <span className="ep-field-label">Open password</span>
+          <input
+            type="password"
+            value={userPassword}
+            onChange={(e) => setUserPassword(e.target.value)}
+            placeholder="Required to open"
+            className="ep-input"
+          />
+          {passwordError && <span style={{ fontSize: 11, color: 'var(--red)' }}>{passwordError}</span>}
+        </div>
+      )}
+      {useOwnerPassword && (
+        <div className="ep-field">
+          <span className="ep-field-label">Owner password</span>
+          <input
+            type="password"
+            value={ownerPassword}
+            onChange={(e) => setOwnerPassword(e.target.value)}
+            placeholder="Required to change restrictions"
+            className="ep-input"
+          />
+        </div>
+      )}
+
+      {/* Advanced */}
+      <button
+        type="button"
+        className="ep-action-btn"
+        onClick={() => setShowAdvanced((v) => !v)}
+      >
+        {showAdvanced ? 'Hide advanced' : 'Advanced permissions'}
+      </button>
+
+      {showAdvanced && (
+        <>
+          <div className="ep-section-title">Permissions</div>
+          <div className="ep-toggles">
+            {[
+              { label: 'Copy text', checked: copying,            onChange: setCopying },
+              { label: 'Modify',    checked: modifying,          onChange: setModifying },
+              { label: 'Annotate',  checked: annotating,         onChange: setAnnotating },
+              { label: 'Fill forms',checked: fillingForms,       onChange: setFillingForms },
+              { label: 'Accessibility', checked: contentAccessibility, onChange: setContentAccessibility },
+              { label: 'Assembly',  checked: documentAssembly,   onChange: setDocumentAssembly },
+            ].map(({ label, checked, onChange }) => (
+              <label key={label} className="ep-toggle-row">
+                <input type="checkbox" checked={checked}
+                  onChange={(e) => { markCustom(); onChange(e.target.checked); }} />
+                <span>{label}</span>
+              </label>
+            ))}
+          </div>
+        </>
+      )}
     </div>
   );
 }

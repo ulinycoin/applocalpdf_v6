@@ -314,22 +314,6 @@ export const PageObject: React.FC<PageObjectProps> = ({ page, docId, x, y, curre
             onClick={handleClick}
             rotation={page.rotation}
         >
-            {/* Shadow/Glow for selection */}
-            {isSelected && (
-                <Rect
-                    width={PAGE_WIDTH + 20}
-                    height={PAGE_HEIGHT + 20}
-                    x={-10}
-                    y={-10}
-                    fill="transparent"
-                    stroke="#2383e2"
-                    strokeWidth={2}
-                    cornerRadius={12}
-                    shadowColor="#2383e2"
-                    shadowBlur={6}
-                    shadowOpacity={0.25}
-                />
-            )}
 
             {/* Page Content */}
             <Rect
@@ -339,8 +323,9 @@ export const PageObject: React.FC<PageObjectProps> = ({ page, docId, x, y, curre
                 stroke="#e9e9e7"
                 strokeWidth={1}
                 shadowColor="#000000"
-                shadowBlur={4}
-                shadowOpacity={0.08}
+                shadowBlur={16}
+                shadowOpacity={0.1}
+                shadowOffset={{ x: 0, y: 4 }}
                 cornerRadius={4}
             />
 
@@ -394,14 +379,18 @@ export const PageObject: React.FC<PageObjectProps> = ({ page, docId, x, y, curre
                 />
             </Group>
 
-            {/* Interactions Overlay */}
+            {/* Selection overlay */}
             <Rect
                 width={PAGE_WIDTH}
                 height={PAGE_HEIGHT}
                 fill="transparent"
                 stroke={isSelected ? "#2383e2" : "transparent"}
-                strokeWidth={isSelected ? 3 : 2}
+                strokeWidth={2}
                 cornerRadius={4}
+                shadowColor={isSelected ? "#2383e2" : "transparent"}
+                shadowBlur={isSelected ? 8 : 0}
+                shadowOpacity={0.3}
+                listening={false}
             />
         </Group>
     );

@@ -8,7 +8,6 @@ import { usePlatform } from '../../../app/react/platform-context';
 import { useStudioStore, PageItem, StudioDocument as IStudioDocument, StudioState, StudioEditToolId } from './studio-store';
 import { StudioDocument } from './StudioDocument';
 import { DetachedPageObject } from './DetachedPageObject';
-import { StudioFloatingMenu } from './StudioFloatingMenu';
 import { StudioToolRail } from './StudioToolRail';
 import { LinearIcon } from '../icons/linear-icon';
 import { ThumbnailService } from '../../studio/thumbnail/thumbnail-service';
@@ -256,6 +255,23 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
         }),
         [dimensions.height, dimensions.width],
     );
+
+    const dotPatternCanvas = useMemo(() => {
+        const size = 20;
+        const c = document.createElement('canvas');
+        c.width = size;
+        c.height = size;
+        const ctx = c.getContext('2d');
+        if (ctx) {
+            ctx.fillStyle = '#f0efed';
+            ctx.fillRect(0, 0, size, size);
+            ctx.fillStyle = '#b4b4b0';
+            ctx.beginPath();
+            ctx.arc(size / 2, size / 2, 1, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        return c;
+    }, []);
 
     // Active tool overlay — 'edit' or convert tool id
     type OverlayMode = 'edit' | StudioConvertToolId;
@@ -1016,7 +1032,8 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
                                 y={-5000}
                                 width={10000}
                                 height={10000}
-                                fill="#f0efed"
+                                fillPatternImage={dotPatternCanvas}
+                                fillPatternRepeat="repeat"
                             />
                             {hasFiles && (
                                 <>
@@ -1122,7 +1139,6 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
                 onChange={handleUploadInputChange}
             />
             {isHistoryOpen && <StudioTimeline />}
-            {!overlayMode && <StudioFloatingMenu />}
             <StudioInPlaceEditor stageRef={stageRef} />
             {overlayMode && createPortal(
                 <div className="studio-tool-overlay">

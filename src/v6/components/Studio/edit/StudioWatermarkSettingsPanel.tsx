@@ -22,66 +22,32 @@ interface StudioWatermarkSettingsPanelProps {
 }
 
 export function StudioWatermarkSettingsPanel({ options, onOptionsChange }: StudioWatermarkSettingsPanelProps) {
-    const set = <K extends keyof WatermarkOptions>(key: K, value: WatermarkOptions[K]) => {
+    const set = <K extends keyof WatermarkOptions>(key: K, value: WatermarkOptions[K]) =>
         onOptionsChange({ ...options, [key]: value });
-    };
 
     return (
-        <div className="studio-text-style-panel" style={{ marginTop: 12 }}>
-            <label className="studio-text-style-field" style={{ minWidth: 210 }}>
-                <span>Watermark text</span>
+        <div className="ep">
+            <div className="ep-section-title">Watermark</div>
+
+            {/* Text */}
+            <div className="ep-field">
+                <span className="ep-field-label">Text</span>
                 <input
                     type="text"
                     value={options.text}
-                    onChange={(event) => set('text', event.target.value)}
+                    onChange={(e) => set('text', e.target.value)}
                     placeholder="CONFIDENTIAL"
+                    className="ep-input"
                 />
-            </label>
+            </div>
 
-            <label className="studio-text-style-field">
-                <span>Color</span>
-                <input type="color" value={options.color} onChange={(event) => set('color', event.target.value)} />
-            </label>
-
-            <label className="studio-text-style-field">
-                <span>Size</span>
-                <input
-                    type="number"
-                    min={8}
-                    max={120}
-                    value={options.fontSize}
-                    onChange={(event) => set('fontSize', Math.max(8, Math.min(120, Number(event.target.value) || 30)))}
-                />
-            </label>
-
-            <label className="studio-text-style-field">
-                <span>Opacity</span>
-                <input
-                    type="number"
-                    min={0.05}
-                    max={1}
-                    step={0.05}
-                    value={options.opacity}
-                    onChange={(event) => set('opacity', Math.max(0.05, Math.min(1, Number(event.target.value) || 0.25)))}
-                />
-            </label>
-
-            <label className="studio-text-style-field">
-                <span>Rotation (deg)</span>
-                <input
-                    type="number"
-                    min={-180}
-                    max={180}
-                    value={options.rotation}
-                    onChange={(event) => set('rotation', Math.max(-180, Math.min(180, Number(event.target.value) || 0)))}
-                />
-            </label>
-
-            <label className="studio-text-style-field">
-                <span>Font</span>
+            {/* Font */}
+            <div className="ep-field">
+                <span className="ep-field-label">Font</span>
                 <select
+                    className="ep-select"
                     value={options.fontFamily}
-                    onChange={(event) => set('fontFamily', event.target.value as FontFamilyId)}
+                    onChange={(e) => set('fontFamily', e.target.value as FontFamilyId)}
                 >
                     <option value="sora">Helvetica</option>
                     <option value="times">Times</option>
@@ -92,34 +58,87 @@ export function StudioWatermarkSettingsPanel({ options, onOptionsChange }: Studi
                     <option value="noto-cjk">Noto CJK</option>
                     <option value="noto-devanagari">Noto Devanagari</option>
                 </select>
-            </label>
+            </div>
 
-            <button
-                type="button"
-                className={`studio-text-style-toggle ${options.fontWeight === 'bold' ? 'active' : ''}`}
-                onClick={() => set('fontWeight', options.fontWeight === 'bold' ? 'normal' : 'bold')}
-            >
-                Bold
-            </button>
-
-            <button
-                type="button"
-                className={`studio-text-style-toggle ${options.fontStyle === 'italic' ? 'active' : ''}`}
-                onClick={() => set('fontStyle', options.fontStyle === 'italic' ? 'normal' : 'italic')}
-            >
-                Italic
-            </button>
-
-            <label className="studio-text-style-field" style={{ minWidth: 120 }}>
-                <span>Repeat</span>
-                <select
-                    value={options.repeatEnabled ? 'on' : 'off'}
-                    onChange={(event) => set('repeatEnabled', event.target.value === 'on')}
+            {/* Size + Bold + Italic */}
+            <div className="ep-row">
+                <div className="ep-field ep-field--grow">
+                    <span className="ep-field-label">Size</span>
+                    <input
+                        type="number"
+                        min={8} max={120}
+                        value={options.fontSize}
+                        onChange={(e) => set('fontSize', Math.max(8, Math.min(120, Number(e.target.value) || 30)))}
+                        className="ep-input ep-input--num"
+                    />
+                </div>
+                <button
+                    type="button"
+                    className={`ep-fmt-btn${options.fontWeight === 'bold' ? ' ep-fmt-btn--on' : ''}`}
+                    onClick={() => set('fontWeight', options.fontWeight === 'bold' ? 'normal' : 'bold')}
                 >
-                    <option value="on">On</option>
-                    <option value="off">Off</option>
-                </select>
+                    <b>B</b>
+                </button>
+                <button
+                    type="button"
+                    className={`ep-fmt-btn${options.fontStyle === 'italic' ? ' ep-fmt-btn--on' : ''}`}
+                    onClick={() => set('fontStyle', options.fontStyle === 'italic' ? 'normal' : 'italic')}
+                >
+                    <i>I</i>
+                </button>
+            </div>
+
+            <div className="ep-section-title" style={{ marginTop: 4 }}>Appearance</div>
+
+            {/* Opacity + Rotation */}
+            <div className="ep-row">
+                <div className="ep-field ep-field--grow">
+                    <span className="ep-field-label">Opacity</span>
+                    <input
+                        type="number"
+                        min={0.05} max={1} step={0.05}
+                        value={options.opacity}
+                        onChange={(e) => set('opacity', Math.max(0.05, Math.min(1, Number(e.target.value) || 0.25)))}
+                        className="ep-input ep-input--num"
+                    />
+                </div>
+                <div className="ep-field ep-field--grow">
+                    <span className="ep-field-label">Rotation°</span>
+                    <input
+                        type="number"
+                        min={-180} max={180}
+                        value={options.rotation}
+                        onChange={(e) => set('rotation', Math.max(-180, Math.min(180, Number(e.target.value) || 0)))}
+                        className="ep-input ep-input--num"
+                    />
+                </div>
+            </div>
+
+            {/* Color */}
+            <label className="ep-color-row">
+                <div className="ep-color-preview" style={{ background: options.color }}>
+                    <input type="color" value={options.color} onChange={(e) => set('color', e.target.value)} />
+                </div>
+                <span className="ep-color-value">{options.color}</span>
+                <span className="ep-color-name">Color</span>
             </label>
+
+            {/* Repeat */}
+            <div className="ep-field">
+                <span className="ep-field-label">Repeat</span>
+                <div className="ep-seg">
+                    <button
+                        type="button"
+                        className={`ep-seg-btn${options.repeatEnabled ? ' ep-seg-btn--on' : ''}`}
+                        onClick={() => set('repeatEnabled', true)}
+                    >On</button>
+                    <button
+                        type="button"
+                        className={`ep-seg-btn${!options.repeatEnabled ? ' ep-seg-btn--on' : ''}`}
+                        onClick={() => set('repeatEnabled', false)}
+                    >Off</button>
+                </div>
+            </div>
         </div>
     );
 }

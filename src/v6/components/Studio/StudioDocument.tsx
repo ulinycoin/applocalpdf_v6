@@ -68,20 +68,45 @@ export const StudioDocument: React.FC<StudioDocumentProps> = ({ doc }) => {
             onDragLeave={() => setIsDropTarget(false)}
             onDrop={() => setIsDropTarget(false)}
         >
-            {/* ── Header row (white bg, border, rounded top) */}
+            {/* ── Shadow layers (floating effect) */}
+            <Rect
+                width={width + PAGE_PADDING * 2}
+                height={height + PAGE_PADDING * 2 + 10 + 32}
+                x={-PAGE_PADDING}
+                y={-32}
+                fill="#e8e8e6"
+                stroke="transparent"
+                cornerRadius={6}
+                shadowColor="#000000"
+                shadowBlur={40}
+                shadowOpacity={0.12}
+                shadowOffset={{ x: 0, y: 8 }}
+                listening={false}
+            />
+            <Rect
+                width={width + PAGE_PADDING * 2}
+                height={height + PAGE_PADDING * 2 + 10 + 32}
+                x={-PAGE_PADDING}
+                y={-32}
+                fill="transparent"
+                stroke="transparent"
+                cornerRadius={6}
+                shadowColor="#000000"
+                shadowBlur={10}
+                shadowOpacity={0.08}
+                shadowOffset={{ x: 0, y: 2 }}
+                listening={false}
+            />
+            {/* ── Header row */}
             <Rect
                 width={width + PAGE_PADDING * 2}
                 height={30}
                 x={-PAGE_PADDING}
                 y={-32}
                 fill="#ffffff"
-                stroke={isDropTarget ? '#2383e2' : (isActiveDocument ? '#2383e2' : '#e9e9e7')}
-                strokeWidth={isDropTarget || isActiveDocument ? 1.5 : 1}
+                stroke={isDropTarget ? '#2383e2' : '#e9e9e7'}
+                strokeWidth={1}
                 cornerRadius={[6, 6, 0, 0]}
-                shadowColor="#000000"
-                shadowBlur={isActiveDocument ? 0 : 3}
-                shadowOpacity={0.06}
-                shadowOffset={{ x: 0, y: 1 }}
             />
             {/* ── Header bottom divider line */}
             <Rect
@@ -89,25 +114,34 @@ export const StudioDocument: React.FC<StudioDocumentProps> = ({ doc }) => {
                 height={1}
                 x={-PAGE_PADDING}
                 y={-2}
-                fill={isActiveDocument ? '#2383e2' : '#e9e9e7'}
-                opacity={isActiveDocument ? 0.35 : 1}
+                fill="#e9e9e7"
                 listening={false}
             />
-            {/* ── Pages area (white bg, border no-top, rounded bottom) */}
+            {/* ── Pages area */}
             <Rect
                 width={width + PAGE_PADDING * 2}
                 height={height + PAGE_PADDING * 2 + 10}
                 x={-PAGE_PADDING}
                 y={-1}
                 fill="#ffffff"
-                stroke={isDropTarget ? '#2383e2' : (isActiveDocument ? '#2383e2' : '#e9e9e7')}
-                strokeWidth={isDropTarget || isActiveDocument ? 1.5 : 1}
+                stroke={isDropTarget ? '#2383e2' : '#e9e9e7'}
+                strokeWidth={1}
                 cornerRadius={[0, 0, 6, 6]}
-                shadowColor="#000000"
-                shadowBlur={3}
-                shadowOpacity={0.06}
-                shadowOffset={{ x: 0, y: 1 }}
             />
+            {/* ── Active selection outline (single unified border) */}
+            {isActiveDocument && (
+                <Rect
+                    width={width + PAGE_PADDING * 2}
+                    height={height + PAGE_PADDING * 2 + 10 + 32}
+                    x={-PAGE_PADDING}
+                    y={-32}
+                    fill="transparent"
+                    stroke="#2383e2"
+                    strokeWidth={2}
+                    cornerRadius={6}
+                    listening={false}
+                />
+            )}
             {/* Document Label in header */}
             <Group
                 y={-32}

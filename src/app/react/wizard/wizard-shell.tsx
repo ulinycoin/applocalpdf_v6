@@ -11,7 +11,7 @@ interface WizardShellProps {
 
 const demoContext: ToolRunContext = {
     userId: 'demo-user',
-    plan: 'pro' as const, // For demo, assuming PRO. In real app, comes from auth/billing context.
+    plan: 'pro' as const,
     entitlements: [
         'pdf.merge',
         'pdf.split',
@@ -33,6 +33,33 @@ interface ToolConfigProps {
     inputIds: string[];
     onStart: (configOptions: Record<string, unknown>) => void;
     onCancel: () => void;
+}
+
+function StepIndicator({ step }: { step: WizardStep }) {
+    const idx = step === 'config' ? 0 : step === 'processing' ? 1 : 2;
+    const steps = ['Configure', 'Processing', 'Result'];
+
+    return (
+        <div className="wz-steps">
+            {steps.map((label, i) => {
+                const done = i < idx;
+                const active = i === idx;
+                return (
+                    <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 0 }}>
+                        <div className={`wz-step${active ? ' wz-step--active' : done ? ' wz-step--done' : ''}`}>
+                            <div className="wz-step-num">
+                                {done ? '✓' : i + 1}
+                            </div>
+                            <span className="wz-step-label">{label}</span>
+                        </div>
+                        {i < steps.length - 1 && (
+                            <div className={`wz-step-line${done ? ' wz-step-line--done' : ''}`} />
+                        )}
+                    </div>
+                );
+            })}
+        </div>
+    );
 }
 
 export function WizardShell({ toolId }: WizardShellProps) {
@@ -59,7 +86,7 @@ export function WizardShell({ toolId }: WizardShellProps) {
             setStep('result');
         } else if (result.type === 'TOOL_ERROR') {
             setError(result.message);
-            setStep('config'); // Return to config on error
+            setStep('config');
         } else if (result.type === 'TOOL_ACCESS_DENIED') {
             setError(result.details || 'Access denied');
             setStep('config');
@@ -73,50 +100,43 @@ export function WizardShell({ toolId }: WizardShellProps) {
     };
 
     return (
-        <div className="wizard-container">
-            <div className="wizard-header">
-                <div className="wizard-tool-header">
-                    <div className="wizard-tool-icon" aria-hidden="true">
-                        {toolDef.name.slice(0, 1).toUpperCase()}
-                    </div>
-                    <div className="wizard-tool-copy">
-                        <h1 className="wizard-title">{toolDef.name}</h1>
-                        <p className="wizard-subtitle">{toolDef.description}</p>
+        <div className="wz-page">
+            {/* Tool header */}
+            <div className="wz-tool-header">
+                <div className="wz-tool-icon" aria-hidden="true">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                        <polyline points="14 2 14 8 20 8"/>
+                        <line x1="16" y1="13" x2="8" y2="13"/>
+                        <line x1="16" y1="17" x2="8" y2="17"/>
+                    </svg>
+                </div>
+                <div>
+                    <div className="wz-tool-title">{toolDef.name}</div>
+                    <div className="wz-tool-desc">{toolDef.description}</div>
+                    <div className="wz-tool-privacy">
+                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                        </svg>
+                        Processed locally · files never leave your device
                     </div>
                 </div>
-                <span className="wizard-privacy-badge">Private</span>
             </div>
 
-            <div className="wizard-progress-track" aria-hidden="true">
-                <div
-                    className="wizard-progress-bar wizard-progress-bar--shimmer"
-                    style={{ width: step === 'config' ? '33%' : step === 'processing' ? '66%' : '100%' }}
-                />
-            </div>
+            {/* Step indicator */}
+            <StepIndicator step={step} />
 
+            {/* Error */}
             {error && (
-                <div style={{
-                    backgroundColor: 'var(--green-bg)',
-                    color: 'var(--text)',
-                    padding: '1rem',
-                    borderRadius: '8px',
-                    marginBottom: '1rem',
-                    fontSize: '0.875rem',
-                    border: '1px solid rgba(15,123,108,0.15)'
-                }}>
-                    <strong style={{ color: 'var(--red)' }}>Error:</strong> {error}
+                <div className="wz-error">
+                    <strong>Error:</strong> {error}
                 </div>
             )}
 
+            {/* Config stage */}
             {step === 'config' && (
-                <div className="animate-fade-in">
-                    <h2 className="stage-title">Configure {toolDef.name}</h2>
-                    <p className="stage-description">Adjust settings before processing.</p>
-                    <Suspense fallback={<div>Loading options...</div>}>
-                        {/* 
-                We pass handleStart and inputIds to the Tool UI. 
-                Existing Tool UIs will need refactoring to match this interface.
-            */}
+                <div className="wz-stage-fade">
+                    <Suspense fallback={<div style={{ color: 'var(--text-muted)', fontSize: 13 }}>Loading…</div>}>
                         <ToolConfigUI
                             inputIds={inputIds}
                             onStart={handleStart}
@@ -126,6 +146,7 @@ export function WizardShell({ toolId }: WizardShellProps) {
                 </div>
             )}
 
+            {/* Processing stage */}
             {step === 'processing' && (
                 <ProcessingStage
                     progress={progress}
@@ -134,6 +155,7 @@ export function WizardShell({ toolId }: WizardShellProps) {
                 />
             )}
 
+            {/* Result stage */}
             {step === 'result' && lastResult?.type === 'TOOL_RESULT' && (
                 <ResultStage
                     outputIds={lastResult.outputIds}

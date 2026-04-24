@@ -28,31 +28,13 @@ interface StudioAnnotateSettingsPanelProps {
     onDuplicate?: () => void;
 }
 
-const MARKER_COLORS = [
-    '#b9f86a',
-    '#fff176',
-    '#ffb74d',
-    '#ff8a65',
-    '#ff80ab',
-    '#80deea',
-];
+const MARKER_COLORS = ['#b9f86a', '#fff176', '#ffb74d', '#ff8a65', '#ff80ab', '#80deea'];
 
 export function StudioAnnotateSettingsPanel({
-    title,
-    highlightLabel,
-    markerLabel,
-    penLabel,
-    shapesLabel,
-    shapeLabel,
-    lineLabel,
-    arrowLabel,
-    shapeThicknessLabel,
-    penSizeLabel,
-    customColorLabel,
-    color,
     mode,
     shapePreset,
     strokeWidth,
+    color,
     onColorChange,
     onModeChange,
     onShapePresetChange,
@@ -64,143 +46,125 @@ export function StudioAnnotateSettingsPanel({
     onDuplicate,
 }: StudioAnnotateSettingsPanelProps) {
     return (
-        <div className="studio-annotate-quickbar-wrap">
-            <div className="studio-annotate-quickbar">
-                <span className="studio-annotate-quickbar-label">{title}</span>
-                <span className="studio-annotate-quickbar-caption">{mode === 'shapes' ? shapesLabel : highlightLabel}</span>
-                <div className="studio-annotate-mode-toggle" role="group" aria-label={title}>
+        <div className="ep">
+            <div className="ep-section-title">Annotate</div>
+
+            {/* Mode toggle */}
+            <div className="ep-seg">
+                {(['highlight', 'pen', 'shapes'] as const).map((m) => (
                     <button
+                        key={m}
                         type="button"
-                        className={`studio-annotate-mode-btn ${mode === 'highlight' ? 'active' : ''}`}
-                        onClick={() => onModeChange('highlight')}
+                        className={`ep-seg-btn${mode === m ? ' ep-seg-btn--on' : ''}`}
+                        onClick={() => onModeChange(m)}
                     >
-                        {markerLabel}
+                        {m === 'highlight' ? 'Marker' : m === 'pen' ? 'Pen' : 'Shapes'}
                     </button>
-                    <button
-                        type="button"
-                        className={`studio-annotate-mode-btn ${mode === 'pen' ? 'active' : ''}`}
-                        onClick={() => onModeChange('pen')}
-                    >
-                        {penLabel}
-                    </button>
-                    <button
-                        type="button"
-                        className={`studio-annotate-mode-btn ${mode === 'shapes' ? 'active' : ''}`}
-                        onClick={() => onModeChange('shapes')}
-                    >
-                        {shapesLabel}
-                    </button>
-                </div>
-                {mode === 'shapes' && (
-                    <div className="studio-annotate-mode-toggle" role="group" aria-label={shapesLabel}>
+                ))}
+            </div>
+
+            {/* Shape presets */}
+            {mode === 'shapes' && (
+                <div className="ep-seg">
+                    {(['rectangle', 'line', 'arrow'] as const).map((p) => (
                         <button
+                            key={p}
                             type="button"
-                            className={`studio-annotate-mode-btn ${shapePreset === 'rectangle' ? 'active' : ''}`}
-                            onClick={() => onShapePresetChange('rectangle')}
-                            title={shapeLabel}
+                            className={`ep-seg-btn${shapePreset === p ? ' ep-seg-btn--on' : ''}`}
+                            onClick={() => onShapePresetChange(p)}
                         >
-                            <LinearIcon name="shape" size={14} />
-                            <span style={{ marginLeft: 6 }}>{shapeLabel}</span>
+                            {p.charAt(0).toUpperCase() + p.slice(1)}
                         </button>
-                        <button
-                            type="button"
-                            className={`studio-annotate-mode-btn ${shapePreset === 'line' ? 'active' : ''}`}
-                            onClick={() => onShapePresetChange('line')}
-                            title={lineLabel}
-                        >
-                            {lineLabel}
-                        </button>
-                        <button
-                            type="button"
-                            className={`studio-annotate-mode-btn ${shapePreset === 'arrow' ? 'active' : ''}`}
-                            onClick={() => onShapePresetChange('arrow')}
-                            title={arrowLabel}
-                        >
-                            {arrowLabel}
-                        </button>
-                    </div>
-                )}
-                <div className="studio-annotate-quickbar-swatches">
-                    {MARKER_COLORS.map((preset) => (
-                        <button
-                            key={preset}
-                            type="button"
-                            onClick={() => onColorChange(preset)}
-                            title={preset}
-                            className={`studio-annotate-swatch ${color.toLowerCase() === preset.toLowerCase() ? 'active' : ''}`}
-                            style={{ background: preset }}
-                        />
                     ))}
                 </div>
-                <label className="studio-annotate-quickbar-custom-color" title={color}>
-                    <span>{customColorLabel}</span>
-                    <input type="color" value={color} onChange={(event) => onColorChange(event.target.value)} />
-                </label>
-                {(mode === 'pen' || mode === 'shapes') && (
-                    <label className="studio-annotate-quickbar-custom-color">
-                        <span>{mode === 'pen' ? penSizeLabel : shapeThicknessLabel}</span>
+            )}
+
+            {/* Color swatches */}
+            {mode === 'highlight' && (
+                <>
+                    <div className="ep-section-title" style={{ marginTop: 4 }}>Color</div>
+                    <div className="ep-swatches">
+                        {MARKER_COLORS.map((c) => (
+                            <button
+                                key={c}
+                                type="button"
+                                className={`ep-swatch${color.toLowerCase() === c.toLowerCase() ? ' ep-swatch--on' : ''}`}
+                                style={{ background: c }}
+                                onClick={() => onColorChange(c)}
+                                title={c}
+                            />
+                        ))}
+                    </div>
+                </>
+            )}
+
+            {/* Custom color */}
+            <label className="ep-color-row">
+                <div className="ep-color-preview" style={{ background: color }}>
+                    <input type="color" value={color} onChange={(e) => onColorChange(e.target.value)} />
+                </div>
+                <span className="ep-color-value">{color}</span>
+                <span className="ep-color-name">Custom</span>
+            </label>
+
+            {/* Stroke width for pen/shapes */}
+            {(mode === 'pen' || mode === 'shapes') && (
+                <div className="ep-field">
+                    <span className="ep-field-label">
+                        {mode === 'pen' ? 'Pen size' : 'Thickness'}
+                    </span>
+                    <div className="ep-row" style={{ gap: 8 }}>
                         <input
                             type="range"
-                            min={1}
-                            max={18}
-                            step={1}
+                            min={1} max={18} step={1}
                             value={strokeWidth}
-                            onChange={(event) => onStrokeWidthChange(Math.max(1, Math.min(18, Number(event.target.value) || 5)))}
+                            onChange={(e) => onStrokeWidthChange(Math.max(1, Math.min(18, Number(e.target.value) || 5)))}
+                            className="ep-range"
                         />
-                    </label>
-                )}
-                {mode === 'pen' && (
-                    <>
-                        <button
-                            type="button"
-                            className="studio-floating-btn"
-                            onClick={onInsertPen}
-                            disabled={!hasPendingPenDraft}
-                            title="Insert pen annotation"
-                            style={{ height: 32, padding: '0 10px', width: 'auto' }}
-                        >
-                            Insert
-                        </button>
-                        <button
-                            type="button"
-                            className="studio-floating-btn"
-                            onClick={onClearPen}
-                            disabled={!hasPendingPenDraft}
-                            title="Clear pen annotation"
-                            style={{ height: 32, padding: '0 10px', width: 'auto' }}
-                        >
-                            Clear
-                        </button>
-                    </>
-                )}
+                        <span className="ep-range-val">{strokeWidth}</span>
+                    </div>
+                </div>
+            )}
 
-                {onDuplicate && (
+            {/* Pen actions */}
+            {mode === 'pen' && (
+                <div className="ep-row" style={{ marginTop: 4 }}>
                     <button
                         type="button"
-                        className="studio-floating-btn"
-                        onClick={onDuplicate}
-                        title="Duplicate"
-                        style={{ width: 32, height: 32 }}
+                        className="ep-action-btn ep-action-btn--primary"
+                        onClick={onInsertPen}
+                        disabled={!hasPendingPenDraft}
+                        style={{ flex: 1 }}
                     >
-                        <LinearIcon name="copy" />
+                        Insert
                     </button>
-                )}
+                    <button
+                        type="button"
+                        className="ep-action-btn"
+                        onClick={onClearPen}
+                        disabled={!hasPendingPenDraft}
+                        style={{ flex: 1 }}
+                    >
+                        Clear
+                    </button>
+                </div>
+            )}
 
-                {onDelete && (
-                    <>
-                        <div className="studio-floating-divider" style={{ margin: '0 12px' }} />
-                        <button
-                            type="button"
-                            className="studio-floating-btn delete"
-                            onClick={onDelete}
-                            title="Delete"
-                            style={{ width: 32, height: 32, color: '#ef4444' }}
-                        >
-                            <LinearIcon name="x" />
+            {/* Element actions */}
+            {(onDuplicate || onDelete) && (
+                <div className="ep-actions">
+                    {onDuplicate && (
+                        <button type="button" className="ep-action-btn" onClick={onDuplicate}>
+                            <LinearIcon name="copy" size={12} /> Duplicate
                         </button>
-                    </>
-                )}
-            </div>
+                    )}
+                    {onDelete && (
+                        <button type="button" className="ep-action-btn ep-action-btn--danger" onClick={onDelete}>
+                            <LinearIcon name="x" size={12} /> Delete
+                        </button>
+                    )}
+                </div>
+            )}
         </div>
     );
 }
