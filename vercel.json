@@ -18,6 +18,11 @@
       "statusCode": 301
     },
     {
+      "source": "/sitemap.xml",
+      "destination": "/sitemap-index.xml",
+      "statusCode": 301
+    },
+    {
       "source": "/edit-text-pdf",
       "destination": "/features/edit-pdf",
       "statusCode": 308

@@ -26,6 +26,11 @@ const sitemapAllowList = new Set([
   'https://localpdf.online/features/split-pdf',
   'https://localpdf.online/features/sign-pdf',
   'https://localpdf.online/features/convert-pdf',
+  'https://localpdf.online/pricing',
+  'https://localpdf.online/private-pdf-editor',
+  'https://localpdf.online/pdf-tools-without-upload',
+  'https://localpdf.online/refund-policy',
+  'https://localpdf.online/how-local-pdf-processing-works',
 ]);
 
 // https://astro.build/config
