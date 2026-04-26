@@ -50,6 +50,23 @@ export function StudioTopNav({ telemetryEnabled, onToggleTelemetry, telemetryOpe
   const [isDownloadModalOpen, setIsDownloadModalOpen] = useState(false);
   const [downloadFileName, setDownloadFileName] = useState('');
   const [downloadTargetDocumentId, setDownloadTargetDocumentId] = useState<string | null>(null);
+  const [isActivateOpen, setIsActivateOpen] = useState(false);
+  const [licenseToken, setLicenseToken] = useState('');
+  const [activateStatus, setActivateStatus] = useState<'idle' | 'loading' | 'error'>('idle');
+
+  const handleActivate = async (): Promise<void> => {
+    const token = licenseToken.trim();
+    if (!token) return;
+    setActivateStatus('loading');
+    const ok = await runtime.billing.saveToken(token);
+    if (ok) {
+      setIsActivateOpen(false);
+      setLicenseToken('');
+      setActivateStatus('idle');
+    } else {
+      setActivateStatus('error');
+    }
+  };
   const documents = useStudioStore((s: StudioState) => s.documents);
   const activeDocumentId = useStudioStore((s: StudioState) => s.activeDocumentId);
   const setActiveDocument = useStudioStore((s: StudioState) => s.setActiveDocument);
@@ -205,13 +222,58 @@ export function StudioTopNav({ telemetryEnabled, onToggleTelemetry, telemetryOpe
         {runtime.billing.getContext().plan === 'pro' ? (
           <div className="studio-badge-pro">PRO</div>
         ) : (
-          <button
-            type="button"
-            className="studio-upgrade-btn"
-            onClick={() => { openBillingPlans(import.meta.env.VITE_BILLING_URL); }}
-          >
-            Upgrade
-          </button>
+          <>
+            <button
+              type="button"
+              className="studio-activate-btn"
+              onClick={() => { setIsActivateOpen(true); }}
+              title="Enter license key after purchase"
+            >
+              Activate
+            </button>
+            <button
+              type="button"
+              className="studio-upgrade-btn"
+              onClick={() => { openBillingPlans(import.meta.env.VITE_BILLING_URL); }}
+            >
+              Upgrade
+            </button>
+          </>
+        )}
+
+        {isActivateOpen && (
+          <div className="studio-activate-overlay" role="presentation" onClick={() => { setIsActivateOpen(false); setActivateStatus('idle'); }}>
+            <div className="studio-activate-modal" role="dialog" aria-modal="true" aria-label="Activate license" onClick={(e) => e.stopPropagation()}>
+              <h3 className="studio-activate-title">Activate Pro license</h3>
+              <p className="studio-activate-sub">Paste the license key from your purchase email.</p>
+              <input
+                className="studio-activate-input"
+                type="text"
+                placeholder="eyJ..."
+                value={licenseToken}
+                onChange={(e) => { setLicenseToken(e.target.value); setActivateStatus('idle'); }}
+                onKeyDown={(e) => { if (e.key === 'Enter') void handleActivate(); }}
+                autoFocus
+                spellCheck={false}
+              />
+              {activateStatus === 'error' && (
+                <p className="studio-activate-error">Invalid or expired license key. Check your email and try again.</p>
+              )}
+              <div className="studio-activate-actions">
+                <button type="button" className="studio-activate-btn-ghost" onClick={() => { setIsActivateOpen(false); setActivateStatus('idle'); }}>
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className="studio-activate-btn-primary"
+                  disabled={!licenseToken.trim() || activateStatus === 'loading'}
+                  onClick={() => { void handleActivate(); }}
+                >
+                  {activateStatus === 'loading' ? 'Verifying…' : 'Activate'}
+                </button>
+              </div>
+            </div>
+          </div>
         )}
       </div>
 
