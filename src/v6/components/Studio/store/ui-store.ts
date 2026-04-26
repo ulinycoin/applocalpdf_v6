@@ -21,8 +21,10 @@ export interface UIState {
     gridColumns: 3 | 5;
     viewportSize: { width: number; height: number };
     isHistoryOpen: boolean;
+    renamingDocId: string | null;
 
     setSelection: (selection: { docId: string; pageId: string }[]) => void;
+    setRenamingDocId: (id: string | null) => void;
     requestInlineTool: (toolId: 'compress-pdf' | null) => void;
     setDraggingFile: (isDragging: boolean) => void;
     setActiveDocument: (id: string | null) => void;
@@ -51,6 +53,7 @@ export const useUIStore = create<UIState>((set) => ({
     viewportSize: getDefaultViewportSize(),
     whiteoutColor: '#ffffff',
     isHistoryOpen: false,
+    renamingDocId: null,
 
     setSelection: (selection) => set((state) => ({
         selection,
@@ -70,6 +73,7 @@ export const useUIStore = create<UIState>((set) => ({
     setGridColumns: (columns) => set({ gridColumns: columns }),
     setWhiteoutColor: (color) => set({ whiteoutColor: color }),
     setHistoryOpen: (open) => set({ isHistoryOpen: open }),
+    setRenamingDocId: (id) => set({ renamingDocId: id }),
     clearUI: () => set({
         selection: [],
         requestedInlineTool: null,

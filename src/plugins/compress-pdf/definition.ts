@@ -4,7 +4,7 @@ export const compressPdfDefinition: IToolDefinition = {
     id: 'compress-pdf',
     name: 'Compress PDF',
     description: 'Reduce the file size of your PDF documents while optimizing for quality.',
-    entitlements: ['pdf.compress'],
+    entitlements: [],
     limits: {
         featureTier: 'basic',
         maxFileSize: { free: 50 * 1024 * 1024, pro: 500 * 1024 * 1024 },

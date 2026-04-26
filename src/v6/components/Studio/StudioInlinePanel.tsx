@@ -14,8 +14,9 @@ import { StudioFormsQuickBar } from './edit/StudioFormsQuickBar';
 import { StudioOcrSettingsPanel } from './convert/StudioOcrSettingsPanel';
 import { StudioPdfToJpgSettingsPanel } from './convert/StudioPdfToJpgSettingsPanel';
 import { StudioCompressPdfSettingsPanel } from './convert/StudioCompressPdfSettingsPanel';
-import { StudioExtractImagesSettingsPanel } from './convert/StudioExtractImagesSettingsPanel';
+import { StudioExtractImagesSettingsPanel, type ExtractPagePreview } from './convert/StudioExtractImagesSettingsPanel';
 import { LinearIcon } from '../icons/linear-icon';
+import { StudioDialog } from './StudioDialog';
 import type { StudioEditToolId } from './studio-store';
 import type {
     EditElement,
@@ -35,6 +36,7 @@ import type { IPipelineRecipe } from '../../studio/pipeline/types';
 import { requestPdfImageCandidates } from '../../pdf/image-candidate-client';
 import type { WorkerPdfImageCandidate } from '../../../core/public/contracts';
 import { createZipBlob } from '../../utils/zip';
+import { showStudioPaywall } from '../../../app/react/studio-paywall';
 import type { StudioPageEditorHandle } from './StudioPageEditor';
 import { useStudioEditController } from './edit/use-studio-edit-controller';
 import type {
@@ -118,6 +120,7 @@ export function StudioInlinePanel({
     canvasSize,
 }: StudioInlinePanelProps) {
     const { runtime } = usePlatform();
+    const isPro = runtime.billing.getContext().plan === 'pro';
     const ui = useMemo(() => getStudioEditMessages(), []);
     const documents = useStudioStore((s: StudioState) => s.documents);
     const selection = useStudioStore((s: StudioState) => s.selection);
@@ -150,6 +153,7 @@ export function StudioInlinePanel({
     const [selectedImageIds, setSelectedImageIds] = useState<string[]>([]);
     const [imageScanPendingByPage, setImageScanPendingByPage] = useState<Record<string, boolean>>({});
     const [selectedPageIds, setSelectedPageIds] = useState<string[]>([]);
+    const [pendingDiscard, setPendingDiscard] = useState<(() => void) | null>(null);
     const objectUrlsRef = useRef<string[]>([]);
     const imageScanPendingRef = useRef<Record<string, boolean>>({});
 
@@ -212,6 +216,41 @@ export function StudioInlinePanel({
         return extractImageCandidates.filter((c) => set.has(c.globalId));
     }, [extractImageCandidates, selectedImageIds]);
 
+    const selectedImageIdsSet = useMemo(() => new Set(selectedImageIds), [selectedImageIds]);
+
+    const extractPagePreviews = useMemo<ExtractPagePreview[]>(() => {
+        return selectedConvertPages.map((p) => ({
+            pageId: p.pageId,
+            thumbnailUrl: p.thumbnailUrl,
+            candidates: (imageCandidatesByPage[p.pageId] ?? []).map((c) => ({
+                globalId: c.globalId,
+                xRatio: c.xRatio,
+                yRatio: c.yRatio,
+                widthRatio: c.widthRatio,
+                heightRatio: c.heightRatio,
+                pixelWidth: c.pixelWidth,
+                pixelHeight: c.pixelHeight,
+            })),
+            isScanning: !!imageScanPendingByPage[p.pageId],
+        }));
+    }, [selectedConvertPages, imageCandidatesByPage, imageScanPendingByPage]);
+
+    const handleToggleImage = useCallback((globalId: string) => {
+        setSelectedImageIds((cur) => {
+            const next = new Set(cur);
+            if (next.has(globalId)) { next.delete(globalId); } else { next.add(globalId); }
+            return Array.from(next);
+        });
+    }, []);
+
+    const handleSelectAllImages = useCallback(() => {
+        setSelectedImageIds(extractImageCandidates.map((c) => c.globalId));
+    }, [extractImageCandidates]);
+
+    const handleDeselectAllImages = useCallback(() => {
+        setSelectedImageIds([]);
+    }, []);
+
     // Extract-images scanning
     useEffect(() => {
         imageScanPendingRef.current = imageScanPendingByPage;
@@ -228,6 +267,11 @@ export function StudioInlinePanel({
                     const candidates = await requestPdfImageCandidates(runtime, page.fileId, page.pageIndex + 1, new AbortController().signal);
                     const mapped = candidates.map((c) => ({ ...c, fileId: page.fileId, pageId: page.pageId, pageIndex: page.pageIndex, globalId: `${page.pageId}::${c.id}` }));
                     setImageCandidatesByPage((cur) => ({ ...cur, [page.pageId]: mapped }));
+                    setSelectedImageIds((cur) => {
+                        const next = new Set(cur);
+                        for (const c of mapped) { next.add(c.globalId); }
+                        return Array.from(next);
+                    });
                 } catch {
                     // silent
                 } finally {
@@ -414,9 +458,12 @@ export function StudioInlinePanel({
     }, [ctrl.tool, ctrl.signMode, ctrl.annotateMode, editorRef, onSave]);
 
     const handleDiscardEdit = useCallback(() => {
-        if (hasPendingChanges && !window.confirm(ui.unsavedConfirm)) return;
+        if (hasPendingChanges) {
+            setPendingDiscard(() => onDiscard);
+            return;
+        }
         onDiscard();
-    }, [hasPendingChanges, onDiscard, ui.unsavedConfirm]);
+    }, [hasPendingChanges, onDiscard]);
 
     const handleUpdateWatermarkOptions = useCallback((next: typeof ctrl.watermarkOptions) => {
         ctrl.setWatermarkOptions(next);
@@ -613,8 +660,11 @@ export function StudioInlinePanel({
             <StudioExtractImagesSettingsPanel
                 settings={extractImagesSettings}
                 onChange={setExtractImagesSettings}
-                foundCount={extractImageCandidates.length}
-                selectedCount={selectedExtractImageCandidates.length}
+                pages={extractPagePreviews}
+                selectedImageIds={selectedImageIdsSet}
+                onToggleImage={handleToggleImage}
+                onSelectAll={handleSelectAllImages}
+                onDeselectAll={handleDeselectAllImages}
             />
         );
     }
@@ -665,10 +715,21 @@ export function StudioInlinePanel({
         } else if (convertStep === 'processing') {
             actionButtons = null;
         } else {
+            const isOcrDownloadBlocked = activeTool === 'ocr-pdf' && !isPro;
             actionButtons = (
                 <>
-                    <button type="button" className="studio-inline-panel-run-btn" onClick={() => { void downloadResults(); }}>
-                        Download
+                    <button
+                        type="button"
+                        className="studio-inline-panel-run-btn"
+                        onClick={() => {
+                            if (isOcrDownloadBlocked) {
+                                showStudioPaywall(runtime.telemetry, 'OCR is a Pro feature. Upgrade to download results.', import.meta.env.VITE_BILLING_URL);
+                            } else {
+                                void downloadResults();
+                            }
+                        }}
+                    >
+                        {isOcrDownloadBlocked ? 'Upgrade to Pro' : 'Download'}
                     </button>
                     <button type="button" className="studio-inline-panel-cancel-btn" onClick={() => { setConvertStep('config'); setOutputIds([]); setOcrResult(null); setJpgResults([]); setCompressResultSummary(null); }}>
                         Run again
@@ -734,7 +795,10 @@ export function StudioInlinePanel({
     const meta = toolMeta[activeTool] ?? { label: activeTool, icon: null };
 
     return (
-        <div className="studio-inline-panel animate-fade-in">
+        <div
+            className="studio-inline-panel animate-fade-in"
+            style={activeTool === 'extract-images' ? { width: 300 } : undefined}
+        >
             <div className="studio-inline-panel-bar">
                 {/* Header */}
                 <div className="studio-inline-panel-header">
@@ -777,6 +841,16 @@ export function StudioInlinePanel({
 
             {/* Result overlay */}
             {convertResultOverlay}
+
+            {pendingDiscard && (
+                <StudioDialog
+                    type="confirm"
+                    title={ui.unsavedConfirm}
+                    confirmLabel="Discard"
+                    onConfirm={() => { pendingDiscard(); setPendingDiscard(null); }}
+                    onCancel={() => setPendingDiscard(null)}
+                />
+            )}
         </div>
     );
 }

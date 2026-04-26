@@ -7,6 +7,7 @@ import { usePlatform } from '../../../app/react/platform-context';
 import { canAddDocumentToStudio } from '../../../app/platform/plan-limits';
 import { showStudioPaywall } from '../../../app/react/studio-paywall';
 import { useHistoryStore } from './store/history-store';
+import { StudioDialog } from './StudioDialog';
 
 interface ReorderItem {
     sourceFileId: string;
@@ -14,9 +15,15 @@ interface ReorderItem {
     rotation: number;
 }
 
+type DialogState =
+    | { kind: 'rename'; docId: string; current: string }
+    | { kind: 'export'; docId: string; current: string }
+    | null;
+
 export function StudioActionBar() {
     const { runtime } = usePlatform();
     const [deleteArmedDocId, setDeleteArmedDocId] = useState<string | null>(null);
+    const [dialog, setDialog] = useState<DialogState>(null);
     const createCheckpoint = useHistoryStore((s) => s.createCheckpoint);
     const addDocument = useStudioStore((s: StudioState) => s.addDocument);
     const removeDocument = useStudioStore((s: StudioState) => s.removeDocument);
@@ -41,9 +48,7 @@ export function StudioActionBar() {
     }, [activeDocument, deleteArmedDocId]);
 
     const exportDocuments = async (docs: StudioDoc[], fileName: string) => {
-        if (docs.length === 0) {
-            return;
-        }
+        if (docs.length === 0) return;
         const sequence: ReorderItem[] = [];
         docs.forEach((doc: StudioDoc) => {
             doc.pages.forEach((page: PageItem) => {
@@ -54,22 +59,17 @@ export function StudioActionBar() {
                 });
             });
         });
-        if (sequence.length === 0) {
-            return;
-        }
+        if (sequence.length === 0) return;
 
         const recipe: IPipelineRecipe = {
             inputs: Array.from(new Set(sequence.map((s) => s.sourceFileId))),
-            operations: [
-                { type: 'reorder', sequence }
-            ],
+            operations: [{ type: 'reorder', sequence }],
             outputName: fileName
         };
 
         try {
             const runner = new PipelineRunner(runtime.vfs);
             const result = await runner.execute(recipe);
-
             const pdfBuffer = new ArrayBuffer(result.buffer.byteLength);
             new Uint8Array(pdfBuffer).set(result.buffer);
             const blob = new Blob([pdfBuffer], { type: 'application/pdf' });
@@ -89,18 +89,8 @@ export function StudioActionBar() {
     };
 
     const handleExportActive = () => {
-        if (!activeDocument || activeDocument.pages.length === 0) {
-            return;
-        }
-
-        setTimeout(async () => {
-            const userInput = window.prompt('Enter file name for export:', activeDocument.name);
-            if (userInput === null) return;
-
-            const fileName = userInput.trim() || activeDocument.name;
-            const safeName = fileName.replace(/[<>:"/\\|?*]/g, '_').slice(0, 64) || 'Workspace';
-            await exportDocuments([activeDocument], `${safeName}.pdf`);
-        }, 50);
+        if (!activeDocument || activeDocument.pages.length === 0) return;
+        setDialog({ kind: 'export', docId: activeDocument.id, current: activeDocument.name });
     };
 
     const handleCreateSpace = () => {
@@ -135,20 +125,11 @@ export function StudioActionBar() {
 
     const handleRenameActiveSpace = () => {
         if (!activeDocument) return;
-        const userInput = window.prompt('Enter new name for the workspace:', activeDocument.name);
-        if (userInput !== null) {
-            const newName = userInput.trim();
-            if (newName) {
-                updateDocument(activeDocument.id, { name: newName });
-                void createCheckpoint(runtime.vfs, 'system', `Renamed to "${newName}"`);
-            }
-        }
+        setDialog({ kind: 'rename', docId: activeDocument.id, current: activeDocument.name });
     };
 
     const handleDeleteActiveSpace = () => {
-        if (!activeDocument) {
-            return;
-        }
+        if (!activeDocument) return;
         if (deleteArmedDocId !== activeDocument.id) {
             setDeleteArmedDocId(activeDocument.id);
             return;
@@ -160,26 +141,50 @@ export function StudioActionBar() {
         void createCheckpoint(runtime.vfs, 'system', 'Deleted Workspace');
     };
 
+    const handleDialogConfirm = (value: string) => {
+        if (!dialog) return;
+        if (dialog.kind === 'rename') {
+            updateDocument(dialog.docId, { name: value });
+            void createCheckpoint(runtime.vfs, 'system', `Renamed to "${value}"`);
+        } else if (dialog.kind === 'export') {
+            const safeName = value.replace(/[<>:"/\\|?*]/g, '_').slice(0, 64) || 'Workspace';
+            const doc = documents.find((d) => d.id === dialog.docId);
+            if (doc) void exportDocuments([doc], `${safeName}.pdf`);
+        }
+        setDialog(null);
+    };
+
     return (
-        <div className="studio-action-bar animate-slide-up">
-            <div className="studio-action-stack">
-                <button className="studio-space-btn" onClick={handleCreateSpace}>
-                    <LinearIcon name="tool" className="linear-icon" />
-                    <span>New Space</span>
-                </button>
-                <button className="studio-space-btn" onClick={handleRenameActiveSpace} disabled={!activeDocument}>
-                    <LinearIcon name="edit" className="linear-icon" />
-                    <span>Rename</span>
-                </button>
-                <button className="studio-space-btn studio-space-btn-danger" onClick={handleDeleteActiveSpace} disabled={!activeDocument}>
-                    <LinearIcon name="delete-pages" className="linear-icon" />
-                    <span>{deleteButtonCopy}</span>
-                </button>
-                <button className="export-btn" onClick={handleExportActive} disabled={!hasActivePages}>
-                    <LinearIcon name="download" className="linear-icon" />
-                    <span>Download Selected Area</span>
-                </button>
+        <>
+            {dialog && (
+                <StudioDialog
+                    type="prompt"
+                    title={dialog.kind === 'rename' ? 'Rename workspace' : 'File name for export'}
+                    defaultValue={dialog.current}
+                    onConfirm={handleDialogConfirm}
+                    onCancel={() => setDialog(null)}
+                />
+            )}
+            <div className="studio-action-bar animate-slide-up">
+                <div className="studio-action-stack">
+                    <button className="studio-space-btn" onClick={handleCreateSpace}>
+                        <LinearIcon name="tool" className="linear-icon" />
+                        <span>New Space</span>
+                    </button>
+                    <button className="studio-space-btn" onClick={handleRenameActiveSpace} disabled={!activeDocument}>
+                        <LinearIcon name="edit" className="linear-icon" />
+                        <span>Rename</span>
+                    </button>
+                    <button className="studio-space-btn studio-space-btn-danger" onClick={handleDeleteActiveSpace} disabled={!activeDocument}>
+                        <LinearIcon name="delete-pages" className="linear-icon" />
+                        <span>{deleteButtonCopy}</span>
+                    </button>
+                    <button className="export-btn" onClick={handleExportActive} disabled={!hasActivePages}>
+                        <LinearIcon name="download" className="linear-icon" />
+                        <span>Download Selected Area</span>
+                    </button>
+                </div>
             </div>
-        </div>
+        </>
     );
 }

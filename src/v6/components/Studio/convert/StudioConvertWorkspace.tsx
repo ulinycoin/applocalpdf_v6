@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { LinearIcon } from '../../icons/linear-icon';
 import { useStudioConvertController } from './use-studio-convert-controller';
 
@@ -123,17 +123,17 @@ export function StudioConvertWorkspace({ onClose, initialTool }: StudioConvertWo
           {/* Steps */}
           <div className="cvt-steps">
             {(['Configure', 'Processing', 'Result'] as const).map((label, i) => (
-              <>
-                <div key={label} className={`cvt-step${i === stepIndex ? ' active' : ''}${i < stepIndex ? ' done' : ''}`}>
+              <React.Fragment key={label}>
+                <div className={`cvt-step${i === stepIndex ? ' active' : ''}${i < stepIndex ? ' done' : ''}`}>
                   <div className="cvt-step-num">
                     {i < stepIndex ? '✓' : String(i + 1)}
                   </div>
                   {label}
                 </div>
                 {i < 2 && (
-                  <div key={`line-${i}`} className={`cvt-step-line${i < stepIndex ? ' done' : ''}`} />
+                  <div className={`cvt-step-line${i < stepIndex ? ' done' : ''}`} />
                 )}
-              </>
+              </React.Fragment>
             ))}
           </div>
 
@@ -328,59 +328,157 @@ export function StudioConvertWorkspace({ onClose, initialTool }: StudioConvertWo
 
               {/* Settings card — Extract Images */}
               {ctrl.activeTool === 'extract-images' && (
-                <div className="cvt-card">
-                  <div className="cvt-card-header">
-                    <div className="cvt-card-header-icon"><LinearIcon name="tool" size={12} /></div>
-                    Options
-                  </div>
-                  <div className="cvt-card-body">
-                    <div className="cvt-field-row">
-                      <div className="cvt-field">
-                        <div className="cvt-field-label">Format</div>
-                        <select
-                          className="cvt-select"
-                          value={ctrl.extractImagesSettings.format}
-                          onChange={(e) => ctrl.setExtractImagesSettings({ ...ctrl.extractImagesSettings, format: e.target.value as 'png' | 'jpeg' })}
-                        >
-                          <option value="png">PNG</option>
-                          <option value="jpeg">JPEG</option>
-                        </select>
-                      </div>
-                      <div className="cvt-field">
-                        <div className="cvt-field-label">Found / Selected</div>
-                        <div style={{ fontSize: 13, paddingTop: 6 }}>
-                          {ctrl.extractImageCandidates.length} / {ctrl.selectedExtractImageCandidates.length}
+                <>
+                  <div className="cvt-card">
+                    <div className="cvt-card-header">
+                      <div className="cvt-card-header-icon"><LinearIcon name="tool" size={12} /></div>
+                      Options
+                    </div>
+                    <div className="cvt-card-body">
+                      <div className="cvt-field-row">
+                        <div className="cvt-field">
+                          <div className="cvt-field-label">Format</div>
+                          <select
+                            className="cvt-select"
+                            value={ctrl.extractImagesSettings.format}
+                            onChange={(e) => ctrl.setExtractImagesSettings({ ...ctrl.extractImagesSettings, format: e.target.value as 'png' | 'jpeg' })}
+                          >
+                            <option value="png">PNG</option>
+                            <option value="jpeg">JPEG</option>
+                          </select>
                         </div>
+                        {ctrl.extractImagesSettings.format === 'jpeg' && (
+                          <div className="cvt-field">
+                            <div className="cvt-field-label">JPEG quality</div>
+                            <input
+                              type="number"
+                              className="cvt-select"
+                              min={30}
+                              max={100}
+                              value={Math.round(ctrl.extractImagesSettings.jpegQuality * 100)}
+                              onChange={(e) => {
+                                const next = Number(e.target.value);
+                                ctrl.setExtractImagesSettings({ ...ctrl.extractImagesSettings, jpegQuality: Math.max(0.3, Math.min(1, (Number.isFinite(next) ? next : 92) / 100)) });
+                              }}
+                            />
+                          </div>
+                        )}
                       </div>
-                    </div>
-                    <div className="cvt-toggle-row">
-                      <div>
-                        <div className="cvt-toggle-label">Include inline images</div>
+                      <div className="cvt-toggle-row">
+                        <div><div className="cvt-toggle-label">Include inline images</div></div>
+                        <div
+                          className={`cvt-toggle${ctrl.extractImagesSettings.includeInlineImages ? ' on' : ''}`}
+                          role="switch"
+                          aria-checked={ctrl.extractImagesSettings.includeInlineImages}
+                          tabIndex={0}
+                          onClick={() => ctrl.setExtractImagesSettings({ ...ctrl.extractImagesSettings, includeInlineImages: !ctrl.extractImagesSettings.includeInlineImages })}
+                          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') ctrl.setExtractImagesSettings({ ...ctrl.extractImagesSettings, includeInlineImages: !ctrl.extractImagesSettings.includeInlineImages }); }}
+                        />
                       </div>
-                      <div
-                        className={`cvt-toggle${ctrl.extractImagesSettings.includeInlineImages ? ' on' : ''}`}
-                        role="switch"
-                        aria-checked={ctrl.extractImagesSettings.includeInlineImages}
-                        tabIndex={0}
-                        onClick={() => ctrl.setExtractImagesSettings({ ...ctrl.extractImagesSettings, includeInlineImages: !ctrl.extractImagesSettings.includeInlineImages })}
-                        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') ctrl.setExtractImagesSettings({ ...ctrl.extractImagesSettings, includeInlineImages: !ctrl.extractImagesSettings.includeInlineImages }); }}
-                      />
-                    </div>
-                    <div className="cvt-toggle-row">
-                      <div>
-                        <div className="cvt-toggle-label">Deduplicate images</div>
+                      <div className="cvt-toggle-row">
+                        <div><div className="cvt-toggle-label">Deduplicate images</div></div>
+                        <div
+                          className={`cvt-toggle${ctrl.extractImagesSettings.dedupe ? ' on' : ''}`}
+                          role="switch"
+                          aria-checked={ctrl.extractImagesSettings.dedupe}
+                          tabIndex={0}
+                          onClick={() => ctrl.setExtractImagesSettings({ ...ctrl.extractImagesSettings, dedupe: !ctrl.extractImagesSettings.dedupe })}
+                          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') ctrl.setExtractImagesSettings({ ...ctrl.extractImagesSettings, dedupe: !ctrl.extractImagesSettings.dedupe }); }}
+                        />
                       </div>
-                      <div
-                        className={`cvt-toggle${ctrl.extractImagesSettings.dedupe ? ' on' : ''}`}
-                        role="switch"
-                        aria-checked={ctrl.extractImagesSettings.dedupe}
-                        tabIndex={0}
-                        onClick={() => ctrl.setExtractImagesSettings({ ...ctrl.extractImagesSettings, dedupe: !ctrl.extractImagesSettings.dedupe })}
-                        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') ctrl.setExtractImagesSettings({ ...ctrl.extractImagesSettings, dedupe: !ctrl.extractImagesSettings.dedupe }); }}
-                      />
                     </div>
                   </div>
-                </div>
+
+                  {/* Image preview card */}
+                  <div className="cvt-card">
+                    <div className="cvt-card-header">
+                      <div className="cvt-card-header-icon"><LinearIcon name="image" size={12} /></div>
+                      <span>Images found</span>
+                      <span style={{ marginLeft: 'auto', fontSize: 12, color: 'var(--text-muted)', fontWeight: 400 }}>
+                        {ctrl.selectedExtractImageCandidates.length} / {ctrl.extractImageCandidates.length} selected
+                      </span>
+                      {ctrl.extractImageCandidates.length > 0 && (
+                        <button
+                          type="button"
+                          onClick={
+                            ctrl.selectedExtractImageCandidates.length === ctrl.extractImageCandidates.length
+                              ? ctrl.clearImageCandidateSelection
+                              : ctrl.selectAllImageCandidates
+                          }
+                          style={{ fontSize: 12, color: 'var(--accent)', background: 'none', border: 'none', cursor: 'pointer', padding: '0 0 0 8px', flexShrink: 0 }}
+                        >
+                          {ctrl.selectedExtractImageCandidates.length === ctrl.extractImageCandidates.length ? 'Deselect all' : 'Select all'}
+                        </button>
+                      )}
+                    </div>
+                    <div className="cvt-card-body" style={{ padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+                      {ctrl.selectedPages.map((page) => {
+                        const candidates = ctrl.imageCandidatesByPage[page.pageId] ?? [];
+                        const isScanning = !!ctrl.imageScanPendingByPage[page.pageId];
+                        const selectedSet = new Set(ctrl.selectedImageIds);
+                        return (
+                          <div key={page.pageId}>
+                            <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                              Page {page.pageIndex + 1}
+                            </div>
+                            <div style={{ position: 'relative', display: 'inline-block', width: '100%' }}>
+                              {page.thumbnailUrl
+                                ? <img src={page.thumbnailUrl} alt="" draggable={false} style={{ display: 'block', width: '100%', height: 'auto', borderRadius: 6, border: '1px solid var(--border)' }} />
+                                : <div style={{ width: '100%', paddingBottom: '141%', background: 'var(--surface)', borderRadius: 6, border: '1px solid var(--border)' }} />
+                              }
+                              {isScanning && (
+                                <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255,255,255,0.6)', borderRadius: 6 }}>
+                                  <div className="cvt-spinner" />
+                                </div>
+                              )}
+                              {!isScanning && candidates.length === 0 && page.thumbnailUrl && (
+                                <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255,255,255,0.65)', borderRadius: 6 }}>
+                                  <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>No images found on this page</span>
+                                </div>
+                              )}
+                              {candidates.map((c) => {
+                                const isSel = selectedSet.has(c.globalId);
+                                return (
+                                  <button
+                                    key={c.globalId}
+                                    type="button"
+                                    title={`${c.pixelWidth}×${c.pixelHeight}px — click to ${isSel ? 'deselect' : 'select'}`}
+                                    onClick={() => ctrl.toggleImageCandidate(c.globalId)}
+                                    style={{
+                                      position: 'absolute',
+                                      left: `${c.xRatio * 100}%`,
+                                      top: `${c.yRatio * 100}%`,
+                                      width: `${c.widthRatio * 100}%`,
+                                      height: `${c.heightRatio * 100}%`,
+                                      background: isSel ? 'rgba(35,131,226,0.15)' : 'transparent',
+                                      border: `2px solid ${isSel ? '#2383e2' : 'rgba(35,131,226,0.35)'}`,
+                                      borderRadius: 3,
+                                      cursor: 'pointer',
+                                      padding: 0,
+                                      boxSizing: 'border-box',
+                                      transition: 'background 0.1s, border-color 0.1s',
+                                    }}
+                                    aria-pressed={isSel}
+                                  >
+                                    <span style={{
+                                      position: 'absolute', bottom: 2, right: 2,
+                                      fontSize: 9, lineHeight: 1,
+                                      background: isSel ? '#2383e2' : 'rgba(0,0,0,0.5)',
+                                      color: '#fff', borderRadius: 2, padding: '1px 3px',
+                                      pointerEvents: 'none', whiteSpace: 'nowrap',
+                                    }}>
+                                      {c.pixelWidth}×{c.pixelHeight}
+                                    </span>
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </>
               )}
 
               {/* Actions */}
@@ -493,10 +591,17 @@ export function StudioConvertWorkspace({ onClose, initialTool }: StudioConvertWo
                         <div className="cvt-output-name">{ctrl.ocrResult.fileName}</div>
                         <div className="cvt-output-meta">searchable PDF</div>
                       </div>
-                      <button type="button" className="cvt-btn-download" onClick={() => { void ctrl.downloadResults(); }}>
-                        <LinearIcon name="download" size={12} />
-                        Download
-                      </button>
+                      {ctrl.isPro ? (
+                        <button type="button" className="cvt-btn-download" onClick={() => { void ctrl.downloadResults(); }}>
+                          <LinearIcon name="download" size={12} />
+                          Download
+                        </button>
+                      ) : (
+                        <button type="button" className="cvt-btn-download" onClick={ctrl.showOcrPaywall}>
+                          <LinearIcon name="lock" size={12} />
+                          Upgrade to download
+                        </button>
+                      )}
                     </div>
                   ) : (
                     <div style={{ padding: '0 18px 18px' }}>
@@ -507,10 +612,20 @@ export function StudioConvertWorkspace({ onClose, initialTool }: StudioConvertWo
                         spellCheck={false}
                         placeholder="No text content available."
                       />
-                      <button type="button" className="cvt-btn-download" style={{ marginTop: 10 }} onClick={() => { void ctrl.downloadResults(); }}>
-                        <LinearIcon name="download" size={12} />
-                        Download
-                      </button>
+                      {ctrl.isPro ? (
+                        <button type="button" className="cvt-btn-download" style={{ marginTop: 10 }} onClick={() => { void ctrl.downloadResults(); }}>
+                          <LinearIcon name="download" size={12} />
+                          Download
+                        </button>
+                      ) : (
+                        <div className="cvt-ocr-upsell-banner">
+                          <span>OCR is a Pro feature — $3.99/mo</span>
+                          <button type="button" className="cvt-btn-download" onClick={ctrl.showOcrPaywall}>
+                            <LinearIcon name="lock" size={12} />
+                            Upgrade to Pro
+                          </button>
+                        </div>
+                      )}
                     </div>
                   )}
                   <div className="cvt-result-actions">
@@ -533,23 +648,68 @@ export function StudioConvertWorkspace({ onClose, initialTool }: StudioConvertWo
                     <div className="cvt-result-title">Done</div>
                     <div className="cvt-result-sub">{ctrl.jpgResults.length} file{ctrl.jpgResults.length !== 1 ? 's' : ''} ready</div>
                   </div>
-                  {ctrl.jpgResults.map((item) => (
-                    <div key={item.outputId} className="cvt-output-row">
-                      <div className="cvt-output-icon">
-                        {item.url
-                          ? <img src={item.url} alt={item.name} style={{ width: 34, height: 34, objectFit: 'cover', borderRadius: 4 }} />
-                          : <LinearIcon name="image" size={16} />}
-                      </div>
-                      <div>
-                        <div className="cvt-output-name">{item.name}</div>
-                      </div>
-                    </div>
-                  ))}
+                  {(() => {
+                    const isFreeExtract = ctrl.activeTool === 'extract-images' && !ctrl.isPro;
+                    const freeItem = ctrl.jpgResults[0];
+                    const lockedItems = isFreeExtract ? ctrl.jpgResults.slice(1) : [];
+                    const visibleItems = isFreeExtract ? (freeItem ? [freeItem] : []) : ctrl.jpgResults;
+                    return (
+                      <>
+                        {visibleItems.map((item) => (
+                          <div key={item.outputId} className="cvt-output-row">
+                            <div className="cvt-output-icon">
+                              {item.url
+                                ? <img src={item.url} alt={item.name} style={{ width: 34, height: 34, objectFit: 'cover', borderRadius: 4 }} />
+                                : <LinearIcon name="image" size={16} />}
+                            </div>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div className="cvt-output-name">{item.name}</div>
+                            </div>
+                            <button type="button" className="cvt-btn-download" onClick={() => { void ctrl.downloadSingleResult(item.outputId, item.name); }}>
+                              <LinearIcon name="download" size={12} />
+                              Download
+                            </button>
+                          </div>
+                        ))}
+                        {lockedItems.length > 0 && (
+                          <div style={{
+                            margin: '4px 18px 12px',
+                            padding: '14px 16px',
+                            background: 'var(--accent-dim)',
+                            border: '1px solid var(--accent)',
+                            borderRadius: 8,
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 12,
+                          }}>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', marginBottom: 2 }}>
+                                {lockedItems.length} more image{lockedItems.length !== 1 ? 's' : ''} found
+                              </div>
+                              <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                                Upgrade to Pro to download all {ctrl.jpgResults.length} images — $3.99/mo
+                              </div>
+                            </div>
+                            <button type="button" className="cvt-btn-primary" style={{ flexShrink: 0, whiteSpace: 'nowrap' }} onClick={ctrl.showExtractPaywall}>
+                              Upgrade to Pro
+                            </button>
+                          </div>
+                        )}
+                      </>
+                    );
+                  })()}
                   <div className="cvt-result-actions">
-                    <button type="button" className="cvt-btn-download" onClick={() => { void ctrl.downloadResults(); }} disabled={ctrl.outputIds.length === 0}>
-                      <LinearIcon name="download" size={12} />
-                      Download all
-                    </button>
+                    {ctrl.activeTool === 'extract-images' && !ctrl.isPro && ctrl.jpgResults.length > 1 ? (
+                      <button type="button" className="cvt-btn-download" onClick={ctrl.showExtractPaywall}>
+                        <LinearIcon name="download" size={12} />
+                        Download all ({ctrl.jpgResults.length})
+                      </button>
+                    ) : (
+                      <button type="button" className="cvt-btn-download" onClick={() => { void ctrl.downloadResults(); }} disabled={ctrl.outputIds.length === 0}>
+                        <LinearIcon name="download" size={12} />
+                        Download all
+                      </button>
+                    )}
                     <button type="button" className="cvt-btn-ghost" onClick={ctrl.resetWorkspace}>
                       <LinearIcon name="rotate" size={11} />
                       Run again

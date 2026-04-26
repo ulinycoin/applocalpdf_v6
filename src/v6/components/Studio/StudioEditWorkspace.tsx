@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { StudioDialog } from './StudioDialog';
 import { createPortal } from 'react-dom';
 import { flushSync } from 'react-dom';
 import { useStudioEditController } from './edit/use-studio-edit-controller';
@@ -33,6 +34,7 @@ export function StudioEditWorkspace({ onClose }: StudioEditWorkspaceProps = {}) 
     const [canvasSize, setCanvasSize] = useState<{ width: number; height: number }>({ width: 620, height: 840 });
     const [hasPendingDrawnSignature, setHasPendingDrawnSignature] = useState(false);
     const [hasPendingAnnotatePenDraft, setHasPendingAnnotatePenDraft] = useState(false);
+    const [pendingDiscard, setPendingDiscard] = useState<(() => void) | null>(null);
     const hasSidebarSettingsPanel = ctrl.tool !== null
         && ['text', 'forms', 'sign', 'protect', 'watermark', 'whiteout', 'annotate'].includes(ctrl.tool);
 
@@ -194,7 +196,11 @@ export function StudioEditWorkspace({ onClose }: StudioEditWorkspaceProps = {}) 
     }, [commitPendingAnnotatePenIfNeeded, commitPendingSignIfNeeded, ctrl.applyChanges]);
 
     const handleBackToCanvas = useCallback(() => {
-        if (ctrl.hasDirtyChanges && !window.confirm(ui.unsavedConfirm)) {
+        if (ctrl.hasDirtyChanges) {
+            setPendingDiscard(() => () => {
+                ctrl.clearEditSession();
+                if (onClose) { onClose(); } else { ctrl.navigate('/studio'); }
+            });
             return;
         }
         ctrl.clearEditSession();
@@ -467,6 +473,7 @@ export function StudioEditWorkspace({ onClose }: StudioEditWorkspaceProps = {}) 
                             : null;
 
     return (
+        <>
         <section className="studio-edit-shell" translate="no" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
             {/* Header Area */}
             <div className="studio-edit-meta">
@@ -615,7 +622,12 @@ export function StudioEditWorkspace({ onClose }: StudioEditWorkspaceProps = {}) 
                                         handleSave();
                                     }}
                                     onDiscard={() => {
-                                        if (ctrl.hasDirtyChanges && !window.confirm(ui.unsavedConfirm)) return;
+                                        if (ctrl.hasDirtyChanges) {
+                                            setPendingDiscard(() => () => {
+                                                if (onClose) { onClose(); } else { ctrl.navigate('/studio'); }
+                                            });
+                                            return;
+                                        }
                                         if (onClose) { onClose(); } else { ctrl.navigate('/studio'); }
                                     }}
                                 />
@@ -658,5 +670,15 @@ export function StudioEditWorkspace({ onClose }: StudioEditWorkspaceProps = {}) 
             )}
 
         </section>
+        {pendingDiscard && (
+            <StudioDialog
+                type="confirm"
+                title={ui.unsavedConfirm}
+                confirmLabel="Discard"
+                onConfirm={() => { pendingDiscard(); setPendingDiscard(null); }}
+                onCancel={() => setPendingDiscard(null)}
+            />
+        )}
+    </>
     );
 }

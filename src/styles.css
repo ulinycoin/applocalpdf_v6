@@ -2353,70 +2353,171 @@ textarea:focus-visible {
   top: 16px;
   right: 16px;
   z-index: 70;
-  display: grid;
-  gap: 0.5rem;
-  width: min(380px, calc(100vw - 2rem));
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: min(360px, calc(100vw - 2rem));
+  pointer-events: none;
 }
 
 .ux-toast-item {
-  border-radius: 12px;
-  padding: 0.72rem 0.88rem;
-  font-size: 0.86rem;
-  border: 1px solid rgba(183, 202, 219, 0.28);
-  background: rgba(21, 34, 46, 0.94);
-  color: #e1edf8;
-  box-shadow: 0 8px 24px rgba(9, 25, 17, 0.14);
+  pointer-events: auto;
+  position: relative;
+  overflow: hidden;
+  border-radius: 8px;
+  padding: 11px 36px 11px 14px;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.4;
+  background: var(--bg);
+  color: var(--text);
+  border: 1px solid var(--border);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.10);
+  animation: toast-in 0.18s ease;
 }
 
 .ux-toast-item.error {
-  border-color: rgba(255, 159, 143, 0.45);
-  background: rgba(94, 40, 33, 0.88);
-  color: #ffe3de;
+  background: #fef2f2;
+  border-color: #fca5a5;
+  color: #991b1b;
+}
+
+.ux-toast-close {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  border-radius: 4px;
+  font-size: 14px;
+  line-height: 1;
+  padding: 0;
+  transition: background 0.12s, color 0.12s;
+}
+.ux-toast-close:hover { background: var(--surface-hover); color: var(--text); }
+
+.ux-toast-progress {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  height: 2px;
+  background: var(--accent);
+  border-radius: 0 0 0 8px;
+  animation: toast-progress 5s linear forwards;
+}
+.ux-toast-item.error .ux-toast-progress { background: #ef4444; }
+
+@keyframes toast-in {
+  from { opacity: 0; transform: translateX(12px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes toast-progress {
+  from { width: 100%; }
+  to   { width: 0%; }
 }
 
 .ux-upsell-overlay {
   position: fixed;
   inset: 0;
-  z-index: 65;
+  z-index: 1200;
   display: grid;
   place-items: center;
-  background: rgba(3, 8, 13, 0.72);
-  padding: 1rem;
+  background: rgba(0, 0, 0, 0.3);
+  padding: 16px;
+  animation: toast-in 0.15s ease;
 }
 
 .ux-upsell-modal {
-  width: min(500px, 100%);
-  border-radius: 16px;
-  border: 1px solid rgba(183, 202, 219, 0.3);
-  background: rgba(18, 30, 41, 0.95);
-  box-shadow: 0 20px 48px rgba(7, 20, 14, 0.28);
-  padding: 1.15rem 1.15rem 1rem;
+  width: min(440px, 100%);
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  box-shadow: var(--shadow);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.ux-upsell-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.ux-upsell-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background: var(--accent-dim);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: 16px;
+}
+
+.ux-upsell-body {
+  flex: 1;
+  min-width: 0;
 }
 
 .ux-upsell-title {
+  margin: 0 0 4px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.ux-upsell-sub {
   margin: 0;
-  font-size: 1.08rem;
-  color: #edf4fa;
-}
-
-.ux-upsell-reason {
-  margin: 0.6rem 0 0;
-  color: #d4e2ee;
-  font-size: 0.9rem;
-}
-
-.ux-upsell-tool {
-  margin: 0.38rem 0 0;
+  font-size: 13px;
   color: var(--text-muted);
-  font-size: 0.8rem;
+  line-height: 1.5;
 }
 
 .ux-upsell-actions {
-  margin-top: 0.95rem;
   display: flex;
   justify-content: flex-end;
-  gap: 0.5rem;
+  gap: 8px;
 }
+
+.ux-upsell-btn-ghost {
+  min-height: 32px;
+  padding: 0 12px;
+  border-radius: 6px;
+  border: 1px solid var(--border-strong);
+  background: var(--bg);
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+}
+.ux-upsell-btn-ghost:hover { background: var(--surface-hover); color: var(--text); }
+
+.ux-upsell-btn-primary {
+  min-height: 32px;
+  padding: 0 14px;
+  border-radius: 6px;
+  border: 1px solid var(--accent);
+  background: var(--accent);
+  color: #fff;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s;
+}
+.ux-upsell-btn-primary:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
 
 .studio-shell-container {
   position: relative;
@@ -6744,6 +6845,20 @@ textarea:focus-visible {
 }
 .cvt-btn-download:hover { background: var(--accent-hover); }
 .cvt-btn-download:disabled { opacity: 0.45; cursor: not-allowed; }
+
+.cvt-ocr-upsell-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+  margin-top: 8px;
+  border-radius: 8px;
+  background: var(--accent-dim);
+  border: 1px solid var(--border);
+  font-size: 13px;
+  color: var(--text);
+}
 
 .cvt-result-actions {
   display: flex;

@@ -9,6 +9,7 @@ import { requestPdfImageCandidates } from '../../../pdf/image-candidate-client';
 import type { WorkerPdfImageCandidate } from '../../../../core/public/contracts';
 import { createZipBlob } from '../../../utils/zip';
 import { type PageItem, type StudioDocument, type StudioState, useStudioStore } from '../studio-store';
+import { showStudioPaywall } from '../../../../app/react/studio-paywall';
 import { useHistoryStore } from '../store/history-store';
 import type { StudioToolRouteState } from '../../../studio/navigation/studio-tool-context';
 
@@ -158,6 +159,7 @@ function maybePdfName(fileName: string): boolean {
 
 export function useStudioConvertController(initialToolOverride?: StudioConvertToolId) {
   const { runtime } = usePlatform();
+  const isPro = runtime.billing.getContext().plan === 'pro';
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -531,6 +533,11 @@ export function useStudioConvertController(initialToolOverride?: StudioConvertTo
             globalId: `${page.pageId}::${candidate.id}`,
           }));
           setImageCandidatesByPage((current) => ({ ...current, [page.pageId]: mapped }));
+          setSelectedImageIds((current) => {
+            const next = new Set(current);
+            for (const c of mapped) { next.add(c.globalId); }
+            return Array.from(next);
+          });
         } catch (scanError) {
           if (!abortController.signal.aborted) {
             setError(scanError instanceof Error ? scanError.message : 'Failed to scan PDF images.');
@@ -626,7 +633,7 @@ export function useStudioConvertController(initialToolOverride?: StudioConvertTo
       );
 
       if (result.type === 'TOOL_ACCESS_DENIED') {
-        setError(result.details ?? result.reason);
+        // Runner already emits UI_UPSELL_SHOWN — no need to call showStudioPaywall here
         setStep('config');
         return;
       }
@@ -701,6 +708,10 @@ export function useStudioConvertController(initialToolOverride?: StudioConvertTo
     selectedPages,
     targetPages,
   ]);
+
+  const downloadSingleResult = useCallback(async (outputId: string, name: string) => {
+    await downloadFileById(runtime, outputId, name);
+  }, [runtime]);
 
   const downloadResults = useCallback(async () => {
     const baseDocName = activeDocument?.name || 'converted';
@@ -806,5 +817,17 @@ export function useStudioConvertController(initialToolOverride?: StudioConvertTo
     resetWorkspace,
     navigateBack,
     formatBytes,
+    isPro,
+    downloadSingleResult,
+    showExtractPaywall: () => showStudioPaywall(
+      runtime.telemetry,
+      'Download all images requires Pro. Upgrade to unlock unlimited image extraction.',
+      import.meta.env.VITE_BILLING_URL,
+    ),
+    showOcrPaywall: () => showStudioPaywall(
+      runtime.telemetry,
+      'OCR is a Pro feature. Upgrade to download results.',
+      import.meta.env.VITE_BILLING_URL,
+    ),
   };
 }

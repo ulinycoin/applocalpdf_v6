@@ -42,6 +42,16 @@ function isUpsellEvent(event: RunnerTelemetryEvent): event is Extract<RunnerTele
   return event.type === 'UI_UPSELL_SHOWN';
 }
 
+const TOOL_UPSELL_MESSAGES: Record<string, string> = {
+  'ocr-pdf': 'OCR is a Pro feature',
+  'pdf-to-jpg': 'PDF to JPG is a Pro feature',
+  'extract-images': 'Download all images requires Pro',
+};
+
+function formatUpsellReason(toolId: string, rawReason: string): string {
+  return TOOL_UPSELL_MESSAGES[toolId] ?? rawReason;
+}
+
 export function UxFeedbackOverlay() {
   const { runtime } = usePlatform();
   const [toasts, setToasts] = useState<UiToastItem[]>([]);
@@ -85,7 +95,7 @@ export function UxFeedbackOverlay() {
         });
         setTimeout(() => {
           setToasts((current) => current.filter((item) => item.id !== toastId));
-        }, 3800);
+        }, 5000);
         return;
       }
       if (isUpsellEvent(event)) {
@@ -98,23 +108,37 @@ export function UxFeedbackOverlay() {
     <>
       <div className="ux-toast-stack">
         {toasts.map((toast) => (
-          <div key={toast.id} data-testid="ux-toast-item" className={`ux-toast-item ${toast.level === 'error' ? 'error' : ''}`}>
+          <div key={toast.id} data-testid="ux-toast-item" className={`ux-toast-item${toast.level === 'error' ? ' error' : ''}`}>
             {toast.message}
+            <button
+              type="button"
+              className="ux-toast-close"
+              aria-label="Dismiss"
+              onClick={() => setToasts((c) => c.filter((t) => t.id !== toast.id))}
+            >
+              ✕
+            </button>
+            <div className="ux-toast-progress" />
           </div>
         ))}
       </div>
 
       {upsell && (
-        <div className="ux-upsell-overlay">
-          <div className="ux-upsell-modal">
-            <h3 className="ux-upsell-title">{upsell.reason}</h3>
-            <p className="ux-upsell-sub">Unlock Pro for $3.99/mo — unlimited workspaces, unlimited pages.</p>
+        <div className="ux-upsell-overlay" role="presentation" onClick={() => setUpsell(null)}>
+          <div className="ux-upsell-modal" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
+            <div className="ux-upsell-header">
+              <div className="ux-upsell-icon">⚡</div>
+              <div className="ux-upsell-body">
+                <h3 className="ux-upsell-title">{formatUpsellReason(upsell.toolId, upsell.reason)}</h3>
+                <p className="ux-upsell-sub">Upgrade to Pro for $3.99/mo — unlimited image extraction, OCR, and more.</p>
+              </div>
+            </div>
             <div className="ux-upsell-actions">
-              <button className="btn-ghost" onClick={() => setUpsell(null)}>
+              <button className="ux-upsell-btn-ghost" onClick={() => setUpsell(null)}>
                 Not now
               </button>
               <button
-                className="btn-primary"
+                className="ux-upsell-btn-primary"
                 onClick={() => {
                   const checkoutUrl = import.meta.env.VITE_LS_CHECKOUT_URL_PRO_MONTHLY;
                   const destination = checkoutUrl ?? openBillingPlans(import.meta.env.VITE_BILLING_URL);

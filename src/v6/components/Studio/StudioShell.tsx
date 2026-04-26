@@ -15,6 +15,7 @@ import { StudioTimeline } from './branching/StudioTimeline';
 import type { StudioReturnContext, StudioToolRouteState } from '../../studio/navigation/studio-tool-context';
 import { getPdfJs, getPdfLib } from '../../services/pdf/pdf-loader';
 import { StudioInPlaceEditor } from './StudioInPlaceEditor';
+import { StudioDialog } from './StudioDialog';
 import { canAddDocumentToStudio, canCreateWorkspace, canUseDocumentWithPageCount } from '../../../app/platform/plan-limits';
 import { showStudioPaywall } from '../../../app/react/studio-paywall';
 import { useHistoryStore } from './store/history-store';
@@ -234,6 +235,8 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
     const createCheckpoint = useHistoryStore((s) => s.createCheckpoint);
     const isHistoryOpen = useStudioStore((s: StudioState) => s.isHistoryOpen);
     const setHistoryOpen = useStudioStore((s: StudioState) => s.setHistoryOpen);
+    const renamingDocId = useStudioStore((s: StudioState) => s.renamingDocId);
+    const setRenamingDocId = useStudioStore((s: StudioState) => s.setRenamingDocId);
     const selection = useStudioStore((s: StudioState) => s.selection);
     const setSelection = useStudioStore((s: StudioState) => s.setSelection);
     const setInteractionMode = useStudioStore((s: StudioState) => s.setInteractionMode);
@@ -241,6 +244,7 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
     const setActiveEditPageId = useStudioStore((s: StudioState) => s.setActiveEditPageId);
     const editSession = useStudioStore((s: StudioState) => s.editSession);
     const clearEditSession = useStudioStore((s: StudioState) => s.clearEditSession);
+    const updateDocument = useStudioStore((s: StudioState) => s.updateDocument);
     const activeDocument = useMemo(
         () => documents.find((doc) => doc.id === activeDocumentId) ?? null,
         [activeDocumentId, documents],
@@ -1151,6 +1155,23 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
                 </div>,
                 document.body
             )}
+            {renamingDocId && (() => {
+                const doc = documents.find((d) => d.id === renamingDocId);
+                if (!doc) return null;
+                return (
+                    <StudioDialog
+                        type="prompt"
+                        title="Rename workspace"
+                        defaultValue={doc.name}
+                        onConfirm={(value) => {
+                            updateDocument(renamingDocId, { name: value });
+                            void createCheckpoint(runtime.vfs, 'space_rename', `Renamed to ${value}`);
+                            setRenamingDocId(null);
+                        }}
+                        onCancel={() => setRenamingDocId(null)}
+                    />
+                );
+            })()}
         </div>
     );
 }
