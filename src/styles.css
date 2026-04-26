@@ -2669,6 +2669,29 @@ textarea:focus-visible {
   padding-bottom: 8px;
 }
 
+.studio-rail-plan-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin: 6px auto 0;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  width: fit-content;
+}
+.studio-rail-plan-badge--pro {
+  background: var(--accent);
+  color: #fff;
+}
+.studio-rail-plan-badge--free {
+  background: var(--surface);
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+}
+
 .studio-tool-rail-btn {
   display: flex;
   align-items: center;

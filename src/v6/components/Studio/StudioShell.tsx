@@ -1007,6 +1007,7 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
                     onNewSpace={handleNewSpace}
                     onHistoryToggle={handleHistoryToggle}
                     isHistoryOpen={isHistoryOpen}
+                    plan={runtime.billing.getContext().plan}
                 />
                 <div className="studio-shell-canvas">
                     <Stage

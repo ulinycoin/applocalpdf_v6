@@ -17,6 +17,7 @@ export interface StudioToolRailProps {
     onNewSpace?: () => void;
     onHistoryToggle?: () => void;
     isHistoryOpen?: boolean;
+    plan?: 'basic' | 'pro';
 }
 
 const EDIT_TOOLS: RailToolItem[] = [
@@ -76,6 +77,7 @@ export function StudioToolRail({
     onNewSpace,
     onHistoryToggle,
     isHistoryOpen,
+    plan,
 }: StudioToolRailProps): JSX.Element {
     return (
         <aside className="studio-tool-rail" aria-label="Studio tools">
@@ -133,6 +135,11 @@ export function StudioToolRail({
                     <LinearIcon name="history" size={20} />
                     <span>History</span>
                 </button>
+                {plan === 'pro' ? (
+                    <div className="studio-rail-plan-badge studio-rail-plan-badge--pro">Pro</div>
+                ) : (
+                    <div className="studio-rail-plan-badge studio-rail-plan-badge--free">Free</div>
+                )}
             </div>
         </aside>
     );
