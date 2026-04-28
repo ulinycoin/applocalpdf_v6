@@ -3,25 +3,37 @@ import MarketingLayout from '../layouts/MarketingLayout.astro';
 import { featurePages } from '../data/featurePages';
 import { getAppUrl } from '../utils/app-url';
 
-const title = 'Private PDF editor and local-first PDF tools | LocalPDF';
-const description = 'Private PDF editor for editing, merging, OCR, compressing, splitting, signing, and converting PDFs in a local-first workflow.';
+const title = 'Private PDF Editor — Edit, Merge, and OCR PDFs in Your Browser | LocalPDF';
+const description = 'Edit, merge, OCR, compress, split, and convert PDFs privately in your browser. Zero uploads, no server storage, works offline. Open LocalPDF — it\'s free.';
 const canonical = 'https://localpdf.online/';
-const image = 'https://localpdf.online/screenshots/v6-workspace-1.png';
-const imageAlt = 'LocalPDF workspace showing local PDF editing and document workflow tools';
+const image = 'https://localpdf.online/logos/localpdf-social-1200x630.png';
+const imageAlt = 'LocalPDF — private PDF editor that runs entirely in your browser';
 const appUrl = getAppUrl(undefined, { upload: '1' });
 
 const homepageFaqs = [
   {
-    question: 'What is LocalPDF?',
-    answer: 'LocalPDF is a privacy-first PDF editor and local-first PDF workspace for editing, merging, OCR, compression, signing, splitting, and conversion in the browser.',
+    question: 'Do I need to upload my PDF to use LocalPDF?',
+    answer: 'No. LocalPDF runs entirely in your browser. You open a file from your device, work on it, and download the result — nothing is uploaded to any server.',
   },
   {
-    question: 'Do I need to upload my PDF before I can start?',
-    answer: 'No. LocalPDF is built around local-first workflows, so core PDF jobs can start on the user device instead of requiring an upload-first handoff.',
+    question: 'Can I really drag pages between different PDFs?',
+    answer: 'Yes. Open two PDFs side by side in the canvas, select a page from one, and drag it into the other. The page is copied instantly — no extract-then-merge workflow required.',
   },
   {
-    question: 'Who is LocalPDF best for?',
-    answer: 'LocalPDF is a strong fit for contracts, invoices, internal records, and other sensitive PDFs where privacy and workflow clarity matter.',
+    question: 'Is LocalPDF really free? What\'s the catch?',
+    answer: 'All six core tools — edit PDF, merge PDF, OCR PDF, compress PDF, split PDF, and convert PDF — are completely free. There\'s a Pro plan that unlocks higher workspace limits for heavy users, but there\'s no trial expiration, no hidden limits on basic usage, and no credit card required to start.',
+  },
+  {
+    question: 'How is this different from Smallpdf or Adobe Acrobat?',
+    answer: 'Two key differences. First, LocalPDF keeps everything on your device — no uploads, no server storage, no privacy policies to trust. Second, LocalPDF uses a visual canvas where you can work with multiple documents side by side and drag pages between them, not a list of separate tool pages each requiring its own upload.',
+  },
+  {
+    question: 'Does LocalPDF work without internet?',
+    answer: 'Yes. After the initial page load, all processing runs locally in your browser via WebAssembly. You can edit, merge, OCR, compress, split, and convert PDFs on a plane, train, or anywhere with no internet connection.',
+  },
+  {
+    question: 'What browsers does LocalPDF support?',
+    answer: 'LocalPDF works in Chrome, Firefox, Safari, and Edge. All processing uses WebAssembly, so there\'s nothing to install. You can also install it as a Chrome app via the PWA prompt for quick access.',
   },
 ];
 
@@ -54,16 +66,13 @@ const websiteSchema = [
       priceCurrency: 'USD',
     },
     featureList: [
-      'Edit PDF locally',
+      'Edit PDF locally without uploading',
       'Merge PDF files in one workspace',
-      'Run OCR on scanned PDFs',
+      'Run OCR on scanned PDFs locally',
+      'Drag-and-drop pages between documents',
+      'Works offline without internet',
       'Compress, split, sign, and convert PDFs',
-      'Start core workflows without uploading the file first',
     ],
-    audience: {
-      '@type': 'Audience',
-      audienceType: 'Professionals handling sensitive PDF documents',
-    },
   },
   {
     '@context': 'https://schema.org',
@@ -79,30 +88,21 @@ const websiteSchema = [
   },
 ];
 
-const primaryFeatures = featurePages.filter((page) => [
-  'edit-pdf',
-  'merge-pdf',
-  'ocr-pdf',
-  'compress-pdf',
-  'split-pdf',
-  'convert-pdf',
-].includes(page.slug));
-
 const popularGuides = [
   {
     href: '/blog/how-to-merge-pdf-files',
     title: 'How to Merge PDF Files',
-    description: 'A practical guide to combining PDFs, keeping order under control, and exporting one clean file.',
+    description: 'Combine multiple PDFs into one document without uploading them anywhere.',
   },
   {
     href: '/blog/edit-text-in-pdf-guide',
-    title: 'How to Edit Text in PDF Files',
-    description: 'Learn when to replace text, cover sensitive sections, and handle direct PDF edits with more control.',
+    title: 'How to Edit Text in a PDF',
+    description: 'Edit PDF text directly — replace words, cover sensitive sections, and more.',
   },
   {
     href: '/blog/ocr-pdf-extract-text',
-    title: 'OCR PDF: Extract Text from Scanned Documents',
-    description: 'Turn scanned PDFs into searchable files and understand when OCR should be the next step in the workflow.',
+    title: 'OCR PDF: Extract Text from Scans',
+    description: 'Turn scanned PDFs into searchable documents — all locally, no upload required.',
   },
 ];
 ---
@@ -116,264 +116,194 @@ const popularGuides = [
   schema={websiteSchema}
 >
   <div class="page-shell">
+
+    <!-- HERO -->
     <section class="hero section">
       <div class="hero-copy">
-        <span class="eyebrow">Privacy-first PDF app</span>
-        <h1>Private PDF workflows that stay on your device</h1>
+        <span class="eyebrow">Private PDF editor — 100% local</span>
+        <h1>Private PDF Editor — Edit, Merge, and OCR PDFs in Your Browser</h1>
         <p class="hero-text">
-          LocalPDF is a private PDF editor and local-first PDF toolset for editing, merging,
-          OCR, compressing, splitting, signing, and converting PDFs without turning every
-          document into an upload-first workflow.
+          A full PDF workspace that runs entirely on your device. Edit text, merge documents,
+          run OCR on scans, compress, split, and convert — with zero uploads, no server storage,
+          and full offline support. Drag pages between documents visually, like paper on a desk.
         </p>
+        <div class="hero-price">Free to use — no account required</div>
         <div class="cta-row">
-          <a class="btn-primary" href={appUrl}>Upload PDF — it stays on your device</a>
-          <a class="btn-secondary" href="/security">See How Local Processing Works</a>
+          <a href={appUrl} class="btn-primary">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            Open LocalPDF — it's free
+          </a>
+          <a href="#how-it-works" class="btn-secondary">How it works</a>
         </div>
-        <div class="hero-notes">
-          <span>Local-first handling for sensitive PDF files</span>
-          <span>One workspace for editing, merging, OCR, and conversion</span>
-          <span>Clear path from secure PDF task to finished result</span>
+        <div class="hero-trust">
+          <span class="tag">0 bytes uploaded</span>
+          <span class="tag">Works offline</span>
+          <span class="tag">No account needed</span>
+          <span class="tag">Used by legal, finance &amp; HR</span>
         </div>
       </div>
 
       <div class="hero-panel">
-        <div class="panel-top">
-          <span>Workspace</span>
-          <strong>LocalPDF</strong>
+        <div class="panel-bar">
+          <div class="bar-dots">
+            <div class="bar-dot r"></div>
+            <div class="bar-dot y"></div>
+            <div class="bar-dot g"></div>
+          </div>
+          <span class="bar-label">Studio — contract_draft.pdf</span>
         </div>
-        <div class="panel-body">
-          <div class="metric-row">
-            <div>
-              <small>Primary jobs</small>
-              <strong>Edit, Merge, OCR, Convert</strong>
+        <div class="canvas-area">
+          <div class="doc-card doc1">
+            <div class="doc-head">
+              <div class="doc-dot"></div>
+              contract_draft.pdf
+              <span class="doc-pages">6 pages</span>
             </div>
-            <div>
-              <small>Why it exists</small>
-              <strong>Keep PDF work close to the file</strong>
+            <div class="doc-pages-row">
+              <div class="page-thumb"><div class="line" style="width:85%"></div><div class="line"></div><div class="line img-line"></div><div class="line" style="width:70%"></div><div class="page-num">1</div></div>
+              <div class="page-thumb page-selected"><div class="line" style="width:70%"></div><div class="line img-line" style="height:30px"></div><div class="line" style="width:50%"></div><div class="page-num">3</div></div>
+              <div class="page-thumb"><div class="line" style="width:60%"></div><div class="line"></div><div class="line" style="width:80%"></div><div class="page-num">5</div></div>
             </div>
           </div>
-          <div class="app-screenshot-wrapper">
-            <img 
-              src="/screenshots/v6-workspace-1.png" 
-              alt="LocalPDF Studio Workspace V6" 
-              class="app-screenshot"
-              loading="eager"
-              decoding="async"
-              width="1800"
-              height="1125"
-            />
+          <div class="drag-arrow">↕</div>
+          <div class="doc-card doc2">
+            <div class="doc-head">
+              <div class="doc-dot doc-dot-accent"></div>
+              invoice_march.pdf
+              <span class="doc-pages">2 pages</span>
+            </div>
+            <div class="doc-pages-row">
+              <div class="page-thumb"><div class="line" style="width:60%"></div><div class="line" style="width:80%"></div><div class="line img-line" style="background:#dce8dc;"></div><div class="page-num">1</div></div>
+              <div class="page-thumb page-drop"><div class="drop-plus">+</div><div class="page-num drop-label">drop</div></div>
+            </div>
           </div>
-          <p class="panel-caption">Studio keeps document work in one local-first workspace instead of splitting it across utility pages.</p>
+        </div>
+        <div class="canvas-caption">
+          Drag pages between documents visually — no other PDF tool works this way.
         </div>
       </div>
     </section>
 
-    <section class="section trust-strip">
-      <div class="trust-item">
-        <strong>0 bytes uploaded</strong>
-        <p>Built for PDF jobs where documents need to stay close to the user. Local handling guarantees 100% data residency.</p>
+    <!-- STATS -->
+    <div class="section stats-section" role="region" aria-label="Key numbers">
+      <div class="stat">
+        <strong>0 bytes</strong>
+        <p>uploaded to any server — everything runs in your browser</p>
       </div>
-      <div class="trust-item">
-        <strong>&lt; 50ms action delay</strong>
-        <p>Open the app and continue the job instantly without bouncing across utility pages or waiting for network roundtrips.</p>
+      <div class="stat">
+        <strong>6 tools</strong>
+        <p>edit, merge, OCR, compress, split, convert — all in one workspace</p>
       </div>
-      <div class="trust-item">
-        <strong>Local WebAssembly</strong>
-        <p>Powered by local WASM engines, keeping files private by default because trust matters before the first click.</p>
+      <div class="stat">
+        <strong>Offline</strong>
+        <p>works without internet — on a plane, train, anywhere</p>
       </div>
-    </section>
+      <div class="stat">
+        <strong>&lt; 50ms</strong>
+        <p>action latency — no waiting for servers, instant response</p>
+      </div>
+    </div>
 
-    <section class="section factual-strip">
-      <div class="factual-copy">
-        <span class="eyebrow">Why people choose LocalPDF</span>
-        <h2 class="section-title">A clearer way to handle sensitive PDF work</h2>
-        <p class="section-intro">
-          LocalPDF is a privacy-first PDF editor built for local-first document work in the browser.
-          Core workflows can start on the user device, which makes the product a better fit for contracts,
-          invoices, internal records, and other sensitive PDFs.
-        </p>
-      </div>
-      <div class="factual-list">
-        <div class="fact-card">
-          <strong>Privacy-first PDF editor</strong>
-          <p>LocalPDF is positioned for sensitive PDF workflows where upload-first handling creates unnecessary friction or exposure.</p>
-        </div>
-        <div class="fact-card">
-          <strong>Local-first browser workflow</strong>
-          <p>Core jobs are designed to begin on the user device instead of requiring a remote processing queue before work can start.</p>
-        </div>
-        <div class="fact-card">
-          <strong>Best fit for sensitive files</strong>
-          <p>LocalPDF is especially useful for contracts, invoices, internal records, and other PDFs that benefit from local handling.</p>
-        </div>
-      </div>
-    </section>
-
-    <section class="section decision-strip">
-      <div class="decision-copy">
-        <h2 class="section-title">When LocalPDF is the better fit</h2>
-        <p class="section-intro">
-          LocalPDF is a better fit when you need a secure PDF editor, an offline-feeling browser workflow,
-          or PDF tools without upload pressure before the job can even start.
-        </p>
-      </div>
-      <div class="decision-box">
-        <strong>Use LocalPDF when</strong>
-        <ul class="bullet-list">
-          <li>You want one PDF workspace instead of many disconnected utility pages</li>
-          <li>The document is internal, sensitive, or operationally important</li>
-          <li>The task is editing, merging, OCR, splitting, signing, compression, or conversion without an upload-first handoff</li>
-        </ul>
-      </div>
-    </section>
-
+    <!-- PAIN / RELIEF -->
     <section class="section">
-      <h2 class="section-title">Core workflows inside the app</h2>
+      <span class="eyebrow">Before and after</span>
+      <h2 class="section-title">The old way vs the LocalPDF way</h2>
       <p class="section-intro">
-        These are the main PDF jobs people come to LocalPDF to finish.
+        If you've ever needed to move a page between PDFs or just wanted to edit a document
+        without uploading it somewhere — here's how the experience changes.
       </p>
-      <div class="card-grid feature-grid">
-        {primaryFeatures.map((feature) => (
-          <a class="feature-card" href={`/features/${feature.slug}`}>
-            <span class="feature-label">{feature.eyebrow}</span>
-            <h3>{feature.title}</h3>
-            <p>{feature.metaDescription}</p>
-          </a>
-        ))}
-      </div>
-    </section>
-
-    <section class="section split-layout">
-      <div>
-      <h2 class="section-title">Why local processing changes the decision</h2>
-      <p class="section-intro">
-          Local processing matters most when the document is sensitive, operational, or simply too
-          important for an upload-first flow. The value is practical: a more private PDF workflow,
-          less waiting, and a faster path to the result.
-        </p>
-      </div>
-      <div class="callout-list">
-        <div class="callout">
-          <strong>Less exposure by default</strong>
-          <p>Keeping the first step local is easier to justify for contracts, scans, invoices, and internal files.</p>
-        </div>
-        <div class="callout">
-          <strong>Less friction before action</strong>
-          <p>Open the app, load the document, finish the job, and export the result without extra waiting loops.</p>
-        </div>
-        <div class="callout">
-          <strong>Less route sprawl</strong>
-          <p>Core workflows are easy to understand, compare, and open without digging through dozens of lookalike tool pages.</p>
-        </div>
-      </div>
-    </section>
-
-    <section class="section">
-      <h2 class="section-title">What LocalPDF is built for</h2>
-      <div class="card-grid">
-        <div class="card">
-          <h3>Sensitive internal documents</h3>
-          <p>Contracts, invoices, records, and drafts that users do not want to treat as disposable uploads.</p>
-        </div>
-        <div class="card">
-          <h3>Fast operational PDF work</h3>
-          <p>Merging, splitting, compressing, and preparing files without waiting for remote processing loops.</p>
-        </div>
-        <div class="card">
-          <h3>One product surface</h3>
-          <p>A PDF app that feels like a workspace, not a list of unrelated online tools.</p>
-        </div>
-      </div>
-    </section>
-
-    <section class="section">
-      <h2 class="section-title">A better fit for sensitive and practical PDF work</h2>
-      <div class="card-grid comparison-grid">
-        <div class="card">
-          <h3>What you get</h3>
-          <ul class="bullet-list">
-            <li>A PDF app built around core document workflows</li>
-            <li>A privacy-first product for users who want processing closer to the file</li>
-            <li>Clear routes into editing, merging, OCR, compression, signing, splitting, and conversion</li>
+      <div class="split-2">
+        <div class="pain-card">
+          <h3>With online PDF tools</h3>
+          <ul>
+            <li>Upload the file to a remote server</li>
+            <li>Use a separate page for each operation</li>
+            <li>Extract pages with one tool, merge with another</li>
+            <li>Wait for every upload and download</li>
+            <li>Accept whatever their privacy policy says</li>
+            <li>Create an account to do more than one thing</li>
           </ul>
         </div>
-        <div class="card">
-          <h3>What you avoid</h3>
-          <ul class="bullet-list">
-            <li>No maze of disconnected one-purpose tool pages</li>
-            <li>No privacy messaging without a usable product behind it</li>
-            <li>No assumption that every file should be uploaded first</li>
-          </ul>
-        </div>
-        <div class="card">
-          <h3>Why people choose it</h3>
-          <ul class="bullet-list">
-            <li>The app is central to the experience</li>
-            <li>The trust story is concrete and easy to verify</li>
-            <li>The next step is clear before you have to commit</li>
+        <div class="relief-card">
+          <h3>With LocalPDF</h3>
+          <ul>
+            <li>Open a file from your device — zero upload</li>
+            <li>All tools in one canvas, switch freely</li>
+            <li>Drag pages between documents directly</li>
+            <li>Instant response, no network roundtrips</li>
+            <li>Nothing leaves your device, ever</li>
+            <li>No account, no signup, no subscription</li>
           </ul>
         </div>
       </div>
     </section>
 
+    <!-- HOW IT WORKS -->
+    <section id="how-it-works" class="section">
+      <span class="eyebrow">How it works</span>
+      <h2 class="section-title">Open, work, export — in three steps</h2>
+      <p class="section-intro">No accounts, no uploads, no servers. Just a workspace that works the way you expect.</p>
+      <div class="steps-grid">
+        <div class="step">
+          <div class="step-num">1</div>
+          <h3>Open a PDF</h3>
+          <p>Drag any PDF into the Studio or open it from your device. The file stays in your browser's memory — zero bytes sent anywhere. Works offline too.</p>
+        </div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <h3>Work visually</h3>
+          <p><a href="/features/edit-pdf">Edit text</a>, <a href="/features/merge-pdf">merge documents</a>, <a href="/features/ocr-pdf">run OCR</a>, reorder pages by dragging, or move pages between open PDFs — all on the canvas.</p>
+        </div>
+        <div class="step">
+          <div class="step-num">3</div>
+          <h3>Export the result</h3>
+          <p>Download the finished PDF. No cleanup, no accounts to delete, no files left on someone else's server.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- FEATURES -->
     <section class="section">
-      <h2 class="section-title">Compare LocalPDF or choose the right use case</h2>
-      <p class="section-intro">
-        If trust, privacy, and workflow fit are part of the decision, start with a comparison or an industry-specific page.
-      </p>
-      <div class="card-grid feature-grid">
-        <a class="feature-card" href="/compare/localpdf-vs-smallpdf">
-          <span class="feature-label">Compare</span>
-          <h3>LocalPDF vs Smallpdf</h3>
-          <p>Compare privacy-first local workflows against a broad upload-first online PDF suite.</p>
+      <span class="eyebrow">Core tools</span>
+      <h2 class="section-title">The most in-demand PDF tools</h2>
+      <p class="section-intro">Six most-used tools, all in one workspace. Switch between them without leaving the document.</p>
+      <div class="feat-grid">
+        <a href="/features/edit-pdf" class="feat-card">
+          <div class="feat-icon">✎</div>
+          <div><h3>Edit PDF</h3><p>Edit text and images directly on the page</p></div>
         </a>
-        <a class="feature-card" href="/compare/localpdf-vs-ilovepdf">
-          <span class="feature-label">Compare</span>
-          <h3>LocalPDF vs iLovePDF</h3>
-          <p>See which product fits sensitive contracts, invoices, and internal PDF workflows better.</p>
+        <a href="/features/merge-pdf" class="feat-card">
+          <div class="feat-icon">⊞</div>
+          <div><h3>Merge PDF</h3><p>Combine documents by dragging pages together</p></div>
         </a>
-        <a class="feature-card" href="/private-pdf-editor">
-          <span class="feature-label">Category</span>
-          <h3>Private PDF editor</h3>
-          <p>Category page for users searching for a privacy-first PDF editor for sensitive document work.</p>
+        <a href="/features/ocr-pdf" class="feat-card">
+          <div class="feat-icon">◎</div>
+          <div><h3>OCR PDF</h3><p>Extract text from scanned documents, local processing</p></div>
         </a>
-        <a class="feature-card" href="/pdf-tools-without-upload">
-          <span class="feature-label">Category</span>
-          <h3>PDF tools without upload</h3>
-          <p>Explain why local-first browser workflows matter when upload-first handling feels like the wrong default.</p>
+        <a href="/features/compress-pdf" class="feat-card">
+          <div class="feat-icon">▼</div>
+          <div><h3>Compress PDF</h3><p>Reduce file size without uploading to a server</p></div>
         </a>
-        <a class="feature-card" href="/use-cases/lawyers">
-          <span class="feature-label">Use case</span>
-          <h3>For lawyers</h3>
-          <p>Private PDF workflows for contracts, exhibits, internal review copies, and legal document handling.</p>
+        <a href="/features/split-pdf" class="feat-card">
+          <div class="feat-icon">⎔</div>
+          <div><h3>Split PDF</h3><p>Extract or remove pages from any document</p></div>
         </a>
-        <a class="feature-card" href="/use-cases/accountants">
-          <span class="feature-label">Use case</span>
-          <h3>For accountants</h3>
-          <p>Local-first PDF work for invoices, receipts, month-end packets, and finance document preparation.</p>
-        </a>
-        <a class="feature-card" href="/use-cases/hr-sensitive-documents">
-          <span class="feature-label">Use case</span>
-          <h3>For HR teams</h3>
-          <p>Private PDF workflows for offer letters, employee forms, signed records, and sensitive internal HR files.</p>
-        </a>
-        <a class="feature-card" href="/use-cases/internal-operations">
-          <span class="feature-label">Use case</span>
-          <h3>For internal operations</h3>
-          <p>Local-first PDF handling for internal packets, admin records, policy documents, and repeat operational workflows.</p>
+        <a href="/features/convert-pdf" class="feat-card">
+          <div class="feat-icon">⇄</div>
+          <div><h3>Convert PDF</h3><p>PDF to JPG and other format conversions</p></div>
         </a>
       </div>
     </section>
 
+    <!-- BLOG GUIDES -->
     <section class="section">
-      <h2 class="section-title">Popular guides before you open the app</h2>
-      <p class="section-intro">
-        Start with a guide if you want to compare approaches first, then move into LocalPDF when the workflow is clear.
-      </p>
-      <div class="card-grid feature-grid">
+      <span class="eyebrow">Quick guides</span>
+      <h2 class="section-title">How to edit, merge, and OCR PDFs — privately</h2>
+      <p class="section-intro">Real workflows that make the most of local-first PDF processing.</p>
+      <div class="blog-strip">
         {popularGuides.map((guide) => (
-          <a class="feature-card" href={guide.href}>
-            <span class="feature-label">Guide</span>
+          <a href={guide.href} class="blog-card">
+            <div class="blog-label">Guide</div>
             <h3>{guide.title}</h3>
             <p>{guide.description}</p>
           </a>
@@ -381,349 +311,671 @@ const popularGuides = [
       </div>
     </section>
 
-    <section class="section faq-preview">
-      <div>
-        <span class="eyebrow">Trust and clarity</span>
-        <h2 class="section-title">Questions users ask before opening the app</h2>
-      </div>
-      <div class="faq-list">
-        <div class="faq-item">
-          <strong>Do I have to upload my PDF first?</strong>
-          <p>No. LocalPDF is built around local-first handling for practical PDF work.</p>
+    <!-- COMPARISON -->
+    <section class="section">
+      <span class="eyebrow">Why LocalPDF</span>
+      <h2 class="section-title">Local-first vs upload-first PDF tools</h2>
+      <p class="section-intro">The difference is simple: your files never leave your device. Here's what that means in practice.</p>
+      <div class="comp-grid">
+        <div class="comp-card comp-accent">
+          <h3>LocalPDF</h3>
+          <ul>
+            <li>Files stay in your browser</li>
+            <li>Drag-and-drop between documents</li>
+            <li>One workspace for everything</li>
+            <li>Works offline</li>
+            <li>No account required</li>
+            <li>Zero bytes sent to servers</li>
+          </ul>
         </div>
-        <div class="faq-item">
-          <strong>What jobs does LocalPDF actually cover?</strong>
-          <p>Edit, merge, OCR, compress, split, sign, and conversion workflows are the current core jobs.</p>
+        <div class="comp-card comp-cross">
+          <h3>Smallpdf / iLovePDF / Adobe</h3>
+          <ul>
+            <li>Files uploaded to remote servers</li>
+            <li>One tool per page, no workspace</li>
+            <li>Separate page for each operation</li>
+            <li>Requires internet connection</li>
+            <li>Account upsells everywhere</li>
+            <li>Privacy depends on a policy page</li>
+          </ul>
         </div>
-        <div class="faq-item">
-          <strong>Where can I read how it works?</strong>
-          <p>Start with Security and FAQ. They explain how LocalPDF handles local processing and privacy in practical terms.</p>
+        <div class="comp-card">
+          <h3>Best for</h3>
+          <ul>
+            <li>Contracts and legal documents</li>
+            <li>Invoices and financial records</li>
+            <li>HR files and offer letters</li>
+            <li>Sensitive operational PDFs</li>
+            <li>Offline work on the go</li>
+            <li>Anyone who values privacy</li>
+          </ul>
         </div>
       </div>
     </section>
 
-    <section class="section final-band">
-      <div>
-        <span class="eyebrow">Next step</span>
-        <h2 class="section-title">Open the app, then judge the workflow directly</h2>
-        <p class="section-intro">
-          If LocalPDF is the right fit, the value is already clear: practical PDF work, a faster path
-          to the result, and local-first handling for important documents.
-        </p>
-      </div>
-      <div class="cta-row">
-        <a class="btn-primary" href={appUrl}>Open LocalPDF</a>
-        <a class="btn-secondary" href="/faq">Read FAQ</a>
+    <!-- FAQ -->
+    <section class="section">
+      <span class="eyebrow">FAQ</span>
+      <h2 class="section-title">Common questions about private PDF editing</h2>
+      <div class="faq-grid">
+        {homepageFaqs.map((faq) => (
+          <div class="faq-item">
+            <strong>{faq.question}</strong>
+            <p>{faq.answer}</p>
+          </div>
+        ))}
       </div>
     </section>
+
+    <!-- FINAL CTA -->
+    <section class="section final-cta">
+      <h2>Try the PDF workspace that keeps your files private</h2>
+      <p class="section-intro">No signup, no upload, no commitment. Just a PDF tool that works the way it should.</p>
+      <div class="cta-row cta-center">
+        <a href={appUrl} class="btn-primary">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          Open LocalPDF — it's free
+        </a>
+        <a href="/faq" class="btn-secondary">Read FAQ</a>
+      </div>
+    </section>
+
   </div>
-
 </MarketingLayout>
 
 <style>
+  /* ── Hero ─────────────────────────────────── */
   .hero {
     display: grid;
     grid-template-columns: 1.1fr 0.9fr;
-    gap: 24px;
-    align-items: stretch;
-    margin-top: 12px;
+    gap: 28px;
+    align-items: center;
   }
 
   .hero-copy {
     display: flex;
     flex-direction: column;
-    justify-content: center;
-    gap: 18px;
-  }
-
-  .hero h1 {
-    font-size: clamp(2.8rem, 5.8vw, 5rem);
-    max-width: 9ch;
-    line-height: 0.92;
-  }
-
-  .hero-text {
-    max-width: 700px;
-    font-size: 1.08rem;
-  }
-
-  .hero-notes {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
-    margin-top: 4px;
-  }
-
-  .hero-notes span {
-    display: inline-flex;
-    align-items: center;
-    min-height: 36px;
-    padding: 0 14px;
-    border-radius: 999px;
-    background: rgba(217, 235, 225, 0.85);
-    color: #24353f;
-    font-size: 0.9rem;
-    font-weight: 700;
-  }
-
-  .hero-panel {
-    display: flex;
-    flex-direction: column;
-    border: 1px solid var(--line);
-    border-radius: 30px;
-    background: linear-gradient(180deg, rgba(255, 253, 249, 0.96), rgba(247, 244, 239, 0.8));
-    box-shadow: var(--shadow);
-    overflow: hidden;
-  }
-
-  .panel-top {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 18px 20px;
-    border-bottom: 1px solid var(--line);
-    font-size: 0.92rem;
-    color: #536674;
-  }
-
-  .panel-body {
-    padding: 20px;
-    display: grid;
-    gap: 18px;
-  }
-
-  .panel-caption {
-    font-size: 0.96rem;
-    color: #536674;
-  }
-
-  .metric-row {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 12px;
-  }
-
-  .metric-row div {
-    padding: 14px;
-    border-radius: 18px;
-    background: rgba(217, 235, 225, 0.5);
-  }
-
-  .metric-row small {
-    display: block;
-    margin-bottom: 8px;
-    color: #536674;
-  }
-
-  .metric-row strong {
-    color: var(--text);
-  }
-
-
-  .app-screenshot-wrapper {
-    margin-top: 4px;
-    border-radius: 12px;
-    overflow: hidden;
-    border: 1px solid rgba(24, 32, 40, 0.08);
-    box-shadow: 0 12px 32px rgba(26, 34, 39, 0.08);
-    background: #fff;
-    display: flex;
-    justify-content: center;
-    align-items: flex-start;
-  }
-
-  .app-screenshot {
-    width: 100%;
-    height: auto;
-    object-fit: cover;
-    object-position: top;
-    display: block;
-  }
-
-  .trust-strip {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 16px;
   }
 
-  .trust-item {
-    padding: 10px 8px;
+  .hero-copy h1 {
+    font-size: clamp(2.2rem, 4.5vw, 3.8rem);
+    line-height: 1.05;
+    max-width: 18ch;
   }
 
-  .trust-item strong {
-    display: block;
-    margin-bottom: 8px;
-    font-size: 1rem;
-  }
-
-  .feature-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .factual-strip {
-    display: grid;
-    grid-template-columns: 0.95fr 1.05fr;
-    gap: 20px;
-    align-items: start;
-  }
-
-  .factual-list {
-    display: grid;
-    gap: 14px;
-  }
-
-  .fact-card {
-    padding: 18px 20px;
-    border: 1px solid var(--line);
-    border-radius: 22px;
-    background: var(--surface);
-  }
-
-  .fact-card strong {
-    display: block;
-    margin-bottom: 8px;
+  .hero-text {
     font-size: 1.05rem;
+    max-width: 520px;
+    margin: 0;
   }
 
-  .decision-strip {
-    display: grid;
-    grid-template-columns: 1fr 0.9fr;
-    gap: 20px;
-    align-items: start;
+  .hero-price {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 14px;
+    border-radius: 6px;
+    background: rgba(222, 122, 45, 0.1);
+    border: 1px solid rgba(222, 122, 45, 0.25);
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--accent);
+    width: fit-content;
   }
 
-  .decision-box {
-    padding: 22px;
-    border: 1px solid var(--line);
-    border-radius: 24px;
-    background: linear-gradient(180deg, rgba(243, 201, 146, 0.24), rgba(255, 253, 249, 0.95));
-  }
-
-  .decision-box strong {
-    display: block;
-    margin-bottom: 12px;
-    font-size: 1.05rem;
-  }
-
-  .feature-card {
-    display: block;
-    padding: 22px;
-    border: 1px solid var(--line);
-    border-radius: 24px;
-    background: var(--surface);
-    text-decoration: none;
-    box-shadow: 0 10px 24px rgba(26, 34, 39, 0.04);
-  }
-
-  .feature-card:hover,
-  .feature-card:focus-visible {
-    border-color: rgba(20, 32, 40, 0.18);
-    transform: translateY(-2px);
-  }
-
-  .feature-label {
-    display: inline-block;
-    margin-bottom: 12px;
-    color: #8a572d;
-    font-weight: 800;
-    font-size: 0.84rem;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-  }
-
-  .feature-card h3 {
-    font-size: 1.5rem;
-    margin-bottom: 12px;
-  }
-
-  .comparison-grid .card {
-    min-height: 100%;
-  }
-
-  .split-layout {
-    display: grid;
-    grid-template-columns: 1fr 0.95fr;
-    gap: 20px;
-    align-items: start;
-  }
-
-  .callout-list {
-    display: grid;
-    gap: 14px;
-  }
-
-  .callout {
-    padding: 18px 20px;
-    border-radius: 20px;
-    border: 1px solid var(--line);
-    background: var(--surface);
-  }
-
-  .callout strong {
-    display: block;
-    margin-bottom: 8px;
-    font-size: 1.05rem;
-  }
-
-  .final-band {
+  .hero-trust {
     display: flex;
     flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .tag {
+    display: inline-flex;
     align-items: center;
-    justify-content: space-between;
-    gap: 20px;
+    padding: 5px 12px;
+    border-radius: 6px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    font-size: 0.82rem;
+    color: var(--text-soft);
+    font-weight: 500;
   }
 
-  .faq-preview {
-    display: grid;
-    grid-template-columns: 0.9fr 1.1fr;
-    gap: 20px;
-    align-items: start;
+  /* ── Hero panel / canvas ───────────────────── */
+  .hero-panel {
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    overflow: hidden;
+    background: var(--surface);
+    box-shadow: var(--shadow);
   }
 
-  .faq-list {
+  .panel-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 11px 16px;
+    background: rgba(247, 244, 239, 0.9);
+    border-bottom: 1px solid var(--line);
+  }
+
+  .bar-dots {
+    display: flex;
+    gap: 5px;
+  }
+
+  .bar-dot {
+    width: 9px;
+    height: 9px;
+    border-radius: 2px;
+  }
+
+  .bar-dot.r { background: #e0524a; }
+  .bar-dot.y { background: #e6b422; }
+  .bar-dot.g { background: #50b86c; }
+
+  .bar-label {
+    font-size: 0.78rem;
+    color: var(--text-soft);
+    margin-left: 4px;
+  }
+
+  .canvas-area {
+    padding: 20px;
+    background:
+      radial-gradient(circle at 20px 20px, rgba(20,32,40,0.08) 1px, transparent 1px);
+    background-size: 24px 24px;
+    background-color: #f0ede8;
+    min-height: 300px;
+    position: relative;
+  }
+
+  .doc-card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    overflow: hidden;
+    width: 46%;
+    position: absolute;
+  }
+
+  .doc1 { top: 36px; left: 20px; }
+  .doc2 { bottom: 32px; right: 20px; opacity: 0.88; }
+
+  .doc-head {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--line);
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--text-soft);
+    background: var(--surface);
+  }
+
+  .doc-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 2px;
+    background: #50b86c;
+    flex-shrink: 0;
+  }
+
+  .doc-dot-accent { background: var(--accent); }
+
+  .doc-pages {
+    margin-left: auto;
+    font-size: 0.7rem;
+    color: #8d98a3;
+    font-weight: 400;
+  }
+
+  .doc-pages-row {
+    display: flex;
+    gap: 8px;
+    padding: 10px 12px;
+  }
+
+  .page-thumb {
+    width: 52px;
+    height: 70px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    display: flex;
+    flex-direction: column;
+    padding: 6px 5px;
+    gap: 4px;
+    flex-shrink: 0;
+    position: relative;
+  }
+
+  .page-selected {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px rgba(222, 122, 45, 0.15);
+  }
+
+  .page-drop {
+    border-style: dashed;
+    border-color: var(--accent);
+    opacity: 0.65;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .drop-plus {
+    font-size: 1.4rem;
+    color: var(--accent);
+    margin: auto;
+  }
+
+  .drop-label {
+    position: absolute;
+    bottom: 3px;
+    right: 4px;
+    font-size: 8px;
+    color: var(--accent);
+    font-weight: 600;
+  }
+
+  .line {
+    height: 3px;
+    background: #ddd9d2;
+    border-radius: 2px;
+    width: 100%;
+  }
+
+  .img-line {
+    height: 20px;
+    background: #e8e5de;
+    border-radius: 2px;
+  }
+
+  .page-num {
+    position: absolute;
+    bottom: 3px;
+    right: 4px;
+    font-size: 8px;
+    color: #8d98a3;
+    font-weight: 500;
+  }
+
+  .drag-arrow {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 1.4rem;
+    color: var(--accent);
+    font-weight: 700;
+    opacity: 0.75;
+  }
+
+  .canvas-caption {
+    padding: 10px 16px 12px;
+    font-size: 0.82rem;
+    color: var(--text-soft);
+    border-top: 1px solid var(--line);
+  }
+
+  /* ── Stats ─────────────────────────────────── */
+  .stats-section {
     display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    text-align: center;
+  }
+
+  .stat strong {
+    display: block;
+    font-size: 1.9rem;
+    font-family: "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+    letter-spacing: -0.03em;
+    margin-bottom: 6px;
+    color: var(--text);
+  }
+
+  .stat p {
+    font-size: 0.85rem;
+  }
+
+  /* ── Pain / Relief ─────────────────────────── */
+  .split-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-top: 20px;
+  }
+
+  .pain-card,
+  .relief-card {
+    padding: 22px;
+    border-radius: 12px;
+  }
+
+  .pain-card {
+    background: rgba(220, 38, 38, 0.04);
+    border: 1px solid rgba(220, 38, 38, 0.14);
+  }
+
+  .relief-card {
+    background: rgba(222, 122, 45, 0.06);
+    border: 1px solid rgba(222, 122, 45, 0.2);
+  }
+
+  .pain-card h3 {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #b0443e;
+    margin-bottom: 14px;
+  }
+
+  .relief-card h3 {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--accent);
+    margin-bottom: 14px;
+  }
+
+  .pain-card ul,
+  .relief-card ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .pain-card li,
+  .relief-card li {
+    font-size: 0.9rem;
+    color: var(--text-soft);
+    padding-left: 14px;
+    position: relative;
+  }
+
+  .pain-card li::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 8px;
+    width: 4px;
+    height: 4px;
+    background: #b0443e;
+    border-radius: 1px;
+  }
+
+  .relief-card li::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 8px;
+    width: 4px;
+    height: 4px;
+    background: var(--accent);
+    border-radius: 1px;
+  }
+
+  /* ── How it works ──────────────────────────── */
+  .steps-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    margin-top: 24px;
+  }
+
+  .step {
+    padding: 22px;
+    border-radius: 12px;
+    border: 1px solid var(--line);
+    background: rgba(247, 244, 239, 0.7);
+  }
+
+  .step-num {
+    display: inline-flex;
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    background: var(--text);
+    color: var(--surface);
+    align-items: center;
+    justify-content: center;
+    font-size: 0.82rem;
+    font-weight: 700;
+    margin-bottom: 12px;
+  }
+
+  .step h3 {
+    font-size: 1.1rem;
+    margin-bottom: 8px;
+  }
+
+  .step a {
+    color: var(--accent);
+    text-decoration: underline;
+  }
+
+  /* ── Features grid ─────────────────────────── */
+  .feat-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+    margin-top: 24px;
+  }
+
+  .feat-card {
+    display: flex;
+    align-items: center;
     gap: 14px;
+    padding: 16px 18px;
+    border-radius: 10px;
+    border: 1px solid var(--line);
+    background: rgba(247, 244, 239, 0.7);
+    text-decoration: none;
+    color: inherit;
+    transition: border-color 0.15s, transform 0.15s;
+  }
+
+  .feat-card:hover {
+    border-color: rgba(20, 32, 40, 0.2);
+    transform: translateY(-1px);
+  }
+
+  .feat-icon {
+    width: 38px;
+    height: 38px;
+    flex-shrink: 0;
+    border-radius: 8px;
+    background: rgba(222, 122, 45, 0.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.1rem;
+  }
+
+  .feat-card h3 {
+    font-size: 0.95rem;
+    font-weight: 700;
+    margin-bottom: 2px;
+  }
+
+  .feat-card p {
+    font-size: 0.8rem;
+    margin: 0;
+  }
+
+  /* ── Blog strip ────────────────────────────── */
+  .blog-strip {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px;
+    margin-top: 24px;
+  }
+
+  .blog-card {
+    padding: 20px;
+    border-radius: 10px;
+    border: 1px solid var(--line);
+    background: rgba(247, 244, 239, 0.7);
+    text-decoration: none;
+    color: inherit;
+    transition: border-color 0.15s;
+  }
+
+  .blog-card:hover {
+    border-color: rgba(20, 32, 40, 0.2);
+  }
+
+  .blog-label {
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--accent);
+    margin-bottom: 8px;
+  }
+
+  .blog-card h3 {
+    font-size: 0.95rem;
+    font-weight: 700;
+    margin-bottom: 6px;
+  }
+
+  /* ── Comparison ────────────────────────────── */
+  .comp-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px;
+    margin-top: 24px;
+  }
+
+  .comp-card {
+    padding: 22px;
+    border-radius: 12px;
+    border: 1px solid var(--line);
+    background: rgba(247, 244, 239, 0.7);
+  }
+
+  .comp-accent {
+    background: rgba(222, 122, 45, 0.06);
+    border-color: rgba(222, 122, 45, 0.22);
+  }
+
+  .comp-card h3 {
+    font-size: 1rem;
+    font-weight: 700;
+    margin-bottom: 12px;
+  }
+
+  .comp-card ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .comp-card li {
+    font-size: 0.88rem;
+    color: var(--text-soft);
+    padding-left: 14px;
+    position: relative;
+  }
+
+  .comp-card li::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 8px;
+    width: 5px;
+    height: 5px;
+    border-radius: 2px;
+    background: #50b86c;
+  }
+
+  .comp-cross li::before { background: #cc5555; }
+
+  /* ── FAQ ───────────────────────────────────── */
+  .faq-grid {
+    display: grid;
+    gap: 10px;
+    margin-top: 24px;
   }
 
   .faq-item {
-    padding: 18px 20px;
+    padding: 18px 22px;
+    border-radius: 10px;
     border: 1px solid var(--line);
-    border-radius: 22px;
-    background: var(--surface);
+    background: rgba(247, 244, 239, 0.7);
   }
 
   .faq-item strong {
     display: block;
-    margin-bottom: 10px;
-    font-size: 1.05rem;
+    font-size: 0.95rem;
+    margin-bottom: 8px;
     color: var(--text);
   }
 
+  /* ── Final CTA ─────────────────────────────── */
+  .final-cta {
+    text-align: center;
+  }
+
+  .final-cta h2 {
+    font-size: clamp(1.6rem, 3vw, 2.4rem);
+    margin-bottom: 12px;
+  }
+
+  .final-cta .section-intro {
+    margin-bottom: 24px;
+  }
+
+  .cta-center {
+    justify-content: center;
+  }
+
+  /* ── Responsive ────────────────────────────── */
   @media (max-width: 960px) {
-    .hero,
-    .split-layout,
-    .trust-strip,
-    .factual-strip,
-    .decision-strip,
-    .feature-grid,
-    .faq-preview {
+    .hero {
+      grid-template-columns: 1fr;
+    }
+
+    .stats-section {
+      grid-template-columns: repeat(2, 1fr);
+    }
+
+    .split-2,
+    .steps-grid,
+    .comp-grid,
+    .blog-strip {
+      grid-template-columns: 1fr;
+    }
+
+    .feat-grid {
       grid-template-columns: 1fr;
     }
   }
 
   @media (max-width: 640px) {
-    .hero {
-      margin-top: 16px;
+    .hero-copy h1 {
+      font-size: clamp(2rem, 9vw, 2.8rem);
     }
 
-    .hero h1 {
-      font-size: clamp(2.4rem, 11vw, 3.6rem);
+    .stats-section {
+      grid-template-columns: 1fr 1fr;
     }
 
-    .metric-row {
-      grid-template-columns: 1fr;
+    .canvas-area {
+      min-height: 260px;
+    }
+
+    .doc-card {
+      width: 48%;
     }
   }
 </style>
-/style>
-yle>

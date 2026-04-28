@@ -2,49 +2,42 @@
 # https://localpdf.online
 
 User-agent: *
+Disallow: /app
 Allow: /
 
-# AI bots
+# Sitemaps
+Sitemap: https://localpdf.online/sitemap-index.xml
+
+# LLM context file
+# llm.txt: https://localpdf.online/llm.txt
+
+# Bingbot
+User-agent: Bingbot
+Disallow: /app
+Allow: /
+Crawl-delay: 1
+
+# YandexBot
+User-agent: YandexBot
+Disallow: /app
+Allow: /
+Crawl-delay: 1
+
+# AI crawlers — explicitly allowed
 User-agent: OAI-SearchBot
 Allow: /
 
 User-agent: PerplexityBot
 Allow: /
 
-User-agent: GoogleBot-Extended
+User-agent: Google-Extended
 Allow: /
 
-# Sitemaps
-Sitemap: https://localpdf.online/sitemap-index.xml
-
-# Bingbot - Moderate crawling speed
-User-agent: Bingbot
-Crawl-delay: 1
-
-# YandexBot - Conservative crawling for European/Russian markets
-User-agent: YandexBot
-Crawl-delay: 1
-
-# Disallow app routes (hash-based SPA)
-Disallow: /app
-
-# Allow canonical marketing pages
+User-agent: ClaudeBot
 Allow: /
-Allow: /about
-Allow: /faq
-Allow: /security
-Allow: /privacy
-Allow: /terms
-Allow: /features/edit-pdf
-Allow: /features/merge-pdf
-Allow: /features/ocr-pdf
-Allow: /features/compress-pdf
-Allow: /features/split-pdf
-Allow: /features/sign-pdf
-Allow: /features/convert-pdf
 
-# Allow blog pages
-Allow: /blog
+User-agent: anthropic-ai
+Allow: /
 
-# Crawl-delay (be nice to search engines)
-Crawl-delay: 1
+User-agent: Amazonbot
+Allow: /

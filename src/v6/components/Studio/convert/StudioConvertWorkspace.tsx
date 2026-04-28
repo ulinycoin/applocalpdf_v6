@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo } from 'react';
 import { LinearIcon } from '../../icons/linear-icon';
 import { useStudioConvertController } from './use-studio-convert-controller';
+import { trackMonetizationEvent } from '../../../../app/react/monetization-telemetry';
 
 interface StudioConvertWorkspaceProps {
   onClose?: () => void;
@@ -43,6 +44,59 @@ const ALSO_TRY = [
   { tool: 'ocr-pdf', label: 'OCR PDF', icon: 'ocr' },
   { tool: 'extract-images', label: 'Extract Images', icon: 'image' },
 ] as const;
+
+function OcrPaywallOverlay({ content }: { content: string }) {
+  useEffect(() => {
+    trackMonetizationEvent('paywall_shown', {
+      source: 'ocr_result_preview',
+      toolId: 'ocr-pdf',
+      trigger: 'value_preview',
+      userState: 'local',
+      hadPriorSuccessfulRun: true,
+    });
+  }, []);
+
+  const checkoutUrl = import.meta.env.VITE_LS_CHECKOUT_URL_PRO_MONTHLY;
+
+  return (
+    <div style={{ position: 'relative', overflow: 'hidden', borderRadius: 6 }}>
+      <textarea
+        value={content.slice(0, 500)}
+        readOnly
+        style={{ width: '100%', minHeight: 320, border: '1px solid var(--border)', borderRadius: 6, background: 'var(--bg-1)', resize: 'none', outline: 'none', color: 'inherit', fontFamily: 'monospace', padding: 12, lineHeight: 1.6, fontSize: 13, filter: 'blur(4px)', userSelect: 'none', cursor: 'default' }}
+        spellCheck={false}
+        placeholder="No text content available."
+      />
+      <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255,253,249,0.85)', backdropFilter: 'blur(2px)', borderRadius: 6, zIndex: 2 }}>
+        <div style={{ textAlign: 'center', padding: 24, maxWidth: 360 }}>
+          <div style={{ fontSize: 28, marginBottom: 8 }}>⚡</div>
+          <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 4, color: '#142028' }}>OCR found text — unlock to download</div>
+          <div style={{ fontSize: 13, color: '#52606b', marginBottom: 16, lineHeight: 1.5 }}>
+            Upgrade to Pro to download the full OCR result
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              trackMonetizationEvent('paywall_cta_clicked', {
+                source: 'ocr_result_preview',
+                toolId: 'ocr-pdf',
+                trigger: 'upgrade_pro',
+                userState: 'local',
+                hadPriorSuccessfulRun: true,
+              });
+              if (checkoutUrl) {
+                window.open(checkoutUrl, '_blank', 'noopener,noreferrer');
+              }
+            }}
+            style={{ background: '#142028', color: '#f9f5ee', border: 'none', borderRadius: 999, padding: '10px 24px', fontWeight: 800, fontSize: 14, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6 }}
+          >
+            Upgrade to Pro — $3.99/mo
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export function StudioConvertWorkspace({ onClose, initialTool }: StudioConvertWorkspaceProps = {}) {
   const ctrl = useStudioConvertController(initialTool as import('./use-studio-convert-controller').StudioConvertToolId | undefined);
@@ -603,7 +657,7 @@ export function StudioConvertWorkspace({ onClose, initialTool }: StudioConvertWo
                         </button>
                       )}
                     </div>
-                  ) : (
+                  ) : ctrl.isPro ? (
                     <div style={{ padding: '0 18px 18px' }}>
                       <textarea
                         value={ctrl.ocrResult.content || ''}
@@ -612,20 +666,14 @@ export function StudioConvertWorkspace({ onClose, initialTool }: StudioConvertWo
                         spellCheck={false}
                         placeholder="No text content available."
                       />
-                      {ctrl.isPro ? (
-                        <button type="button" className="cvt-btn-download" style={{ marginTop: 10 }} onClick={() => { void ctrl.downloadResults(); }}>
-                          <LinearIcon name="download" size={12} />
-                          Download
-                        </button>
-                      ) : (
-                        <div className="cvt-ocr-upsell-banner">
-                          <span>OCR is a Pro feature — $3.99/mo</span>
-                          <button type="button" className="cvt-btn-download" onClick={ctrl.showOcrPaywall}>
-                            <LinearIcon name="lock" size={12} />
-                            Upgrade to Pro
-                          </button>
-                        </div>
-                      )}
+                      <button type="button" className="cvt-btn-download" style={{ marginTop: 10 }} onClick={() => { void ctrl.downloadResults(); }}>
+                        <LinearIcon name="download" size={12} />
+                        Download
+                      </button>
+                    </div>
+                  ) : (
+                    <div style={{ padding: '0 18px 18px' }}>
+                      <OcrPaywallOverlay content={ctrl.ocrResult.content || ''} />
                     </div>
                   )}
                   <div className="cvt-result-actions">

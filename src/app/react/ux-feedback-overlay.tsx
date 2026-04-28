@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { usePlatform } from './platform-context';
 import type { RunnerTelemetryEvent } from '../../core/public/contracts';
-import { openBillingPlans, openCheckout } from './billing';
+import { openCheckout } from './billing';
 import { trackMonetizationEvent } from './monetization-telemetry';
 
 interface UiToastItem {
@@ -141,35 +141,30 @@ export function UxFeedbackOverlay() {
                 className="ux-upsell-btn-primary"
                 onClick={() => {
                   const checkoutUrl = import.meta.env.VITE_LS_CHECKOUT_URL_PRO_MONTHLY;
-                  const destination = checkoutUrl ?? openBillingPlans(import.meta.env.VITE_BILLING_URL);
                   runtime.telemetry.track({
                     type: 'UI_UPSELL_CTA_CLICKED',
                     runId: upsell.runId,
                     toolId: upsell.toolId,
-                    destination,
+                    destination: checkoutUrl ?? null,
                   });
                   trackMonetizationEvent('paywall_cta_clicked', {
                     source: 'upsell_overlay',
                     toolId: upsell.toolId,
                     trigger: 'upgrade_pro',
-                    destination,
+                    destination: checkoutUrl ?? null,
                     userState: 'local',
                     hadPriorSuccessfulRun: true,
                     flowId: upsell.runId,
                   });
-                  if (checkoutUrl) {
-                    openCheckout(checkoutUrl, {
-                      source: 'upsell_overlay',
-                      trigger: 'upgrade_pro',
-                      plan: 'pro',
-                      variant: 'monthly',
-                      userState: 'local',
-                      hadPriorSuccessfulRun: true,
-                      flowId: upsell.runId,
-                    });
-                  } else {
-                    openBillingPlans(import.meta.env.VITE_BILLING_URL);
-                  }
+                  openCheckout(checkoutUrl, {
+                    source: 'upsell_overlay',
+                    trigger: 'upgrade_pro',
+                    plan: 'pro',
+                    variant: 'monthly',
+                    userState: 'local',
+                    hadPriorSuccessfulRun: true,
+                    flowId: upsell.runId,
+                  });
                   setUpsell(null);
                 }}
               >
