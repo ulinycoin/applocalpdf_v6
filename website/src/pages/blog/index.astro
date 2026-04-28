@@ -24,8 +24,7 @@ const allPosts = Object.entries(postModules)
   .filter((post) => !post.data.draft)
   .sort((a, b) => b.data.pubDate.getTime() - a.data.pubDate.getTime());
 
-const featuredPosts = allPosts.filter((post) => post.data.featured).slice(0, 6);
-const recentPosts = allPosts.slice(0, 12);
+const recentPosts = allPosts;
 const title = 'PDF Guides and Workflow Articles | LocalPDF Blog';
 const description = 'Guides for editing, merging, OCR, compression, splitting, signing, conversion, and PDF privacy workflows.';
 const canonical = 'https://localpdf.online/blog';
@@ -93,20 +92,7 @@ const schema = [
     </section>
 
     <section class="section">
-      <h2 class="section-title">Featured guides</h2>
-      <div class="card-grid blog-grid">
-        {featuredPosts.map((post) => (
-          <a class="feature-card" href={`/blog/${post.slug}`}>
-            <span class="feature-label">{post.data.category}</span>
-            <h3>{post.data.title}</h3>
-            <p>{post.data.description}</p>
-          </a>
-        ))}
-      </div>
-    </section>
-
-    <section class="section">
-      <h2 class="section-title">Recent articles</h2>
+      <h2 class="section-title">All articles</h2>
       <div class="list-grid">
         {recentPosts.map((post) => (
           <a class="list-card" href={`/blog/${post.slug}`}>
