@@ -18,8 +18,41 @@ import { StudioInPlaceEditor } from './StudioInPlaceEditor';
 import { StudioDialog } from './StudioDialog';
 import { canAddDocumentToStudio, canCreateWorkspace, canUseDocumentWithPageCount } from '../../../app/platform/plan-limits';
 import { showStudioPaywall } from '../../../app/react/studio-paywall';
+import { PaywallModal } from '../../../app/react/PaywallModal';
 import { useHistoryStore } from './store/history-store';
 import { getOrCreateFlowId } from '../../../app/platform/browser-context';
+
+// Daily usage helpers for free-tier tools
+const DAILY_FREE_LIMIT: Record<string, number> = {
+    'compress-pdf': 3,
+    'pdf-to-jpg': 3,
+    'extract-images': 3,
+    'ocr-pdf': 3,
+    'text': 3,
+    'annotate': 3,
+    'sign': 3,
+    'whiteout': 3,
+    'watermark': 3,
+    'forms': 3,
+    'protect': 3,
+};
+function getDailyUsage(toolId: string): number {
+    try {
+        const key = `localpdf_usage_${toolId}`;
+        const raw = localStorage.getItem(key);
+        if (!raw) return 0;
+        const { date, count } = JSON.parse(raw);
+        const today = new Date().toISOString().slice(0, 10);
+        return date === today ? count : 0;
+    } catch { return 0; }
+}
+function incrementDailyUsage(toolId: string): void {
+    try {
+        const key = `localpdf_usage_${toolId}`;
+        const today = new Date().toISOString().slice(0, 10);
+        localStorage.setItem(key, JSON.stringify({ date: today, count: getDailyUsage(toolId) + 1 }));
+    } catch { /* best-effort */ }
+}
 
 const StudioEditWorkspace = lazy(async () => {
     const m = await import('./StudioEditWorkspace');
@@ -280,6 +313,7 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
     // Active tool overlay — 'edit' or convert tool id
     type OverlayMode = 'edit' | StudioConvertToolId;
     const [overlayMode, setOverlayMode] = useState<OverlayMode | null>(null);
+    const [paywallReason, setPaywallReason] = useState<string | null>(null);
 
     useEffect(() => {
         setStudioViewport(viewScale, viewPosition, canvasDimensions);
@@ -386,13 +420,35 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
     }, [hasFiles, setInteractionMode]);
 
     const handleToolClick = useCallback((tool: string) => {
+        const billingContext = runtime.billing.getContext();
         const editToolIds: string[] = ['text', 'annotate', 'sign', 'whiteout', 'watermark', 'forms', 'protect'];
+
+        // Daily limit for free-tier tools
+        const dailyLimit = DAILY_FREE_LIMIT[tool];
+        if (dailyLimit !== undefined && billingContext.plan === 'basic') {
+            const usage = getDailyUsage(tool);
+            if (usage >= dailyLimit) {
+                showStudioPaywall(
+                    runtime.telemetry,
+                    `You've used all ${dailyLimit} free ${tool} runs today. Upgrade to Pro for unlimited use.`,
+                    import.meta.env.VITE_BILLING_URL,
+                );
+                setPaywallReason(`You've used all ${dailyLimit} free uses today. Upgrade to Pro for unlimited use.`);
+                return;
+            }
+        }
+
         if (editToolIds.includes(tool)) {
             startEditFromCanvas(tool as StudioEditToolId);
         } else {
             startConvertFromCanvas(tool as StudioConvertToolId);
         }
-    }, [startEditFromCanvas, startConvertFromCanvas]);
+
+        // Track successful tool start for daily-limited tools
+        if (DAILY_FREE_LIMIT[tool] !== undefined && billingContext.plan === 'basic') {
+            incrementDailyUsage(tool);
+        }
+    }, [startEditFromCanvas, startConvertFromCanvas, runtime.billing, runtime.telemetry]);
 
     const handleHistoryToggle = useCallback(() => {
         setHistoryOpen(!isHistoryOpen);
@@ -1155,6 +1211,15 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
                     </Suspense>
                 </div>,
                 document.body
+            )}
+            {paywallReason && (
+                <PaywallModal
+                    toolId="studio"
+                    toolName="Studio Tool"
+                    reason="PRO_REQUIRED"
+                    details={paywallReason}
+                    onClose={() => setPaywallReason(null)}
+                />
             )}
             {renamingDocId && (() => {
                 const doc = documents.find((d) => d.id === renamingDocId);

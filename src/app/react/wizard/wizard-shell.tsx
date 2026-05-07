@@ -3,29 +3,12 @@ import { usePlatform } from '../platform-context';
 import { useToolExecution } from '../use-tool-execution';
 import { ProcessingStage } from './stages/processing-stage';
 import { ResultStage } from './stages/result-stage';
+import { PaywallModal } from '../PaywallModal';
 import type { ToolRunContext } from '../../../core/public/contracts';
 
 interface WizardShellProps {
     toolId: string;
 }
-
-const demoContext: ToolRunContext = {
-    userId: 'demo-user',
-    plan: 'pro' as const,
-    entitlements: [
-        'pdf.merge',
-        'pdf.split',
-        'pdf.compress',
-        'pdf.ocr',
-        'pdf.rotate',
-        'pdf.delete_pages',
-        'pdf.edit',
-        'pdf.to_image',
-        'office.convert',
-        'pdf.protect.encrypt',
-        'pdf.protect.unlock',
-    ],
-};
 
 export type WizardStep = 'upload' | 'config' | 'processing' | 'result';
 
@@ -62,18 +45,70 @@ function StepIndicator({ step }: { step: WizardStep }) {
     );
 }
 
+/**
+ * Daily usage tracker for free-tier tools.
+ * Stores a counter per tool in localStorage, resets each calendar day.
+ */
+function getDailyUsage(toolId: string): number {
+    try {
+        const key = `localpdf_usage_${toolId}`;
+        const raw = localStorage.getItem(key);
+        if (!raw) return 0;
+        const { date, count } = JSON.parse(raw);
+        const today = new Date().toISOString().slice(0, 10);
+        return date === today ? count : 0;
+    } catch {
+        return 0;
+    }
+}
+
+function incrementDailyUsage(toolId: string): void {
+    try {
+        const key = `localpdf_usage_${toolId}`;
+        const today = new Date().toISOString().slice(0, 10);
+        localStorage.setItem(key, JSON.stringify({ date: today, count: getDailyUsage(toolId) + 1 }));
+    } catch {
+        // Best-effort
+    }
+}
+
+/** Maximum daily free uses per tool */
+const DAILY_FREE_LIMIT: Record<string, number> = {
+    'compress-pdf': 3,
+    'merge-pdf': 3,
+    'split-pdf': 3,
+    'ocr-pdf': 3,
+};
+
 export function WizardShell({ toolId }: WizardShellProps) {
     const { runtime } = usePlatform();
     const [step, setStep] = useState<WizardStep>('config');
     const [inputIds, setInputIds] = useState<string[]>([]);
     const [error, setError] = useState<string | null>(null);
+    const [paywall, setPaywall] = useState<{ reason: string; details?: string } | null>(null);
 
-    const { execute, progress, statusMessage, lastResult } = useToolExecution(toolId, demoContext);
+    // Use the real billing context instead of hardcoded demoContext
+    const context: ToolRunContext = runtime.billing.getContext();
+
+    const { execute, progress, statusMessage, lastResult } = useToolExecution(toolId, context);
 
     const toolDef = runtime.registry.get(toolId);
     const ToolConfigUI = lazy(toolDef.uiLoader) as unknown as ComponentType<ToolConfigProps>;
 
     const handleStart = async (configOptions: Record<string, unknown>) => {
+        // Check daily free limit BEFORE execution
+        const dailyLimit = DAILY_FREE_LIMIT[toolId];
+        if (dailyLimit !== undefined && context.plan === 'basic') {
+            const used = getDailyUsage(toolId);
+            if (used >= dailyLimit) {
+                setPaywall({
+                    reason: 'DAILY_LIMIT_EXCEEDED',
+                    details: `You've used all ${dailyLimit} free compressions today. Upgrade to Pro for unlimited use.`,
+                });
+                return;
+            }
+        }
+
         const finalInputIds = (configOptions.inputIds as string[]) || inputIds;
         setStep('processing');
 
@@ -83,12 +118,19 @@ export function WizardShell({ toolId }: WizardShellProps) {
         });
 
         if (result.type === 'TOOL_RESULT') {
+            // Track usage for free-tier tools
+            if (DAILY_FREE_LIMIT[toolId] !== undefined && context.plan === 'basic') {
+                incrementDailyUsage(toolId);
+            }
             setStep('result');
         } else if (result.type === 'TOOL_ERROR') {
             setError(result.message);
             setStep('config');
         } else if (result.type === 'TOOL_ACCESS_DENIED') {
-            setError(result.details || 'Access denied');
+            setPaywall({
+                reason: result.reason,
+                details: result.details,
+            });
             setStep('config');
         }
     };
@@ -97,10 +139,22 @@ export function WizardShell({ toolId }: WizardShellProps) {
         setStep('config');
         setInputIds([]);
         setError(null);
+        setPaywall(null);
     };
 
     return (
         <div className="wz-page">
+            {/* Paywall modal */}
+            {paywall && (
+                <PaywallModal
+                    toolId={toolId}
+                    toolName={toolDef.name}
+                    reason={paywall.reason}
+                    details={paywall.details}
+                    onClose={() => setPaywall(null)}
+                />
+            )}
+
             {/* Tool header */}
             <div className="wz-tool-header">
                 <div className="wz-tool-icon" aria-hidden="true">
@@ -120,6 +174,11 @@ export function WizardShell({ toolId }: WizardShellProps) {
                         </svg>
                         Processed locally · files never leave your device
                     </div>
+                    {context.plan === 'basic' && DAILY_FREE_LIMIT[toolId] !== undefined && (
+                        <div className="wz-tool-usage">
+                            Daily: {getDailyUsage(toolId)}/{DAILY_FREE_LIMIT[toolId]} free uses
+                        </div>
+                    )}
                 </div>
             </div>
 

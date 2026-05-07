@@ -426,6 +426,15 @@ export class UnifiedToolRunner {
       fileId,
       stage: 'READ_BLOB_FOR_PAGE_COUNT_START',
     });
+    // ── Read file bytes for page count ──────────────────────────────────
+    // NOTE: The full file is loaded into main-thread memory here (blob →
+    // arrayBuffer). The bytes are then sent to the worker via postMessage
+    // (structured clone = second copy). This doubles peak memory for large
+    // files. Mitigated by maxFileSize limits (50MB free, 500MB pro).
+    //
+    // Optimization opportunity: use Transferable postMessage to zero-copy
+    // the bytes.buffer to the worker, then re-read from VFS for the
+    // main-thread fallback path.
     const blob = await entry.getBlob();
     const bytes = new Uint8Array(await blob.arrayBuffer());
     this.telemetry.track({
@@ -451,27 +460,39 @@ export class UnifiedToolRunner {
       fileId,
       stage: 'PAGE_COUNT_DISPATCH_START',
     });
+    const abortController = new AbortController();
     try {
-      event = await Promise.race<IWorkerEvent>([
-        this.workerOrchestrator.dispatch(command, (workerEvent) => {
-          if (workerEvent.payload.type === 'DIAGNOSTIC' && workerEvent.payload.payload.channel === 'PAGE_COUNT') {
-            this.telemetry.track({
-              type: 'PAGE_COUNT_WORKER_STAGE',
-              runId,
-              toolId,
-              fileId,
-              stage: workerEvent.payload.payload.stage,
-              durationMs: workerEvent.payload.payload.durationMs,
-              note: workerEvent.payload.payload.note,
-            });
-          }
-        }),
-        new Promise<IWorkerEvent>((_, reject) => {
-          setTimeout(() => {
-            reject(this.createCodedError('PAGE_COUNT_CHECK_TIMEOUT', 'Page-count precheck timed out'));
-          }, timeoutMs);
-        }),
-      ]);
+      event = await new Promise<IWorkerEvent>((resolve, reject) => {
+        const timer = setTimeout(() => {
+          abortController.abort();
+          reject(this.createCodedError('PAGE_COUNT_CHECK_TIMEOUT', 'Page-count precheck timed out'));
+        }, timeoutMs);
+
+        this.workerOrchestrator
+          .dispatch(command, (workerEvent) => {
+            if (workerEvent.payload.type === 'DIAGNOSTIC' && workerEvent.payload.payload.channel === 'PAGE_COUNT') {
+              this.telemetry.track({
+                type: 'PAGE_COUNT_WORKER_STAGE',
+                runId,
+                toolId,
+                fileId,
+                stage: workerEvent.payload.payload.stage,
+                durationMs: workerEvent.payload.payload.durationMs,
+                note: workerEvent.payload.payload.note,
+              });
+            }
+          }, abortController.signal)
+          .then(
+            (result) => {
+              clearTimeout(timer);
+              resolve(result);
+            },
+            (err) => {
+              clearTimeout(timer);
+              reject(err);
+            },
+          );
+      });
     } catch (error) {
       const typed = error as { code?: unknown; message?: unknown };
       const code = typeof typed.code === 'string' ? typed.code : 'PAGE_COUNT_QUERY_FAILED';

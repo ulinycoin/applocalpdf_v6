@@ -645,7 +645,7 @@ export function StudioConvertWorkspace({ onClose, initialTool }: StudioConvertWo
                         <div className="cvt-output-name">{ctrl.ocrResult.fileName}</div>
                         <div className="cvt-output-meta">searchable PDF</div>
                       </div>
-                      {ctrl.isPro ? (
+                      {ctrl.allowOcrDownload ? (
                         <button type="button" className="cvt-btn-download" onClick={() => { void ctrl.downloadResults(); }}>
                           <LinearIcon name="download" size={12} />
                           Download
@@ -657,7 +657,7 @@ export function StudioConvertWorkspace({ onClose, initialTool }: StudioConvertWo
                         </button>
                       )}
                     </div>
-                  ) : ctrl.isPro ? (
+                  ) : ctrl.allowOcrDownload ? (
                     <div style={{ padding: '0 18px 18px' }}>
                       <textarea
                         value={ctrl.ocrResult.content || ''}
