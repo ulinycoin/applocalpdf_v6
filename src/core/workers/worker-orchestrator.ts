@@ -40,6 +40,15 @@ export class WebWorkerOrchestrator implements WorkerOrchestrator {
       if (!pending) {
         return;
       }
+      // Reset timeout on any worker event (PROGRESS keeps slow workers alive)
+      clearTimeout(pending.timeoutId);
+      pending.timeoutId = setTimeout(() => {
+        this.settle(payload.id, {
+          id: payload.id,
+          type: 'EVENT',
+          payload: { type: 'ERROR', payload: { message: 'Worker timeout exceeded', code: 'WORKER_TIMEOUT' } },
+        });
+      }, this.timeoutMs);
       pending.onEvent?.(payload);
       if (
         payload.payload.type === 'RESULT'

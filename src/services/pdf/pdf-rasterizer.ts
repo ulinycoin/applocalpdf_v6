@@ -36,7 +36,7 @@ class PdfJsRasterizer implements PdfRasterizer {
         const canvas =
           typeof OffscreenCanvas !== 'undefined'
             ? new OffscreenCanvas(width, height)
-            : typeof document !== 'undefined'
+            : typeof document?.createElement === 'function'
               ? document.createElement('canvas')
               : null;
         if (!canvas) {
@@ -77,7 +77,7 @@ class PdfJsRasterizer implements PdfRasterizer {
       const canvas =
         typeof OffscreenCanvas !== 'undefined'
           ? new OffscreenCanvas(viewport.width, viewport.height)
-          : typeof document !== 'undefined'
+          : typeof document?.createElement === 'function'
             ? document.createElement('canvas')
             : null;
 
