@@ -1,0 +1,11 @@
+/* TEAM */
+Site operator: LocalPDF
+Contact: hello@localpdf.online
+
+/* SITE */
+Standards: HTML5, Schema.org, Open Graph, WebAssembly
+Components: Astro, TypeScript, React, Vite
+
+/* PRIVACY */
+All PDF processing runs locally in your browser.
+Zero uploads, no server storage, works offline.

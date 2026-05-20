@@ -1,0 +1,27 @@
+# LocalPDF
+
+LocalPDF is a private PDF editor that runs entirely in your browser. 
+No uploads, no server storage — all processing happens locally via WebAssembly.
+
+## Pages
+
+- [Home](https://localpdf.online/) — Private PDF Editor — Edit, Merge & OCR in Browser
+- [Edit PDF](https://localpdf.online/features/edit-pdf) — Add text, edit pages, sign, watermark PDFs
+- [Merge PDF](https://localpdf.online/features/merge-pdf) — Combine multiple PDF files
+- [Compress PDF](https://localpdf.online/features/compress-pdf) — Reduce PDF file size
+- [OCR PDF](https://localpdf.online/features/ocr-pdf) — Extract text from scanned PDFs
+- [Split PDF](https://localpdf.online/features/split-pdf) — Split and extract PDF pages
+- [Convert PDF](https://localpdf.online/features/convert-pdf) — Convert PDF to images, Word, Excel
+- [Sign PDF](https://localpdf.online/features/sign-pdf) — Add digital signatures
+- [Pricing](https://localpdf.online/pricing) — Free & Pro plans
+- [Blog](https://localpdf.online/blog) — PDF guides and how-tos
+- [Security](https://localpdf.online/security) — Local processing architecture
+- [FAQ](https://localpdf.online/faq) — Frequently asked questions
+
+## Compare
+
+- [LocalPDF vs Smallpdf](https://localpdf.online/compare/localpdf-vs-smallpdf)
+- [LocalPDF vs PDF24](https://localpdf.online/compare/localpdf-vs-pdf24)
+- [LocalPDF vs Sejda](https://localpdf.online/compare/localpdf-vs-sejda)
+- [LocalPDF vs PDFescape](https://localpdf.online/compare/localpdf-vs-pdfescape)
+- [LocalPDF vs iLovePDF](https://localpdf.online/compare/localpdf-vs-ilovepdf)
