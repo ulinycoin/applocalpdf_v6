@@ -26,7 +26,7 @@ export class WebWorkerOrchestrator implements WorkerOrchestrator {
 
   constructor(
     private readonly createWorker: () => WorkerLike,
-    private readonly timeoutMs = 120_000,
+    private readonly timeoutMs = 180_000,
   ) {}
 
   private ensureWorker(): WorkerLike {

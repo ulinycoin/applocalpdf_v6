@@ -13,6 +13,8 @@ interface PdfPageLike {
       reset: (target: { canvas: OffscreenCanvas | HTMLCanvasElement; context: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D }, width: number, height: number) => void;
       destroy: (target: { canvas: OffscreenCanvas | HTMLCanvasElement; context: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D }) => void;
     };
+    isOffscreenCanvasSupported?: boolean;
+    enableHWA?: boolean;
   }): { promise: Promise<void> };
 }
 
@@ -22,9 +24,31 @@ interface PdfDocumentLike {
 }
 
 interface PdfJsLike {
-  getDocument(params: { data: ArrayBuffer; disableWorker: boolean; verbosity?: number }): { promise: Promise<PdfDocumentLike> };
+  getDocument(params: {
+    data: ArrayBuffer;
+    disableWorker: boolean;
+    verbosity?: number;
+    enableXfa?: boolean;
+    useSystemFonts?: boolean;
+    isOffscreenCanvasSupported?: boolean;
+    disableFontFace?: boolean;
+  }): { promise: Promise<PdfDocumentLike> };
   GlobalWorkerOptions?: { workerSrc?: string };
   VerbosityLevel?: { ERRORS?: number };
+}
+
+const DOM_ERROR_PATTERNS = [
+  "createElement",
+  "_document",
+  "HTMLCanvasElement",
+  "Node is not defined",
+  "document is not defined",
+];
+
+function isDomRelatedError(error: unknown): boolean {
+  if (!(error instanceof Error)) return false;
+  const msg = error.message.toLowerCase();
+  return DOM_ERROR_PATTERNS.some((p) => msg.includes(p.toLowerCase()));
 }
 
 class PdfJsRasterizer implements PdfRasterizer {
@@ -40,7 +64,7 @@ class PdfJsRasterizer implements PdfRasterizer {
               ? document.createElement('canvas')
               : null;
         if (!canvas) {
-          throw new Error('Canvas factory cannot create canvas in this runtime');
+          throw new Error('PDF canvas factory not available in this runtime. OffscreenCanvas is required.');
         }
         if (typeof HTMLCanvasElement !== 'undefined' && canvas instanceof HTMLCanvasElement) {
           canvas.width = width;
@@ -48,7 +72,7 @@ class PdfJsRasterizer implements PdfRasterizer {
         }
         const context = canvas.getContext('2d');
         if (!context) {
-          throw new Error('Canvas factory failed to get 2d context');
+          throw new Error('PDF canvas factory failed to get 2d context');
         }
         return { canvas, context };
       },
@@ -63,10 +87,99 @@ class PdfJsRasterizer implements PdfRasterizer {
     };
   }
 
+  /**
+   * Render a PDF page to an OffscreenCanvas (worker-safe).
+   * Falls back via multiple strategies if pdfjs internally throws DOM errors.
+   */
+  private async renderPageToCanvas(
+    page: PdfPageLike,
+    viewport: { width: number; height: number },
+  ): Promise<OffscreenCanvas> {
+    // Always use OffscreenCanvas in workers — never fall back to document.createElement
+    if (typeof OffscreenCanvas === 'undefined') {
+      throw new Error(
+        'PDF rendering requires OffscreenCanvas, which is not available in this browser. ' +
+        'Please use a modern browser (Chrome 69+, Edge 79+, Firefox 105+, Safari 16.4+).',
+      );
+    }
+
+    const canvas = new OffscreenCanvas(viewport.width, viewport.height);
+    const context = canvas.getContext('2d');
+    if (!context) {
+      throw new Error('PDF rendering failed to get 2d context from OffscreenCanvas');
+    }
+
+    // Strategy 1: render with canvasFactory + annotationMode=0 + OffscreenCanvas hint
+    try {
+      await page.render({
+        canvasContext: context,
+        viewport,
+        annotationMode: 0,
+        canvasFactory: this.createCanvasFactory(),
+        isOffscreenCanvasSupported: true,
+        enableHWA: false,
+      }).promise;
+      return canvas;
+    } catch (err) {
+      if (!isDomRelatedError(err)) {
+        // Non-DOM error — rethrow immediately
+        throw err;
+      }
+      // DOM error — try Strategy 2: render without canvasFactory (pdfjs internal)
+    }
+
+    // Strategy 2: render without custom canvasFactory (let pdfjs use its own)
+    try {
+      await page.render({
+        canvasContext: context,
+        viewport,
+        annotationMode: 0,
+        isOffscreenCanvasSupported: true,
+        enableHWA: false,
+      }).promise;
+      return canvas;
+    } catch (err) {
+      if (!isDomRelatedError(err)) {
+        throw err;
+      }
+      // Still a DOM error — try Strategy 3: with internal renderer if available
+    }
+
+    // Strategy 3: final attempt — minimal render options
+    try {
+      await page.render({
+        canvasContext: context,
+        viewport,
+        annotationMode: 0,
+        isOffscreenCanvasSupported: true,
+      }).promise;
+      return canvas;
+    } catch (err) {
+      if (!isDomRelatedError(err)) {
+        throw err;
+      }
+      throw new Error(
+        'This browser does not support PDF page rendering inside the editor worker. ' +
+        'The PDF library (pdfjs-dist) requires DOM APIs that are not available in Worker context. ' +
+        'Please try uploading smaller files or use a browser with full OffscreenCanvas support (Chrome 105+, Firefox 105+, Safari 16.4+).',
+      );
+    }
+  }
+
   async rasterize(pdfBlob: Blob): Promise<Blob[]> {
     const arrayBuffer = await pdfBlob.arrayBuffer();
     const errorOnlyVerbosity = this.pdfjs.VerbosityLevel?.ERRORS ?? 0;
-    const loadingTask = this.pdfjs.getDocument({ data: arrayBuffer, disableWorker: true, verbosity: errorOnlyVerbosity });
+
+    // Use OffscreenCanvas-safe pdfjs options
+    const loadingTask = this.pdfjs.getDocument({
+      data: arrayBuffer,
+      disableWorker: true,
+      verbosity: errorOnlyVerbosity,
+      enableXfa: false,
+      useSystemFonts: false,
+      isOffscreenCanvasSupported: true,
+      disableFontFace: true,
+    });
     const pdf = await loadingTask.promise;
     const blobs: Blob[] = [];
 
@@ -74,46 +187,19 @@ class PdfJsRasterizer implements PdfRasterizer {
       const page = await pdf.getPage(i);
       const viewport = page.getViewport({ scale: 2.0 });
 
-      const canvas =
-        typeof OffscreenCanvas !== 'undefined'
-          ? new OffscreenCanvas(viewport.width, viewport.height)
-          : typeof document?.createElement === 'function'
-            ? document.createElement('canvas')
-            : null;
-
-      if (!canvas) {
-        throw new Error('Canvas environment not available for rasterization');
-      }
-
-      if (typeof HTMLCanvasElement !== 'undefined' && canvas instanceof HTMLCanvasElement) {
-        canvas.width = viewport.width;
-        canvas.height = viewport.height;
-      }
-
-      const context = canvas.getContext('2d');
-      if (!context) {
-        throw new Error('Failed to get 2d context for rasterization');
-      }
-
-      await page.render({
-        canvasContext: context,
-        viewport,
-        annotationMode: 0,
-        canvasFactory: this.createCanvasFactory(),
-      }).promise;
+      const canvas = await this.renderPageToCanvas(page, viewport);
 
       const blob = await new Promise<Blob | null>((resolve) => {
-        if (typeof OffscreenCanvas !== 'undefined' && canvas instanceof OffscreenCanvas) {
+        if (typeof OffscreenCanvas !== 'undefined') {
           canvas.convertToBlob({ type: 'image/png' }).then(resolve);
-        } else if (typeof HTMLCanvasElement !== 'undefined' && canvas instanceof HTMLCanvasElement) {
-          (canvas as any).toBlob(resolve, 'image/png');
         } else {
+          // Fallback — should not be reached since renderPageToCanvas already checks
           resolve(null);
         }
       });
 
       if (!blob) {
-        throw new Error(`Failed to create blob for page ${i}`);
+        throw new Error(`Failed to create image blob for page ${i}`);
       }
       blobs.push(blob);
     }
@@ -123,7 +209,11 @@ class PdfJsRasterizer implements PdfRasterizer {
 }
 
 export async function createPdfRasterizer(): Promise<PdfRasterizer | null> {
-  const canRasterize = typeof OffscreenCanvas !== 'undefined' || typeof document !== 'undefined';
+  // In worker context: OffscreenCanvas is required
+  // On main thread: either OffscreenCanvas or document.createElement works
+  const canRasterize =
+    typeof OffscreenCanvas !== 'undefined' ||
+    typeof document !== 'undefined';
 
   if (!canRasterize) {
     return null;

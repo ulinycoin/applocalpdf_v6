@@ -254,6 +254,11 @@ export const run: ToolLogicFunction = async ({ inputIds, options: runOptions, fs
         updateFileProgress(78);
       } else {
         updateFileProgress(20);
+        // Emit progress before rasterization to reset the worker timeout window.
+        // Rasterizing many pages can take 30+ seconds without intermediate progress,
+        // which would trigger the 120s worker timeout and lose the user's work.
+        updateFileProgress(22);
+
         const rasterizer = await createPdfRasterizer();
         if (!rasterizer) {
           throw new OcrPipelineError(

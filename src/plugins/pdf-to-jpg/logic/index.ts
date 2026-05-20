@@ -11,6 +11,11 @@ export const run: ToolLogicFunction = async ({ inputIds, fs, emitProgress }) => 
         throw new Error('PDF rasterizer is not supported in this environment (missing canvas support)');
     }
 
+    // Emit progress before rasterization to keep worker timeout alive.
+    // Rasterizing many pages can take 30+ seconds without progress events
+    // and trigger the worker timeout.
+    emitProgress?.(5);
+
     const outputIds: string[] = [];
 
     for (let i = 0; i < inputIds.length; i++) {

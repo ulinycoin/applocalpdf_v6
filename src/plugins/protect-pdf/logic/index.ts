@@ -68,7 +68,19 @@ async function encryptInBrowserWithPdfLibPlus(inputBlob: Blob, config: {
 }): Promise<Blob> {
   const mod = await import('pdf-lib-plus-encrypt') as unknown as PdfLibPlusEncryptModule;
   const inputBytes = new Uint8Array(await inputBlob.arrayBuffer());
-  const pdfDoc = await mod.PDFDocument.load(inputBytes);
+  let pdfDoc: PdfLibEncryptDoc;
+  try {
+    pdfDoc = await mod.PDFDocument.load(inputBytes);
+  } catch (loadErr) {
+    const msg = loadErr instanceof Error ? loadErr.message.toLowerCase() : '';
+    if (msg.includes('encrypted')) {
+      throw new QpdfPipelineError(
+        'PROTECT_INPUT_ALREADY_ENCRYPTED',
+        'This PDF is already password-protected or encrypted. Please unprotect it first using the "Unlock PDF" tool, then apply new protection settings.',
+      );
+    }
+    throw loadErr;
+  }
   await pdfDoc.encrypt({
     userPassword: config.userPassword,
     ownerPassword: config.ownerPassword,
