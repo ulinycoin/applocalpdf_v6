@@ -55,10 +55,39 @@ export function StudioTopNav({ telemetryEnabled, onToggleTelemetry, telemetryOpe
   const [activateStatus, setActivateStatus] = useState<'idle' | 'loading' | 'error'>('idle');
 
   const handleActivate = async (): Promise<void> => {
-    const token = licenseToken.trim();
-    if (!token) return;
+    const rawInput = licenseToken.trim();
+    if (!rawInput) return;
     setActivateStatus('loading');
-    const ok = await runtime.billing.saveToken(token);
+
+    // If input looks like a license key (not a JWT), call restore API first
+    const isLicenseKey = rawInput.includes('-') || !rawInput.includes('.');
+    let jwt: string;
+
+    if (isLicenseKey) {
+      try {
+        const restoreUrl = import.meta.env.DEV
+          ? 'https://localpdf.online/api/billing/restore'
+          : '/api/billing/restore';
+        const res = await fetch(restoreUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ licenseKey: rawInput }),
+        });
+        const data = await res.json();
+        if (!data.success) {
+          setActivateStatus('error');
+          return;
+        }
+        jwt = data.token;
+      } catch {
+        setActivateStatus('error');
+        return;
+      }
+    } else {
+      jwt = rawInput;
+    }
+
+    const ok = await runtime.billing.saveToken(jwt);
     if (ok) {
       setIsActivateOpen(false);
       setLicenseToken('');
