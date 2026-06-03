@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useStudioStore, type PageItem, type StudioDocument, type StudioState } from '../../v6/components/Studio/studio-store';
 import { LinearIcon } from '../../v6/components/icons/linear-icon';
 import { usePlatform } from './platform-context';
@@ -53,6 +53,14 @@ export function StudioTopNav({ telemetryEnabled, onToggleTelemetry, telemetryOpe
   const [isActivateOpen, setIsActivateOpen] = useState(false);
   const [licenseToken, setLicenseToken] = useState('');
   const [activateStatus, setActivateStatus] = useState<'idle' | 'loading' | 'error'>('idle');
+
+  const [billingContext, setBillingContext] = useState(() => runtime.billing.getContext());
+
+  useEffect(() => {
+    return runtime.billing.subscribe((ctx) => {
+      setBillingContext(ctx);
+    });
+  }, [runtime.billing]);
 
   const handleActivate = async (): Promise<void> => {
     const rawInput = licenseToken.trim();
@@ -248,7 +256,7 @@ export function StudioTopNav({ telemetryEnabled, onToggleTelemetry, telemetryOpe
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
           Download
         </button>
-        {runtime.billing.getContext().plan === 'pro' ? (
+        {billingContext.plan === 'pro' ? (
           <div className="studio-badge-pro">PRO</div>
         ) : (
           <>

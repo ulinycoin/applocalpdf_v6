@@ -120,7 +120,15 @@ export function StudioInlinePanel({
     canvasSize,
 }: StudioInlinePanelProps) {
     const { runtime } = usePlatform();
-    const isPro = runtime.billing.getContext().plan === 'pro';
+    const [billingContext, setBillingContext] = useState(() => runtime.billing.getContext());
+
+    useEffect(() => {
+        return runtime.billing.subscribe((ctx) => {
+            setBillingContext(ctx);
+        });
+    }, [runtime.billing]);
+
+    const isPro = billingContext.plan === 'pro';
     const ui = useMemo(() => getStudioEditMessages(), []);
     const documents = useStudioStore((s: StudioState) => s.documents);
     const selection = useStudioStore((s: StudioState) => s.selection);

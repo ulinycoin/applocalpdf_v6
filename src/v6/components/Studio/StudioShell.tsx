@@ -257,6 +257,14 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
     const location = useLocation();
     const navigate = useNavigate();
     const { runtime } = usePlatform();
+    const [billingContext, setBillingContext] = useState(() => runtime.billing.getContext());
+
+    useEffect(() => {
+        return runtime.billing.subscribe((ctx) => {
+            setBillingContext(ctx);
+        });
+    }, [runtime.billing]);
+
     const isDraggingFile = useStudioStore((s: StudioState) => s.isDraggingFile);
     const setDraggingFile = useStudioStore((s: StudioState) => s.setDraggingFile);
     const documents = useStudioStore((s: StudioState) => s.documents);
@@ -1063,7 +1071,7 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
                     onNewSpace={handleNewSpace}
                     onHistoryToggle={handleHistoryToggle}
                     isHistoryOpen={isHistoryOpen}
-                    plan={runtime.billing.getContext().plan}
+                    plan={billingContext.plan}
                 />
                 <div className="studio-shell-canvas">
                     <Stage
