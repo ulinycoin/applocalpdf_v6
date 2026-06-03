@@ -125,7 +125,8 @@ export class BillingService {
       if (payload.aud !== 'localpdf-v6') return null;
       if (typeof payload.sub !== 'string' || payload.sub.trim().length === 0) return null;
 
-      const pemContent = this.jwtPublicKeyPem.replace(/-----BEGIN PUBLIC KEY-----|-----END PUBLIC KEY-----|\s+/g, '');
+      const cleanPem = this.jwtPublicKeyPem.replace(/\\n/g, '\n');
+      const pemContent = cleanPem.replace(/-----BEGIN PUBLIC KEY-----|-----END PUBLIC KEY-----|\s+/g, '');
       if (!pemContent) return null;
       const binaryDer = Uint8Array.from(decodeBase64UrlBinary(pemContent, true), c => c.charCodeAt(0));
 

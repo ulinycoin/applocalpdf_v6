@@ -170,11 +170,12 @@ export default async function handler(req: any, res: any) {
   }
 
   const apiKey = process.env.LEMON_SQUEEZY_API_KEY;
-  const privateKey = process.env.JWT_PRIVATE_KEY;
-  if (!isNonEmptyString(apiKey) || !isNonEmptyString(privateKey)) {
+  const privateKeyRaw = process.env.JWT_PRIVATE_KEY;
+  if (!isNonEmptyString(apiKey) || !isNonEmptyString(privateKeyRaw)) {
     console.error('Missing server-side configuration (API key or private key)');
     return res.status(500).json({ error: 'Server configuration error' });
   }
+  const privateKey = privateKeyRaw.replace(/\\n/g, '\n');
 
   const clientIp = getClientIp(req);
   const rateKey = `${clientIp}:${licenseKey.slice(0, 8).toLowerCase()}`;
