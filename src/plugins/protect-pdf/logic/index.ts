@@ -72,7 +72,10 @@ async function encryptInBrowserWithPdfLibPlus(inputBlob: Blob, config: {
   try {
     pdfDoc = await mod.PDFDocument.load(inputBytes);
   } catch (loadErr) {
-    const msg = loadErr instanceof Error ? loadErr.message.toLowerCase() : '';
+    const msg = (loadErr && typeof loadErr === 'object' && 'message' in loadErr && typeof loadErr.message === 'string'
+      ? loadErr.message
+      : String(loadErr ?? '')
+    ).toLowerCase();
     if (msg.includes('encrypted')) {
       throw new QpdfPipelineError(
         'PROTECT_INPUT_ALREADY_ENCRYPTED',
