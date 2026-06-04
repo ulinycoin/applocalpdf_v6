@@ -29,6 +29,7 @@ export interface OcrWord {
 
 export interface OcrEngine {
   recognize(blob: Blob, options?: OcrRecognizeOptions): Promise<OcrResult>;
+  terminate?(): Promise<void>;
 }
 
 class FallbackOcrEngine implements OcrEngine {
@@ -51,7 +52,32 @@ interface TesseractWord {
   bbox?: { x0?: number; y0?: number; x1?: number; y1?: number };
 }
 
+interface TesseractWorker {
+  recognize(
+    image: Blob,
+    options?: any,
+    output?: any,
+  ): Promise<TesseractResult>;
+  reinitialize(
+    langs?: string,
+    oem?: number,
+    config?: any,
+  ): Promise<any>;
+  terminate(): Promise<any>;
+}
+
 interface TesseractModule {
+  createWorker(
+    langs?: string,
+    oem?: number,
+    options?: {
+      corePath?: string;
+      langPath?: string;
+      workerBlobURL?: boolean;
+      workerPath?: string;
+      cacheMethod?: string;
+    },
+  ): Promise<TesseractWorker>;
   recognize(
     input: Blob,
     language: string,
@@ -142,16 +168,35 @@ function normalizeWords(words: TesseractWord[] | undefined): OcrWord[] {
 }
 
 class TesseractOcrEngine implements OcrEngine {
+  private worker: TesseractWorker | null = null;
+  private currentLanguage: string | null = null;
+
   constructor(private readonly tesseract: TesseractModule) { }
 
-  private async runRecognize(blob: Blob, language: string): Promise<OcrResult> {
-    const result = await this.tesseract.recognize(blob, language, {
+  private async getWorker(language: string): Promise<TesseractWorker> {
+    if (this.worker) {
+      if (this.currentLanguage !== language) {
+        await this.worker.reinitialize(language, 1);
+        this.currentLanguage = language;
+      }
+      return this.worker;
+    }
+
+    const worker = await this.tesseract.createWorker(language, 1, {
       workerPath: TESSERACT_WORKER_PATH,
       corePath: TESSERACT_CORE_PATH,
       langPath: TESSERACT_LANG_PATH,
       workerBlobURL: false,
       cacheMethod: TESSERACT_CACHE_METHOD,
     });
+    this.worker = worker;
+    this.currentLanguage = language;
+    return worker;
+  }
+
+  private async runRecognize(blob: Blob, language: string): Promise<OcrResult> {
+    const worker = await this.getWorker(language);
+    const result = await worker.recognize(blob);
     return {
       text: result.data?.text ?? '',
       confidence: typeof result.data?.confidence === 'number' ? Number(result.data.confidence.toFixed(2)) : null,
@@ -199,12 +244,20 @@ class TesseractOcrEngine implements OcrEngine {
       `OCR language pack "${requestedLanguage}" is unavailable${lastLanguageError instanceof Error && lastLanguageError.message ? `: ${lastLanguageError.message}` : ''}`,
     );
   }
+
+  async terminate(): Promise<void> {
+    if (this.worker) {
+      await this.worker.terminate();
+      this.worker = null;
+      this.currentLanguage = null;
+    }
+  }
 }
 
 export async function createOcrEngine(): Promise<OcrEngine> {
   try {
-    const mod = (await import('tesseract.js')) as { recognize?: unknown };
-    if (typeof mod.recognize !== 'function') {
+    const mod = (await import('tesseract.js')) as { recognize?: unknown; createWorker?: unknown };
+    if (typeof mod.createWorker !== 'function') {
       return new FallbackOcrEngine();
     }
     return new TesseractOcrEngine(mod as unknown as TesseractModule);

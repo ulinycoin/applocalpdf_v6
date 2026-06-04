@@ -1,6 +1,6 @@
 export type OcrPreprocessProfile = 'balanced' | 'aggressive';
 
-async function decodeImage(blob: Blob): Promise<{ width: number; height: number; drawTo: (ctx: CanvasRenderingContext2D, w: number, h: number) => void }> {
+async function decodeImage(blob: Blob): Promise<{ width: number; height: number; drawTo: (ctx: any, w: number, h: number) => void }> {
   if (typeof createImageBitmap === 'function') {
     const bitmap = await createImageBitmap(blob);
     return {
@@ -172,7 +172,9 @@ export async function preprocessImageForOcr(
   if (!blob.type.startsWith('image/')) {
     return blob;
   }
-  if (typeof document === 'undefined') {
+
+  const canUseCanvas = typeof OffscreenCanvas !== 'undefined' || typeof document !== 'undefined';
+  if (!canUseCanvas) {
     return blob;
   }
 
@@ -183,10 +185,22 @@ export async function preprocessImageForOcr(
     const targetWidth = Math.max(1, Math.round(decoded.width * upscale));
     const targetHeight = Math.max(1, Math.round(decoded.height * upscale));
 
-    const canvas = document.createElement('canvas');
-    canvas.width = targetWidth;
-    canvas.height = targetHeight;
-    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    const canvas =
+      typeof OffscreenCanvas !== 'undefined'
+        ? new OffscreenCanvas(targetWidth, targetHeight)
+        : typeof document !== 'undefined'
+          ? document.createElement('canvas')
+          : null;
+    if (!canvas) {
+      return blob;
+    }
+
+    if ('width' in canvas && 'height' in canvas) {
+      canvas.width = targetWidth;
+      canvas.height = targetHeight;
+    }
+
+    const ctx = canvas.getContext('2d', { willReadFrequently: true }) as any;
     if (!ctx) {
       return blob;
     }
@@ -238,7 +252,14 @@ export async function preprocessImageForOcr(
     }
 
     ctx.putImageData(imageData, 0, 0);
-    const outBlob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'));
+
+    let outBlob: Blob | null = null;
+    if (typeof OffscreenCanvas !== 'undefined' && canvas instanceof OffscreenCanvas) {
+      outBlob = await canvas.convertToBlob({ type: 'image/png' });
+    } else if ('toBlob' in canvas && typeof (canvas as any).toBlob === 'function') {
+      outBlob = await new Promise<Blob | null>((resolve) => (canvas as any).toBlob(resolve, 'image/png'));
+    }
+
     return outBlob ?? blob;
   } catch {
     return blob;
