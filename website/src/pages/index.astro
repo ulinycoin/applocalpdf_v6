@@ -143,45 +143,308 @@ const popularGuides = [
         </div>
       </div>
 
-      <div class="hero-panel">
-        <div class="panel-bar">
-          <div class="bar-dots">
-            <div class="bar-dot r"></div>
-            <div class="bar-dot y"></div>
-            <div class="bar-dot g"></div>
-          </div>
-          <span class="bar-label">Studio — contract_draft.pdf</span>
-        </div>
-        <div class="canvas-area">
-          <div class="doc-card doc1">
-            <div class="doc-head">
-              <div class="doc-dot"></div>
-              contract_draft.pdf
-              <span class="doc-pages">6 pages</span>
+      <div class="dropzone-card" id="dropzone" data-app-url={appUrl}>
+        <div class="dropzone-inner-wrapper">
+          <div class="dropzone-grid-bg"></div>
+          <div class="dropzone-grid-highlight"></div>
+          <div class="dropzone-content">
+            <div class="dropzone-icon-container">
+              <div class="simple-doc-wrapper">
+                <div class="simple-doc">
+                  <div class="simple-doc-fold"></div>
+                  <div class="simple-doc-lines">
+                    <div class="simple-doc-line" style="width: 80%;"></div>
+                    <div class="simple-doc-line" style="width: 60%;"></div>
+                    <div class="simple-doc-line" style="width: 70%;"></div>
+                  </div>
+                  <div class="simple-doc-tag">PDF</div>
+                </div>
+                <div class="simple-doc-shadow"></div>
+              </div>
             </div>
-            <div class="doc-pages-row">
-              <div class="page-thumb"><div class="line" style="width:85%"></div><div class="line"></div><div class="line img-line"></div><div class="line" style="width:70%"></div><div class="page-num">1</div></div>
-              <div class="page-thumb page-selected"><div class="line" style="width:70%"></div><div class="line img-line" style="height:30px"></div><div class="line" style="width:50%"></div><div class="page-num">3</div></div>
-              <div class="page-thumb"><div class="line" style="width:60%"></div><div class="line"></div><div class="line" style="width:80%"></div><div class="page-num">5</div></div>
+            <div class="dropzone-text-group">
+              <strong class="dropzone-title">Drag & drop your PDF here</strong>
+              <span class="dropzone-subtitle">or click to choose file</span>
+              <span class="dropzone-hint">Free to try for standard documents &bull; No credit card required</span>
             </div>
-          </div>
-          <div class="drag-arrow">↕</div>
-          <div class="doc-card doc2">
-            <div class="doc-head">
-              <div class="doc-dot doc-dot-accent"></div>
-              invoice_march.pdf
-              <span class="doc-pages">2 pages</span>
-            </div>
-            <div class="doc-pages-row">
-              <div class="page-thumb"><div class="line" style="width:60%"></div><div class="line" style="width:80%"></div><div class="line img-line" style="background:#dce8dc;"></div><div class="page-num">1</div></div>
-              <div class="page-thumb page-drop"><div class="drop-plus">+</div><div class="page-num drop-label">drop</div></div>
-            </div>
+            <span class="dropzone-privacy-badge">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px;"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+              100% Local &amp; Private
+            </span>
           </div>
         </div>
-        <div class="canvas-caption">
-          Drag pages between documents visually — no other PDF tool works this way.
-        </div>
+        <input type="file" id="dropzone-file-input" accept=".pdf" style="display: none;" />
       </div>
+
+      <script>
+        const dropzone = document.getElementById('dropzone');
+        const fileInput = document.getElementById('dropzone-file-input') as HTMLInputElement | null;
+
+        if (dropzone && fileInput) {
+          dropzone.addEventListener('click', () => {
+            fileInput.click();
+          });
+
+          fileInput.addEventListener('change', () => {
+            const files = fileInput.files;
+            if (files && files.length > 0) {
+              void handleFileTransfer(files[0]);
+            }
+          });
+
+          dropzone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropzone.classList.add('dragover');
+          });
+
+          dropzone.addEventListener('dragleave', () => {
+            dropzone.classList.remove('dragover');
+          });
+
+          dropzone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropzone.classList.remove('dragover');
+            const files = e.dataTransfer?.files;
+            if (files && files.length > 0) {
+              const file = files[0];
+              if (file.name.toLowerCase().endsWith('.pdf') || file.type === 'application/pdf') {
+                void handleFileTransfer(file);
+              } else {
+                alert('Please upload a PDF file.');
+              }
+            }
+          });
+
+          let mouseX = 0;
+          let mouseY = 0;
+          let targetX = 0;
+          let targetY = 0;
+          let isHovered = false;
+          let frameId = 0;
+
+          function tick() {
+            if (!isHovered) return;
+            mouseX += (targetX - mouseX) * 0.08;
+            mouseY += (targetY - mouseY) * 0.08;
+            dropzone.style.setProperty('--mouse-x', `${mouseX}px`);
+            dropzone.style.setProperty('--mouse-y', `${mouseY}px`);
+            frameId = requestAnimationFrame(tick);
+          }
+
+          dropzone.addEventListener('mouseenter', (e) => {
+            isHovered = true;
+            const rect = dropzone.getBoundingClientRect();
+            targetX = e.clientX - rect.left;
+            targetY = e.clientY - rect.top;
+            mouseX = targetX;
+            mouseY = targetY;
+            cancelAnimationFrame(frameId);
+            tick();
+          });
+
+          dropzone.addEventListener('mousemove', (e) => {
+            const rect = dropzone.getBoundingClientRect();
+            targetX = e.clientX - rect.left;
+            targetY = e.clientY - rect.top;
+          });
+
+          dropzone.addEventListener('mouseleave', () => {
+            isHovered = false;
+            cancelAnimationFrame(frameId);
+          });
+
+          // Create a premium full-screen drag overlay
+          const overlay = document.createElement('div');
+          overlay.id = 'window-drag-overlay';
+          Object.assign(overlay.style, {
+            position: 'fixed',
+            inset: '0',
+            zIndex: '99999',
+            backgroundColor: 'rgba(21, 34, 27, 0.88)',
+            backdropFilter: 'blur(12px)',
+            webkitBackdropFilter: 'blur(12px)',
+            display: 'none',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: '#ffffff',
+            transition: 'opacity 0.25s cubic-bezier(0.25, 0.8, 0.25, 1)',
+            opacity: '0',
+            pointerEvents: 'none'
+          });
+
+          overlay.innerHTML = `
+            <div style="
+              border: 1.5px dashed rgba(80, 184, 108, 0.5);
+              border-radius: 28px;
+              padding: 48px 32px;
+              text-align: center;
+              max-width: 440px;
+              width: 90%;
+              display: flex;
+              flex-direction: column;
+              align-items: center;
+              gap: 20px;
+              background: rgba(15, 27, 35, 0.7);
+              box-shadow: 0 30px 70px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+            ">
+              <div style="
+                width: 72px;
+                height: 72px;
+                background: rgba(80, 184, 108, 0.12);
+                border: 1px solid rgba(80, 184, 108, 0.3);
+                border-radius: 20px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 32px;
+                animation: floatDoc 2.4s ease-in-out infinite;
+              ">📄</div>
+              <div style="display: flex; flex-direction: column; gap: 6px;">
+                <strong style="
+                  font-size: 1.45rem;
+                  font-family: 'Iowan Old Style', Georgia, serif;
+                  font-weight: 700;
+                  color: #eaf8ee;
+                ">Drop your PDF anywhere</strong>
+                <span style="
+                  font-size: 0.92rem;
+                  color: #a5d6a7;
+                  font-weight: 500;
+                  opacity: 0.9;
+                ">to load it directly into the secure local workspace</span>
+              </div>
+            </div>
+          `;
+          document.body.appendChild(overlay);
+
+          let dragCounter = 0;
+
+          window.addEventListener('dragenter', (e) => {
+            const types = e.dataTransfer?.types;
+            const hasFiles = types && Array.from(types).includes('Files');
+            if (!hasFiles) return;
+
+            e.preventDefault();
+            dragCounter++;
+            if (dragCounter === 1) {
+              overlay.style.display = 'flex';
+              // Force reflow
+              overlay.offsetHeight;
+              overlay.style.opacity = '1';
+            }
+          });
+
+          window.addEventListener('dragover', (e) => {
+            e.preventDefault();
+          });
+
+          window.addEventListener('dragleave', (e) => {
+            dragCounter--;
+            if (dragCounter === 0) {
+              overlay.style.opacity = '0';
+              setTimeout(() => {
+                if (dragCounter === 0) overlay.style.display = 'none';
+              }, 250);
+            }
+          });
+
+          window.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dragCounter = 0;
+            overlay.style.opacity = '0';
+            overlay.style.display = 'none';
+
+            const files = e.dataTransfer?.files;
+            if (files && files.length > 0) {
+              const file = files[0];
+              if (file.name.toLowerCase().endsWith('.pdf') || file.type === 'application/pdf') {
+                void handleFileTransfer(file);
+              } else {
+                alert('Please upload a PDF file.');
+              }
+            }
+          });
+        }
+
+        async function handleFileTransfer(file: File) {
+          if (dropzone) {
+            dropzone.classList.add('uploading');
+            const titleEl = dropzone.querySelector('.dropzone-title');
+            const subtitleEl = dropzone.querySelector('.dropzone-subtitle');
+            if (titleEl) titleEl.textContent = 'Loading file...';
+            if (subtitleEl) subtitleEl.textContent = file.name;
+          }
+
+          try {
+            await saveFileToTransferDB(file);
+            const appUrl = dropzone?.getAttribute('data-app-url') || '/app/studio';
+            window.location.href = appUrl;
+          } catch (err) {
+            console.error('File transfer failed, trying sessionStorage fallback', err);
+            try {
+              const reader = new FileReader();
+              reader.onload = (e) => {
+                const dataUrl = e.target?.result;
+                if (dataUrl) {
+                  sessionStorage.setItem('localpdf_transfer_file', JSON.stringify({
+                    name: file.name,
+                    type: file.type,
+                    dataUrl: dataUrl
+                  }));
+                  const appUrl = dropzone?.getAttribute('data-app-url') || '/app/studio';
+                  window.location.href = appUrl;
+                }
+              };
+              reader.readAsDataURL(file);
+            } catch (fallbackErr) {
+              console.error('Fallback failed', fallbackErr);
+              alert('Could not load file. Please try again.');
+              if (dropzone) {
+                dropzone.classList.remove('uploading');
+                const titleEl = dropzone.querySelector('.dropzone-title');
+                const subtitleEl = dropzone.querySelector('.dropzone-subtitle');
+                if (titleEl) titleEl.textContent = 'Drag & drop your PDF here';
+                if (subtitleEl) subtitleEl.textContent = 'or click to choose file';
+              }
+            }
+          }
+        }
+
+        function saveFileToTransferDB(file: File): Promise<void> {
+          return new Promise((resolve, reject) => {
+            const request = indexedDB.open('localpdf-transfer', 1);
+            request.onupgradeneeded = () => {
+              const db = request.result;
+              if (!db.objectStoreNames.contains('transfer-files')) {
+                db.createObjectStore('transfer-files', { keyPath: 'id' });
+              }
+            };
+            request.onsuccess = () => {
+              const db = request.result;
+              const tx = db.transaction('transfer-files', 'readwrite');
+              const store = tx.objectStore('transfer-files');
+              const putRequest = store.put({
+                id: 'pending',
+                blob: file,
+                name: file.name,
+                type: file.type,
+                timestamp: Date.now()
+              });
+              tx.oncomplete = () => {
+                db.close();
+                resolve();
+              };
+              tx.onerror = () => {
+                db.close();
+                reject(tx.error);
+              };
+            };
+            request.onerror = () => {
+              reject(request.error);
+            };
+          });
+        }
+      </script>
     </section>
 
     <!-- STATS -->
@@ -442,183 +705,306 @@ const popularGuides = [
     font-weight: 500;
   }
 
-  /* ── Hero panel / canvas ───────────────────── */
-  .hero-panel {
-    border: 1px solid var(--line);
-    border-radius: 14px;
-    overflow: hidden;
-    background: var(--surface);
-    box-shadow: var(--shadow);
-  }
-
-  .panel-bar {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 11px 16px;
-    background: rgba(247, 244, 239, 0.9);
-    border-bottom: 1px solid var(--line);
-  }
-
-  .bar-dots {
-    display: flex;
-    gap: 5px;
-  }
-
-  .bar-dot {
-    width: 9px;
-    height: 9px;
-    border-radius: 2px;
-  }
-
-  .bar-dot.r { background: #e0524a; }
-  .bar-dot.y { background: #e6b422; }
-  .bar-dot.g { background: #50b86c; }
-
-  .bar-label {
-    font-size: 0.78rem;
-    color: var(--text-soft);
-    margin-left: 4px;
-  }
-
-  .canvas-area {
-    padding: 20px;
-    background:
-      radial-gradient(circle at 20px 20px, rgba(20,32,40,0.08) 1px, transparent 1px);
-    background-size: 24px 24px;
-    background-color: #f0ede8;
-    min-height: 300px;
+  /* ── Dropzone Card ─────────────────────────── */
+  .dropzone-card {
     position: relative;
-  }
-
-  .doc-card {
-    background: var(--surface);
-    border: 1px solid var(--line);
-    border-radius: 8px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    height: 100%;
+    min-height: 340px;
+    border-radius: 20px;
+    background: rgba(20, 32, 40, 0.12);
     overflow: hidden;
-    width: 46%;
-    position: absolute;
-  }
-
-  .doc1 { top: 36px; left: 20px; }
-  .doc2 { bottom: 32px; right: 20px; opacity: 0.88; }
-
-  .doc-head {
+    cursor: pointer;
     display: flex;
     align-items: center;
-    gap: 6px;
-    padding: 8px 12px;
-    border-bottom: 1px solid var(--line);
-    font-size: 0.78rem;
-    font-weight: 600;
-    color: var(--text-soft);
-    background: var(--surface);
+    justify-content: center;
+    transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+    box-shadow: var(--shadow);
+    padding: 1px;
   }
 
-  .doc-dot {
-    width: 6px;
-    height: 6px;
-    border-radius: 2px;
-    background: #50b86c;
-    flex-shrink: 0;
+  .dropzone-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 20px;
+    background: radial-gradient(circle 160px at var(--mouse-x, 0) var(--mouse-y, 0), #197a5c 0%, rgba(25, 122, 92, 0.4) 50%, transparent 100%);
+    opacity: 0;
+    transition: opacity 0.35s ease;
+    z-index: 1;
   }
 
-  .doc-dot-accent { background: var(--accent); }
-
-  .doc-pages {
-    margin-left: auto;
-    font-size: 0.7rem;
-    color: #8d98a3;
-    font-weight: 400;
+  .dropzone-card:hover::before {
+    opacity: 1;
   }
 
-  .doc-pages-row {
+  .dropzone-inner-wrapper {
+    position: relative;
+    height: calc(100% - 2px);
+    width: calc(100% - 2px);
+    border-radius: 19px;
+    background-color: #f3f1ec;
     display: flex;
-    gap: 8px;
-    padding: 10px 12px;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    z-index: 2;
   }
 
-  .page-thumb {
-    width: 52px;
-    height: 70px;
-    background: var(--surface);
-    border: 1px solid var(--line);
-    border-radius: 4px;
+  .dropzone-grid-bg {
+    position: absolute;
+    inset: 0;
+    background-image: radial-gradient(circle, rgba(20, 32, 40, 0.08) 1.2px, transparent 1.2px);
+    background-size: 20px 20px;
+    background-position: center;
+    transition: all 0.3s ease;
+    z-index: 1;
+  }
+
+  .dropzone-grid-highlight {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    background-image: radial-gradient(circle, #197a5c 1.5px, transparent 1.5px);
+    background-size: 20px 20px;
+    background-position: center;
+    mask-image: radial-gradient(circle 100px at var(--mouse-x, 0) var(--mouse-y, 0), black 20%, transparent 100%);
+    -webkit-mask-image: radial-gradient(circle 100px at var(--mouse-x, 0) var(--mouse-y, 0), black 20%, transparent 100%);
+    transition: opacity 0.3s ease;
+    z-index: 2;
+  }
+
+  .dropzone-content {
+    position: relative;
+    z-index: 2;
     display: flex;
     flex-direction: column;
-    padding: 6px 5px;
-    gap: 4px;
-    flex-shrink: 0;
+    align-items: center;
+    text-align: center;
+    gap: 16px;
+    padding: 32px 24px;
+  }
+
+  .dropzone-icon-container {
     position: relative;
+    width: 80px;
+    height: 80px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 8px;
   }
 
-  .page-selected {
-    border-color: var(--accent);
-    box-shadow: 0 0 0 2px rgba(222, 122, 45, 0.15);
-  }
-
-  .page-drop {
-    border-style: dashed;
-    border-color: var(--accent);
-    opacity: 0.65;
+  .simple-doc-wrapper {
+    position: relative;
+    width: 80px;
+    height: 85px;
+    display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
   }
 
-  .drop-plus {
-    font-size: 1.4rem;
-    color: var(--accent);
-    margin: auto;
+  .simple-doc {
+    position: relative;
+    width: 52px;
+    height: 68px;
+    background: #ffffff;
+    border: 2px solid var(--text);
+    border-radius: 6px;
+    clip-path: polygon(0 0, calc(100% - 15px) 0, 100% 15px, 100% 100%, 0 100%);
+    transition: all 0.35s cubic-bezier(0.25, 0.8, 0.25, 1);
+    animation: floatDoc 2.4s ease-in-out infinite;
+    z-index: 2;
   }
 
-  .drop-label {
+  .simple-doc-fold {
     position: absolute;
-    bottom: 3px;
-    right: 4px;
-    font-size: 8px;
-    color: var(--accent);
-    font-weight: 600;
+    top: 0;
+    right: 0;
+    width: 15px;
+    height: 15px;
+    background: #15824c;
+    border-radius: 0 4px 0 6px;
+    box-shadow: -1.5px 1.5px 3px rgba(0, 0, 0, 0.12);
   }
 
-  .line {
+  .simple-doc-lines {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 18px 8px 8px;
+  }
+
+  .simple-doc-line {
     height: 3px;
-    background: #ddd9d2;
-    border-radius: 2px;
-    width: 100%;
+    background: rgba(20, 32, 40, 0.12);
+    border-radius: 1.5px;
   }
 
-  .img-line {
-    height: 20px;
-    background: #e8e5de;
-    border-radius: 2px;
-  }
-
-  .page-num {
+  .simple-doc-tag {
     position: absolute;
-    bottom: 3px;
-    right: 4px;
-    font-size: 8px;
-    color: #8d98a3;
+    bottom: 5px;
+    left: 6px;
+    background: #15824c;
+    color: #ffffff;
+    font-size: 7.5px;
+    font-weight: 800;
+    padding: 1.5px 3px;
+    border-radius: 2px;
+    line-height: 1;
+    font-family: sans-serif;
+  }
+
+  .simple-doc-shadow {
+    width: 42px;
+    height: 4px;
+    background: rgba(20, 32, 40, 0.08);
+    border-radius: 50%;
+    margin-top: 6px;
+    filter: blur(1px);
+    transition: all 0.35s ease;
+    animation: shadowPulse 2.4s ease-in-out infinite;
+    z-index: 1;
+  }
+
+  @keyframes floatDoc {
+    0%, 100% { transform: translateY(0) rotate(0deg); }
+    50% { transform: translateY(-6px) rotate(1deg); }
+  }
+
+  @keyframes shadowPulse {
+    0%, 100% { transform: scale(1); opacity: 0.6; }
+    50% { transform: scale(0.8); opacity: 0.3; }
+  }
+
+  .dropzone-text-group {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .dropzone-title {
+    font-size: 1.25rem;
+    color: var(--text);
+    font-family: "Iowan Old Style", Georgia, serif;
+    font-weight: 700;
+  }
+
+  .dropzone-subtitle {
+    font-size: 0.88rem;
+    color: var(--text-soft);
+  }
+
+  .dropzone-hint {
+    font-size: 0.76rem;
+    color: var(--text-soft);
+    opacity: 0.75;
+    margin-top: 4px;
     font-weight: 500;
   }
 
-  .drag-arrow {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    font-size: 1.4rem;
-    color: var(--accent);
+  .dropzone-privacy-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.75rem;
     font-weight: 700;
-    opacity: 0.75;
+    color: #197a5c;
+    background: rgba(25, 122, 92, 0.08);
+    padding: 4px 10px;
+    border-radius: 99px;
+    border: 1px solid rgba(25, 122, 92, 0.12);
   }
 
-  .canvas-caption {
-    padding: 10px 16px 12px;
-    font-size: 0.82rem;
-    color: var(--text-soft);
-    border-top: 1px solid var(--line);
+  /* ── Hover animations ────────────────────────── */
+  .dropzone-card:hover {
+    box-shadow: 0 12px 32px rgba(25, 122, 92, 0.08);
+    transform: translateY(-2px);
+  }
+
+  .dropzone-card:hover .dropzone-grid-highlight {
+    opacity: 1;
+  }
+
+  .dropzone-card:hover .simple-doc {
+    animation-play-state: paused;
+    transform: translateY(-8px) rotate(-1.5deg) scale(1.02);
+    border-color: #15824c;
+    box-shadow: 0 8px 20px rgba(25, 122, 92, 0.15);
+  }
+
+  .dropzone-card:hover .simple-doc-shadow {
+    animation-play-state: paused;
+    transform: scale(0.7);
+    opacity: 0.2;
+  }
+
+  /* ── Dragover state ──────────────────────────── */
+  .dropzone-card.dragover {
+    background: #197a5c;
+    box-shadow: 0 16px 40px rgba(25, 122, 92, 0.15);
+    transform: scale(1.02);
+  }
+
+  .dropzone-card.dragover::before {
+    opacity: 0;
+  }
+
+  .dropzone-card.dragover .dropzone-inner-wrapper {
+    background-color: #eaf4f0;
+  }
+
+  .dropzone-card.dragover .dropzone-grid-highlight {
+    opacity: 1;
+    mask-image: none;
+    -webkit-mask-image: none;
+    background-image: radial-gradient(circle, #197a5c 1.8px, transparent 1.8px);
+    background-size: 16px 16px;
+  }
+
+  .dropzone-card.dragover .simple-doc {
+    animation-play-state: paused;
+    transform: translateY(-16px) rotate(-3deg) scale(1.05);
+    border-color: #197a5c;
+    box-shadow: 0 12px 28px rgba(25, 122, 92, 0.25);
+  }
+
+  .dropzone-card.dragover .simple-doc-shadow {
+    animation-play-state: paused;
+    transform: scale(0.5);
+    opacity: 0.15;
+  }
+
+  /* ── Uploading state ─────────────────────────── */
+  .dropzone-card.uploading {
+    pointer-events: none;
+    background: #50b86c;
+  }
+
+  .dropzone-card.uploading::before {
+    opacity: 0;
+  }
+
+  .dropzone-card.uploading .dropzone-inner-wrapper {
+    background-color: #eaf4f0;
+  }
+
+  .dropzone-card.uploading .simple-doc {
+    animation-play-state: paused;
+    transform: translateY(10px) scale(0.85);
+    opacity: 0.5;
+  }
+
+  .dropzone-card.uploading .simple-doc-shadow {
+    animation-play-state: paused;
+    transform: scale(0.2);
+    opacity: 0;
+  }
+
+  @keyframes pulse {
+    0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(80, 184, 108, 0.4); }
+    70% { transform: scale(1.05); box-shadow: 0 0 0 10px rgba(80, 184, 108, 0); }
+    100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(80, 184, 108, 0); }
   }
 
   /* ── Stats ─────────────────────────────────── */

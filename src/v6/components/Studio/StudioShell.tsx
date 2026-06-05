@@ -565,13 +565,7 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
         setViewPosition(ctx.viewPosition);
     }, [setActiveDocument, setInteractionMode, setSelection]);
 
-    useEffect(() => {
-        const params = new URLSearchParams(window.location.search);
-        if (params.get('upload') === '1') {
-            uploadInputRef.current?.click();
-            navigate('/studio', { replace: true, state: location.state });
-        }
-    }, []);
+
 
     useEffect(() => {
         const handleResize = () => {
@@ -1053,6 +1047,93 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
         }
         fitToDocuments(documents);
     }, [documents.length, fitToDocuments]);
+
+    useEffect(() => {
+        const checkTransferredFiles = async (): Promise<boolean> => {
+            let fileTransferred = false;
+            // 1. Check IndexedDB transfer database
+            try {
+                fileTransferred = await new Promise<boolean>((resolve) => {
+                    const dbRequest = indexedDB.open('localpdf-transfer', 1);
+                    dbRequest.onupgradeneeded = () => {
+                        const db = dbRequest.result;
+                        if (!db.objectStoreNames.contains('transfer-files')) {
+                            db.createObjectStore('transfer-files', { keyPath: 'id' });
+                        }
+                    };
+                    dbRequest.onsuccess = () => {
+                        const db = dbRequest.result;
+                        if (!db.objectStoreNames.contains('transfer-files')) {
+                            db.close();
+                            resolve(false);
+                            return;
+                        }
+                        const tx = db.transaction('transfer-files', 'readwrite');
+                        const store = tx.objectStore('transfer-files');
+                        const getRequest = store.get('pending');
+
+                        getRequest.onsuccess = () => {
+                            const record = getRequest.result;
+                            if (record) {
+                                const { blob, name, type } = record;
+                                const file = new File([blob], name, { type });
+                                store.delete('pending');
+                                void handleIncomingFiles([file], true);
+                                resolve(true);
+                            } else {
+                                resolve(false);
+                            }
+                        };
+
+                        tx.oncomplete = () => {
+                            db.close();
+                        };
+                        tx.onerror = () => {
+                            db.close();
+                            resolve(false);
+                        };
+                    };
+                    dbRequest.onerror = () => {
+                        resolve(false);
+                    };
+                });
+            } catch (err) {
+                console.error('Failed to retrieve file from IndexedDB transfer', err);
+            }
+
+            if (fileTransferred) return true;
+
+            // 2. Check sessionStorage fallback
+            try {
+                const transferData = window.sessionStorage.getItem('localpdf_transfer_file');
+                if (transferData) {
+                    const { name, type, dataUrl } = JSON.parse(transferData);
+                    window.sessionStorage.removeItem('localpdf_transfer_file');
+                    const res = await fetch(dataUrl);
+                    const blob = await res.blob();
+                    const file = new File([blob], name, { type });
+                    void handleIncomingFiles([file], true);
+                    return true;
+                }
+            } catch (err) {
+                console.error('Failed to retrieve file from sessionStorage transfer', err);
+            }
+            return false;
+        };
+
+        const initWorkspace = async () => {
+            const hasTransferred = await checkTransferredFiles();
+            const params = new URLSearchParams(window.location.search);
+            if (params.get('upload') === '1') {
+                if (!hasTransferred) {
+                    uploadInputRef.current?.click();
+                }
+                navigate('/studio', { replace: true, state: location.state });
+            }
+        };
+
+        void initWorkspace();
+    }, [handleIncomingFiles, navigate, location.state]);
 
     return (
         <div

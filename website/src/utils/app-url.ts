@@ -11,7 +11,7 @@ export function getAppUrl(target?: string, params?: Record<string, string>) {
       url = `${base}${buildAppPath(target)}`;
     }
   } else {
-    url = import.meta.env.DEV ? getAppOriginUrl(target) : buildAppPath(target);
+    url = buildAppPath(target);
   }
 
   if (params && Object.keys(params).length > 0) {
