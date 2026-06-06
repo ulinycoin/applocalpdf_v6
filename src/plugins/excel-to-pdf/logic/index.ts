@@ -438,9 +438,16 @@ async function loadFontBytes(url: string): Promise<Uint8Array> {
     }
     return bytes;
   }
-  const response = await fetch(url);
+
+  let absoluteUrl = url;
+  if (typeof self !== 'undefined' && self.location && !url.startsWith('http://') && !url.startsWith('https://') && !url.startsWith('blob:') && !url.startsWith('data:')) {
+    const base = self.location.protocol === 'blob:' ? self.location.origin : self.location.href;
+    absoluteUrl = new URL(url, base).href;
+  }
+
+  const response = await fetch(absoluteUrl);
   if (!response.ok) {
-    throw new Error(`Failed to load font: ${response.status} ${url}`);
+    throw new Error(`Failed to load font: ${response.status} ${absoluteUrl}`);
   }
   return new Uint8Array(await response.arrayBuffer());
 }

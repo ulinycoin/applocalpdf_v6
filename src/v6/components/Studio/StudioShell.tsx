@@ -1302,7 +1302,7 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
                         {overlayMode === 'edit'
                             ? <StudioEditWorkspace onClose={handleOverlayClose} />
                             : overlayMode === 'auto-toc'
-                                ? <AutoTocStudioPanelLazy onClose={handleOverlayClose} inputFileId={activeDocument?.pages[0]?.fileId ?? ''} fileName={activeDocument?.name ?? 'document.pdf'} />
+                                ? <AutoTocStudioPanelLazy onClose={handleOverlayClose} inputFileId={activeDocument?.pages[0]?.fileId ?? ''} fileName={activeDocument?.name ?? 'document.pdf'} runtime={runtime} />
                                 : <StudioConvertWorkspace onClose={handleOverlayClose} initialTool={overlayMode} />
                         }
                     </Suspense>

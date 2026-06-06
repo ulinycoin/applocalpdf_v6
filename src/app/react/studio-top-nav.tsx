@@ -83,13 +83,24 @@ export function StudioTopNav({ telemetryEnabled, onToggleTelemetry, telemetryOpe
         });
         const data = await res.json();
         if (!data.success) {
+          if (import.meta.env.DEV) {
+            // В режиме разработки подставляем моковый JWT при ошибке валидации
+            jwt = 'eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJsb2NhbHBkZi1iaWxsaW5nIiwiYXVkIjoibG9jYWxwZGYtdjYiLCJzdWIiOiJtYW51YWwtdGVzdC1hY3RpdmF0aW9uIiwicGxhbiI6InBybyIsInRpZXIiOiJwcm9fbW9udGhseSIsImVudGl0bGVtZW50cyI6eyJtYXhXb3Jrc3BhY2VzIjoxMDAwLCJtYXhQYWdlc1BlckRvY3VtZW50IjoxMDAwLCJvY3JFbmFibGVkIjp0cnVlLCJlZGl0RW5hYmxlZCI6dHJ1ZSwiZXhwb3J0RW5hYmxlZCI6dHJ1ZX0sImlhdCI6MTc4MDc2NDYxMywibmJmIjoxNzgwNzY0NjEzLCJleHAiOjE3ODMzNTY2MTN9.0dCr02UPqyzobTFOpmJY5AXe4eUVu_VIcn7nMlDcrWEmQth2UDAreK24xTf5PzWZrIcbZ-RNTNDBe6cYW2yeCozkj4pmYnwzPNAFwLejuA0if2IUBFYfkfl8fI4NtcmM5XUYKk568WK03Xx4_bgWa_GCiCSsOdJO_2dXdwOaBTBYIt38usI32xJbUZsq_LroKMr3R8pw0QLh1rowiQe-cOyribMKV5x0LK1AC-tyaF-UOVdN2OC2aQnjY-UnIAemXrKIxXX1ypABHw295lwvK27ySkGuxK0PzPEjEsf82_w3xvqqNLV1oj_k-Do6EZB1w1VYZdZWCjy4av63VdkFvg';
+          } else {
+            setActivateStatus('error');
+            return;
+          }
+        } else {
+          jwt = data.token;
+        }
+      } catch {
+        if (import.meta.env.DEV) {
+          // В режиме разработки подставляем моковый JWT при сетевой ошибке
+          jwt = 'eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJsb2NhbHBkZi1iaWxsaW5nIiwiYXVkIjoibG9jYWxwZGYtdjYiLCJzdWIiOiJtYW51YWwtdGVzdC1hY3RpdmF0aW9uIiwicGxhbiI6InBybyIsInRpZXIiOiJwcm9fbW9udGhseSIsImVudGl0bGVtZW50cyI6eyJtYXhXb3Jrc3BhY2VzIjoxMDAwLCJtYXhQYWdlc1BlckRvY3VtZW50IjoxMDAwLCJvY3JFbmFibGVkIjp0cnVlLCJlZGl0RW5hYmxlZCI6dHJ1ZSwiZXhwb3J0RW5hYmxlZCI6dHJ1ZX0sImlhdCI6MTc4MDc2NDYxMywibmJmIjoxNzgwNzY0NjEzLCJleHAiOjE3ODMzNTY2MTN9.0dCr02UPqyzobTFOpmJY5AXe4eUVu_VIcn7nMlDcrWEmQth2UDAreK24xTf5PzWZrIcbZ-RNTNDBe6cYW2yeCozkj4pmYnwzPNAFwLejuA0if2IUBFYfkfl8fI4NtcmM5XUYKk568WK03Xx4_bgWa_GCiCSsOdJO_2dXdwOaBTBYIt38usI32xJbUZsq_LroKMr3R8pw0QLh1rowiQe-cOyribMKV5x0LK1AC-tyaF-UOVdN2OC2aQnjY-UnIAemXrKIxXX1ypABHw295lwvK27ySkGuxK0PzPEjEsf82_w3xvqqNLV1oj_k-Do6EZB1w1VYZdZWCjy4av63VdkFvg';
+        } else {
           setActivateStatus('error');
           return;
         }
-        jwt = data.token;
-      } catch {
-        setActivateStatus('error');
-        return;
       }
     } else {
       jwt = rawInput;

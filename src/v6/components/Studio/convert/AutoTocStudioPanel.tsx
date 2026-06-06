@@ -1,25 +1,37 @@
 import { useCallback, useState, useRef, useEffect } from 'react';
 import { LinearIcon } from '../../icons/linear-icon';
-import { usePlatform } from '../../../../app/react/platform-context';
+import type { PlatformRuntime } from '../../../../app/platform/create-platform';
 import { TocReviewPanel, type ApplyOptions } from '../../../../plugins/auto-toc/ui/TocReviewPanel';
 import { requestTocParse, type TocParseResult } from '../../../../plugins/auto-toc/ui/toc-parser-client';
 import type { HeaderNode } from '../../../../plugins/auto-toc/logic/index';
+
+import latinUrl from '@fontsource/noto-sans/files/noto-sans-latin-400-normal.woff?url';
+import latinExtUrl from '@fontsource/noto-sans/files/noto-sans-latin-ext-400-normal.woff?url';
+import cyrillicUrl from '@fontsource/noto-sans/files/noto-sans-cyrillic-400-normal.woff?url';
+import latinBoldUrl from '@fontsource/noto-sans/files/noto-sans-latin-700-normal.woff?url';
+import latinExtBoldUrl from '@fontsource/noto-sans/files/noto-sans-latin-ext-700-normal.woff?url';
+import cyrillicBoldUrl from '@fontsource/noto-sans/files/noto-sans-cyrillic-700-normal.woff?url';
+
+import { useStudioStore } from '../studio-store';
+import { PipelineRunner } from '../../../studio/pipeline/PipelineRunner';
+import type { IPipelineRecipe } from '../../../studio/pipeline/types';
 
 interface AutoTocStudioPanelProps {
     onClose?: () => void;
     inputFileId: string;
     fileName: string;
+    runtime: PlatformRuntime;
 }
 
 type Phase = 'config' | 'parsing' | 'review' | 'applying' | 'result';
 
-export function AutoTocStudioPanel({ onClose, inputFileId, fileName }: AutoTocStudioPanelProps) {
-    const { runtime } = usePlatform();
+export function AutoTocStudioPanel({ onClose, inputFileId, fileName, runtime }: AutoTocStudioPanelProps) {
     const [phase, setPhase] = useState<Phase>('config');
     const [parseResult, setParseResult] = useState<TocParseResult | null>(null);
     const [headers, setHeaders] = useState<HeaderNode[]>([]);
     const [error, setError] = useState<string | null>(null);
     const [outputUrl, setOutputUrl] = useState<string | null>(null);
+    const [activeInputFileId, setActiveInputFileId] = useState<string>(inputFileId);
     const parseRequestId = useRef(0);
     const abortRef = useRef<AbortController | null>(null);
 
@@ -38,7 +50,35 @@ export function AutoTocStudioPanel({ onClose, inputFileId, fileName }: AutoTocSt
         window.posthog?.capture('app_tool_run_started', { toolId: 'auto-toc', action: 'parse' });
 
         try {
-            const result = await requestTocParse(runtime, inputFileId, ac.signal);
+            // Собираем текущие страницы холста в один временный PDF
+            const activeDocumentId = useStudioStore.getState().activeDocumentId;
+            const documents = useStudioStore.getState().documents;
+            const activeDoc = documents.find((d) => d.id === activeDocumentId);
+            
+            let targetFileId = inputFileId;
+            if (activeDoc && activeDoc.pages.length > 0) {
+                const sequence = activeDoc.pages.map((p) => ({
+                    sourceFileId: p.fileId,
+                    pageIndex: p.pageIndex,
+                    rotation: p.rotation,
+                }));
+                const recipe: IPipelineRecipe = {
+                    inputs: Array.from(new Set(sequence.map((item) => item.sourceFileId))),
+                    operations: [{ type: 'reorder', sequence }],
+                    outputName: 'studio-autotoc-input.pdf',
+                };
+                const runner = new PipelineRunner(runtime.vfs);
+                const pipelineResult = await runner.execute(recipe);
+                const payload = new Uint8Array(pipelineResult.buffer.byteLength);
+                payload.set(pipelineResult.buffer);
+                const blob = new Blob([payload], { type: 'application/pdf' });
+                const entry = await runtime.vfs.write(new File([blob], pipelineResult.fileName, { type: 'application/pdf' }));
+                targetFileId = entry.id;
+            }
+
+            setActiveInputFileId(targetFileId);
+
+            const result = await requestTocParse(runtime, targetFileId, ac.signal);
             if (requestId !== parseRequestId.current) return;
 
             if (result.error) {
@@ -80,8 +120,20 @@ export function AutoTocStudioPanel({ onClose, inputFileId, fileName }: AutoTocSt
             const result = await runtime.runner.execute(
                 'auto-toc',
                 {
-                    inputIds: [inputFileId],
-                    options: { action: 'apply', headers: options.headers, generateTocPage: options.generateTocPage },
+                    inputIds: [activeInputFileId],
+                    options: {
+                        action: 'apply',
+                        headers: options.headers,
+                        generateTocPage: options.generateTocPage,
+                        fontUrls: {
+                            latinUrl,
+                            latinExtUrl,
+                            cyrillicUrl,
+                            latinBoldUrl,
+                            latinExtBoldUrl,
+                            cyrillicBoldUrl,
+                        }
+                    },
                 },
                 runtime.billing.getContext(),
             );
@@ -106,7 +158,7 @@ export function AutoTocStudioPanel({ onClose, inputFileId, fileName }: AutoTocSt
             setError(err instanceof Error ? err.message : 'Apply failed');
             setPhase('review');
         }
-    }, [runtime, inputFileId]);
+    }, [runtime, activeInputFileId]);
 
     return (
         <div className="cvt-shell">

@@ -5,6 +5,13 @@ import { TocReviewPanel, type ApplyOptions } from './TocReviewPanel';
 import { requestTocParse, type TocParseResult } from './toc-parser-client';
 import type { HeaderNode } from '../logic/index';
 
+import latinUrl from '@fontsource/noto-sans/files/noto-sans-latin-400-normal.woff?url';
+import latinExtUrl from '@fontsource/noto-sans/files/noto-sans-latin-ext-400-normal.woff?url';
+import cyrillicUrl from '@fontsource/noto-sans/files/noto-sans-cyrillic-400-normal.woff?url';
+import latinBoldUrl from '@fontsource/noto-sans/files/noto-sans-latin-700-normal.woff?url';
+import latinExtBoldUrl from '@fontsource/noto-sans/files/noto-sans-latin-ext-700-normal.woff?url';
+import cyrillicBoldUrl from '@fontsource/noto-sans/files/noto-sans-cyrillic-700-normal.woff?url';
+
 interface AutoTocConfigProps {
   inputFiles: string[];
   onStart: (options?: Record<string, unknown>) => void;
@@ -85,7 +92,20 @@ export default function AutoTocConfig({ inputFiles, onStart, onBack }: AutoTocCo
   }, []);
 
   const handleApply = useCallback((options: ApplyOptions) => {
-    onStart({ action: 'apply', headers: options.headers, bodyTextSize: parseResult?.bodyTextSize, generateTocPage: options.generateTocPage });
+    onStart({
+      action: 'apply',
+      headers: options.headers,
+      bodyTextSize: parseResult?.bodyTextSize,
+      generateTocPage: options.generateTocPage,
+      fontUrls: {
+        latinUrl,
+        latinExtUrl,
+        cyrillicUrl,
+        latinBoldUrl,
+        latinExtBoldUrl,
+        cyrillicBoldUrl,
+      }
+    });
   }, [onStart, parseResult]);
 
   const handleBackToConfig = useCallback(() => {

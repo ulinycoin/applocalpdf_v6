@@ -1,4 +1,7 @@
 import type { ToolLogicFunction } from '../../../core/types/contracts';
+import fontkit from '@pdf-lib/fontkit';
+
+let globalFontUrls: any = null;
 
 /**
  * A single detected heading candidate.
@@ -324,8 +327,7 @@ async function injectBookmarks(pdfBytes: Uint8Array, tree: OutlineItemNode[], pa
 
         for (let i = 0; i < nodes.length; i++) {
             const node = nodes[i];
-            // Apply page offset (for TOC page insertion)
-            const pi = Math.max(0, Math.min(node.pageIndex + pageOffset, pageCount - 1 + pageOffset));
+            const pi = Math.max(0, Math.min(node.pageIndex + pageOffset, pageCount - 1));
             const page = doc.getPage(pi);
             const pageRef = (page as any).ref;
             const pageHeight = page.getSize().height;
@@ -385,6 +387,95 @@ async function injectBookmarks(pdfBytes: Uint8Array, tree: OutlineItemNode[], pa
     return await doc.save();
 }
 
+async function loadFontBytes(url: string): Promise<Uint8Array> {
+    let absoluteUrl = url;
+    if (typeof self !== 'undefined' && self.location && !url.startsWith('http://') && !url.startsWith('https://') && !url.startsWith('blob:') && !url.startsWith('data:')) {
+        const base = self.location.protocol === 'blob:' ? self.location.origin : self.location.href;
+        absoluteUrl = new URL(url, base).href;
+    }
+
+    if (!absoluteUrl.startsWith('http://') && !absoluteUrl.startsWith('https://') && !absoluteUrl.startsWith('blob:') && !absoluteUrl.startsWith('data:')) {
+        const fs = await import('node:fs');
+        const path = await import('node:path');
+        const cleanPath = absoluteUrl.startsWith('file://') ? absoluteUrl.slice(7) : absoluteUrl;
+        const resolvedPath = path.isAbsolute(cleanPath) ? cleanPath : path.resolve(cleanPath);
+        const bytes = fs.readFileSync(resolvedPath);
+        return new Uint8Array(bytes);
+    }
+    const response = await fetch(absoluteUrl);
+    if (!response.ok) {
+        throw new Error(`Failed to load font: ${absoluteUrl}`);
+    }
+    return new Uint8Array(await response.arrayBuffer());
+}
+
+async function resolveNotoFontUrls(): Promise<{
+    latinUrl: string;
+    latinExtUrl: string;
+    cyrillicUrl: string;
+    latinBoldUrl: string;
+    latinExtBoldUrl: string;
+    cyrillicBoldUrl: string;
+}> {
+    if (globalFontUrls) {
+        return globalFontUrls;
+    }
+
+    if (typeof process !== 'undefined' && process.versions?.node) {
+        const path = await import('node:path');
+        const baseDir = path.resolve(process.cwd(), 'node_modules/@fontsource/noto-sans/files');
+        return {
+            latinUrl: path.join(baseDir, 'noto-sans-latin-400-normal.woff'),
+            latinExtUrl: path.join(baseDir, 'noto-sans-latin-ext-400-normal.woff'),
+            cyrillicUrl: path.join(baseDir, 'noto-sans-cyrillic-400-normal.woff'),
+            latinBoldUrl: path.join(baseDir, 'noto-sans-latin-700-normal.woff'),
+            latinExtBoldUrl: path.join(baseDir, 'noto-sans-latin-ext-700-normal.woff'),
+            cyrillicBoldUrl: path.join(baseDir, 'noto-sans-cyrillic-700-normal.woff'),
+        };
+    }
+
+    const [
+        latinMod,
+        latinExtMod,
+        cyrillicMod,
+        latinBoldMod,
+        latinExtBoldMod,
+        cyrillicBoldMod,
+    ] = await Promise.all([
+        import('@fontsource/noto-sans/files/noto-sans-latin-400-normal.woff?url') as Promise<{ default: string }>,
+        import('@fontsource/noto-sans/files/noto-sans-latin-ext-400-normal.woff?url') as Promise<{ default: string }>,
+        import('@fontsource/noto-sans/files/noto-sans-cyrillic-400-normal.woff?url') as Promise<{ default: string }>,
+        import('@fontsource/noto-sans/files/noto-sans-latin-700-normal.woff?url') as Promise<{ default: string }>,
+        import('@fontsource/noto-sans/files/noto-sans-latin-ext-700-normal.woff?url') as Promise<{ default: string }>,
+        import('@fontsource/noto-sans/files/noto-sans-cyrillic-700-normal.woff?url') as Promise<{ default: string }>,
+    ]);
+    return {
+        latinUrl: latinMod.default,
+        latinExtUrl: latinExtMod.default,
+        cyrillicUrl: cyrillicMod.default,
+        latinBoldUrl: latinBoldMod.default,
+        latinExtBoldUrl: latinExtBoldMod.default,
+        cyrillicBoldUrl: cyrillicBoldMod.default,
+    };
+}
+
+async function resolveRobotoUrls(): Promise<{
+    normalUrl: string;
+    boldUrl: string;
+}> {
+    if (typeof process !== 'undefined' && process.versions?.node) {
+        const path = await import('node:path');
+        return {
+            normalUrl: path.join(process.cwd(), 'public/fonts/Roboto-Regular.ttf'),
+            boldUrl: path.join(process.cwd(), 'public/fonts/Roboto-Bold.ttf'),
+        };
+    }
+    return {
+        normalUrl: '/fonts/Roboto-Regular.ttf',
+        boldUrl: '/fonts/Roboto-Bold.ttf',
+    };
+}
+
 /**
  * Generate a physical Table of Contents page and insert it at position 0.
  * Each entry has a Link annotation that jumps to the target page.
@@ -407,9 +498,88 @@ async function generateTocPageInPdf(
     const margin = 56;
     const contentWidth = pageWidth - margin * 2;
 
-    // Load a standard font
+    // Load standard fallback fonts
     const font = await doc.embedFont(StandardFonts.Helvetica);
     const boldFont = await doc.embedFont(StandardFonts.HelveticaBold);
+
+    let latinNormalFont = font;
+    let latinExtNormalFont = font;
+    let cyrillicNormalFont = font;
+    let latinBoldFont = boldFont;
+    let latinExtBoldFont = boldFont;
+    let cyrillicBoldFont = boldFont;
+    let robotoNormalFont: any = null;
+    let robotoBoldFont: any = null;
+
+    try {
+        doc.registerFontkit(fontkit);
+        const urls = await resolveNotoFontUrls();
+        const robotoUrls = await resolveRobotoUrls();
+        const [
+            latinBytes,
+            latinExtBytes,
+            cyrillicBytes,
+            latinBoldBytes,
+            latinExtBoldBytes,
+            cyrillicBoldBytes,
+            robotoBytes,
+            robotoBoldBytes,
+        ] = await Promise.all([
+            loadFontBytes(urls.latinUrl),
+            loadFontBytes(urls.latinExtUrl),
+            loadFontBytes(urls.cyrillicUrl),
+            loadFontBytes(urls.latinBoldUrl),
+            loadFontBytes(urls.latinExtBoldUrl),
+            loadFontBytes(urls.cyrillicBoldUrl),
+            loadFontBytes(robotoUrls.normalUrl),
+            loadFontBytes(robotoUrls.boldUrl),
+        ]);
+
+        latinNormalFont = await doc.embedFont(latinBytes, { subset: true });
+        latinExtNormalFont = await doc.embedFont(latinExtBytes, { subset: true });
+        cyrillicNormalFont = await doc.embedFont(cyrillicBytes, { subset: true });
+        latinBoldFont = await doc.embedFont(latinBoldBytes, { subset: true });
+        latinExtBoldFont = await doc.embedFont(latinExtBoldBytes, { subset: true });
+        cyrillicBoldFont = await doc.embedFont(cyrillicBoldBytes, { subset: true });
+        robotoNormalFont = await doc.embedFont(robotoBytes, { subset: true });
+        robotoBoldFont = await doc.embedFont(robotoBoldBytes, { subset: true });
+    } catch (err) {
+        console.error('Failed to load Noto or Roboto fonts, falling back to Helvetica:', err);
+        // Fall back to StandardFonts in environments where custom font loading fails
+    }
+
+    const canRender = (f: any, text: string): boolean => {
+        try {
+            f.widthOfTextAtSize(text.length > 0 ? text : ' ', 12);
+        } catch {
+            return false;
+        }
+
+        const fkFont = f.embedder?.font;
+        if (fkFont && typeof fkFont.hasGlyphForCodePoint === 'function') {
+            for (let i = 0; i < text.length; i++) {
+                const codePoint = text.codePointAt(i);
+                if (codePoint !== undefined && !fkFont.hasGlyphForCodePoint(codePoint)) {
+                    return false;
+                }
+            }
+        }
+
+        return true;
+    };
+
+    const selectFont = (text: string, isBold: boolean): any => {
+        const candidates = isBold
+            ? [robotoBoldFont, latinBoldFont, latinExtBoldFont, cyrillicBoldFont, boldFont]
+            : [robotoNormalFont, latinNormalFont, latinExtNormalFont, cyrillicNormalFont, font];
+        for (const candidate of candidates) {
+            if (candidate && canRender(candidate, text)) {
+                return candidate;
+            }
+        }
+        return isBold ? boldFont : font;
+    };
+
     const titleSize = 22;
     const headingSize = 11;
     const pageNumSize = 10;
@@ -417,8 +587,10 @@ async function generateTocPageInPdf(
     let y = pageHeight - margin - 40;
 
     // Title
-    tocPage.drawText('Table of Contents', {
-        x: margin, y, size: titleSize, font: boldFont, color: rgb(0.1, 0.1, 0.1),
+    const titleText = 'Table of Contents';
+    const titleFont = selectFont(titleText, true);
+    tocPage.drawText(titleText, {
+        x: margin, y, size: titleSize, font: titleFont, color: rgb(0.1, 0.1, 0.1),
     });
     y -= 40;
 
@@ -441,40 +613,43 @@ async function generateTocPageInPdf(
 
         // Truncate text if too long
         let displayText = h.text;
-        const textWidth = font.widthOfTextAtSize(displayText, headingSize);
+        const currentFont = selectFont(displayText, false);
+        const textWidth = currentFont.widthOfTextAtSize(displayText, headingSize);
         if (textWidth > textMaxWidth) {
             // Truncate with ellipsis
-            while (font.widthOfTextAtSize(displayText + '…', headingSize) > textMaxWidth && displayText.length > 3) {
+            while (currentFont.widthOfTextAtSize(displayText + '…', headingSize) > textMaxWidth && displayText.length > 3) {
                 displayText = displayText.slice(0, -1);
             }
             displayText += '…';
         }
 
         tocPage.drawText(displayText, {
-            x: textX, y, size: headingSize, font,
+            x: textX, y, size: headingSize, font: currentFont,
             color: h.level === 1 ? rgb(0.15, 0.15, 0.15) : rgb(0.3, 0.3, 0.3),
         });
 
         // Page number (right side)
         const pageNumText = String(targetPageIndex + 1);
-        const pageNumWidth = font.widthOfTextAtSize(pageNumText, pageNumSize);
+        const pageNumFont = selectFont(pageNumText, false);
+        const pageNumWidth = pageNumFont.widthOfTextAtSize(pageNumText, pageNumSize);
         tocPage.drawText(pageNumText, {
-            x: pageWidth - margin - pageNumWidth, y, size: pageNumSize, font,
+            x: pageWidth - margin - pageNumWidth, y, size: pageNumSize, font: pageNumFont,
             color: rgb(0.45, 0.45, 0.45),
         });
 
         // Dot leaders: draw between text end and page number
-        const textEndX = textX + font.widthOfTextAtSize(displayText, headingSize) + 4;
+        const textEndX = textX + currentFont.widthOfTextAtSize(displayText, headingSize) + 4;
         const dotStartX = textEndX;
         const dotEndX = pageWidth - margin - pageNumWidth - 6;
         if (dotEndX > dotStartX) {
             const dot = '.';
-            const dotWidth = font.widthOfTextAtSize(dot, pageNumSize);
+            const dotFont = selectFont(dot, false);
+            const dotWidth = dotFont.widthOfTextAtSize(dot, pageNumSize);
             const dotSpacing = 6;
             let dotX = dotStartX;
             let drawCount = 0;
             while (dotX < dotEndX && drawCount < 120) {
-                tocPage.drawText(dot, { x: dotX, y, size: pageNumSize, font, color: rgb(0.7, 0.7, 0.7) });
+                tocPage.drawText(dot, { x: dotX, y, size: pageNumSize, font: dotFont, color: rgb(0.7, 0.7, 0.7) });
                 dotX += dotWidth + dotSpacing;
                 drawCount++;
             }
@@ -547,6 +722,12 @@ async function applyBookmarks(
 }
 
 export const run: ToolLogicFunction = async ({ inputIds, options: runOptions, fs, emitProgress }) => {
+    if (runOptions?.fontUrls) {
+        globalFontUrls = runOptions.fontUrls;
+    } else {
+        globalFontUrls = null;
+    }
+
     if (inputIds.length === 0) {
         throw new Error('Auto-TOC requires at least one input file');
     }

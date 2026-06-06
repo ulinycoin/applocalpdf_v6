@@ -351,9 +351,15 @@ function parseDataUrl(dataUrl: string): { mimeType: string; bytes: Uint8Array } 
 }
 
 async function loadFontBytes(url: string): Promise<Uint8Array> {
-  const response = await fetch(url);
+  let absoluteUrl = url;
+  if (typeof self !== 'undefined' && self.location && !url.startsWith('http://') && !url.startsWith('https://') && !url.startsWith('blob:') && !url.startsWith('data:')) {
+    const base = self.location.protocol === 'blob:' ? self.location.origin : self.location.href;
+    absoluteUrl = new URL(url, base).href;
+  }
+
+  const response = await fetch(absoluteUrl);
   if (!response.ok) {
-    throw new Error(`Failed to load font: ${url}`);
+    throw new Error(`Failed to load font: ${absoluteUrl}`);
   }
   return new Uint8Array(await response.arrayBuffer());
 }
