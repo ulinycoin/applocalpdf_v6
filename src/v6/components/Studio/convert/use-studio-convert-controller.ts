@@ -13,7 +13,7 @@ import { showStudioPaywall } from '../../../../app/react/studio-paywall';
 import { useHistoryStore } from '../store/history-store';
 import type { StudioToolRouteState } from '../../../studio/navigation/studio-tool-context';
 
-export type StudioConvertToolId = 'ocr-pdf' | 'pdf-to-jpg' | 'extract-images' | 'compress-pdf';
+export type StudioConvertToolId = 'ocr-pdf' | 'pdf-to-jpg' | 'extract-images' | 'compress-pdf' | 'auto-toc';
 export type StudioConvertStep = 'config' | 'processing' | 'result';
 
 export interface StudioOcrSettings {

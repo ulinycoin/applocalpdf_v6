@@ -37,6 +37,8 @@ function getToolIcon(toolId: string): Parameters<typeof LinearIcon>[0]['name'] {
       return 'excel';
     case 'pdf-editor':
       return 'pen-tool';
+    case 'auto-toc':
+      return 'edit';
     default:
       return 'tool';
   }
@@ -68,6 +70,8 @@ function getToolShortLabel(toolId: string): string {
       return 'XLS';
     case 'pdf-editor':
       return 'EDT';
+    case 'auto-toc':
+      return 'TOC';
     default:
       return 'TOOL';
   }

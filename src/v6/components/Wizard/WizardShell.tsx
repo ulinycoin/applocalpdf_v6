@@ -247,6 +247,7 @@ const ALSO_TRY_TOOLS = [
   { label: 'PDF to JPG', path: '/pdf-to-jpg' },
   { label: 'Merge PDF', path: '/merge-pdf' },
   { label: 'Protect PDF', path: '/protect-pdf' },
+  { label: 'Auto-TOC', path: '/auto-toc' },
 ];
 
 export function WizardShell({ toolId, context, ioAdapter, limitService }: WizardShellProps): JSX.Element {

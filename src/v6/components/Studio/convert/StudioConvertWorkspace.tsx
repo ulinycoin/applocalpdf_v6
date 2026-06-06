@@ -29,6 +29,11 @@ const TOOL_META: Record<string, { title: string; desc: string; runLabel: (pageCo
     desc: 'Extract embedded images from your PDF and download them.',
     runLabel: (n) => `Extract ${n} image${n !== 1 ? 's' : ''}`,
   },
+  'auto-toc': {
+    title: 'Auto-TOC & Bookmarks',
+    desc: 'Automatically detect headings and generate interactive bookmarks.',
+    runLabel: () => 'Generate Bookmarks',
+  },
 };
 
 const TOOL_ICONS: Record<string, string> = {
@@ -36,6 +41,7 @@ const TOOL_ICONS: Record<string, string> = {
   'pdf-to-jpg': 'image',
   'compress-pdf': 'compress',
   'extract-images': 'image',
+  'auto-toc': 'edit',
 };
 
 const ALSO_TRY = [

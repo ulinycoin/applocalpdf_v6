@@ -35,6 +35,7 @@ const DAILY_FREE_LIMIT: Record<string, number> = {
     'watermark': 3,
     'forms': 3,
     'protect': 3,
+    'auto-toc': 3,
 };
 function getDailyUsage(toolId: string): number {
     try {
@@ -64,11 +65,16 @@ const StudioConvertWorkspace = lazy(async () => {
     return { default: m.StudioConvertWorkspace };
 });
 
+const AutoTocStudioPanelLazy = lazy(async () => {
+    const m = await import('./convert/AutoTocStudioPanel');
+    return { default: m.AutoTocStudioPanel };
+});
+
 export interface StudioShellProps {
     onFilesDropped?: (files: File[]) => void;
 }
 
-type StudioConvertToolId = 'ocr-pdf' | 'pdf-to-jpg' | 'extract-images' | 'compress-pdf';
+type StudioConvertToolId = 'ocr-pdf' | 'pdf-to-jpg' | 'extract-images' | 'compress-pdf' | 'auto-toc';
 const STUDIO_TOOL_RAIL_WIDTH = 220;
 
 const CARD_WIDTH = 200;
@@ -1295,7 +1301,9 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
                     <Suspense fallback={null}>
                         {overlayMode === 'edit'
                             ? <StudioEditWorkspace onClose={handleOverlayClose} />
-                            : <StudioConvertWorkspace onClose={handleOverlayClose} initialTool={overlayMode} />
+                            : overlayMode === 'auto-toc'
+                                ? <AutoTocStudioPanelLazy onClose={handleOverlayClose} inputFileId={activeDocument?.pages[0]?.fileId ?? ''} fileName={activeDocument?.name ?? 'document.pdf'} />
+                                : <StudioConvertWorkspace onClose={handleOverlayClose} initialTool={overlayMode} />
                         }
                     </Suspense>
                 </div>,

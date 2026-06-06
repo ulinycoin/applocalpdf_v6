@@ -1,7 +1,7 @@
 import { LinearIcon, type LinearIconName } from '../icons/linear-icon';
 import type { StudioEditToolId } from './studio-store';
 
-type StudioConvertToolId = 'ocr-pdf' | 'pdf-to-jpg' | 'extract-images' | 'compress-pdf';
+type StudioConvertToolId = 'ocr-pdf' | 'pdf-to-jpg' | 'extract-images' | 'compress-pdf' | 'auto-toc';
 
 interface RailToolItem {
     tool: StudioEditToolId | StudioConvertToolId;
@@ -35,6 +35,7 @@ const CONVERT_TOOLS: RailToolItem[] = [
     { tool: 'pdf-to-jpg', icon: 'image', label: 'PDF to JPG' },
     { tool: 'compress-pdf', icon: 'compress', label: 'Compress' },
     { tool: 'extract-images', icon: 'image', label: 'Extract Images' },
+    { tool: 'auto-toc', icon: 'edit', label: 'TOC' },
 ];
 
 function RailButton({
