@@ -10,25 +10,25 @@ const navLabels = {
     edit: 'Edit PDF', merge: 'Merge PDF', split: 'Split PDF', sign: 'Sign PDF',
     convert: 'Convert', ocr: 'OCR PDF', compress: 'Compress PDF', toPdf: 'Convert to PDF',
     resources: 'Resources', security: 'Security', faq: 'FAQ', about: 'About', blog: 'Blog',
-    open: 'Open LocalPDF' 
+    open: 'Open LocalPDF', toc: 'Auto-TOC'
   },
   de: { 
     edit: 'Edit PDF', merge: 'Merge PDF', split: 'Split PDF', sign: 'Sign PDF',
     convert: 'Convert', ocr: 'OCR PDF', compress: 'Compress PDF', toPdf: 'Convert to PDF',
     resources: 'Resources', security: 'Security', faq: 'FAQ', about: 'About', blog: 'Blog',
-    open: 'Open LocalPDF' 
+    open: 'Open LocalPDF', toc: 'Auto-TOC'
   },
   ja: { 
     edit: 'Edit PDF', merge: 'Merge PDF', split: 'Split PDF', sign: 'Sign PDF',
     convert: 'Convert', ocr: 'OCR PDF', compress: 'Compress PDF', toPdf: 'Convert to PDF',
     resources: 'Resources', security: 'Security', faq: 'FAQ', about: 'About', blog: 'Blog',
-    open: 'Open LocalPDF' 
+    open: 'Open LocalPDF', toc: 'Auto-TOC'
   }
 }[lang] || { 
   edit: 'Edit PDF', merge: 'Merge PDF', split: 'Split PDF', sign: 'Sign PDF',
   convert: 'Convert', ocr: 'OCR PDF', compress: 'Compress PDF', toPdf: 'Convert to PDF',
   resources: 'Resources', security: 'Security', faq: 'FAQ', about: 'About', blog: 'Blog',
-  open: 'Open LocalPDF' 
+  open: 'Open LocalPDF', toc: 'Auto-TOC'
 };
 const appUrl = getAppUrl();
 ---
@@ -50,6 +50,7 @@ const appUrl = getAppUrl();
         <a href="/features/merge-pdf" class="dropdown-item">{navLabels.merge}</a>
         <a href="/features/split-pdf" class="dropdown-item">{navLabels.split}</a>
         <a href="/features/sign-pdf" class="dropdown-item">{navLabels.sign}</a>
+        <a href="/features/auto-toc-pdf" class="dropdown-item">{navLabels.toc}</a>
       </div>
     </div>
 

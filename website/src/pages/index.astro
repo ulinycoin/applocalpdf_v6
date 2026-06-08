@@ -2,6 +2,38 @@
 import MarketingLayout from '../layouts/MarketingLayout.astro';
 import { featurePages } from '../data/featurePages';
 import { getAppUrl } from '../utils/app-url';
+import { CATEGORIES, ICONS } from '../data/tools';
+
+function getToolHref(toolId: string): string {
+  const mapping: Record<string, string> = {
+    'edit-text-pdf': '/features/edit-pdf',
+    'add-text-pdf': '/features/edit-pdf',
+    'sign-pdf': '/features/sign-pdf',
+    'add-form-fields-pdf': '/features/edit-pdf',
+    'watermark-pdf': '/features/edit-pdf',
+    'flatten-pdf': '/features/edit-pdf',
+    
+    'merge-pdf': '/features/merge-pdf',
+    'split-pdf': '/features/split-pdf',
+    'compress-pdf': '/features/compress-pdf',
+    'auto-toc-pdf': '/features/auto-toc-pdf',
+    'organize-pdf': '/features/split-pdf',
+    'rotate-pdf': '/features/split-pdf',
+    'delete-pages-pdf': '/features/split-pdf',
+    'extract-pages-pdf': '/features/split-pdf',
+    
+    'tables-pdf': '/features/convert-pdf',
+    'ocr-pdf': '/features/ocr-pdf',
+    'pdf-to-word': '/features/convert-pdf',
+    'word-to-pdf': '/features/convert-pdf',
+    'images-to-pdf': '/features/convert-pdf',
+    'pdf-to-images': '/features/convert-pdf',
+    'extract-images-pdf': '/features/convert-pdf',
+    
+    'protect-pdf': '/features/edit-pdf'
+  };
+  return mapping[toolId] || '/';
+}
 
 const title = 'Private PDF Editor — Edit, Merge & OCR in Browser | LocalPDF';
 const description = 'Edit, merge, OCR, compress, split, and convert PDFs privately in your browser. Zero uploads, no server storage, works offline. Open LocalPDF — it\'s free.';
@@ -447,25 +479,31 @@ const popularGuides = [
       </script>
     </section>
 
-    <!-- STATS -->
-    <div class="section stats-section" role="region" aria-label="Key numbers">
-      <div class="stat">
-        <strong>0 bytes</strong>
-        <p>uploaded to any server — everything runs in your browser</p>
+    <!-- ALL UTILITIES toolkit -->
+    <section class="section all-tools-section">
+      <span class="eyebrow">All Utilities</span>
+      <h2 class="section-title">A complete private PDF toolkit on your device</h2>
+      <p class="section-intro">No uploads, no limits, no subscription paywalls for basic usage. Click any tool to open it directly in the canvas.</p>
+      
+      <div class="toolkit-categories">
+        {CATEGORIES.map((category) => (
+          <div class="toolkit-category">
+            <div class="category-header">
+              <span class="category-icon" set:html={ICONS[category.icon]} />
+              <h3>{category.name}</h3>
+            </div>
+            <div class="category-tools-list">
+              {category.tools.map((tool) => (
+                <a href={getToolHref(tool.id)} class="tool-item-link">
+                  <div class="tool-item-icon" set:html={ICONS[tool.icon]} />
+                  <h4>{tool.name}</h4>
+                </a>
+              ))}
+            </div>
+          </div>
+        ))}
       </div>
-      <div class="stat">
-        <strong>6 tools</strong>
-        <p>edit, merge, OCR, compress, split, convert — all in one workspace</p>
-      </div>
-      <div class="stat">
-        <strong>Offline</strong>
-        <p>works without internet — on a plane, train, anywhere</p>
-      </div>
-      <div class="stat">
-        <strong>&lt; 50ms</strong>
-        <p>action latency — no waiting for servers, instant response</p>
-      </div>
-    </div>
+    </section>
 
     <!-- PAIN / RELIEF -->
     <section class="section">
@@ -1192,6 +1230,122 @@ const popularGuides = [
   .feat-card p {
     font-size: 0.8rem;
     margin: 0;
+  }
+
+  /* ── All Tools Toolkit ────────────────────── */
+  .all-tools-section {
+    border-top: 1px solid var(--line);
+    padding-top: 60px;
+    margin-top: 40px;
+  }
+
+  .toolkit-categories {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 24px;
+    margin-top: 40px;
+    align-items: start;
+  }
+
+  .toolkit-category {
+    background: rgba(247, 244, 239, 0.4);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .category-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .category-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--accent);
+    width: 24px;
+    height: 24px;
+  }
+
+  .category-icon :global(svg) {
+    width: 18px;
+    height: 18px;
+  }
+
+  .category-header h3 {
+    font-size: 0.95rem;
+    font-weight: 700;
+    margin: 0;
+    color: var(--text);
+  }
+
+  .category-tools-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .tool-item-link {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 8px;
+    border-radius: 6px;
+    background: transparent;
+    border: 1px solid transparent;
+    text-decoration: none;
+    color: inherit;
+    transition: all 0.15s ease;
+  }
+
+  .tool-item-link:hover {
+    background: #fff;
+    border-color: var(--line);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.02);
+    transform: translateX(2px);
+  }
+
+  .tool-item-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border-radius: 4px;
+    background: rgba(222, 122, 45, 0.06);
+    color: var(--accent);
+    flex-shrink: 0;
+  }
+
+  .tool-item-icon :global(svg) {
+    width: 14px;
+    height: 14px;
+  }
+
+  .tool-item-link h4 {
+    font-size: 0.82rem;
+    font-weight: 600;
+    margin: 0;
+  }
+
+  @media (max-width: 1024px) {
+    .toolkit-categories {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+
+  @media (max-width: 600px) {
+    .toolkit-categories {
+      grid-template-columns: 1fr;
+      gap: 16px;
+    }
   }
 
   /* ── Blog strip ────────────────────────────── */
