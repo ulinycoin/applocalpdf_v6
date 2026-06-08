@@ -968,7 +968,7 @@ textarea:focus-visible {
 
 .tool-config-copy {
   margin: 0;
-  color: #d8e6f2;
+  color: var(--text-muted);
   line-height: 1.45;
 }
 
@@ -982,7 +982,7 @@ textarea:focus-visible {
 .tool-config-label {
   display: block;
   margin-bottom: 0.35rem;
-  color: #dbe8f4;
+  color: var(--text);
   font-size: 0.83rem;
   font-weight: 600;
 }
@@ -2705,6 +2705,19 @@ textarea:focus-visible {
   border: none;
   width: 100%;
   text-align: left;
+}
+
+.studio-tool-rail-badge-new {
+  font-size: 8px;
+  font-weight: 800;
+  background: var(--red);
+  color: #fff;
+  padding: 2px 4px;
+  border-radius: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  line-height: 1;
+  margin-left: auto;
 }
 
 .studio-tool-rail-btn svg {

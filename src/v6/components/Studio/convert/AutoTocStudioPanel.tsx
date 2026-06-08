@@ -116,6 +116,10 @@ export function AutoTocStudioPanel({ onClose, inputFileId, fileName, runtime }: 
         setError(null);
         window.posthog?.capture('app_tool_run_started', { toolId: 'auto-toc', action: 'apply' });
 
+        const base = import.meta.env.BASE_URL || '/';
+        const robotoUrl = `${base}fonts/Roboto-Regular.ttf`.replace(/\/+/g, '/');
+        const robotoBoldUrl = `${base}fonts/Roboto-Bold.ttf`.replace(/\/+/g, '/');
+
         try {
             const result = await runtime.runner.execute(
                 'auto-toc',
@@ -132,6 +136,8 @@ export function AutoTocStudioPanel({ onClose, inputFileId, fileName, runtime }: 
                             latinBoldUrl,
                             latinExtBoldUrl,
                             cyrillicBoldUrl,
+                            robotoUrl,
+                            robotoBoldUrl,
                         }
                     },
                 },
@@ -255,27 +261,27 @@ export function AutoTocStudioPanel({ onClose, inputFileId, fileName, runtime }: 
                     )}
 
                     {phase === 'result' && outputUrl && (
-                        <div className="cvt-stage">
-                            <div style={{ textAlign: 'center', padding: '32px 0' }}>
-                                <div style={{ fontSize: 32, marginBottom: 12 }}>✅</div>
-                                <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 4 }}>Bookmarks generated</div>
-                                <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 20 }}>
-                                    {headers.filter((h) => h.enabled).length} headings added
+                        <div className="cvt-stage" style={{ maxWidth: 480, margin: '40px auto 0' }}>
+                            <div style={{ textAlign: 'center', padding: '36px 24px', background: 'var(--bg-1)', borderRadius: 8, border: '1px solid var(--border)', boxShadow: 'var(--shadow-sm)' }}>
+                                <div style={{ fontSize: 40, marginBottom: 16 }}>🎉</div>
+                                <div style={{ fontWeight: 700, fontSize: 18, marginBottom: 6, color: 'var(--text)' }}>Bookmarks generated successfully</div>
+                                <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 24 }}>
+                                    {headers.filter((h) => h.enabled).length} headings added to your document outline.
                                 </div>
-                                <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
-                                    <a href={outputUrl} download={`${fileName.replace(/\.pdf$/i, '')}-with-toc.pdf`}>
-                                        <button className="btn-primary btn-premium-glow">
-                                            <span className="btn-inline">
-                                                <LinearIcon name="download" className="linear-icon" />
-                                                Download PDF
-                                            </span>
+                                <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap', alignItems: 'center' }}>
+                                    <a href={outputUrl} download={`${fileName.replace(/\.pdf$/i, '')}-with-toc.pdf`} style={{ textDecoration: 'none' }}>
+                                        <button className="cvt-btn-primary">
+                                            <LinearIcon name="download" size={14} />
+                                            Download PDF
                                         </button>
                                     </a>
-                                    <button className="btn-ghost" onClick={onClose}>
-                                        <span className="btn-inline">
-                                            <LinearIcon name="x" className="linear-icon" />
-                                            Close
-                                        </span>
+                                    <button className="cvt-btn-ghost" onClick={() => setPhase('review')}>
+                                        <LinearIcon name="chevron-left" size={14} />
+                                        Back to Edit
+                                    </button>
+                                    <button className="cvt-btn-ghost" onClick={onClose}>
+                                        <LinearIcon name="x" size={14} />
+                                        Close
                                     </button>
                                 </div>
                             </div>

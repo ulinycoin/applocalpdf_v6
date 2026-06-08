@@ -144,45 +144,30 @@ function TocTreeItemRow({
   );
 }
 
-/** Recursively render tree items, tracking flat index for callbacks */
+/** Recursively render tree items */
 function renderTreeItems(
   items: TreeItem[],
-  flattened: HeaderNode[],
+  headers: HeaderNode[],
   onUpdate: (headers: HeaderNode[]) => void,
-  startAt: number,
-): { elements: JSX.Element[]; nextAt: number } {
+): JSX.Element[] {
   const elements: JSX.Element[] = [];
-  let idx = startAt;
 
   for (const item of items) {
-    const myIdx = idx;
-    idx++;
-
     const handleToggle = () => {
-      const next = [...flattened];
-      next[myIdx] = { ...next[myIdx], enabled: !next[myIdx].enabled };
-      onUpdate(next);
+      onUpdate(headers.map((h) => (h.id === item.id ? { ...h, enabled: !h.enabled } : h)));
     };
     const handleRename = (text: string) => {
-      const next = [...flattened];
-      next[myIdx] = { ...next[myIdx], text };
-      onUpdate(next);
+      onUpdate(headers.map((h) => (h.id === item.id ? { ...h, text } : h)));
     };
     const handleLevelUp = () => {
-      const next = [...flattened];
-      if (next[myIdx].level > 1) {
-        next[myIdx] = { ...next[myIdx], level: next[myIdx].level - 1 };
-        onUpdate(next);
-      }
+      onUpdate(headers.map((h) => (h.id === item.id && h.level > 1 ? { ...h, level: h.level - 1 } : h)));
     };
     const handleLevelDown = () => {
-      const next = [...flattened];
-      if (next[myIdx].level < 3) {
-        next[myIdx] = { ...next[myIdx], level: next[myIdx].level + 1 };
-        onUpdate(next);
-      }
+      onUpdate(headers.map((h) => (h.id === item.id && h.level < 3 ? { ...h, level: h.level + 1 } : h)));
     };
-    const handleDelete = () => onUpdate(flattened.filter((_, i) => i !== myIdx));
+    const handleDelete = () => {
+      onUpdate(headers.filter((h) => h.id !== item.id));
+    };
 
     elements.push(
       <TocTreeItemRow
@@ -197,21 +182,24 @@ function renderTreeItems(
     );
 
     if (item.children.length > 0) {
-      const childResult = renderTreeItems(item.children, flattened, onUpdate, idx);
-      elements.push(...childResult.elements);
-      idx = childResult.nextAt;
+      elements.push(...renderTreeItems(item.children, headers, onUpdate));
     }
   }
 
-  return { elements, nextAt: idx };
+  return elements;
 }
 
 export function TocTree({ headers, onChange }: TocTreeProps) {
   const [newText, setNewText] = useState('');
   const [newPage, setNewPage] = useState(1);
   const [showAddForm, setShowAddForm] = useState(false);
+  const [filterQuery, setFilterQuery] = useState('');
 
-  const tree = buildTree(headers);
+  const filteredHeaders = headers.filter((h) =>
+    h.text.toLowerCase().includes(filterQuery.toLowerCase())
+  );
+
+  const tree = buildTree(filteredHeaders);
 
   const handleAdd = useCallback(() => {
     if (!newText.trim()) return;
@@ -230,19 +218,23 @@ export function TocTree({ headers, onChange }: TocTreeProps) {
   }, [newText, newPage, headers, onChange]);
 
   const handleSelectAll = useCallback(() => {
-    onChange(headers.map((h) => ({ ...h, enabled: true })));
-  }, [headers, onChange]);
+    const ids = new Set(filteredHeaders.map((h) => h.id));
+    onChange(headers.map((h) => (ids.has(h.id) ? { ...h, enabled: true } : h)));
+  }, [headers, filteredHeaders, onChange]);
 
   const handleDeselectAll = useCallback(() => {
-    onChange(headers.map((h) => ({ ...h, enabled: false })));
-  }, [headers, onChange]);
+    const ids = new Set(filteredHeaders.map((h) => h.id));
+    onChange(headers.map((h) => (ids.has(h.id) ? { ...h, enabled: false } : h)));
+  }, [headers, filteredHeaders, onChange]);
 
-  const renderResult = renderTreeItems(tree, headers, onChange, 0);
+  const renderResult = renderTreeItems(tree, headers, onChange);
 
   return (
     <div className="toc-tree-root">
       <div className="toc-tree-toolbar">
-        <span className="toc-tree-count">{headers.length} heading{headers.length !== 1 ? 's' : ''} detected</span>
+        <span className="toc-tree-count">
+          {filterQuery ? `${filteredHeaders.length} of ` : ''}{headers.length} heading{headers.length !== 1 ? 's' : ''}
+        </span>
         <div className="toc-tree-toolbar-actions">
           <button type="button" className="toc-tree-toolbar-btn" onClick={handleSelectAll}>
             <LinearIcon name="check" size={12} /> All
@@ -254,6 +246,26 @@ export function TocTree({ headers, onChange }: TocTreeProps) {
             <LinearIcon name="plus" size={12} /> Add
           </button>
         </div>
+      </div>
+
+      <div className="toc-tree-filter" style={{ padding: '0 8px 10px' }}>
+        <input
+          type="text"
+          className="toc-tree-filter-input"
+          style={{
+            width: '100%',
+            padding: '6px 10px',
+            borderRadius: '4px',
+            border: '1px solid var(--border)',
+            background: 'var(--bg)',
+            color: 'var(--text)',
+            fontSize: '12.5px',
+            outline: 'none',
+          }}
+          placeholder="Filter headings..."
+          value={filterQuery}
+          onChange={(e) => setFilterQuery(e.target.value)}
+        />
       </div>
 
       {showAddForm && (
@@ -284,10 +296,10 @@ export function TocTree({ headers, onChange }: TocTreeProps) {
       <div className="toc-tree-list custom-scrollbar">
         {tree.length === 0 ? (
           <div className="toc-tree-empty">
-            No headings detected. Try adjusting detection settings or add a heading manually.
+            {filterQuery ? 'No headings match your filter.' : 'No headings detected. Try adjusting detection settings or add a heading manually.'}
           </div>
         ) : (
-          renderResult.elements
+          renderResult
         )}
       </div>
     </div>

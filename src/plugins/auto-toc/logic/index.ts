@@ -314,7 +314,7 @@ export function buildOutlineTree(headers: HeaderNode[]): OutlineItemNode[] {
 }
 
 async function injectBookmarks(pdfBytes: Uint8Array, tree: OutlineItemNode[], pageOffset: number = 0): Promise<Uint8Array> {
-    const { PDFDocument, PDFName } = await import('pdf-lib');
+    const { PDFDocument, PDFName, PDFHexString } = await import('pdf-lib');
     const doc = await PDFDocument.load(pdfBytes);
     const ctx = doc.context;
     const pageCount = doc.getPageCount();
@@ -332,9 +332,9 @@ async function injectBookmarks(pdfBytes: Uint8Array, tree: OutlineItemNode[], pa
             const pageRef = (page as any).ref;
             const pageHeight = page.getSize().height;
             const pdfY = Math.max(0, Math.min(pageHeight, pageHeight - node.y));
-            const dest = ctx.register(ctx.obj([pageRef, 'XYZ', null, pdfY, null]));
+            const dest = ctx.register(ctx.obj([pageRef, PDFName.of('XYZ'), null, pdfY, null]));
 
-            const itemObj = ctx.obj({ Title: node.title, Dest: dest });
+            const itemObj = ctx.obj({ Title: PDFHexString.fromText(node.title), Dest: dest });
             const itemRef = ctx.register(itemObj);
             itemObj.set(PDFName.of('Parent'), parentRef);
 
@@ -372,7 +372,7 @@ async function injectBookmarks(pdfBytes: Uint8Array, tree: OutlineItemNode[], pa
         }
     }
 
-    const outlinesObj = ctx.obj({ Type: 'Outlines' });
+    const outlinesObj = ctx.obj({ Type: PDFName.of('Outlines') });
     const outlinesRef = ctx.register(outlinesObj);
     const result = createItems(tree, outlinesRef);
 
@@ -463,6 +463,13 @@ async function resolveRobotoUrls(): Promise<{
     normalUrl: string;
     boldUrl: string;
 }> {
+    if (globalFontUrls?.robotoUrl && globalFontUrls?.robotoBoldUrl) {
+        return {
+            normalUrl: globalFontUrls.robotoUrl,
+            boldUrl: globalFontUrls.robotoBoldUrl,
+        };
+    }
+
     if (typeof process !== 'undefined' && process.versions?.node) {
         const path = await import('node:path');
         return {
@@ -502,49 +509,24 @@ async function generateTocPageInPdf(
     const font = await doc.embedFont(StandardFonts.Helvetica);
     const boldFont = await doc.embedFont(StandardFonts.HelveticaBold);
 
-    let latinNormalFont = font;
-    let latinExtNormalFont = font;
-    let cyrillicNormalFont = font;
-    let latinBoldFont = boldFont;
-    let latinExtBoldFont = boldFont;
-    let cyrillicBoldFont = boldFont;
     let robotoNormalFont: any = null;
     let robotoBoldFont: any = null;
 
     try {
         doc.registerFontkit(fontkit);
-        const urls = await resolveNotoFontUrls();
         const robotoUrls = await resolveRobotoUrls();
         const [
-            latinBytes,
-            latinExtBytes,
-            cyrillicBytes,
-            latinBoldBytes,
-            latinExtBoldBytes,
-            cyrillicBoldBytes,
             robotoBytes,
             robotoBoldBytes,
         ] = await Promise.all([
-            loadFontBytes(urls.latinUrl),
-            loadFontBytes(urls.latinExtUrl),
-            loadFontBytes(urls.cyrillicUrl),
-            loadFontBytes(urls.latinBoldUrl),
-            loadFontBytes(urls.latinExtBoldUrl),
-            loadFontBytes(urls.cyrillicBoldUrl),
             loadFontBytes(robotoUrls.normalUrl),
             loadFontBytes(robotoUrls.boldUrl),
         ]);
 
-        latinNormalFont = await doc.embedFont(latinBytes, { subset: true });
-        latinExtNormalFont = await doc.embedFont(latinExtBytes, { subset: true });
-        cyrillicNormalFont = await doc.embedFont(cyrillicBytes, { subset: true });
-        latinBoldFont = await doc.embedFont(latinBoldBytes, { subset: true });
-        latinExtBoldFont = await doc.embedFont(latinExtBoldBytes, { subset: true });
-        cyrillicBoldFont = await doc.embedFont(cyrillicBoldBytes, { subset: true });
         robotoNormalFont = await doc.embedFont(robotoBytes, { subset: true });
         robotoBoldFont = await doc.embedFont(robotoBoldBytes, { subset: true });
     } catch (err) {
-        console.error('Failed to load Noto or Roboto fonts, falling back to Helvetica:', err);
+        console.error('Failed to load Roboto fonts, falling back to Helvetica:', err);
         // Fall back to StandardFonts in environments where custom font loading fails
     }
 
@@ -570,8 +552,8 @@ async function generateTocPageInPdf(
 
     const selectFont = (text: string, isBold: boolean): any => {
         const candidates = isBold
-            ? [robotoBoldFont, latinBoldFont, latinExtBoldFont, cyrillicBoldFont, boldFont]
-            : [robotoNormalFont, latinNormalFont, latinExtNormalFont, cyrillicNormalFont, font];
+            ? [robotoBoldFont, boldFont]
+            : [robotoNormalFont, font];
         for (const candidate of candidates) {
             if (candidate && canRender(candidate, text)) {
                 return candidate;
@@ -661,14 +643,14 @@ async function generateTocPageInPdf(
         const linkBottom = y - 4;
         const linkTop = y + headingSize + 4;
         const linkObj = ctx.obj({
-            Type: 'Annot',
-            Subtype: 'Link',
+            Type: PDFName.of('Annot'),
+            Subtype: PDFName.of('Link'),
             Rect: [textX, linkBottom, textX + lineWidth, linkTop],
             Border: [0, 0, 0],
             A: ctx.obj({
-                Type: 'Action',
-                S: 'GoTo',
-                D: [targetRef, 'XYZ', null, targetY, null],
+                Type: PDFName.of('Action'),
+                S: PDFName.of('GoTo'),
+                D: [targetRef, PDFName.of('XYZ'), null, targetY, null],
             }),
         });
         const linkRef = ctx.register(linkObj);

@@ -1,6 +1,6 @@
 import type { PlatformRuntime } from '../../../app/platform/create-platform';
 import type { HeaderNode } from '../logic/index';
-import type { IWorkerCommand, ToolRunResult } from '../../../core/types/contracts';
+import type { IWorkerCommand, ToolRunResult } from '../../../core/public/contracts';
 
 /**
  * Result from parsing a PDF for headings.

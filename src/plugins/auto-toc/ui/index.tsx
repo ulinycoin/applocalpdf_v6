@@ -92,6 +92,10 @@ export default function AutoTocConfig({ inputFiles, onStart, onBack }: AutoTocCo
   }, []);
 
   const handleApply = useCallback((options: ApplyOptions) => {
+    const base = import.meta.env.BASE_URL || '/';
+    const robotoUrl = `${base}fonts/Roboto-Regular.ttf`.replace(/\/+/g, '/');
+    const robotoBoldUrl = `${base}fonts/Roboto-Bold.ttf`.replace(/\/+/g, '/');
+
     onStart({
       action: 'apply',
       headers: options.headers,
@@ -104,6 +108,8 @@ export default function AutoTocConfig({ inputFiles, onStart, onBack }: AutoTocCo
         latinBoldUrl,
         latinExtBoldUrl,
         cyrillicBoldUrl,
+        robotoUrl,
+        robotoBoldUrl,
       }
     });
   }, [onStart, parseResult]);

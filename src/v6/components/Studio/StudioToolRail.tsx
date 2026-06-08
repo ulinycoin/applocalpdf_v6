@@ -7,6 +7,7 @@ interface RailToolItem {
     tool: StudioEditToolId | StudioConvertToolId;
     icon: LinearIconName;
     label: string;
+    description?: string;
 }
 
 export interface StudioToolRailProps {
@@ -21,27 +22,28 @@ export interface StudioToolRailProps {
 }
 
 const EDIT_TOOLS: RailToolItem[] = [
-    { tool: 'text', icon: 'text', label: 'Text' },
-    { tool: 'annotate', icon: 'highlighter', label: 'Annotate' },
-    { tool: 'sign', icon: 'signature', label: 'Sign' },
-    { tool: 'whiteout', icon: 'eraser', label: 'Whiteout' },
-    { tool: 'watermark', icon: 'stamp', label: 'Watermark' },
-    { tool: 'forms', icon: 'file-input', label: 'Forms' },
-    { tool: 'protect', icon: 'lock', label: 'Protect' },
+    { tool: 'text', icon: 'text', label: 'Text', description: 'Add and edit text elements on PDF pages' },
+    { tool: 'annotate', icon: 'highlighter', label: 'Annotate', description: 'Highlight text, draw shapes, and add notes' },
+    { tool: 'sign', icon: 'signature', label: 'Sign', description: 'Draw, type, or upload your signature to sign PDF' },
+    { tool: 'whiteout', icon: 'eraser', label: 'Whiteout', description: 'Permanently erase sensitive content from PDF' },
+    { tool: 'watermark', icon: 'stamp', label: 'Watermark', description: 'Add text or image watermarks to all pages' },
+    { tool: 'forms', icon: 'file-input', label: 'Forms', description: 'Add fillable fields like text boxes, checkboxes, and dropdowns' },
+    { tool: 'protect', icon: 'lock', label: 'Protect', description: 'Encrypt PDF with passwords and restrict permissions' },
 ];
 
 const CONVERT_TOOLS: RailToolItem[] = [
-    { tool: 'ocr-pdf', icon: 'ocr', label: 'OCR' },
-    { tool: 'pdf-to-jpg', icon: 'image', label: 'PDF to JPG' },
-    { tool: 'compress-pdf', icon: 'compress', label: 'Compress' },
-    { tool: 'extract-images', icon: 'image', label: 'Extract Images' },
-    { tool: 'auto-toc', icon: 'edit', label: 'TOC' },
+    { tool: 'ocr-pdf', icon: 'ocr', label: 'OCR', description: 'Recognize text in scanned PDFs and make them searchable' },
+    { tool: 'auto-toc', icon: 'edit', label: 'TOC', description: 'Auto-detect headings and generate an interactive table of contents with bookmarks' },
+    { tool: 'pdf-to-jpg', icon: 'image', label: 'PDF to JPG', description: 'Convert PDF pages to JPEG images' },
+    { tool: 'compress-pdf', icon: 'compress', label: 'Compress', description: 'Reduce PDF file size while maintaining quality' },
+    { tool: 'extract-images', icon: 'image', label: 'Extract Images', description: 'Extract all embedded images from PDF document' },
 ];
 
 function RailButton({
     tool,
     icon,
     label,
+    description,
     activeTool,
     disabled,
     onClick,
@@ -49,6 +51,7 @@ function RailButton({
     tool: string;
     icon: LinearIconName;
     label: string;
+    description?: string;
     activeTool: string | null;
     disabled?: boolean;
     onClick: () => void;
@@ -62,10 +65,13 @@ function RailButton({
             onClick={onClick}
             disabled={disabled}
             aria-pressed={isActive}
-            title={label}
+            title={description || label}
         >
             <LinearIcon name={icon} size={20} />
             <span>{label}</span>
+            {tool === 'auto-toc' && (
+                <span className="studio-tool-rail-badge-new">NEW</span>
+            )}
         </button>
     );
 }
@@ -100,6 +106,7 @@ export function StudioToolRail({
                         tool={item.tool}
                         icon={item.icon}
                         label={item.label}
+                        description={item.description}
                         activeTool={activeTool}
                         disabled={!hasFiles}
                         onClick={() => { onToolClick(item.tool); }}
@@ -115,6 +122,7 @@ export function StudioToolRail({
                         tool={item.tool}
                         icon={item.icon}
                         label={item.label}
+                        description={item.description}
                         activeTool={activeTool}
                         disabled={!hasFiles}
                         onClick={() => { onToolClick(item.tool); }}
