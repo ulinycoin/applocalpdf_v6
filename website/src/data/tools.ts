@@ -20,6 +20,7 @@ export const ICONS = {
     image: `<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>`,
     extract: `<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>`,
     shield: `<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>`,
+    toc: `<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="9" y1="6" x2="20" y2="6"></line><line x1="9" y1="12" x2="20" y2="12"></line><line x1="9" y1="18" x2="20" y2="18"></line><line x1="4" y1="6" x2="4.01" y2="6"></line><line x1="4" y1="12" x2="4.01" y2="12"></line><line x1="4" y1="18" x2="4.01" y2="18"></line></svg>`,
 
     // Category Icons
     catEdit: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>`,
@@ -62,6 +63,7 @@ export const CATEGORIES: Category[] = [
             { id: 'merge-pdf', name: 'Merge PDF', desc: 'Combine multiple documents into one.', icon: 'files', hash: 'merge' },
             { id: 'split-pdf', name: 'Split PDF', desc: 'Divide documents or extract ranges.', icon: 'scissors', hash: 'split' },
             { id: 'compress-pdf', name: 'Compress', desc: 'Reduce file size without quality loss.', icon: 'minimize', hash: 'compress' },
+            { id: 'auto-toc-pdf', name: 'Auto-TOC', desc: 'Auto-detect headings and generate interactive table of contents.', icon: 'toc', hash: 'auto-toc' },
             { id: 'organize-pdf', name: 'Organize', desc: 'Reorder, rotate, and manage pages.', icon: 'layout', hash: 'pages' },
             { id: 'rotate-pdf', name: 'Rotate', desc: 'Fix orientation of individual pages.', icon: 'rotate', hash: 'rotate' },
             { id: 'delete-pages-pdf', name: 'Delete Pages', desc: 'Remove unwanted pages instantly.', icon: 'trash', hash: 'delete-pages' },

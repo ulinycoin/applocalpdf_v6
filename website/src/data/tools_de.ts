@@ -20,6 +20,7 @@ export const CATEGORIES_DE: Category[] = [
             { id: 'merge-pdf', name: 'PDF zusammenfügen', desc: 'Mehrere Dokumente zu einer Datei verbinden.', icon: 'files', hash: 'merge' },
             { id: 'split-pdf', name: 'PDF teilen', desc: 'Dokumente aufteilen oder Bereiche extrahieren.', icon: 'scissors', hash: 'split' },
             { id: 'compress-pdf', name: 'Komprimieren', desc: 'Dateigröße ohne Qualitätsverlust reduzieren.', icon: 'minimize', hash: 'compress' },
+            { id: 'auto-toc-pdf', name: 'Auto-TOC', desc: 'Überschriften automatisch erkennen und ein interaktives Inhaltsverzeichnis mit Lesezeichen erstellen.', icon: 'toc', hash: 'auto-toc' },
             { id: 'organize-pdf', name: 'Organisieren', desc: 'Seiten neu anordnen, drehen und verwalten.', icon: 'layout', hash: 'pages' },
             { id: 'rotate-pdf', name: 'Drehen', desc: 'Ausrichtung einzelner Seiten korrigieren.', icon: 'rotate', hash: 'rotate' },
             { id: 'delete-pages-pdf', name: 'Seiten löschen', desc: 'Unerwünschte Seiten sofort entfernen.', icon: 'trash', hash: 'delete-pages' },

@@ -20,6 +20,7 @@ export const CATEGORIES_JA: Category[] = [
             { id: 'merge-pdf', name: 'PDF結合', desc: '複数のドキュメントを1つのファイルに結合。', icon: 'files', hash: 'merge' },
             { id: 'split-pdf', name: 'PDF分割', desc: 'ドキュメントを分割または範囲を抽出。', icon: 'scissors', hash: 'split' },
             { id: 'compress-pdf', name: '圧縮', desc: '品質を落とさずにファイルサイズを削減。', icon: 'minimize', hash: 'compress' },
+            { id: 'auto-toc-pdf', name: 'Auto-TOC', desc: '見出しを自動検出し、しおり付きのインタラクティブな目次を生成します。', icon: 'toc', hash: 'auto-toc' },
             { id: 'organize-pdf', name: 'ページ整理', desc: 'ページの並べ替え、回転、管理。', icon: 'layout', hash: 'pages' },
             { id: 'rotate-pdf', name: '回転', desc: '個々のページの向きを修正。', icon: 'rotate', hash: 'rotate' },
             { id: 'delete-pages-pdf', name: 'ページ削除', desc: '不要なページを即座に削除。', icon: 'trash', hash: 'delete-pages' },

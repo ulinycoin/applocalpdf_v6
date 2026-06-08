@@ -1,0 +1,11 @@
+---
+import FeaturePageTemplate from '../../components/marketing/FeaturePageTemplate.astro';
+import { getFeaturePage } from '../../data/featurePages';
+
+const page = getFeaturePage('auto-toc-pdf');
+if (!page) {
+  throw new Error('Missing feature page data for auto-toc-pdf');
+}
+---
+
+<FeaturePageTemplate page={page} />
