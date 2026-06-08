@@ -153,7 +153,7 @@
       "statusCode": 308
     },
     {
-      "source": "/(de|ja)",
+      "source": "/de",
       "destination": "/",
       "statusCode": 308
     },
@@ -193,7 +193,7 @@
       "statusCode": 308
     },
     {
-      "source": "/(de|ja)/:path*",
+      "source": "/de/:path*",
       "destination": "/",
       "statusCode": 308
     }

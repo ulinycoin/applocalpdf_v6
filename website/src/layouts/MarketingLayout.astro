@@ -12,13 +12,15 @@ interface Props {
   imageAlt?: string;
   schema?: Record<string, unknown> | Array<Record<string, unknown>>;
   noindex?: boolean;
+  lang?: string;
+  hreflangs?: Array<{ hreflang: string; href: string }>;
 }
 
-const { title, description, canonical, image, imageAlt, schema, noindex = false } = Astro.props;
+const { title, description, canonical, image, imageAlt, schema, noindex = false, lang = 'en', hreflangs } = Astro.props;
 ---
 
 <!DOCTYPE html>
-<html lang="en">
+<html lang={lang}>
   <head>
     <SEOHead
       title={title}
@@ -28,7 +30,27 @@ const { title, description, canonical, image, imageAlt, schema, noindex = false 
       imageAlt={imageAlt}
       schema={schema}
       noindex={noindex}
+      hreflangs={hreflangs}
     />
+    <script is:inline>
+      (function() {
+        // Save current language if it is not default English
+        const currentLang = document.documentElement.lang;
+        if (currentLang && currentLang !== 'en') {
+          localStorage.setItem('localpdf_preferred_lang', currentLang);
+        }
+
+        // Auto-redirect if on home page and preferred language is set
+        const pref = localStorage.getItem('localpdf_preferred_lang');
+        if (pref && pref !== 'en' && (window.location.pathname === '/' || window.location.pathname === '/index.html')) {
+          if (pref === 'ja') {
+            window.location.replace('/ja');
+          } else if (pref === 'zh') {
+            window.location.replace('/zh');
+          }
+        }
+      })();
+    </script>
     <AnalyticsScripts />
     <slot name="head" />
     <style is:global>
@@ -223,7 +245,7 @@ const { title, description, canonical, image, imageAlt, schema, noindex = false 
     </style>
   </head>
   <body>
-    <SiteHeader />
+    <SiteHeader lang={lang} />
     <main>
       <slot />
     </main>

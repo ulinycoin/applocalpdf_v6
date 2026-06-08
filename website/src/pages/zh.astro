@@ -35,37 +35,37 @@ function getToolHref(toolId: string): string {
   return mapping[toolId] || '/';
 }
 
-const title = 'Private PDF Editor — Edit, Merge & OCR in Browser | LocalPDF';
-const description = 'Edit, merge, OCR, compress, split, and convert PDFs privately in your browser. Zero uploads, no server storage, works offline. Open LocalPDF — it\'s free.';
-const canonical = 'https://localpdf.online/';
+const title = '浏览器内私密PDF编辑器 — 独立编辑、合并及OCR | LocalPDF';
+const description = '在浏览器中私密地编辑、合并、OCR、压缩、拆分和转换PDF。零上传，无服务器存储，支持离线使用。打开 LocalPDF — 完全免费。';
+const canonical = 'https://localpdf.online/zh';
 const image = 'https://localpdf.online/logos/localpdf-social-1200x630.png';
 const imageAlt = 'LocalPDF — private PDF editor that runs entirely in your browser';
 const appUrl = getAppUrl(undefined, { upload: '1' });
 
 const homepageFaqs = [
   {
-    question: 'Do I need to upload my PDF to use LocalPDF?',
-    answer: 'No. LocalPDF runs entirely in your browser. You open a file from your device, work on it, and download the result — nothing is uploaded to any server.',
+    question: '使用 LocalPDF 需要上传我的PDF吗？',
+    answer: '不需要。LocalPDF 完全在您的浏览器中运行。您只需从设备中打开文件、进行编辑，然后下载结果 — 没有任何内容会被上传到任何服务器。',
   },
   {
-    question: 'Can I really drag pages between different PDFs?',
-    answer: 'Yes. Open two PDFs side by side in the canvas, select a page from one, and drag it into the other. The page is copied instantly — no extract-then-merge workflow required.',
+    question: '我真的可以在不同的PDF之间拖动页面吗？',
+    answer: '是的。在画布上并排打开两个PDF，选择其中一个页面，然后拖动到另一个PDF中。页面会瞬间复制 — 无需经历先提取再合并的繁琐过程。',
   },
   {
-    question: 'Is LocalPDF really free? What\'s the catch?',
-    answer: 'All six core tools — edit PDF, merge PDF, OCR PDF, compress PDF, split PDF, and convert PDF — are completely free. There\'s a Pro plan that unlocks higher workspace limits for heavy users, but there\'s no trial expiration, no hidden limits on basic usage, and no credit card required to start.',
+    question: 'LocalPDF 真的免费吗？有什么限制吗？',
+    answer: '是的，PDF编辑、合并、OCR、压缩、拆分和转换这六大核心工具完全免费。针对重度用户，我们提供解锁更高工作区限制的 Pro 计划（每月 $3.99），但免费使用没有任何试用期限、没有任何基础功能限制，也无需绑定信用卡。',
   },
   {
-    question: 'How is this different from Smallpdf or Adobe Acrobat?',
-    answer: 'Two key differences. First, LocalPDF keeps everything on your device — no uploads, no server storage, no privacy policies to trust. Second, LocalPDF uses a visual canvas where you can work with multiple documents side by side and drag pages between them, not a list of separate tool pages each requiring its own upload.',
+    question: '这与 Smallpdf 或 Adobe Acrobat 有何不同？',
+    answer: '有两个核心区别。首先，LocalPDF 将一切保留在您的本地设备上 — 无需上传，无服务器存储，您无需去信任任何第三方的隐私政策。其次，LocalPDF 采用可视化画布设计，您可以并排处理多个文档并在它们之间拖放页面，而不是像传统工具那样每次操作都要单独上传文件。',
   },
   {
-    question: 'Does LocalPDF work without internet?',
-    answer: 'Yes. After the initial page load, all processing runs locally in your browser via WebAssembly. You can edit, merge, OCR, compress, split, and convert PDFs on a plane, train, or anywhere with no internet connection.',
+    question: '无网络连接时 LocalPDF 还能工作吗？',
+    answer: '是的。在初始页面加载后，所有处理均通过 WebAssembly 在您的浏览器中本地运行。您可以在飞机上、火车上或任何没有网络连接的地方编辑、合并、OCR、压缩、拆分和转换PDF。',
   },
   {
-    question: 'What browsers does LocalPDF support?',
-    answer: 'LocalPDF works in Chrome, Firefox, Safari, and Edge. All processing uses WebAssembly, so there\'s nothing to install. You can also install it as a Chrome app via the PWA prompt for quick access.',
+    question: 'LocalPDF 支持哪些浏览器？',
+    answer: 'LocalPDF 支持 Chrome、Firefox、Safari 和 Edge。所有处理均使用 WebAssembly，因此无需安装任何插件或软件。您还可以通过 PWA 提示将其安装为 Chrome 应用以便快速访问。',
   },
 ];
 
@@ -98,12 +98,12 @@ const websiteSchema = [
       priceCurrency: 'USD',
     },
     featureList: [
-      'Edit PDF locally without uploading',
-      'Merge PDF files in one workspace',
-      'Run OCR on scanned PDFs locally',
-      'Drag-and-drop pages between documents',
-      'Works offline without internet',
-      'Compress, split, sign, and convert PDFs',
+      '本地编辑PDF，无需上传',
+      '在同一个工作区中合并PDF文件',
+      '在本地对扫描的PDF运行OCR',
+      '在文档之间拖放页面',
+      '无需网络，支持离线工作',
+      '压缩、拆分、签名和转换PDF',
     ],
   },
   {
@@ -123,18 +123,18 @@ const websiteSchema = [
 const popularGuides = [
   {
     href: '/blog/how-to-merge-pdf-files',
-    title: 'How to Merge PDF Files',
-    description: 'Combine multiple PDFs into one document without uploading them anywhere.',
+    title: '如何合并PDF文件',
+    description: '直接合并多个PDF为一个文档，无需上传到任何地方。',
   },
   {
     href: '/blog/edit-text-in-pdf-guide',
-    title: 'How to Edit Text in a PDF',
-    description: 'Edit PDF text directly — replace words, cover sensitive sections, and more.',
+    title: '如何编辑PDF中的文本',
+    description: '直接编辑PDF文本 — 修改字词、遮盖敏感内容等。',
   },
   {
     href: '/blog/ocr-pdf-extract-text',
-    title: 'OCR PDF: Extract Text from Scans',
-    description: 'Turn scanned PDFs into searchable documents — all locally, no upload required.',
+    title: 'PDF OCR: 从扫描件中提取文本',
+    description: '将扫描版PDF转换为可搜索的文档 — 完全本地处理，无需上传。',
   },
 ];
 
@@ -154,32 +154,31 @@ const hreflangs = [
   imageAlt={imageAlt}
   schema={websiteSchema}
   hreflangs={hreflangs}
+  lang="zh"
 >
   <div class="page-shell">
 
     <!-- HERO -->
     <section class="hero section">
       <div class="hero-copy">
-        <span class="eyebrow">Private PDF editor — 100% local</span>
-        <h1>Private PDF Editor — Edit, Merge, and OCR PDFs in Your Browser</h1>
+        <span class="eyebrow">私密PDF编辑器 — 100% 本地处理</span>
+        <h1>在浏览器中轻松编辑、合并和OCR处理PDF</h1>
         <p class="hero-text">
-          A full PDF workspace that runs entirely on your device. Edit text, merge documents,
-          run OCR on scans, compress, split, and convert — with zero uploads, no server storage,
-          and full offline support. Drag pages between documents visually, like paper on a desk.
+          完全在您的设备上运行的完整PDF工作区。编辑文本、合并文档、在扫描件上运行OCR、压缩、拆分和转换 — 零上传，无服务器存储，并支持完整的离线工作。可以像在桌面上整理纸张一样直观地拖放页面。
         </p>
-        <div class="hero-price">Free to use — no account required</div>
+        <div class="hero-price">免费使用 — 无需注册账户</div>
         <div class="cta-row">
           <a href={appUrl} class="btn-primary">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-            Open LocalPDF — it's free
+            打开 LocalPDF — 完全免费
           </a>
-          <a href="#how-it-works" class="btn-secondary">How it works</a>
+          <a href="#how-it-works" class="btn-secondary">工作原理</a>
         </div>
         <div class="hero-trust">
-          <span class="tag">0 bytes uploaded</span>
-          <span class="tag">Works offline</span>
-          <span class="tag">No account needed</span>
-          <span class="tag">Used by legal, finance &amp; HR</span>
+          <span class="tag">0 字节上传</span>
+          <span class="tag">支持离线</span>
+          <span class="tag">无需账户</span>
+          <span class="tag">适用于法律、财务和人力资源团队</span>
         </div>
       </div>
 
@@ -203,13 +202,13 @@ const hreflangs = [
               </div>
             </div>
             <div class="dropzone-text-group">
-              <strong class="dropzone-title">Drag & drop your PDF here</strong>
-              <span class="dropzone-subtitle">or click to choose file</span>
-              <span class="dropzone-hint">Free to try for standard documents &bull; No credit card required</span>
+              <strong class="dropzone-title">拖放您的PDF到这里</strong>
+              <span class="dropzone-subtitle">或点击选择文件</span>
+              <span class="dropzone-hint">标准文档免费试用 &bull; 无需信用卡</span>
             </div>
             <span class="dropzone-privacy-badge">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px;"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-              100% Local &amp; Private
+              100% 本地与私密
             </span>
           </div>
         </div>
@@ -250,7 +249,7 @@ const hreflangs = [
               if (file.name.toLowerCase().endsWith('.pdf') || file.type === 'application/pdf') {
                 void handleFileTransfer(file);
               } else {
-                alert('Please upload a PDF file.');
+                alert('请选择PDF文件。');
               }
             }
           });
@@ -345,13 +344,13 @@ const hreflangs = [
                   font-family: 'Iowan Old Style', Georgia, serif;
                   font-weight: 700;
                   color: #eaf8ee;
-                ">Drop your PDF anywhere</strong>
+                ">将PDF拖放到任意位置</strong>
                 <span style="
                   font-size: 0.92rem;
                   color: #a5d6a7;
                   font-weight: 500;
                   opacity: 0.9;
-                ">to load it directly into the secure local workspace</span>
+                ">即可直接加载到安全的本地工作区中</span>
               </div>
             </div>
           `;
@@ -400,7 +399,7 @@ const hreflangs = [
               if (file.name.toLowerCase().endsWith('.pdf') || file.type === 'application/pdf') {
                 void handleFileTransfer(file);
               } else {
-                alert('Please upload a PDF file.');
+                alert('请选择PDF文件。');
               }
             }
           });
@@ -411,7 +410,7 @@ const hreflangs = [
             dropzone.classList.add('uploading');
             const titleEl = dropzone.querySelector('.dropzone-title');
             const subtitleEl = dropzone.querySelector('.dropzone-subtitle');
-            if (titleEl) titleEl.textContent = 'Loading file...';
+            if (titleEl) titleEl.textContent = '正在加载文件...';
             if (subtitleEl) subtitleEl.textContent = file.name;
           }
 
@@ -438,13 +437,13 @@ const hreflangs = [
               reader.readAsDataURL(file);
             } catch (fallbackErr) {
               console.error('Fallback failed', fallbackErr);
-              alert('Could not load file. Please try again.');
+              alert('无法加载文件。请重试。');
               if (dropzone) {
                 dropzone.classList.remove('uploading');
                 const titleEl = dropzone.querySelector('.dropzone-title');
                 const subtitleEl = dropzone.querySelector('.dropzone-subtitle');
-                if (titleEl) titleEl.textContent = 'Drag & drop your PDF here';
-                if (subtitleEl) subtitleEl.textContent = 'or click to choose file';
+                if (titleEl) titleEl.textContent = '拖放您的PDF到这里';
+                if (subtitleEl) subtitleEl.textContent = '或点击选择文件';
               }
             }
           }
@@ -489,9 +488,9 @@ const hreflangs = [
 
     <!-- ALL UTILITIES toolkit -->
     <section class="section all-tools-section">
-      <span class="eyebrow">All Utilities</span>
-      <h2 class="section-title">A complete private PDF toolkit on your device</h2>
-      <p class="section-intro">No uploads, no limits, no subscription paywalls for basic usage. Click any tool to open it directly in the canvas.</p>
+      <span class="eyebrow">所有工具</span>
+      <h2 class="section-title">设备上完整的私密PDF工具包</h2>
+      <p class="section-intro">无上传、无限制、基础功能无订阅收费。点击任意工具直接在画布中打开。</p>
       
       <div class="toolkit-categories">
         {CATEGORIES.map((category) => (
@@ -515,33 +514,32 @@ const hreflangs = [
 
     <!-- PAIN / RELIEF -->
     <section class="section">
-      <span class="eyebrow">Before and after</span>
-      <h2 class="section-title">The old way vs the LocalPDF way</h2>
+      <span class="eyebrow">对比与改变</span>
+      <h2 class="section-title">传统方式与 LocalPDF 方式</h2>
       <p class="section-intro">
-        If you've ever needed to move a page between PDFs or just wanted to edit a document
-        without uploading it somewhere — here's how the experience changes.
+        如果您曾需要在PDF之间移动页面，或者只想编辑文档而不将其上传到任何地方 — 看看体验有何不同。
       </p>
       <div class="split-2">
         <div class="pain-card">
-          <h3>With online PDF tools</h3>
+          <h3>传统的在线PDF工具</h3>
           <ul>
-            <li>Upload the file to a remote server</li>
-            <li>Use a separate page for each operation</li>
-            <li>Extract pages with one tool, merge with another</li>
-            <li>Wait for every upload and download</li>
-            <li>Accept whatever their privacy policy says</li>
-            <li>Create an account to do more than one thing</li>
+            <li>将文件上传到远程服务器</li>
+            <li>每个操作都需要使用单独的页面</li>
+            <li>用一个工具提取页面，再用另一个工具合并</li>
+            <li>必须等待每次上传和下载</li>
+            <li>必须接受并信任他们的隐私政策</li>
+            <li>限制使用次数，要求创建账户</li>
           </ul>
         </div>
         <div class="relief-card">
-          <h3>With LocalPDF</h3>
+          <h3>使用 LocalPDF</h3>
           <ul>
-            <li>Open a file from your device — zero upload</li>
-            <li>All tools in one canvas, switch freely</li>
-            <li>Drag pages between documents directly</li>
-            <li>Instant response, no network roundtrips</li>
-            <li>Nothing leaves your device, ever</li>
-            <li>No account, no signup, no subscription</li>
+            <li>直接从设备打开文件 — 零上传</li>
+            <li>所有工具集中在单个画布，自由切换</li>
+            <li>直接在文档之间拖动页面</li>
+            <li>即时响应，无需经过网络传输</li>
+            <li>任何数据绝不会离开您的设备</li>
+            <li>无需账户，无需注册，无订阅门槛</li>
           </ul>
         </div>
       </div>
@@ -549,70 +547,70 @@ const hreflangs = [
 
     <!-- HOW IT WORKS -->
     <section id="how-it-works" class="section">
-      <span class="eyebrow">How it works</span>
-      <h2 class="section-title">Open, work, export — in three steps</h2>
-      <p class="section-intro">No accounts, no uploads, no servers. Just a workspace that works the way you expect.</p>
+      <span class="eyebrow">工作原理</span>
+      <h2 class="section-title">打开、操作、导出 — 仅需三步</h2>
+      <p class="section-intro">无账户、无上传、无服务器。一个完全符合您预期的工作区。</p>
       <div class="steps-grid">
         <div class="step">
           <div class="step-num">1</div>
-          <h3>Open a PDF</h3>
-          <p>Drag any PDF into the Studio or open it from your device. The file stays in your browser's memory — zero bytes sent anywhere. Works offline too.</p>
+          <h3>打开PDF</h3>
+          <p>将任何PDF拖入 Studio 或从您的设备中打开。文件保存在浏览器内存中 — 零字节发送到外部。离线也能用。</p>
         </div>
         <div class="step">
           <div class="step-num">2</div>
-          <h3>Work visually</h3>
-          <p><a href="/features/edit-pdf">Edit text</a>, <a href="/features/merge-pdf">merge documents</a>, <a href="/features/ocr-pdf">run OCR</a>, reorder pages by dragging, or move pages between open PDFs — all on the canvas.</p>
+          <h3>直观可视化操作</h3>
+          <p>在画布上直接<a href="/features/edit-pdf">编辑文本</a>、<a href="/features/merge-pdf">合并文档</a>、<a href="/features/ocr-pdf">运行OCR</a>、通过拖拽对页面排序或在打开的PDF之间移动页面。</p>
         </div>
         <div class="step">
           <div class="step-num">3</div>
-          <h3>Export the result</h3>
-          <p>Download the finished PDF. No cleanup, no accounts to delete, no files left on someone else's server.</p>
+          <h3>导出结果</h3>
+          <p>下载处理好的PDF。无需清理缓存，无需注销账户，更没有文件被遗留在别人的服务器上。</p>
         </div>
       </div>
     </section>
 
     <!-- FEATURES -->
     <section class="section">
-      <span class="eyebrow">Core tools</span>
-      <h2 class="section-title">The most in-demand PDF tools</h2>
-      <p class="section-intro">Six most-used tools, all in one workspace. Switch between them without leaving the document.</p>
+      <span class="eyebrow">核心功能</span>
+      <h2 class="section-title">最常用的PDF工具</h2>
+      <p class="section-intro">最常用的六大工具集成于一体。无需离开文档即可在它们之间随时切换。</p>
       <div class="feat-grid">
         <a href="/features/edit-pdf" class="feat-card">
           <div class="feat-icon">✎</div>
-          <div><h3>Edit PDF</h3><p>Edit text and images directly on the page</p></div>
+          <div><h3>编辑PDF</h3><p>直接在页面上编辑文本和图像</p></div>
         </a>
         <a href="/features/merge-pdf" class="feat-card">
           <div class="feat-icon">⊞</div>
-          <div><h3>Merge PDF</h3><p>Combine documents by dragging pages together</p></div>
+          <div><h3>合并PDF</h3><p>通过拖放页面将文档组合在一起</p></div>
         </a>
         <a href="/features/ocr-pdf" class="feat-card">
           <div class="feat-icon">◎</div>
-          <div><h3>OCR PDF</h3><p>Extract text from scanned documents, local processing</p></div>
+          <div><h3>PDF OCR</h3><p>从扫描文档中提取文本（本地处理）</p></div>
         </a>
         <a href="/features/compress-pdf" class="feat-card">
           <div class="feat-icon">▼</div>
-          <div><h3>Compress PDF</h3><p>Reduce file size without uploading to a server</p></div>
+          <div><h3>压缩PDF</h3><p>在不上传到服务器的情况下减小文件大小</p></div>
         </a>
         <a href="/features/split-pdf" class="feat-card">
           <div class="feat-icon">⎔</div>
-          <div><h3>Split PDF</h3><p>Extract or remove pages from any document</p></div>
+          <div><h3>拆分PDF</h3><p>从任何文档中提取或删除页面</p></div>
         </a>
         <a href="/features/convert-pdf" class="feat-card">
           <div class="feat-icon">⇄</div>
-          <div><h3>Convert PDF</h3><p>PDF to JPG and other format conversions</p></div>
+          <div><h3>转换PDF</h3><p>PDF转JPG及其他格式转换</p></div>
         </a>
       </div>
     </section>
 
     <!-- BLOG GUIDES -->
     <section class="section">
-      <span class="eyebrow">Quick guides</span>
-      <h2 class="section-title">How to edit, merge, and OCR PDFs — privately</h2>
-      <p class="section-intro">Real workflows that make the most of local-first PDF processing.</p>
+      <span class="eyebrow">快速指南</span>
+      <h2 class="section-title">如何私密地编辑、合并及进行PDF OCR</h2>
+      <p class="section-intro">充分发挥本地优先PDF处理优势的实际工作流。</p>
       <div class="blog-strip">
         {popularGuides.map((guide) => (
           <a href={guide.href} class="blog-card">
-            <div class="blog-label">Guide</div>
+            <div class="blog-label">指南</div>
             <h3>{guide.title}</h3>
             <p>{guide.description}</p>
           </a>
@@ -622,41 +620,41 @@ const hreflangs = [
 
     <!-- COMPARISON -->
     <section class="section">
-      <span class="eyebrow">Why LocalPDF</span>
-      <h2 class="section-title">Local-first vs upload-first PDF tools</h2>
-      <p class="section-intro">The difference is simple: your files never leave your device. Here's what that means in practice.</p>
+      <span class="eyebrow">为什么选择 LocalPDF</span>
+      <h2 class="section-title">本地优先 与 上传优先 PDF工具对比</h2>
+      <p class="section-intro">区别很简单：您的文件绝不会离开您的设备。以下是它在实际应用中的具体意义。</p>
       <div class="comp-grid">
         <div class="comp-card comp-accent">
           <h3>LocalPDF</h3>
           <ul>
-            <li>Files stay in your browser</li>
-            <li>Drag-and-drop between documents</li>
-            <li>One workspace for everything</li>
-            <li>Works offline</li>
-            <li>No account required</li>
-            <li>Zero bytes sent to servers</li>
+            <li>文件始终保存在您的浏览器中</li>
+            <li>在不同文档之间自由拖放</li>
+            <li>一个工作区处理所有任务</li>
+            <li>支持完全离线工作</li>
+            <li>无需注册账户</li>
+            <li>零字节传输到外部服务器</li>
           </ul>
         </div>
         <div class="comp-card comp-cross">
           <h3>Smallpdf / iLovePDF / Adobe</h3>
           <ul>
-            <li>Files uploaded to remote servers</li>
-            <li>One tool per page, no workspace</li>
-            <li>Separate page for each operation</li>
-            <li>Requires internet connection</li>
-            <li>Account upsells everywhere</li>
-            <li>Privacy depends on a policy page</li>
+            <li>文件必须上传到远程服务器</li>
+            <li>每次只能使用单个工具，无工作区</li>
+            <li>每个操作都是独立页面，步骤繁琐</li>
+            <li>必须保持网络连接</li>
+            <li>到处都是账户升级和付费订阅提示</li>
+            <li>隐私安全完全取决于对方的政策说明</li>
           </ul>
         </div>
         <div class="comp-card">
           <h3>Best for</h3>
           <ul>
-            <li>Contracts and legal documents</li>
-            <li>Invoices and financial records</li>
-            <li>HR files and offer letters</li>
-            <li>Sensitive operational PDFs</li>
-            <li>Offline work on the go</li>
-            <li>Anyone who values privacy</li>
+            <li>合同与法律文件</li>
+            <li>发票与财务记录</li>
+            <li>人力资源文件与录用信</li>
+            <li>敏感的业务运营PDF</li>
+            <li>旅途中的离线办公</li>
+            <li>所有注重隐私安全的用户</li>
           </ul>
         </div>
       </div>
@@ -664,8 +662,8 @@ const hreflangs = [
 
     <!-- FAQ -->
     <section class="section">
-      <span class="eyebrow">FAQ</span>
-      <h2 class="section-title">Common questions about private PDF editing</h2>
+      <span class="eyebrow">常见问题</span>
+      <h2 class="section-title">关于私密PDF编辑的常见问题</h2>
       <div class="faq-grid">
         {homepageFaqs.map((faq) => (
           <div class="faq-item">
@@ -677,15 +675,15 @@ const hreflangs = [
     </section>
 
     <!-- FINAL CTA -->
-    <section class="section final-cta">
-      <h2>Try the PDF workspace that keeps your files private</h2>
-      <p class="section-intro">No signup, no upload, no commitment. Just a PDF tool that works the way it should.</p>
+    <section class="section final-cta" style="text-align: center;">
+      <h2>立即体验保护文件私密的PDF工作区</h2>
+      <p class="section-intro">无需注册，无需上传。一个真正好用的PDF工具。</p>
       <div class="cta-row cta-center">
         <a href={appUrl} class="btn-primary">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-          Open LocalPDF — it's free
+          打开 LocalPDF — 完全免费
         </a>
-        <a href="/faq" class="btn-secondary">Read FAQ</a>
+        <a href="/faq" class="btn-secondary">阅读常见问题</a>
       </div>
     </section>
 
@@ -1152,7 +1150,7 @@ const hreflangs = [
     border-radius: 1px;
   }
 
-  /* ── How it works ──────────────────────────── */
+  /* ── 工作原理 ──────────────────────────── */
   .steps-grid {
     display: grid;
     grid-template-columns: repeat(3, 1fr);

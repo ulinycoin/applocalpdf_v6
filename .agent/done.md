@@ -29,3 +29,17 @@
 - Placed TOC button right under OCR inside the sidebar, added a custom styled red \"NEW\" badge, and added informative tooltip descriptions to all 12 tools in the rail.
 - Added a \"Back to Edit\" option to the results card, wrapped the final screen layout into a clean center-aligned card, and fixed button contrast issues.
 - Commit: `feat(auto-toc): refactor TOC UI, fix PDF outlines rendering, add search filter and tool descriptions`
+
+### SEO-01: SEO Review and i18n Localization (JA & ZH)
+- Performed a comprehensive SEO and technical audit of the marketing site (76 static HTML pages).
+- Verified robots.txt configurations, sitemap priority/lastmod rules, and JSON-LD schema (FAQPage, SoftwareApplication, BlogPosting) to maximize rich snippets CTR.
+- Fixed 10+ short Title warnings on pricing/terms/privacy pages.
+- Created `website/src/pages/ja.astro` and `website/src/pages/zh.astro` translations with 100% layout and JS script parity to optimize for Google JP/ZH organic search traffic.
+- Configured correct hreflangs alternates linking главных страниц (`/`, `/ja`, `/zh`) cross-references and HTML `lang` attributes.
+- Implemented locale persistence using `localStorage`:
+  1. Header language selectors store the chosen language preference.
+  2. Root `/` page instantly auto-redirects to `/ja` or `/zh` if a preference exists.
+  3. Visiting `/ja` or `/zh` directly sets the user preference key automatically.
+- Removed outdated German/Japanese fallback redirects for `/ja` from `vercel.json` to allow correct path routing.
+- Added `/ja` and `/zh` URLs into the `astro.config.mjs` sitemap configuration.
+- Verified compilation and build merged layout success via `npm test`, `npm run audit:workerization:strict`, and `npm run build:all`.

@@ -15,6 +15,8 @@ const TODAY = new Date().toISOString().split('T')[0];
 const sitemapPriority = {
   'https://localpdf.online/':              { priority: 1.0,  changefreq: 'weekly'  },
   'https://localpdf.online':               { priority: 1.0,  changefreq: 'weekly'  },
+  'https://localpdf.online/ja':            { priority: 1.0,  changefreq: 'weekly'  },
+  'https://localpdf.online/zh':            { priority: 1.0,  changefreq: 'weekly'  },
   'https://localpdf.online/pricing':       { priority: 0.9,  changefreq: 'monthly' },
   'https://localpdf.online/features/ocr-pdf':      { priority: 0.9, changefreq: 'monthly' },
   'https://localpdf.online/features/edit-pdf':     { priority: 0.9, changefreq: 'monthly' },
@@ -31,6 +33,8 @@ const sitemapPriority = {
 const sitemapAllowList = new Set([
   'https://localpdf.online',
   'https://localpdf.online/',
+  'https://localpdf.online/ja',
+  'https://localpdf.online/zh',
   'https://localpdf.online/about',
   'https://localpdf.online/blog',
   'https://localpdf.online/privacy',

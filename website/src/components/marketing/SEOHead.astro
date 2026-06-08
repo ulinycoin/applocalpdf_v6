@@ -10,6 +10,7 @@ interface Props {
   noindex?: boolean;
   type?: 'website' | 'article';
   schema?: Record<string, unknown> | Array<Record<string, unknown>>;
+  hreflangs?: Array<{ hreflang: string; href: string }>;
 }
 
 const {
@@ -21,6 +22,7 @@ const {
   noindex = false,
   type = 'website',
   schema,
+  hreflangs,
 } = Astro.props;
 
 const robots = noindex ? 'noindex, nofollow' : 'index, follow';
@@ -35,6 +37,9 @@ const schemaItems = schema ? (Array.isArray(schema) ? schema : [schema]) : [];
 <meta name="application-name" content="LocalPDF" />
 <meta name="apple-mobile-web-app-title" content="LocalPDF" />
 <link rel="canonical" href={canonical} />
+{hreflangs && hreflangs.map((hl) => (
+  <link rel="alternate" hreflang={hl.hreflang} href={hl.href} />
+))}
 {bingSiteVerification && <meta name="msvalidate.01" content={bingSiteVerification} />}
 <meta name="impact-site-verification" value="5810f056-3eee-41c8-ab96-81535ca54c6b" />
 

@@ -35,37 +35,37 @@ function getToolHref(toolId: string): string {
   return mapping[toolId] || '/';
 }
 
-const title = 'Private PDF Editor — Edit, Merge & OCR in Browser | LocalPDF';
-const description = 'Edit, merge, OCR, compress, split, and convert PDFs privately in your browser. Zero uploads, no server storage, works offline. Open LocalPDF — it\'s free.';
-const canonical = 'https://localpdf.online/';
+const title = 'ブラウザで動く個人向けPDFエディタ — 編集、結合、OCR | LocalPDF';
+const description = 'ブラウザ上で完全にローカルで動作する個人向けPDFエディタ。ファイルのアップロードは不要で、セキュリティも安全。結合、分割、圧縮、OCR、PDF変換などの各種機能を完全無料で利用できます。';
+const canonical = 'https://localpdf.online/ja';
 const image = 'https://localpdf.online/logos/localpdf-social-1200x630.png';
 const imageAlt = 'LocalPDF — private PDF editor that runs entirely in your browser';
 const appUrl = getAppUrl(undefined, { upload: '1' });
 
 const homepageFaqs = [
   {
-    question: 'Do I need to upload my PDF to use LocalPDF?',
-    answer: 'No. LocalPDF runs entirely in your browser. You open a file from your device, work on it, and download the result — nothing is uploaded to any server.',
+    question: 'LocalPDFを使用するためにPDFをアップロードする必要がありますか？',
+    answer: 'いいえ。LocalPDFは完全にブラウザ内で動作します。お使いのデバイスからファイルを開いて作業し、結果をダウンロードするだけです。ファイルがサーバーにアップロードされることはありません。',
   },
   {
-    question: 'Can I really drag pages between different PDFs?',
-    answer: 'Yes. Open two PDFs side by side in the canvas, select a page from one, and drag it into the other. The page is copied instantly — no extract-then-merge workflow required.',
+    question: '異なるPDF間でページをドラッグできますか？',
+    answer: 'はい。キャンバス上に2つのPDFを並べて開き、一方のページを選択してもう一方へドラッグするだけです。ページは瞬時にコピーされ、個別に抽出して結合し直すような手間は不要です。',
   },
   {
-    question: 'Is LocalPDF really free? What\'s the catch?',
-    answer: 'All six core tools — edit PDF, merge PDF, OCR PDF, compress PDF, split PDF, and convert PDF — are completely free. There\'s a Pro plan that unlocks higher workspace limits for heavy users, but there\'s no trial expiration, no hidden limits on basic usage, and no credit card required to start.',
+    question: 'LocalPDFは本当に無料ですか？何か裏がありますか？',
+    answer: 'はい、PDFの編集、結合、OCR、圧縮、分割、変換の6つのコアツールはすべて完全に無料です。ヘビーユーザー向けにワークスペース制限を緩和するProプラン（月額$3.99）がありますが、無料枠に試用期限や隠れた制限はなく、クレジットカード登録不要で今すぐ使えます。',
   },
   {
-    question: 'How is this different from Smallpdf or Adobe Acrobat?',
-    answer: 'Two key differences. First, LocalPDF keeps everything on your device — no uploads, no server storage, no privacy policies to trust. Second, LocalPDF uses a visual canvas where you can work with multiple documents side by side and drag pages between them, not a list of separate tool pages each requiring its own upload.',
+    question: 'SmallpdfやAdobe Acrobatと何が違いますか？',
+    answer: '大きな違いは2つあります。1つ目は、LocalPDFはすべてをローカル（お使いのデバイス上）で処理するため、ファイルをアップロードする必要がなく、サーバー保存もされないため安心です。2つ目は、機能ごとの個別ページで何回もアップロードし直すのではなく、視覚的なキャンバス上で複数のドキュメントを並べて直感的にページをドラッグ＆ドロップして作業できる点です。',
   },
   {
-    question: 'Does LocalPDF work without internet?',
-    answer: 'Yes. After the initial page load, all processing runs locally in your browser via WebAssembly. You can edit, merge, OCR, compress, split, and convert PDFs on a plane, train, or anywhere with no internet connection.',
+    question: 'LocalPDFはインターネットがなくても動きますか？',
+    answer: 'はい。最初のページ読み込み後は、すべての処理がWebAssemblyを介してブラウザ内でローカルに実行されます。飛行機や電車、電波の届かない場所でも、PDFの編集、結合、OCR、圧縮、分割、変換が可能です。',
   },
   {
-    question: 'What browsers does LocalPDF support?',
-    answer: 'LocalPDF works in Chrome, Firefox, Safari, and Edge. All processing uses WebAssembly, so there\'s nothing to install. You can also install it as a Chrome app via the PWA prompt for quick access.',
+    question: 'どのブラウザに対応していますか？',
+    answer: 'Chrome、Firefox、Safari、Edgeで動作します。WebAssemblyを利用しているため、プラグイン等のインストールは一切不要です。また、PWA（デスクトップアプリ）としてインストールして素早く起動することもできます。',
   },
 ];
 
@@ -98,12 +98,12 @@ const websiteSchema = [
       priceCurrency: 'USD',
     },
     featureList: [
-      'Edit PDF locally without uploading',
-      'Merge PDF files in one workspace',
-      'Run OCR on scanned PDFs locally',
-      'Drag-and-drop pages between documents',
-      'Works offline without internet',
-      'Compress, split, sign, and convert PDFs',
+      'アップロードなしでPDFをローカル編集',
+      '1つのワークスペースでPDFファイルを結合',
+      'スキャンされたPDFに対してローカルでOCRを実行',
+      'ドキュメント間でページをドラッグ＆ドロップ',
+      'インターネットなしでオフライン動作',
+      'PDFの圧縮、分割、署名、変換',
     ],
   },
   {
@@ -123,18 +123,18 @@ const websiteSchema = [
 const popularGuides = [
   {
     href: '/blog/how-to-merge-pdf-files',
-    title: 'How to Merge PDF Files',
-    description: 'Combine multiple PDFs into one document without uploading them anywhere.',
+    title: 'PDFファイルを結合する方法',
+    description: 'ファイルをアップロードせずに、複数のPDFを1つのドキュメントに結合します。',
   },
   {
     href: '/blog/edit-text-in-pdf-guide',
-    title: 'How to Edit Text in a PDF',
-    description: 'Edit PDF text directly — replace words, cover sensitive sections, and more.',
+    title: 'PDF内のテキストを編集する方法',
+    description: 'PDFのテキストを直接編集 — 文字の置換や、機密情報の黒塗りなど。',
   },
   {
     href: '/blog/ocr-pdf-extract-text',
-    title: 'OCR PDF: Extract Text from Scans',
-    description: 'Turn scanned PDFs into searchable documents — all locally, no upload required.',
+    title: 'PDF OCR: スキャン画像からテキストを抽出',
+    description: 'スキャンされたPDFを検索可能なドキュメントに変換。すべてローカル処理でアップロード不要。',
   },
 ];
 
@@ -154,32 +154,31 @@ const hreflangs = [
   imageAlt={imageAlt}
   schema={websiteSchema}
   hreflangs={hreflangs}
+  lang="ja"
 >
   <div class="page-shell">
 
     <!-- HERO -->
     <section class="hero section">
       <div class="hero-copy">
-        <span class="eyebrow">Private PDF editor — 100% local</span>
-        <h1>Private PDF Editor — Edit, Merge, and OCR PDFs in Your Browser</h1>
+        <span class="eyebrow">個人向けPDFエディタ — 100% ローカル処理</span>
+        <h1>ブラウザで動く個人向けPDFエディタ — 編集、結合、OCR</h1>
         <p class="hero-text">
-          A full PDF workspace that runs entirely on your device. Edit text, merge documents,
-          run OCR on scans, compress, split, and convert — with zero uploads, no server storage,
-          and full offline support. Drag pages between documents visually, like paper on a desk.
+          ファイルのアップロードは一切不要。結合、分割、圧縮、OCR、PDF変換などのすべての作業がお使いのデバイス上のブラウザ内で安全に完結します。まるで机の上の紙を扱うように、ページをドラッグ＆ドロップで移動できます。
         </p>
-        <div class="hero-price">Free to use — no account required</div>
+        <div class="hero-price">無料で利用可能 — アカウント登録不要</div>
         <div class="cta-row">
           <a href={appUrl} class="btn-primary">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-            Open LocalPDF — it's free
+            LocalPDFを開く（無料）
           </a>
-          <a href="#how-it-works" class="btn-secondary">How it works</a>
+          <a href="#how-it-works" class="btn-secondary">使い方</a>
         </div>
         <div class="hero-trust">
-          <span class="tag">0 bytes uploaded</span>
-          <span class="tag">Works offline</span>
-          <span class="tag">No account needed</span>
-          <span class="tag">Used by legal, finance &amp; HR</span>
+          <span class="tag">アップロード0バイト</span>
+          <span class="tag">オフライン動作</span>
+          <span class="tag">アカウント不要</span>
+          <span class="tag">法務・財務・人事チームも推奨</span>
         </div>
       </div>
 
@@ -203,13 +202,13 @@ const hreflangs = [
               </div>
             </div>
             <div class="dropzone-text-group">
-              <strong class="dropzone-title">Drag & drop your PDF here</strong>
-              <span class="dropzone-subtitle">or click to choose file</span>
-              <span class="dropzone-hint">Free to try for standard documents &bull; No credit card required</span>
+              <strong class="dropzone-title">ここにPDFファイルをドラッグ＆ドロップ</strong>
+              <span class="dropzone-subtitle">またはファイルを選択</span>
+              <span class="dropzone-hint">標準的なドキュメントは無料でお試しいただけます &bull; クレジットカード登録不要</span>
             </div>
             <span class="dropzone-privacy-badge">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px;"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-              100% Local &amp; Private
+              100% ローカル &amp; 安全
             </span>
           </div>
         </div>
@@ -250,7 +249,7 @@ const hreflangs = [
               if (file.name.toLowerCase().endsWith('.pdf') || file.type === 'application/pdf') {
                 void handleFileTransfer(file);
               } else {
-                alert('Please upload a PDF file.');
+                alert('PDFファイルを選択してください。');
               }
             }
           });
@@ -345,13 +344,13 @@ const hreflangs = [
                   font-family: 'Iowan Old Style', Georgia, serif;
                   font-weight: 700;
                   color: #eaf8ee;
-                ">Drop your PDF anywhere</strong>
+                ">PDFファイルをどこにでもドラッグ＆ドロップしてください</strong>
                 <span style="
                   font-size: 0.92rem;
                   color: #a5d6a7;
                   font-weight: 500;
                   opacity: 0.9;
-                ">to load it directly into the secure local workspace</span>
+                ">安全なローカルワークスペースに直接読み込まれます</span>
               </div>
             </div>
           `;
@@ -400,7 +399,7 @@ const hreflangs = [
               if (file.name.toLowerCase().endsWith('.pdf') || file.type === 'application/pdf') {
                 void handleFileTransfer(file);
               } else {
-                alert('Please upload a PDF file.');
+                alert('PDFファイルを選択してください。');
               }
             }
           });
@@ -411,7 +410,7 @@ const hreflangs = [
             dropzone.classList.add('uploading');
             const titleEl = dropzone.querySelector('.dropzone-title');
             const subtitleEl = dropzone.querySelector('.dropzone-subtitle');
-            if (titleEl) titleEl.textContent = 'Loading file...';
+            if (titleEl) titleEl.textContent = 'ファイルを読み込み中...';
             if (subtitleEl) subtitleEl.textContent = file.name;
           }
 
@@ -438,13 +437,13 @@ const hreflangs = [
               reader.readAsDataURL(file);
             } catch (fallbackErr) {
               console.error('Fallback failed', fallbackErr);
-              alert('Could not load file. Please try again.');
+              alert('ファイルを読み込めませんでした。もう一度お試しください。');
               if (dropzone) {
                 dropzone.classList.remove('uploading');
                 const titleEl = dropzone.querySelector('.dropzone-title');
                 const subtitleEl = dropzone.querySelector('.dropzone-subtitle');
-                if (titleEl) titleEl.textContent = 'Drag & drop your PDF here';
-                if (subtitleEl) subtitleEl.textContent = 'or click to choose file';
+                if (titleEl) titleEl.textContent = 'ここにPDFファイルをドラッグ＆ドロップ';
+                if (subtitleEl) subtitleEl.textContent = 'またはファイルを選択';
               }
             }
           }
@@ -489,9 +488,9 @@ const hreflangs = [
 
     <!-- ALL UTILITIES toolkit -->
     <section class="section all-tools-section">
-      <span class="eyebrow">All Utilities</span>
-      <h2 class="section-title">A complete private PDF toolkit on your device</h2>
-      <p class="section-intro">No uploads, no limits, no subscription paywalls for basic usage. Click any tool to open it directly in the canvas.</p>
+      <span class="eyebrow">全ツール一覧</span>
+      <h2 class="section-title">お使いのデバイスで完結する安全なPDFツールキット</h2>
+      <p class="section-intro">アップロード不要、制限なし、基本機能のサブスク課金なし。ツールをクリックするとキャンバスで直接開きます。</p>
       
       <div class="toolkit-categories">
         {CATEGORIES.map((category) => (
@@ -515,33 +514,32 @@ const hreflangs = [
 
     <!-- PAIN / RELIEF -->
     <section class="section">
-      <span class="eyebrow">Before and after</span>
-      <h2 class="section-title">The old way vs the LocalPDF way</h2>
+      <span class="eyebrow">従来の方法との違い</span>
+      <h2 class="section-title">従来のオンラインツール vs LocalPDF</h2>
       <p class="section-intro">
-        If you've ever needed to move a page between PDFs or just wanted to edit a document
-        without uploading it somewhere — here's how the experience changes.
+        PDF間でページを移動したり、ファイルをどこにもアップロードせずに編集したいと思ったことがあるなら — LocalPDFが解決します。
       </p>
       <div class="split-2">
         <div class="pain-card">
-          <h3>With online PDF tools</h3>
+          <h3>従来のオンラインPDFツール</h3>
           <ul>
-            <li>Upload the file to a remote server</li>
-            <li>Use a separate page for each operation</li>
-            <li>Extract pages with one tool, merge with another</li>
-            <li>Wait for every upload and download</li>
-            <li>Accept whatever their privacy policy says</li>
-            <li>Create an account to do more than one thing</li>
+            <li>ファイルをリモートサーバーにアップロード</li>
+            <li>操作ごとに別々のページに移動</li>
+            <li>抽出ツールと結合ツールを往復する</li>
+            <li>アップロードとダウンロードの待ち時間が発生</li>
+            <li>相手のプライバシーポリシーを信用するしかない</li>
+            <li>複数回の利用にはアカウント作成が必要</li>
           </ul>
         </div>
         <div class="relief-card">
-          <h3>With LocalPDF</h3>
+          <h3>LocalPDFの場合</h3>
           <ul>
-            <li>Open a file from your device — zero upload</li>
-            <li>All tools in one canvas, switch freely</li>
-            <li>Drag pages between documents directly</li>
-            <li>Instant response, no network roundtrips</li>
-            <li>Nothing leaves your device, ever</li>
-            <li>No account, no signup, no subscription</li>
+            <li>デバイスからファイルを開く — アップロードは0バイト</li>
+            <li>すべてのツールが1つのキャンバスに、自由に切り替え</li>
+            <li>ドキュメント間でページを直接ドラッグ＆ドロップ</li>
+            <li>ネットワークの遅延なく、その場で瞬時に処理</li>
+            <li>ファイルがデバイス外に出ることは一切ありません</li>
+            <li>アカウント不要、サインアップ不要、サブスク登録不要</li>
           </ul>
         </div>
       </div>
@@ -549,70 +547,70 @@ const hreflangs = [
 
     <!-- HOW IT WORKS -->
     <section id="how-it-works" class="section">
-      <span class="eyebrow">How it works</span>
-      <h2 class="section-title">Open, work, export — in three steps</h2>
-      <p class="section-intro">No accounts, no uploads, no servers. Just a workspace that works the way you expect.</p>
+      <span class="eyebrow">使い方</span>
+      <h2 class="section-title">開く、編集、保存 — わずか3ステップ</h2>
+      <p class="section-intro">アカウント登録もアップロードもサーバーも不要。直感的に使えるシンプルなワークスペース。</p>
       <div class="steps-grid">
         <div class="step">
           <div class="step-num">1</div>
-          <h3>Open a PDF</h3>
-          <p>Drag any PDF into the Studio or open it from your device. The file stays in your browser's memory — zero bytes sent anywhere. Works offline too.</p>
+          <h3>PDFを開く</h3>
+          <p>PDFをStudioにドラッグするか、デバイスから開きます。ファイルはブラウザのメモリ内にとどまり、どこにも送信されません。オフラインでも動作します。</p>
         </div>
         <div class="step">
           <div class="step-num">2</div>
-          <h3>Work visually</h3>
-          <p><a href="/features/edit-pdf">Edit text</a>, <a href="/features/merge-pdf">merge documents</a>, <a href="/features/ocr-pdf">run OCR</a>, reorder pages by dragging, or move pages between open PDFs — all on the canvas.</p>
+          <h3>視覚的に作業</h3>
+          <p>キャンバス上で、<a href="/features/edit-pdf">テキストの編集</a>、<a href="/features/merge-pdf">ドキュメントの結合</a>、<a href="/features/ocr-pdf">OCRの実行</a>、ドラッグによるページの並べ替えやドキュメント間の移動がすべて行えます。</p>
         </div>
         <div class="step">
           <div class="step-num">3</div>
-          <h3>Export the result</h3>
-          <p>Download the finished PDF. No cleanup, no accounts to delete, no files left on someone else's server.</p>
+          <h3>結果を書き出す</h3>
+          <p>完成したPDFをダウンロードします。削除手続きも、消去すべきアカウントも、外部サーバーにファイルが残る心配もありません。</p>
         </div>
       </div>
     </section>
 
     <!-- FEATURES -->
     <section class="section">
-      <span class="eyebrow">Core tools</span>
-      <h2 class="section-title">The most in-demand PDF tools</h2>
-      <p class="section-intro">Six most-used tools, all in one workspace. Switch between them without leaving the document.</p>
+      <span class="eyebrow">コア機能</span>
+      <h2 class="section-title">よく使われるPDFツール</h2>
+      <p class="section-intro">最も使われる6つのツールが1つのワークスペースに。画面を移動せずに自由に切り替えられます。</p>
       <div class="feat-grid">
         <a href="/features/edit-pdf" class="feat-card">
           <div class="feat-icon">✎</div>
-          <div><h3>Edit PDF</h3><p>Edit text and images directly on the page</p></div>
+          <div><h3>PDF編集</h3><p>ページ上のテキストや画像を直接編集します</p></div>
         </a>
         <a href="/features/merge-pdf" class="feat-card">
           <div class="feat-icon">⊞</div>
-          <div><h3>Merge PDF</h3><p>Combine documents by dragging pages together</p></div>
+          <div><h3>PDF結合</h3><p>ページをドラッグしてドキュメントを結合します</p></div>
         </a>
         <a href="/features/ocr-pdf" class="feat-card">
           <div class="feat-icon">◎</div>
-          <div><h3>OCR PDF</h3><p>Extract text from scanned documents, local processing</p></div>
+          <div><h3>PDF OCR</h3><p>スキャンされたドキュメントからテキストを抽出（ローカル処理）</p></div>
         </a>
         <a href="/features/compress-pdf" class="feat-card">
           <div class="feat-icon">▼</div>
-          <div><h3>Compress PDF</h3><p>Reduce file size without uploading to a server</p></div>
+          <div><h3>PDF圧縮</h3><p>サーバーにアップロードせずにファイルサイズを削減します</p></div>
         </a>
         <a href="/features/split-pdf" class="feat-card">
           <div class="feat-icon">⎔</div>
-          <div><h3>Split PDF</h3><p>Extract or remove pages from any document</p></div>
+          <div><h3>PDF分割</h3><p>ドキュメントから特定のページを抽出または削除します</p></div>
         </a>
         <a href="/features/convert-pdf" class="feat-card">
           <div class="feat-icon">⇄</div>
-          <div><h3>Convert PDF</h3><p>PDF to JPG and other format conversions</p></div>
+          <div><h3>PDF変換</h3><p>PDFからJPGへの変換およびその他のフォーマット変換</p></div>
         </a>
       </div>
     </section>
 
     <!-- BLOG GUIDES -->
     <section class="section">
-      <span class="eyebrow">Quick guides</span>
-      <h2 class="section-title">How to edit, merge, and OCR PDFs — privately</h2>
-      <p class="section-intro">Real workflows that make the most of local-first PDF processing.</p>
+      <span class="eyebrow">クイックガイド</span>
+      <h2 class="section-title">PDFの編集、結合、OCRを安全に行う方法</h2>
+      <p class="section-intro">ローカルファーストPDF処理の強みを最大限に活かした実践的なワークフロー。</p>
       <div class="blog-strip">
         {popularGuides.map((guide) => (
           <a href={guide.href} class="blog-card">
-            <div class="blog-label">Guide</div>
+            <div class="blog-label">ガイド</div>
             <h3>{guide.title}</h3>
             <p>{guide.description}</p>
           </a>
@@ -622,41 +620,41 @@ const hreflangs = [
 
     <!-- COMPARISON -->
     <section class="section">
-      <span class="eyebrow">Why LocalPDF</span>
-      <h2 class="section-title">Local-first vs upload-first PDF tools</h2>
-      <p class="section-intro">The difference is simple: your files never leave your device. Here's what that means in practice.</p>
+      <span class="eyebrow">LocalPDFを選ぶ理由</span>
+      <h2 class="section-title">ローカルファースト vs アップロードファースト</h2>
+      <p class="section-intro">違いはシンプルです：ファイルがデバイス外に出ません。これが実務でどう役立つかご紹介します。</p>
       <div class="comp-grid">
         <div class="comp-card comp-accent">
           <h3>LocalPDF</h3>
           <ul>
-            <li>Files stay in your browser</li>
-            <li>Drag-and-drop between documents</li>
-            <li>One workspace for everything</li>
-            <li>Works offline</li>
-            <li>No account required</li>
-            <li>Zero bytes sent to servers</li>
+            <li>ファイルはブラウザ内にとどまります</li>
+            <li>ドキュメント間でドラッグ＆ドロップ可能</li>
+            <li>1つのワークスペースで完結</li>
+            <li>オフラインで動作</li>
+            <li>アカウント不要</li>
+            <li>サーバーへの送信は0バイト</li>
           </ul>
         </div>
         <div class="comp-card comp-cross">
           <h3>Smallpdf / iLovePDF / Adobe</h3>
           <ul>
-            <li>Files uploaded to remote servers</li>
-            <li>One tool per page, no workspace</li>
-            <li>Separate page for each operation</li>
-            <li>Requires internet connection</li>
-            <li>Account upsells everywhere</li>
-            <li>Privacy depends on a policy page</li>
+            <li>ファイルをリモートサーバーにアップロードする</li>
+            <li>機能ごとのページ構成、ワークスペースなし</li>
+            <li>操作ごとに別ページに移動し再アップロード</li>
+            <li>インターネット接続が必須</li>
+            <li>いたるところでアカウントや有料版の誘導がある</li>
+            <li>プライバシー保護はポリシーの記述を信じるのみ</li>
           </ul>
         </div>
         <div class="comp-card">
           <h3>Best for</h3>
           <ul>
-            <li>Contracts and legal documents</li>
-            <li>Invoices and financial records</li>
-            <li>HR files and offer letters</li>
-            <li>Sensitive operational PDFs</li>
-            <li>Offline work on the go</li>
-            <li>Anyone who values privacy</li>
+            <li>契約書や法務関連の書類</li>
+            <li>請求書や財務記録</li>
+            <li>人事書類や採用通知書</li>
+            <li>機密性の高い業務データPDF</li>
+            <li>外出先やオフラインでの作業</li>
+            <li>プライバシーを重視するすべての方</li>
           </ul>
         </div>
       </div>
@@ -665,7 +663,7 @@ const hreflangs = [
     <!-- FAQ -->
     <section class="section">
       <span class="eyebrow">FAQ</span>
-      <h2 class="section-title">Common questions about private PDF editing</h2>
+      <h2 class="section-title">安全なPDF編集に関するよくある質問</h2>
       <div class="faq-grid">
         {homepageFaqs.map((faq) => (
           <div class="faq-item">
@@ -677,15 +675,15 @@ const hreflangs = [
     </section>
 
     <!-- FINAL CTA -->
-    <section class="section final-cta">
-      <h2>Try the PDF workspace that keeps your files private</h2>
-      <p class="section-intro">No signup, no upload, no commitment. Just a PDF tool that works the way it should.</p>
+    <section class="section final-cta" style="text-align: center;">
+      <h2>ファイルを安全に保つPDFワークスペースをお試しください</h2>
+      <p class="section-intro">サインアップ不要、アップロード不要。あるべき形で動作するPDFツール。</p>
       <div class="cta-row cta-center">
         <a href={appUrl} class="btn-primary">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-          Open LocalPDF — it's free
+          LocalPDFを開く（無料）
         </a>
-        <a href="/faq" class="btn-secondary">Read FAQ</a>
+        <a href="/faq" class="btn-secondary">FAQを読む</a>
       </div>
     </section>
 
@@ -1152,7 +1150,7 @@ const hreflangs = [
     border-radius: 1px;
   }
 
-  /* ── How it works ──────────────────────────── */
+  /* ── 使い方 ──────────────────────────── */
   .steps-grid {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
