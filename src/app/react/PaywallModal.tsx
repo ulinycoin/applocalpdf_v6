@@ -1,5 +1,5 @@
 import { trackMonetizationEvent } from './monetization-telemetry';
-import { openBillingPlans } from './billing';
+import { openCheckout } from './billing';
 
 interface PaywallModalProps {
   toolId: string;
@@ -22,15 +22,24 @@ const PRO_FEATURES = [
 
 export function PaywallModal({ toolId, toolName, reason, details, onClose }: PaywallModalProps) {
   const handleUpgrade = () => {
+    const checkoutUrl = import.meta.env.VITE_LS_CHECKOUT_URL_PRO_MONTHLY;
     trackMonetizationEvent('paywall_cta_clicked', {
       source: 'paywall_modal',
       toolId,
       trigger: reason,
+      destination: checkoutUrl ?? null,
       plan: 'pro',
       userState: 'local',
       hadPriorSuccessfulRun: true,
     });
-    openBillingPlans(undefined);
+    openCheckout(checkoutUrl, {
+      source: 'paywall_modal',
+      trigger: reason,
+      plan: 'pro',
+      variant: 'monthly',
+      userState: 'local',
+      hadPriorSuccessfulRun: true,
+    });
   };
 
   return (

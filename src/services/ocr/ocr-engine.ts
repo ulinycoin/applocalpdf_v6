@@ -93,12 +93,15 @@ interface TesseractModule {
 
 const TESSERACT_CACHE_METHOD = 'none';
 
+// Vite serves public/ files from root, not from BASE_URL (/app/)
+// On Vercel, vendor files are also at root (/vendor/...)
+// So we always use root-relative paths regardless of BASE_URL
+const isDev = typeof import.meta.env !== 'undefined' ? import.meta.env.DEV : false;
+const baseUrl = typeof import.meta.env !== 'undefined' ? import.meta.env.BASE_URL : '/app/';
+const VENDOR_ROOT = isDev ? `${baseUrl || '/app/'}` : '/';
+
 function resolveAppAssetPath(relativePath: string): string {
-  const baseUrl = typeof import.meta !== 'undefined' && typeof import.meta.env?.BASE_URL === 'string'
-    ? import.meta.env.BASE_URL
-    : '/';
-  const normalizedBase = baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`;
-  return `${normalizedBase}${relativePath.replace(/^\//, '')}`;
+  return `${VENDOR_ROOT}${relativePath.replace(/^\//, '')}`;
 }
 
 const TESSERACT_WORKER_PATH = resolveAppAssetPath('vendor/tesseract/worker.min.js');

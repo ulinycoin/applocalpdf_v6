@@ -118,6 +118,13 @@ try {
     copyRecursive(websitePublicPath, appDistPath, []);
   }
 
+  // STEP 3b: Copy app public vendor files to root dist/vendor
+  const appVendorPath = path.join(__dirname, 'public', 'vendor');
+  if (fs.existsSync(appVendorPath)) {
+    console.log('  → Copying app public vendor files to root dist...');
+    copyRecursive(appVendorPath, path.join(appDistPath, 'vendor'), []);
+  }
+
   // STEP 4: Add physical SPA fallbacks for nested app routes so direct refreshes
   // can resolve even if edge rewrites are not applied.
   const appIndexHtml = path.join(appDistPath, 'app', 'index.html');
@@ -125,6 +132,7 @@ try {
     path.join('app', 'studio'),
     path.join('app', 'studio', 'edit'),
     path.join('app', 'studio', 'convert'),
+    path.join('app', 'ocr-pdf'),
   ];
   for (const route of spaFallbackRoutes) {
     const routeIndex = path.join(appDistPath, route, 'index.html');

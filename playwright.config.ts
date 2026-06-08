@@ -20,13 +20,14 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: 'npm run build && npm run preview:e2e',
+    command: 'npm run build:all && npx serve dist -l 4173',
     url: baseURL,
     reuseExistingServer: false,
     timeout: 180_000,
     env: {
       ...process.env,
       VITE_USE_V6_WIZARD: process.env.VITE_USE_V6_WIZARD ?? 'true',
+      PUBLIC_APP_URL: 'http://127.0.0.1:4173',
     },
   },
 });

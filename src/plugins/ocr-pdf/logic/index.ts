@@ -89,7 +89,7 @@ async function remapWordsToRenderBlob(words: OcrWord[], ocrBlob: Blob, renderBlo
 
 const SUPPORTED_LANGUAGES: SupportedOcrLanguage[] = ['eng', 'rus', 'ukr', 'deu', 'fra', 'spa', 'ita', 'por', 'jpn', 'chi_sim', 'hin', 'ara'];
 const DEFAULT_LANGUAGE: SupportedOcrLanguage = 'eng';
-const AUTO_PROBE_LANGUAGE_PACK = 'eng+rus+ukr+deu+fra+spa+ita+por+jpn+chi_sim+hin+ara';
+const AUTO_PROBE_LANGUAGE_PACK = 'eng+rus+jpn+chi_sim+hin+ara';
 const LOW_CONFIDENCE_THRESHOLD = 78;
 const LOW_CONFIDENCE_TEXT_MIN = 40;
 const LOW_CONFIDENCE_MAX_RETRY_PAGES = 6;
@@ -241,7 +241,8 @@ export const run: ToolLogicFunction = async ({ inputIds, options: runOptions, fs
 
       if (mime === 'application/pdf') {
         const embedded = await extractEmbeddedPdfText(blob);
-        const hasEmbeddedText = Boolean(embedded?.text && /\p{L}{12,}/u.test(embedded.text));
+        const letterCount = embedded?.text ? (embedded.text.match(/\p{L}/ug) || []).length : 0;
+        const hasEmbeddedText = letterCount >= 12;
         if (hasEmbeddedText) {
           updateFileProgress(26);
           recognizedText = embedded?.text ?? '';

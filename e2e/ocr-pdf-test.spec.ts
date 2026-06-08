@@ -53,34 +53,33 @@ function safeDelete(path: string): void {
 }
 
 async function openOcrTest(page: import('@playwright/test').Page): Promise<void> {
-  await page.goto('/');
-  await page.getByRole('link', { name: 'OCR PDF Test' }).click();
-  await expect(page.getByRole('heading', { name: 'OCR PDF Test' })).toBeVisible();
+  await page.goto('/app/ocr-pdf');
+  await expect(page.locator('h1, h2, h3').filter({ hasText: 'OCR' }).first()).toBeVisible();
 }
 
-test.describe.skip('OCR PDF Test route', () => {
+test.describe('OCR PDF Test route', () => {
   test('ocr-pdf-test: processes embedded-text PDF and shows result', async ({ page }) => {
     test.setTimeout(120000);
     const pdfPath = await createEmbeddedTextPdf('ocr-test-basic');
 
     try {
-      await openOcrTest(page);
-      const fileInput = page.locator('section.ocr-concept-left input[type="file"]').first();
-      await fileInput.setInputFiles([pdfPath]);
-      await page.getByLabel('Output format').selectOption('json');
+       await openOcrTest(page);
+       const fileInput = page.locator('section.ocr-concept-left input[type="file"]').first();
+       await fileInput.setInputFiles([pdfPath]);
+       await page.getByLabel('Output format').selectOption('json');
 
-      await page.getByRole('button', { name: 'Run OCR' }).click();
-      const jsonPreview = page.locator('section.ocr-concept-right pre.ocr-concept-editor-copy').first();
-      await expect(jsonPreview).toBeVisible({ timeout: 90000 });
-      await expect(jsonPreview).toContainText('"sourceMime": "application/pdf"', { timeout: 90000 });
-      await expect(jsonPreview).toContainText('"ocr"', { timeout: 90000 });
+       await page.getByRole('button', { name: 'Run OCR' }).click();
+       const jsonPreview = page.locator('section.ocr-concept-right pre.ocr-concept-editor-copy').first();
+       await expect(jsonPreview).toBeVisible({ timeout: 90000 });
+       await expect(jsonPreview).toContainText('"sourceMime": "application/pdf"', { timeout: 90000 });
+       await expect(jsonPreview).toContainText('"ocr"', { timeout: 90000 });
 
-      await page.getByRole('button', { name: 'Text editor' }).click();
-      await expect(page.locator('textarea.ocr-concept-editor-input')).toBeVisible({ timeout: 10000 });
-    } finally {
-      safeDelete(pdfPath);
-    }
-  });
+       await page.getByRole('button', { name: 'Text editor' }).click();
+       await expect(page.locator('textarea.ocr-concept-editor-input')).toBeVisible({ timeout: 10000 });
+     } finally {
+       safeDelete(pdfPath);
+     }
+   });
 
   test('ocr-pdf-test: processes large embedded-text PDF', async ({ page }) => {
     test.setTimeout(240000);
@@ -104,6 +103,41 @@ test.describe.skip('OCR PDF Test route', () => {
       expect((payload.sourceBytes as number) > 10 * 1024 * 1024).toBeTruthy();
     } finally {
       safeDelete(largePdfPath);
+    }
+  });
+
+  test('ocr-pdf-test: processes PDF inside Studio flow', async ({ page }) => {
+    test.setTimeout(120000);
+    const pdfPath = await createEmbeddedTextPdf('ocr-studio-flow');
+
+    try {
+      // 1. Go to Studio and upload the document
+      await page.goto('/app/studio');
+      const fileInput = page.locator('input[type="file"]').first();
+      await fileInput.setInputFiles([pdfPath]);
+
+      // 2. Wait until pages are loaded in the workspace
+      await expect(page.locator('.studio-shell-canvas')).toBeVisible({ timeout: 20000 });
+
+      // 3. Click OCR tool in the rail
+      const ocrRailBtn = page.locator('button[aria-label="OCR"], button:has-text("OCR")').first();
+      await ocrRailBtn.click();
+
+      // 4. Click Run OCR in the inline panel
+      const runBtn = page.locator('button:has-text("Run OCR")').first();
+      await expect(runBtn).toBeVisible({ timeout: 15000 });
+      await runBtn.click();
+
+      // 5. Verify that it completes successfully without "Conversion failed"
+      // The panel should show success message and no error banners.
+      const errorBanner = page.locator('text=Conversion failed');
+      const successMsg = page.locator('text=OCR completed');
+      
+      await expect(successMsg.or(errorBanner)).toBeVisible({ timeout: 60000 });
+      await expect(errorBanner).not.toBeVisible();
+      await expect(successMsg).toBeVisible();
+    } finally {
+      safeDelete(pdfPath);
     }
   });
 });
