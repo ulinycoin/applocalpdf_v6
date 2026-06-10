@@ -32,6 +32,7 @@ interface PdfJsLike {
     useSystemFonts?: boolean;
     isOffscreenCanvasSupported?: boolean;
     disableFontFace?: boolean;
+    ownerDocument?: any;
   }): { promise: Promise<PdfDocumentLike> };
   GlobalWorkerOptions?: { workerSrc?: string };
   VerbosityLevel?: { ERRORS?: number };
@@ -170,6 +171,16 @@ class PdfJsRasterizer implements PdfRasterizer {
     const arrayBuffer = await pdfBlob.arrayBuffer();
     const errorOnlyVerbosity = this.pdfjs.VerbosityLevel?.ERRORS ?? 0;
 
+    const mockDocument = typeof document === 'undefined' ? {
+      fonts: (self as any).fonts,
+      createElement: (name: string) => {
+        if (name === 'canvas') {
+          return typeof OffscreenCanvas !== 'undefined' ? new OffscreenCanvas(1, 1) : null;
+        }
+        return null;
+      },
+    } : undefined;
+
     // Use OffscreenCanvas-safe pdfjs options
     const loadingTask = this.pdfjs.getDocument({
       data: arrayBuffer,
@@ -179,6 +190,7 @@ class PdfJsRasterizer implements PdfRasterizer {
       useSystemFonts: false,
       isOffscreenCanvasSupported: true,
       disableFontFace: true,
+      ownerDocument: mockDocument,
     });
     const pdf = await loadingTask.promise;
     const blobs: Blob[] = [];
