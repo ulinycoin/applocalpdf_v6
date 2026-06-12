@@ -1,9 +1,36 @@
 import { PDFDocument, StandardFonts, degrees, rgb, type PDFFont } from 'pdf-lib';
 import fontkit from '@pdf-lib/fontkit';
-import type { WorkerStudioEditElement, WorkerStudioFontFamilyId } from '../../core/types/contracts';
+import type {
+  WorkerStudioEditElement,
+  WorkerStudioFontFamilyId,
+  WorkerStudioTextEditElement,
+  WorkerStudioStrokeEditElement,
+  WorkerStudioRectEditElement,
+  WorkerStudioImageEditElement,
+  WorkerStudioFormFieldEditElement,
+  WorkerStudioWatermarkEditElement,
+} from '../../core/types/contracts';
 import { parsePdfTextOperators } from './pdf-content-stream-parser';
 
-let pdfCorePromise: Promise<{ decodePDFRawStream?: (stream: unknown) => { decode: () => Uint8Array } } | null> | null = null;
+const getPdfCore = (() => {
+  let promise: Promise<{ decodePDFRawStream?: (stream: unknown) => { decode: () => Uint8Array } } | null> | null = null;
+  return (): Promise<{ decodePDFRawStream?: (stream: unknown) => { decode: () => Uint8Array } } | null> => {
+    if (!promise) {
+      promise = Promise.race([
+        import('pdf-lib/es/core/index.js')
+          .then((module) => {
+            const maybeCore = (module as { default?: { decodePDFRawStream?: (stream: unknown) => { decode: () => Uint8Array } } }).default;
+            return maybeCore ?? null;
+          })
+          .catch(() => null),
+        new Promise<null>((resolve) => {
+          setTimeout(() => resolve(null), 300);
+        }),
+      ]);
+    }
+    return promise;
+  };
+})();
 
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
@@ -224,8 +251,15 @@ function containsDevanagari(input: string): boolean {
   return /[\u0900-\u097F]/u.test(input);
 }
 
+const LATVIAN_TRANSLITERATION: Record<string, string> = {
+  ā: 'a', Ā: 'A', č: 'c', Č: 'C', ē: 'e', Ē: 'E',
+  ģ: 'g', Ģ: 'G', ī: 'i', Ī: 'I', ķ: 'k', Ķ: 'K',
+  ļ: 'l', Ļ: 'L', ņ: 'n', Ņ: 'N', ū: 'u', Ū: 'U',
+  š: 's', Š: 'S', ž: 'z', Ž: 'Z',
+};
+
 function replaceUnsupportedChars(input: string): string {
-  return input.replace(/[^\u0000-\u00FF]/gu, '?');
+  return input.replace(/[^\u0000-\u00FF]/gu, (char) => LATVIAN_TRANSLITERATION[char] ?? '?');
 }
 
 function canFontEncodeText(font: PDFFont, text: string): boolean {
@@ -235,6 +269,23 @@ function canFontEncodeText(font: PDFFont, text: string): boolean {
   } catch {
     return false;
   }
+}
+
+function hasMissingGlyphs(font: PDFFont, text: string): boolean {
+  for (const char of text) {
+    if (char > '\u00FF') {
+      try {
+        const width = font.widthOfTextAtSize(char, 12);
+        if (width < 0.1) {
+          return true;
+        }
+      } catch {
+        return true;
+      }
+      break;
+    }
+  }
+  return false;
 }
 
 function isAutoWhiteoutRect(element: WorkerStudioEditElement): boolean {
@@ -292,20 +343,7 @@ async function decodePageStreamToLatin1(contentStream: unknown): Promise<string 
     return new TextDecoder('latin1').decode(bytes);
   }
 
-  if (!pdfCorePromise) {
-    pdfCorePromise = Promise.race([
-      import('pdf-lib/es/core/index.js')
-        .then((module) => {
-          const maybeCore = (module as { default?: { decodePDFRawStream?: (stream: unknown) => { decode: () => Uint8Array } } }).default;
-          return maybeCore ?? null;
-        })
-        .catch(() => null),
-      new Promise<null>((resolve) => {
-        setTimeout(() => resolve(null), 300);
-      }),
-    ]);
-  }
-  const core = await pdfCorePromise;
+  const core = await getPdfCore();
   if (core?.decodePDFRawStream) {
     try {
       const decoded = core.decodePDFRawStream(contentStream);
@@ -651,11 +689,13 @@ export async function applyStudioTextEditsToPdfBytes(params: {
   sourceBytes: Uint8Array;
   pageIndex: number;
   elements: WorkerStudioEditElement[];
+  signal?: AbortSignal;
 }): Promise<{
   outputBytes: Uint8Array;
   overflowDetected: boolean;
   trueReplaceApplied: boolean;
   trueReplaceFallbackReason?: string;
+  formFieldErrors?: string[];
 }> {
   const pdf = await PDFDocument.load(params.sourceBytes);
   if (params.pageIndex < 0 || params.pageIndex >= pdf.getPageCount()) {
@@ -670,128 +710,65 @@ export async function applyStudioTextEditsToPdfBytes(params: {
 
   const fontCache = new Map<string, PDFFont>();
   const imageCache = new Map<string, Awaited<ReturnType<typeof pdf.embedPng>>>();
-  const fontBytesCache = new Map<string, ArrayBuffer | null>();
-  const toAbsoluteUrl = (path: string) => new URL(path, typeof location !== 'undefined' ? location.origin : 'http://localhost:4173').href;
-  const fetchFontBytes = async (key: string, candidates: string[]) => {
-    if (fontBytesCache.has(key)) {
-      return fontBytesCache.get(key) ?? null;
-    }
-    for (const candidate of candidates) {
-      try {
-        const response = await fetch(toAbsoluteUrl(candidate));
-        if (!response.ok) {
-          continue;
-        }
-        const bytes = await response.arrayBuffer();
-        fontBytesCache.set(key, bytes);
-        return bytes;
-      } catch {
-        // Try next candidate.
-      }
-    }
-    fontBytesCache.set(key, null);
-    return null;
-  };
 
   const getStandardFont = async (family: WorkerStudioFontFamilyId, weight: 'normal' | 'bold', style: 'normal' | 'italic') => {
     const fontName = getPdfFontName(family, weight, style);
     const key = String(fontName);
     const cached = fontCache.get(key);
-    if (cached) {
-      return cached;
-    }
+    if (cached) return cached;
     const embedded = await pdf.embedFont(fontName);
     fontCache.set(key, embedded);
     return embedded;
   };
 
-  const getEmbeddedFontFromFile = async (key: string, candidates: string[]): Promise<PDFFont | null> => {
-    const cachedFont = fontCache.get(key);
-    if (cachedFont) {
-      return cachedFont;
+  // Embed Cyrillic and Latin-Ext Noto fonts. String literals in import() let Vite resolve them
+  // at build time; each is wrapped in try/catch so one failure doesn't block the other.
+  try {
+    const cyrillicMod = await import('@fontsource/noto-sans/files/noto-sans-cyrillic-400-normal.woff?url') as { default: string };
+    const resp = await fetch(cyrillicMod.default);
+    if (resp.ok) {
+      const bytes = new Uint8Array(await resp.arrayBuffer());
+      fontCache.set('noto-sans-cyrillic-400', await pdf.embedFont(bytes, { subset: true }));
     }
-    const fontBytes = await fetchFontBytes(key, candidates);
-    if (!fontBytes) {
-      return null;
+  } catch { /* skip */ }
+
+  try {
+    const latinExtMod = await import('@fontsource/noto-sans/files/noto-sans-latin-ext-400-normal.woff?url') as { default: string };
+    const resp = await fetch(latinExtMod.default);
+    if (resp.ok) {
+      const bytes = new Uint8Array(await resp.arrayBuffer());
+      fontCache.set('noto-sans-latin-ext-400', await pdf.embedFont(bytes, { subset: true }));
     }
-    try {
-      const embedded = await pdf.embedFont(fontBytes, { subset: true });
-      fontCache.set(key, embedded);
-      return embedded;
-    } catch {
-      return null;
+  } catch { /* skip */ }
+
+  // Roboto from /public/fonts — covers Latin, Latin-Ext, Cyrillic; works as fallback.
+  try {
+    const robotoResp = await fetch('/fonts/Roboto-Regular.ttf');
+    if (robotoResp.ok) {
+      const bytes = new Uint8Array(await robotoResp.arrayBuffer());
+      const font = await pdf.embedFont(bytes, { subset: true });
+      fontCache.set('roboto-regular', font);
     }
+  } catch { /* skip */ }
+
+  // Standard PDF fonts for ASCII-only text.
+  void pdf.embedFont(StandardFonts.Helvetica).then((f) => fontCache.set('helvetica', f));
+  void pdf.embedFont(StandardFonts.TimesRoman).then((f) => fontCache.set('times', f));
+
+  const getStandardFontSync = (family: WorkerStudioFontFamilyId): PDFFont | null => {
+    if (family === 'times' || family === 'mono') {
+      return fontCache.get('times') ?? null;
+    }
+    return fontCache.get('helvetica') ?? null;
   };
 
-  const getNotoSansDevanagariFont = async (): Promise<PDFFont | null> => {
-    const key = 'noto-sans-devanagari-400';
-    const cached = fontCache.get(key);
-    if (cached) {
-      return cached;
-    }
-    try {
-      const module = await import('@fontsource/noto-sans/files/noto-sans-devanagari-400-normal.woff?url') as { default: string };
-      const response = await fetch(module.default);
-      if (!response.ok) {
-        return null;
-      }
-      const bytes = await response.arrayBuffer();
-      const embedded = await pdf.embedFont(bytes, { subset: true });
-      fontCache.set(key, embedded);
-      return embedded;
-    } catch {
-      return null;
-    }
-  };
-
-  const getNotoSansCyrillicFont = async (): Promise<PDFFont | null> => {
-    const key = 'noto-sans-cyrillic-400';
-    const cached = fontCache.get(key);
-    if (cached) {
-      return cached;
-    }
-    try {
-      const module = await import('@fontsource/noto-sans/files/noto-sans-cyrillic-ext-400-normal.woff?url') as { default: string };
-      const response = await fetch(module.default);
-      if (!response.ok) {
-        return null;
-      }
-      const bytes = await response.arrayBuffer();
-      const embedded = await pdf.embedFont(bytes, { subset: true });
-      fontCache.set(key, embedded);
-      return embedded;
-    } catch {
-      return null;
-    }
-  };
-
-  const getNotoSansLatinFont = async (): Promise<PDFFont | null> => {
-    const key = 'noto-sans-latin-400';
-    const cached = fontCache.get(key);
-    if (cached) {
-      return cached;
-    }
-    try {
-      const module = await import('@fontsource/noto-sans/files/noto-sans-latin-400-normal.woff?url') as { default: string };
-      const response = await fetch(module.default);
-      if (!response.ok) {
-        return null;
-      }
-      const bytes = await response.arrayBuffer();
-      const embedded = await pdf.embedFont(bytes, { subset: true });
-      fontCache.set(key, embedded);
-      return embedded;
-    } catch {
-      return null;
-    }
-  };
-
-  const getPreferredFontCandidates = async (
+  const getPreferredFontCandidates = (
     family: WorkerStudioFontFamilyId,
     weight: 'normal' | 'bold',
     style: 'normal' | 'italic',
     text: string,
-  ): Promise<PDFFont[]> => {
+  ): PDFFont[] => {
+    const needsExtended = !canEncodeAsLatin1(text);
     const candidates: PDFFont[] = [];
     const addUnique = (font: PDFFont | null) => {
       if (font && !candidates.includes(font)) {
@@ -799,58 +776,21 @@ export async function applyStudioTextEditsToPdfBytes(params: {
       }
     };
 
-    if (family === 'roboto') {
-      addUnique(await getEmbeddedFontFromFile('roboto-regular', ['/fonts/Roboto-Regular.ttf']));
-    } else if (family === 'noto') {
-      addUnique(await getNotoSansLatinFont());
-    } else if (family === 'noto-arabic') {
-      addUnique(await getEmbeddedFontFromFile('noto-arabic-regular', [
-        '/fonts/NotoSansArabic-Regular.ttf',
-        '/fonts/NotoNaskhArabic-Regular.ttf',
-      ]));
-    } else if (family === 'noto-cjk') {
-      addUnique(await getEmbeddedFontFromFile('noto-cjk-regular', [
-        '/fonts/NotoSansSC-Regular.otf',
-        '/fonts/NotoSansSC-Regular.ttf',
-        '/fonts/NotoSansJP-Regular.otf',
-        '/fonts/NotoSansJP-Regular.ttf',
-        '/fonts/NotoSansKR-Regular.otf',
-        '/fonts/NotoSansKR-Regular.ttf',
-      ]));
-    } else if (family === 'noto-devanagari') {
-      addUnique(await getNotoSansDevanagariFont());
-    } else {
-      addUnique(await getStandardFont(family, weight, style));
-    }
-    addUnique(await getNotoSansLatinFont());
-    addUnique(await getEmbeddedFontFromFile('roboto-regular', ['/fonts/Roboto-Regular.ttf']));
-
-    if (containsArabic(text) || family === 'noto-arabic') {
-      addUnique(await getEmbeddedFontFromFile('noto-arabic-regular', [
-        '/fonts/NotoSansArabic-Regular.ttf',
-        '/fonts/NotoNaskhArabic-Regular.ttf',
-      ]));
-    }
-    if (containsCjk(text) || family === 'noto-cjk') {
-      addUnique(await getEmbeddedFontFromFile('noto-cjk-regular', [
-        '/fonts/NotoSansSC-Regular.otf',
-        '/fonts/NotoSansSC-Regular.ttf',
-        '/fonts/NotoSansJP-Regular.otf',
-        '/fonts/NotoSansJP-Regular.ttf',
-        '/fonts/NotoSansKR-Regular.otf',
-        '/fonts/NotoSansKR-Regular.ttf',
-      ]));
-    }
-    if (containsDevanagari(text) || family === 'noto-devanagari') {
-      addUnique(await getNotoSansDevanagariFont());
-    }
-    if (containsCyrillic(text)) {
-      addUnique(await getNotoSansCyrillicFont());
+    // For ASCII only: standard PDF fonts are fine — they load from the built-in set.
+    if (!needsExtended) {
+      addUnique(getStandardFontSync(family));
     }
 
-    addUnique(await getStandardFont('sora', 'normal', 'normal'));
+    // Primary embedded fonts — cover Latin, Latin-Ext, Cyrillic.
+    addUnique(fontCache.get('noto-sans-latin-ext-400') ?? null);
+    addUnique(fontCache.get('noto-sans-cyrillic-400') ?? null);
+    addUnique(fontCache.get('noto-sans-latin-400') ?? null);
+    addUnique(fontCache.get('roboto-regular') ?? null);
+
     return candidates;
   };
+
+
 
   const resolveRenderableText = async (params: {
     family: WorkerStudioFontFamilyId;
@@ -858,382 +798,388 @@ export async function applyStudioTextEditsToPdfBytes(params: {
     style: 'normal' | 'italic';
     text: string;
   }): Promise<{ font: PDFFont; text: string }> => {
-    const candidates = await getPreferredFontCandidates(params.family, params.weight, params.style, params.text);
+    const needsExtended = !canEncodeAsLatin1(params.text);
+    const candidates = getPreferredFontCandidates(params.family, params.weight, params.style, params.text);
     for (const candidate of candidates) {
       if (canFontEncodeText(candidate, params.text)) {
-        return { font: candidate, text: params.text };
+        if (!needsExtended || !hasMissingGlyphs(candidate, params.text)) {
+          return { font: candidate, text: params.text };
+        }
       }
     }
 
-    const latinSafeText = replaceUnsupportedChars(params.text) || ' ';
-    for (const candidate of candidates) {
-      if (canFontEncodeText(candidate, latinSafeText)) {
-        return { font: candidate, text: latinSafeText };
-      }
+    if (needsExtended) {
+      // Transiterate to ASCII — better than rectangles.
+      const bestFallback = fontCache.get('noto-sans-latin-ext-400')
+        ?? fontCache.get('roboto-regular')
+        ?? await getStandardFont('sora', 'normal', 'normal');
+      return { font: bestFallback, text: replaceUnsupportedChars(params.text) || ' ' };
     }
-
-    const fallback = await getStandardFont('sora', 'normal', 'normal');
-    return { font: fallback, text: latinSafeText };
+    return { font: await getStandardFont('sora', 'normal', 'normal'), text: params.text };
   };
 
   let overflowDetected = false;
-  const textElements = params.elements.filter((element) => element.type === 'text');
-  const consumedTextIds = new Set<string>();
   const usedFormFieldNames = new Set<string>();
   let formAppearanceFont: PDFFont | null = null;
   let trueReplaceApplied = false;
   let trueReplaceFallbackReason: string | undefined = 'INELIGIBLE_EDIT_PAYLOAD';
+  const formFieldErrors: string[] = [];
+  const consumedTextIds = new Set<string>();
 
-  // Attempt True Replace for every text element — patches the PDF content stream directly
-  // so the original text operator is gone. This prevents pdfjs from seeing the old text
-  // on subsequent edits. Load stream state once and reuse across all elements.
   const streamState = await loadPageStreamState(pdf, params.pageIndex);
-  for (const target of textElements) {
-    const sanitizedText = sanitizeInlineText(target.text || ' ');
-    const movedFromOriginal = textElementMovedFromOriginal(target);
-    const targetRect = target.originalRect ?? { x: target.x, y: target.y, w: target.w, h: target.h };
-    if (!streamState) {
-      trueReplaceFallbackReason = 'STREAM_DECODE_FAILED';
-      continue;
-    }
 
-    // Prefer to write the new text directly. If the new text is non-Latin1 (e.g. CJK, Cyrillic),
-    // we can't embed it as a raw Tj literal — write an empty string instead so the original
-    // glyph run is erased from the stream. The overlay drawText path below renders the
-    // actual replacement text using an embedded font.
-    const isNonLatin1 = !canEncodeAsLatin1(sanitizedText);
-    const patchText = movedFromOriginal || isNonLatin1 ? '' : sanitizedText;
+  applyTrueReplaceToTextElements(params.elements, streamState);
+  params.signal?.throwIfAborted();
 
-    const result = tryPatchStreamOperator({
-      state: streamState,
-      text: patchText,
-      targetXRatio: targetRect.x,
-      targetYRatio: targetRect.y,
-      targetWidthRatio: targetRect.w,
-      targetHeightRatio: targetRect.h,
-      targetTextAlign: target.textAlign,
-      pageWidth,
-      pageHeight,
-    });
-    if (result.applied) {
-      // Only skip overlay drawText when the text was written inline (not erased).
-      if (!movedFromOriginal && !isNonLatin1) {
-        consumedTextIds.add(target.id);
+  for (const element of params.elements) {
+    params.signal?.throwIfAborted();
+    await processEditElement(element);
+  }
+
+  const outputBytes = await pdf.save();
+  const stableBytes = new Uint8Array(outputBytes.byteLength);
+  stableBytes.set(outputBytes);
+  return {
+    outputBytes: stableBytes,
+    overflowDetected,
+    trueReplaceApplied,
+    trueReplaceFallbackReason,
+    formFieldErrors: formFieldErrors.length > 0 ? formFieldErrors : undefined,
+  };
+
+  async function applyTrueReplaceToTextElements(
+    elements: WorkerStudioEditElement[],
+    streamState: PageStreamState | null,
+  ): Promise<void> {
+    const textElements = elements.filter((e): e is WorkerStudioTextEditElement => e.type === 'text');
+    for (const target of textElements) {
+      const sanitizedText = sanitizeInlineText(target.text || ' ');
+      const movedFromOriginal = textElementMovedFromOriginal(target);
+      const targetRect = target.originalRect ?? { x: target.x, y: target.y, w: target.w, h: target.h };
+      if (!streamState) {
+        trueReplaceFallbackReason = 'STREAM_DECODE_FAILED';
+        continue;
       }
-      trueReplaceApplied = true;
-      trueReplaceFallbackReason = undefined;
-    } else {
-      trueReplaceFallbackReason = result.reason ?? 'TRUE_REPLACE_FAILED';
+
+      const isNonLatin1 = !canEncodeAsLatin1(sanitizedText);
+      const patchText = movedFromOriginal || isNonLatin1 ? '' : sanitizedText;
+
+      const result = tryPatchStreamOperator({
+        state: streamState,
+        text: patchText,
+        targetXRatio: targetRect.x,
+        targetYRatio: targetRect.y,
+        targetWidthRatio: targetRect.w,
+        targetHeightRatio: targetRect.h,
+        targetTextAlign: target.textAlign,
+        pageWidth,
+        pageHeight,
+      });
+      if (result.applied) {
+        if (!movedFromOriginal && !isNonLatin1) {
+          consumedTextIds.add(target.id);
+        }
+        trueReplaceApplied = true;
+        trueReplaceFallbackReason = undefined;
+      } else {
+        trueReplaceFallbackReason = result.reason ?? 'TRUE_REPLACE_FAILED';
+      }
     }
   }
 
-  for (const element of params.elements) {
-    if (element.type === 'text') {
-      if (consumedTextIds.has(element.id)) {
-        continue;
-      }
-      const line = sanitizeInlineText(element.text || ' ');
-      const rendered = await resolveRenderableText({
-        family: element.fontFamily,
-        weight: element.fontWeight,
-        style: element.fontStyle,
-        text: line,
-      });
-      const font = rendered.font;
-      const textToDraw = rendered.text || ' ';
-      const { r, g, b } = hexToRgb(element.color);
-      const blockWidth = element.w * pageWidth;
-      const blockHeight = element.h * pageHeight;
-      const yTop = element.y * pageHeight;
+  async function processTextEditElement(element: WorkerStudioTextEditElement): Promise<void> {
+    if (consumedTextIds.has(element.id)) {
+      return;
+    }
+    const line = sanitizeInlineText(element.text || ' ');
+    const rendered = await resolveRenderableText({
+      family: element.fontFamily,
+      weight: element.fontWeight,
+      style: element.fontStyle,
+      text: line,
+    });
+    const font = rendered.font;
+    const textToDraw = rendered.text || ' ';
+    const { r, g, b } = hexToRgb(element.color);
+    const blockWidth = element.w * pageWidth;
+    const blockHeight = element.h * pageHeight;
+    const yTop = element.y * pageHeight;
 
-      // Determine font size: start from requested, then shrink to fit width if needed.
-      // sourceFontSizeRatio gives us the exact original font size from pdfjs metrics.
-      const requestedFontSize = clamp(
-        element.sourceFontSizeRatio !== undefined
-          ? element.sourceFontSizeRatio * pageHeight
-          : (element.fontSize || 12),
-        4,
-        144,
-      );
+    const requestedFontSize = clamp(
+      element.sourceFontSizeRatio !== undefined
+        ? element.sourceFontSizeRatio * pageHeight
+        : (element.fontSize || 12),
+      4,
+      144,
+    );
 
-      // Fit-to-width: shrink font only when text genuinely overflows block width.
-      // Triggered for single-word replacements and span-sourced edits (where blockWidth is exact).
-      let renderFontSize = requestedFontSize;
-      const textWidth = measureTextWidthWithTracking(font, textToDraw, renderFontSize, element.letterSpacing ?? 0);
-      if (textWidth > blockWidth) {
-        renderFontSize = clamp((renderFontSize * blockWidth) / textWidth, 4, renderFontSize);
-      }
-
-      const lineHeightFactor = typeof element.lineHeight === 'number' ? element.lineHeight : 1.2;
-      const textLayout = layoutTextAtFixedFontSize({
-        font,
-        text: textToDraw,
-        blockWidth,
-        fontSize: renderFontSize,
-        tracking: element.letterSpacing ?? 0,
-      });
-      overflowDetected ||= textLayout.overflow || (textLayout.lines.length * renderFontSize * Math.max(0.8, lineHeightFactor) > blockHeight + 0.5);
-
-      const lineHeightPt = Math.max(1, renderFontSize * Math.max(0.8, lineHeightFactor));
-
-      // ascent: prefer pdfjs-extracted ratio (most accurate), then existing pt value, then heuristic.
-      const ascent = element.ascentRatio !== undefined
-        ? element.ascentRatio * pageHeight
-        : element.ascent !== undefined
-          ? element.ascent
-          : renderFontSize * 0.82;
-
-      // descent: prefer pdfjs-extracted ratio; fall back to small heuristic (never derive from blockHeight).
-      const descent = element.descentRatio !== undefined
-        ? element.descentRatio * pageHeight
-        : renderFontSize * 0.18;
-
-      const baseY = pageHeight - yTop - ascent;
-
-      // Auto-whiteout: cover exactly the glyph band — baseline−descent to baseline+ascent.
-      // No padding vertically: must not touch neighbouring lines.
-      const whiteoutPadX = Math.min(2, blockWidth * 0.008);
-      page.drawRectangle({
-        x: element.x * pageWidth - whiteoutPadX,
-        y: baseY - descent,
-        width: blockWidth + whiteoutPadX * 2,
-        height: ascent + descent,
-        color: rgb(1, 1, 1),
-        opacity: 1,
-        borderWidth: 0,
-      });
-
-      for (let lineIndex = 0; lineIndex < textLayout.lines.length; lineIndex += 1) {
-        const layoutLine = textLayout.lines[lineIndex]!;
-        let x = element.x * pageWidth;
-        if (element.textAlign === 'center') {
-          x += Math.max(0, (blockWidth - layoutLine.width) / 2);
-        }
-        if (element.textAlign === 'right') {
-          x += Math.max(0, blockWidth - layoutLine.width);
-        }
-        const y = baseY - (lineIndex * lineHeightPt);
-        page.drawText(layoutLine.text, {
-          x,
-          y,
-          size: renderFontSize,
-          font,
-          color: rgb(r, g, b),
-          opacity: element.opacity,
-        });
-      }
-      continue;
+    let renderFontSize = requestedFontSize;
+    const textWidth = measureTextWidthWithTracking(font, textToDraw, renderFontSize, element.letterSpacing ?? 0);
+    if (textWidth > blockWidth) {
+      renderFontSize = clamp((renderFontSize * blockWidth) / textWidth, 4, renderFontSize);
     }
 
-    if (element.type === 'form-field') {
-      const form = pdf.getForm();
-      const sx = element.x * pageWidth;
-      const sh = element.h * pageHeight;
-      const sy = pageHeight - (element.y * pageHeight) - sh;
-      const sw = element.w * pageWidth;
-      const preferredName = (element.name || element.id).trim().slice(0, 120) || element.id;
-      let fieldName = preferredName;
-      if (usedFormFieldNames.has(fieldName)) {
-        fieldName = `${preferredName}_${element.id.slice(0, 8)}`;
+    const lineHeightFactor = typeof element.lineHeight === 'number' ? element.lineHeight : 1.2;
+    const textLayout = layoutTextAtFixedFontSize({
+      font,
+      text: textToDraw,
+      blockWidth,
+      fontSize: renderFontSize,
+      tracking: element.letterSpacing ?? 0,
+    });
+    overflowDetected ||= textLayout.overflow || (textLayout.lines.length * renderFontSize * Math.max(0.8, lineHeightFactor) > blockHeight + 0.5);
+
+    const lineHeightPt = Math.max(1, renderFontSize * Math.max(0.8, lineHeightFactor));
+
+    const ascent = element.ascentRatio !== undefined
+      ? element.ascentRatio * pageHeight
+      : element.ascent !== undefined
+        ? element.ascent
+        : renderFontSize * 0.82;
+
+    const descent = element.descentRatio !== undefined
+      ? element.descentRatio * pageHeight
+      : renderFontSize * 0.18;
+
+    const baseY = pageHeight - yTop - ascent;
+
+    const whiteoutPadX = Math.min(2, blockWidth * 0.008);
+    page.drawRectangle({
+      x: element.x * pageWidth - whiteoutPadX,
+      y: baseY - descent,
+      width: blockWidth + whiteoutPadX * 2,
+      height: ascent + descent,
+      color: rgb(1, 1, 1),
+      opacity: 1,
+      borderWidth: 0,
+    });
+
+    for (let lineIndex = 0; lineIndex < textLayout.lines.length; lineIndex += 1) {
+      const layoutLine = textLayout.lines[lineIndex]!;
+      let x = element.x * pageWidth;
+      if (element.textAlign === 'center') {
+        x += Math.max(0, (blockWidth - layoutLine.width) / 2);
       }
-      usedFormFieldNames.add(fieldName);
+      if (element.textAlign === 'right') {
+        x += Math.max(0, blockWidth - layoutLine.width);
+      }
+      const y = baseY - (lineIndex * lineHeightPt);
+      page.drawText(layoutLine.text, {
+        x,
+        y,
+        size: renderFontSize,
+        font,
+        color: rgb(r, g, b),
+        opacity: element.opacity,
+      });
+    }
+  }
 
-      try {
-        const ensureFormAppearanceFont = async (): Promise<PDFFont> => {
-          if (formAppearanceFont) {
-            return formAppearanceFont;
-          }
-          formAppearanceFont = await pdf.embedFont(StandardFonts.Helvetica);
+  async function processFormFieldElement(element: WorkerStudioFormFieldEditElement): Promise<void> {
+    const form = pdf.getForm();
+    const sx = element.x * pageWidth;
+    const sh = element.h * pageHeight;
+    const sy = pageHeight - (element.y * pageHeight) - sh;
+    const sw = element.w * pageWidth;
+    const preferredName = (element.name || element.id).trim().slice(0, 120) || element.id;
+    let fieldName = preferredName;
+    if (usedFormFieldNames.has(fieldName)) {
+      fieldName = `${preferredName}_${element.id.slice(0, 8)}`;
+    }
+    usedFormFieldNames.add(fieldName);
+
+    try {
+      const ensureFormAppearanceFont = async (): Promise<PDFFont> => {
+        if (formAppearanceFont) {
           return formAppearanceFont;
-        };
+        }
+        formAppearanceFont = await pdf.embedFont(StandardFonts.Helvetica);
+        return formAppearanceFont;
+      };
 
-        if (element.formType === 'text') {
-          const field = form.createTextField(fieldName);
-          field.addToPage(page, { x: sx, y: sy, width: sw, height: sh });
-          field.setFontSize(clamp(element.fontSize || 12, 6, 72));
-          field.defaultUpdateAppearances(await ensureFormAppearanceFont());
-          if (element.defaultValue) {
-            field.setText(element.defaultValue);
-          }
-          if (element.required) field.enableRequired();
-        } else if (element.formType === 'multiline') {
-          const field = form.createTextField(fieldName);
-          field.addToPage(page, { x: sx, y: sy, width: sw, height: sh });
-          field.enableMultiline();
-          field.setFontSize(clamp(element.fontSize || 12, 6, 72));
-          field.defaultUpdateAppearances(await ensureFormAppearanceFont());
-          if (element.defaultValue) {
-            field.setText(element.defaultValue);
-          }
-          if (element.required) field.enableRequired();
-        } else if (element.formType === 'checkbox') {
-          const cb = form.createCheckBox(fieldName);
-          cb.addToPage(page, { x: sx, y: sy, width: sw, height: sh });
-          if (element.defaultValue && element.defaultValue.toLowerCase() !== 'off') cb.check();
-          if (element.required) cb.enableRequired();
-        } else if (element.formType === 'radio') {
-          // Fallback to a single-option radio group if ID represents a radio button
-          try {
-            const existing = form.getRadioGroup(fieldName);
-            if (existing) {
-              existing.addOptionToPage(`Opt_${crypto.randomUUID().slice(0, 4)}`, page, { x: sx, y: sy, width: sw, height: sh });
-            } else {
-              const rg = form.createRadioGroup(fieldName);
-              rg.addOptionToPage('Choice1', page, { x: sx, y: sy, width: sw, height: sh });
-              if (element.defaultValue && element.defaultValue.toLowerCase() !== 'off') rg.select('Choice1');
-              if (element.required) rg.enableRequired();
-            }
-          } catch {
+      if (element.formType === 'text') {
+        const field = form.createTextField(fieldName);
+        field.addToPage(page, { x: sx, y: sy, width: sw, height: sh });
+        field.setFontSize(clamp(element.fontSize || 12, 6, 72));
+        field.defaultUpdateAppearances(await ensureFormAppearanceFont());
+        if (element.defaultValue) {
+          field.setText(element.defaultValue);
+        }
+        if (element.required) field.enableRequired();
+      } else if (element.formType === 'multiline') {
+        const field = form.createTextField(fieldName);
+        field.addToPage(page, { x: sx, y: sy, width: sw, height: sh });
+        field.enableMultiline();
+        field.setFontSize(clamp(element.fontSize || 12, 6, 72));
+        field.defaultUpdateAppearances(await ensureFormAppearanceFont());
+        if (element.defaultValue) {
+          field.setText(element.defaultValue);
+        }
+        if (element.required) field.enableRequired();
+      } else if (element.formType === 'checkbox') {
+        const cb = form.createCheckBox(fieldName);
+        cb.addToPage(page, { x: sx, y: sy, width: sw, height: sh });
+        if (element.defaultValue && element.defaultValue.toLowerCase() !== 'off') cb.check();
+        if (element.required) cb.enableRequired();
+      } else if (element.formType === 'radio') {
+        try {
+          const existing = form.getRadioGroup(fieldName);
+          if (existing) {
+            existing.addOptionToPage(`Opt_${crypto.randomUUID().slice(0, 4)}`, page, { x: sx, y: sy, width: sw, height: sh });
+          } else {
             const rg = form.createRadioGroup(fieldName);
             rg.addOptionToPage('Choice1', page, { x: sx, y: sy, width: sw, height: sh });
             if (element.defaultValue && element.defaultValue.toLowerCase() !== 'off') rg.select('Choice1');
             if (element.required) rg.enableRequired();
           }
-        } else if (element.formType === 'dropdown') {
-          const dropdown = form.createDropdown(fieldName);
-          dropdown.addToPage(page, { x: sx, y: sy, width: sw, height: sh });
-          const options = Array.isArray(element.options) && element.options.length > 0
-            ? element.options
-            : ['Option 1', 'Option 2', 'Option 3'];
-          dropdown.addOptions(options);
-          if (element.defaultValue && options.includes(element.defaultValue)) {
-            dropdown.select(element.defaultValue);
-          } else if (options.length > 0) {
-            dropdown.select(options[0]!);
-          }
-          if (element.required) dropdown.enableRequired();
+        } catch {
+          const rg = form.createRadioGroup(fieldName);
+          rg.addOptionToPage('Choice1', page, { x: sx, y: sy, width: sw, height: sh });
+          if (element.defaultValue && element.defaultValue.toLowerCase() !== 'off') rg.select('Choice1');
+          if (element.required) rg.enableRequired();
         }
-      } catch (err) {
-        // Silently ignore form creation failures for individual elements
+      } else if (element.formType === 'dropdown') {
+        const dropdown = form.createDropdown(fieldName);
+        dropdown.addToPage(page, { x: sx, y: sy, width: sw, height: sh });
+        const options = Array.isArray(element.options) && element.options.length > 0
+          ? element.options
+          : ['Option 1', 'Option 2', 'Option 3'];
+        dropdown.addOptions(options);
+        if (element.defaultValue && options.includes(element.defaultValue)) {
+          dropdown.select(element.defaultValue);
+        } else if (options.length > 0) {
+          dropdown.select(options[0]!);
+        }
+        if (element.required) dropdown.enableRequired();
       }
-      continue;
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      formFieldErrors.push(`Form field '${fieldName}': ${errorMessage}`);
     }
+  }
 
-    if (element.type === 'watermark') {
-      const line = sanitizeInlineText(element.text || ' ');
-      const rendered = await resolveRenderableText({
-        family: element.fontFamily,
-        weight: element.fontWeight,
-        style: element.fontStyle,
-        text: line,
+  async function processWatermarkElement(element: WorkerStudioWatermarkEditElement): Promise<void> {
+    const line = sanitizeInlineText(element.text || ' ');
+    const rendered = await resolveRenderableText({
+      family: element.fontFamily,
+      weight: element.fontWeight,
+      style: element.fontStyle,
+      text: line,
+    });
+    const font = rendered.font;
+    const textToDraw = rendered.text || ' ';
+    const { r, g, b } = hexToRgb(element.color);
+    const uiAngle = element.rotation || 0;
+    const pdfAngle = -uiAngle;
+    const angleRad = (pdfAngle * Math.PI) / 180;
+    const cos = Math.cos(angleRad);
+    const sin = Math.sin(angleRad);
+    const textWidthPt = Math.max(1, font.widthOfTextAtSize(textToDraw, element.fontSize));
+    const textHeightPt = Math.max(1, element.fontSize * 1.1);
+    const centerOffsetX = textWidthPt * 0.5;
+    const centerOffsetY = element.fontSize * 0.3;
+
+    const drawCenteredRotatedText = (centerX: number, centerY: number) => {
+      const anchorX = centerX - (centerOffsetX * cos - centerOffsetY * sin);
+      const anchorY = centerY - (centerOffsetX * sin + centerOffsetY * cos);
+      page.drawText(textToDraw, {
+        x: anchorX,
+        y: anchorY,
+        size: element.fontSize,
+        font,
+        color: rgb(r, g, b),
+        opacity: element.opacity,
+        rotate: degrees(pdfAngle),
       });
-      const font = rendered.font;
-      const textToDraw = rendered.text || ' ';
-      const { r, g, b } = hexToRgb(element.color);
-      const uiAngle = element.rotation || 0;
-      const pdfAngle = -uiAngle;
-      const angleRad = (pdfAngle * Math.PI) / 180;
-      const cos = Math.cos(angleRad);
-      const sin = Math.sin(angleRad);
-      const textWidthPt = Math.max(1, font.widthOfTextAtSize(textToDraw, element.fontSize));
-      const textHeightPt = Math.max(1, element.fontSize * 1.1);
-      const centerOffsetX = textWidthPt * 0.5;
-      const centerOffsetY = element.fontSize * 0.3;
+    };
 
-      const drawCenteredRotatedText = (centerX: number, centerY: number) => {
-        const anchorX = centerX - (centerOffsetX * cos - centerOffsetY * sin);
-        const anchorY = centerY - (centerOffsetX * sin + centerOffsetY * cos);
-        page.drawText(textToDraw, {
-          x: anchorX,
-          y: anchorY,
-          size: element.fontSize,
-          font,
+    if (!element.repeatEnabled) {
+      const xTopLeft = element.x * pageWidth;
+      const yTop = element.y * pageHeight;
+      const centerX = xTopLeft + textWidthPt * 0.5;
+      const centerY = pageHeight - yTop - textHeightPt * 0.5;
+      drawCenteredRotatedText(centerX, centerY);
+    } else {
+      const charCount = Math.max(4, textToDraw.trim().length || 0);
+      const baseWidthRatio = Math.max(0.08, (element.fontSize * charCount * 0.64) / pageWidth);
+      const baseHeightRatio = Math.max(0.02, (element.fontSize * 1.35) / pageHeight);
+      const absCos = Math.abs(Math.cos(angleRad));
+      const absSin = Math.abs(Math.sin(angleRad));
+      const textWidthRatio = clamp(baseWidthRatio * absCos + baseHeightRatio * absSin, 0.14, 1.2);
+      const textHeightRatio = clamp(baseWidthRatio * absSin + baseHeightRatio * absCos, 0.03, 0.35);
+      const stepX = Math.max(textWidthRatio * 1.22, textWidthRatio + 0.06);
+      const stepY = Math.max(textHeightRatio * 1.3, textHeightRatio + 0.05);
+      const startX = -textWidthRatio + clamp(element.x, 0, 1);
+      const startY = -textHeightRatio + clamp(element.y, 0, 1);
+      const cols = Math.max(1, Math.ceil((1 + textWidthRatio * 3) / stepX));
+      const rows = Math.max(1, Math.ceil((1 + textHeightRatio * 3) / stepY));
+      const MAX_WATERMARK_REPEATS = 1000;
+      const repeatCount = Math.min(MAX_WATERMARK_REPEATS, cols * rows);
+
+      for (let i = 0; i < repeatCount; i += 1) {
+        const col = i % cols;
+        const row = Math.floor(i / cols);
+        const staggerX = row % 2 === 1 ? stepX * 0.5 : 0;
+        const xRatio = startX + staggerX + col * stepX;
+        const yRatio = startY + row * stepY;
+        const centerX = (xRatio + textWidthRatio * 0.5) * pageWidth;
+        const centerY = pageHeight - ((yRatio + textHeightRatio * 0.5) * pageHeight);
+        drawCenteredRotatedText(centerX, centerY);
+      }
+    }
+  }
+
+  async function processStrokeElement(element: WorkerStudioStrokeEditElement): Promise<void> {
+    const strokePaths = [...(element.paths ?? []), element.points].filter((path) => path.length >= 4);
+    if (strokePaths.length === 0) {
+      return;
+    }
+    const { r, g, b } = hexToRgb(element.color);
+    for (const path of strokePaths) {
+      for (let i = 0; i < path.length - 2; i += 2) {
+        const sx = path[i] * pageWidth;
+        const sy = pageHeight - (path[i + 1] * pageHeight);
+        const ex = path[i + 2] * pageWidth;
+        const ey = pageHeight - (path[i + 3] * pageHeight);
+        page.drawLine({
+          start: { x: sx, y: sy },
+          end: { x: ex, y: ey },
+          thickness: element.width,
           color: rgb(r, g, b),
           opacity: element.opacity,
-          rotate: degrees(pdfAngle),
         });
-      };
-
-      if (!element.repeatEnabled) {
-        const xTopLeft = element.x * pageWidth;
-        const yTop = element.y * pageHeight;
-        const centerX = xTopLeft + textWidthPt * 0.5;
-        const centerY = pageHeight - yTop - textHeightPt * 0.5;
-        drawCenteredRotatedText(centerX, centerY);
-      } else {
-        const charCount = Math.max(4, textToDraw.trim().length || 0);
-        const baseWidthRatio = Math.max(0.08, (element.fontSize * charCount * 0.64) / pageWidth);
-        const baseHeightRatio = Math.max(0.02, (element.fontSize * 1.35) / pageHeight);
-        const absCos = Math.abs(Math.cos(angleRad));
-        const absSin = Math.abs(Math.sin(angleRad));
-        const textWidthRatio = clamp(baseWidthRatio * absCos + baseHeightRatio * absSin, 0.14, 1.2);
-        const textHeightRatio = clamp(baseWidthRatio * absSin + baseHeightRatio * absCos, 0.03, 0.35);
-        const stepX = Math.max(textWidthRatio * 1.22, textWidthRatio + 0.06);
-        const stepY = Math.max(textHeightRatio * 1.3, textHeightRatio + 0.05);
-        const startX = -textWidthRatio + clamp(element.x, 0, 1);
-        const startY = -textHeightRatio + clamp(element.y, 0, 1);
-        const cols = Math.max(1, Math.ceil((1 + textWidthRatio * 3) / stepX));
-        const rows = Math.max(1, Math.ceil((1 + textHeightRatio * 3) / stepY));
-        const repeatCount = Math.min(700, cols * rows);
-
-        for (let i = 0; i < repeatCount; i += 1) {
-          const col = i % cols;
-          const row = Math.floor(i / cols);
-          const staggerX = row % 2 === 1 ? stepX * 0.5 : 0;
-          const xRatio = startX + staggerX + col * stepX;
-          const yRatio = startY + row * stepY;
-          const centerX = (xRatio + textWidthRatio * 0.5) * pageWidth;
-          const centerY = pageHeight - ((yRatio + textHeightRatio * 0.5) * pageHeight);
-          drawCenteredRotatedText(centerX, centerY);
-        }
       }
-      continue;
+    }
+  }
+
+  async function processImageElement(element: WorkerStudioImageEditElement): Promise<void> {
+    const decoded = dataUrlToBytes(element.dataUrl);
+    if (!decoded) {
+      return;
+    }
+    const cacheKey = `${decoded.mimeType}:${element.dataUrl.length}:${element.dataUrl.slice(0, 64)}`;
+    let embedded = imageCache.get(cacheKey);
+    if (!embedded) {
+      embedded = decoded.mimeType === 'image/png'
+        ? await pdf.embedPng(decoded.bytes)
+        : await pdf.embedJpg(decoded.bytes);
+      imageCache.set(cacheKey, embedded);
     }
 
-    if (element.type === 'stroke') {
-      const strokePaths = [...(element.paths ?? []), element.points].filter((path) => path.length >= 4);
-      if (strokePaths.length === 0) {
-        continue;
-      }
-      const { r, g, b } = hexToRgb(element.color);
-      for (const path of strokePaths) {
-        for (let i = 0; i < path.length - 2; i += 2) {
-          const sx = path[i] * pageWidth;
-          const sy = pageHeight - (path[i + 1] * pageHeight);
-          const ex = path[i + 2] * pageWidth;
-          const ey = pageHeight - (path[i + 3] * pageHeight);
-          page.drawLine({
-            start: { x: sx, y: sy },
-            end: { x: ex, y: ey },
-            thickness: element.width,
-            color: rgb(r, g, b),
-            opacity: element.opacity,
-          });
-        }
-      }
-      continue;
-    }
+    const sx = element.x * pageWidth;
+    const sy = pageHeight - ((element.y + element.h) * pageHeight);
+    const sw = element.w * pageWidth;
+    const sh = element.h * pageHeight;
+    page.drawImage(embedded, {
+      x: sx,
+      y: sy,
+      width: sw,
+      height: sh,
+      opacity: element.opacity,
+    });
+  }
 
-    if (trueReplaceApplied && isAutoWhiteoutRect(element)) {
-      continue;
-    }
-    if (element.type === 'image') {
-      const decoded = dataUrlToBytes(element.dataUrl);
-      if (!decoded) {
-        continue;
-      }
-      const cacheKey = `${decoded.mimeType}:${element.dataUrl.length}:${element.dataUrl.slice(0, 64)}`;
-      let embedded = imageCache.get(cacheKey);
-      if (!embedded) {
-        embedded = decoded.mimeType === 'image/png'
-          ? await pdf.embedPng(decoded.bytes)
-          : await pdf.embedJpg(decoded.bytes);
-        imageCache.set(cacheKey, embedded);
-      }
-
-      const sx = element.x * pageWidth;
-      const sy = pageHeight - ((element.y + element.h) * pageHeight);
-      const sw = element.w * pageWidth;
-      const sh = element.h * pageHeight;
-      page.drawImage(embedded, {
-        x: sx,
-        y: sy,
-        width: sw,
-        height: sh,
-        opacity: element.opacity,
-      });
-      continue;
-    }
+  async function processRectElement(element: WorkerStudioRectEditElement): Promise<void> {
     const sx = element.x * pageWidth;
     const sy = pageHeight - ((element.y + element.h) * pageHeight);
     const sw = element.w * pageWidth;
@@ -1257,13 +1203,29 @@ export async function applyStudioTextEditsToPdfBytes(params: {
     });
   }
 
-  const outputBytes = await pdf.save();
-  const stableBytes = new Uint8Array(outputBytes.byteLength);
-  stableBytes.set(outputBytes);
-  return {
-    outputBytes: stableBytes,
-    overflowDetected,
-    trueReplaceApplied,
-    trueReplaceFallbackReason,
-  };
+  async function processEditElement(element: WorkerStudioEditElement): Promise<void> {
+    switch (element.type) {
+      case 'text':
+        await processTextEditElement(element);
+        return;
+      case 'form-field':
+        await processFormFieldElement(element);
+        return;
+      case 'watermark':
+        await processWatermarkElement(element);
+        return;
+      case 'stroke':
+        await processStrokeElement(element);
+        return;
+      case 'image':
+        await processImageElement(element);
+        return;
+      case 'rect':
+        if (trueReplaceApplied && isAutoWhiteoutRect(element)) {
+          return;
+        }
+        await processRectElement(element);
+        return;
+    }
+  }
 }

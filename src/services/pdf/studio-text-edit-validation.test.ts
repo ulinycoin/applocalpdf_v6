@@ -218,3 +218,144 @@ test('normalizeAndValidateStudioEditRequest accepts watermark elements', () => {
     assert.equal(element.rotation, -32);
   }
 });
+
+test('normalizeAndValidateStudioEditRequest accepts stroke elements', () => {
+  const result = normalizeAndValidateStudioEditRequest({
+    pageIndex: 0,
+    elements: [{
+      id: 's-1',
+      type: 'stroke',
+      points: [0.1, 0.2, 0.5, 0.6],
+      color: '#ff0000',
+      width: 2,
+      opacity: 0.8,
+    }],
+  });
+
+  assert.equal(result.elements.length, 1);
+  const element = result.elements[0];
+  assert.equal(element.type, 'stroke');
+  if (element.type === 'stroke') {
+    assert.equal(element.color, '#ff0000');
+    assert.equal(element.width, 2);
+    assert.equal(element.opacity, 0.8);
+    assert.deepEqual(element.points, [0.1, 0.2, 0.5, 0.6]);
+  }
+});
+
+test('normalizeAndValidateStudioEditRequest accepts stroke elements with paths', () => {
+  const result = normalizeAndValidateStudioEditRequest({
+    pageIndex: 0,
+    elements: [{
+      id: 's-2',
+      type: 'stroke',
+      points: [0.1, 0.2, 0.5, 0.6],
+      paths: [[0.2, 0.3, 0.6, 0.7]],
+      color: '#00ff00',
+      width: 3,
+      opacity: 1,
+    }],
+  });
+
+  const element = result.elements[0];
+  assert.equal(element.type, 'stroke');
+  if (element.type === 'stroke') {
+    assert.ok(element.paths);
+    assert.equal(element.paths!.length, 1);
+    assert.deepEqual(element.paths![0], [0.2, 0.3, 0.6, 0.7]);
+  }
+});
+
+test('normalizeAndValidateStudioEditRequest rejects malformed stroke points', () => {
+  assert.throws(() => normalizeAndValidateStudioEditRequest({
+    pageIndex: 0,
+    elements: [{ id: 's-3', type: 'stroke', points: [0.1, 0.2], color: '#000', width: 1, opacity: 1 }],
+  }), /Invalid stroke/);
+});
+
+test('normalizeAndValidateStudioEditRequest accepts rect elements', () => {
+  const result = normalizeAndValidateStudioEditRequest({
+    pageIndex: 0,
+    elements: [{
+      id: 'r-1',
+      type: 'rect',
+      x: 0.1,
+      y: 0.2,
+      w: 0.3,
+      h: 0.1,
+      fill: '#ffffff',
+      stroke: '#000000',
+      strokeWidth: 1,
+      opacity: 1,
+    }],
+  });
+
+  const element = result.elements[0];
+  assert.equal(element.type, 'rect');
+  if (element.type === 'rect') {
+    assert.equal(element.x, 0.1);
+    assert.equal(element.y, 0.2);
+    assert.equal(element.w, 0.3);
+    assert.equal(element.fill, '#ffffff');
+    assert.equal(element.stroke, '#000000');
+  }
+});
+
+test('normalizeAndValidateStudioEditRequest accepts rect with transparent fill', () => {
+  const result = normalizeAndValidateStudioEditRequest({
+    pageIndex: 0,
+    elements: [{
+      id: 'r-2',
+      type: 'rect',
+      x: 0.1,
+      y: 0.2,
+      w: 0.3,
+      h: 0.1,
+      fill: 'transparent',
+      stroke: '#ff0000',
+      strokeWidth: 2,
+      opacity: 0.5,
+    }],
+  });
+
+  const element = result.elements[0];
+  assert.equal(element.type, 'rect');
+  if (element.type === 'rect') {
+    assert.equal(element.fill, 'transparent');
+    assert.equal(element.stroke, '#ff0000');
+    assert.equal(element.strokeWidth, 2);
+    assert.equal(element.opacity, 0.5);
+  }
+});
+
+test('normalizeAndValidateStudioEditRequest accepts image elements', () => {
+  const result = normalizeAndValidateStudioEditRequest({
+    pageIndex: 0,
+    elements: [{
+      id: 'img-1',
+      type: 'image',
+      x: 0.1,
+      y: 0.2,
+      w: 0.3,
+      h: 0.1,
+      opacity: 1,
+      dataUrl: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
+    }],
+  });
+
+  const element = result.elements[0];
+  assert.equal(element.type, 'image');
+  if (element.type === 'image') {
+    assert.equal(element.x, 0.1);
+    assert.equal(element.y, 0.2);
+    assert.equal(element.w, 0.3);
+    assert.ok(element.dataUrl.startsWith('data:image/png'));
+  }
+});
+
+test('normalizeAndValidateStudioEditRequest rejects invalid image dataUrl', () => {
+  assert.throws(() => normalizeAndValidateStudioEditRequest({
+    pageIndex: 0,
+    elements: [{ id: 'img-2', type: 'image', x: 0.1, y: 0.2, w: 0.3, h: 0.1, opacity: 1, dataUrl: 'not-a-data-url' }],
+  }), /Unsupported image/);
+});

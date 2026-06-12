@@ -1,14 +1,19 @@
 import type {
   WorkerStudioEditElement,
-  WorkerStudioFontFamilyId,
   WorkerStudioFormFieldEditElement,
   WorkerStudioImageEditElement,
   WorkerStudioRectEditElement,
   WorkerStudioStrokeEditElement,
-  WorkerStudioTextAlign,
   WorkerStudioTextEditElement,
   WorkerStudioWatermarkEditElement,
 } from '../../core/types/contracts';
+import {
+  clamp,
+  normalizeColor,
+  normalizeTextAlign,
+  normalizeFillColor,
+  normalizeFontFamilyFromId as normalizeFontFamily,
+} from './studio-text-edit-utils';
 
 const MAX_EDIT_ELEMENTS = 2000;
 const MAX_TEXT_LENGTH = 20_000;
@@ -17,10 +22,6 @@ function fail(message: string, code: string): never {
   const error = new Error(message) as Error & { code?: string };
   error.code = code;
   throw error;
-}
-
-function clamp(value: number, min: number, max: number): number {
-  return Math.max(min, Math.min(max, value));
 }
 
 function toFiniteNumber(value: unknown, field: string): number {
@@ -36,48 +37,6 @@ function toSafeRatio(value: unknown, field: string): number {
 
 function normalizeOpacity(value: unknown): number {
   return clamp(toFiniteNumber(value, 'opacity'), 0, 1);
-}
-
-function normalizeColor(value: unknown): string {
-  if (typeof value !== 'string') {
-    return '#000000';
-  }
-  const raw = value.trim().replace(/^#/u, '');
-  if (/^[0-9a-fA-F]{3}$/u.test(raw)) {
-    const expanded = raw
-      .split('')
-      .map((char) => char + char)
-      .join('')
-      .toLowerCase();
-    return `#${expanded}`;
-  }
-  if (/^[0-9a-fA-F]{6}$/u.test(raw)) {
-    return `#${raw.toLowerCase()}`;
-  }
-  return '#000000';
-}
-
-function normalizeFillColor(value: unknown): string {
-  if (typeof value === 'string' && value.trim().toLowerCase() === 'transparent') {
-    return 'transparent';
-  }
-  return normalizeColor(value);
-}
-
-function normalizeTextAlign(value: unknown): WorkerStudioTextAlign {
-  return value === 'center' || value === 'right' ? value : 'left';
-}
-
-function normalizeFontFamily(value: unknown): WorkerStudioFontFamilyId {
-  return value === 'times'
-    || value === 'mono'
-    || value === 'roboto'
-    || value === 'noto'
-    || value === 'noto-arabic'
-    || value === 'noto-cjk'
-    || value === 'noto-devanagari'
-    ? value
-    : 'sora';
 }
 
 function normalizeTextElement(input: WorkerStudioTextEditElement): WorkerStudioTextEditElement {

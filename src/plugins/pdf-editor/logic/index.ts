@@ -1,115 +1,74 @@
 import type {
   ToolLogicFunction,
   WorkerStudioEditElement,
-  WorkerStudioFontFamilyId,
-  WorkerStudioTextAlign,
 } from '../../../core/types/contracts';
 import { getPdfPageCountFromBytes } from '../../../core/pdf/page-count';
 import { applyStudioTextEditsToPdfBytes } from '../../../services/pdf/studio-text-edit-applier';
+import {
+  clamp,
+  toFiniteNumber,
+  sanitizeText,
+  normalizeColor,
+  normalizeTextAlign,
+  normalizeOpacity,
+  normalizeFontFamilyFromString as normalizeFontFamily,
+} from '../../../services/pdf/studio-text-edit-utils';
 
-interface PdfEditorRawEdit {
-  type?: unknown;
-  pageIndex?: unknown;
-  text?: unknown;
-  xRatio?: unknown;
-  yRatio?: unknown;
-  widthRatio?: unknown;
-  heightRatio?: unknown;
-  x1Ratio?: unknown;
-  y1Ratio?: unknown;
-  x2Ratio?: unknown;
-  y2Ratio?: unknown;
-  fontSize?: unknown;
-  fontFamily?: unknown;
-  color?: unknown;
-  strokeWidth?: unknown;
-  bold?: unknown;
-  italic?: unknown;
-  opacity?: unknown;
-  textAlign?: unknown;
-  horizontalScaling?: unknown;
-  ascentRatio?: unknown;
-  descentRatio?: unknown;
-  sourceFontSizeRatio?: unknown;
-  originalRect?: unknown;
+// Bridges UI EditorElement (0-100 ratios, bold/italic booleans)
+// to WorkerStudioEditElement (0-1 ratios, fontWeight/fontStyle strings).
+// All fields are optional with loose types — they're validated at runtime
+// by normalizer functions below.
+interface PdfEditorTextEdit {
+  type?: 'text';
+  pageIndex?: number;
+  text?: string;
+  xRatio?: number;
+  yRatio?: number;
+  widthRatio?: number;
+  heightRatio?: number;
+  fontSize?: number;
+  fontFamily?: string;
+  color?: string;
+  bold?: boolean;
+  italic?: boolean;
+  opacity?: number;
+  textAlign?: string;
+  horizontalScaling?: number;
+  ascentRatio?: number;
+  descentRatio?: number;
+  sourceFontSizeRatio?: number;
+  originalRect?: { x: number; y: number; w: number; h: number };
 }
+
+interface PdfEditorShapeEdit {
+  type?: 'rect' | 'whiteout' | 'circle';
+  pageIndex?: number;
+  xRatio?: number;
+  yRatio?: number;
+  widthRatio?: number;
+  heightRatio?: number;
+  color?: string;
+  strokeWidth?: number;
+  opacity?: number;
+}
+
+interface PdfEditorLineEdit {
+  type?: 'line';
+  pageIndex?: number;
+  x1Ratio?: number;
+  y1Ratio?: number;
+  x2Ratio?: number;
+  y2Ratio?: number;
+  color?: string;
+  strokeWidth?: number;
+  opacity?: number;
+}
+
+type PdfEditorRawEdit = PdfEditorTextEdit | PdfEditorShapeEdit | PdfEditorLineEdit;
 
 interface PreparedPageEdits {
   pageIndex: number;
   elements: WorkerStudioEditElement[];
-}
-
-function clamp(value: number, min: number, max: number): number {
-  return Math.max(min, Math.min(max, value));
-}
-
-function toFiniteNumber(value: unknown, fallback: number): number {
-  if (typeof value !== 'number' || !Number.isFinite(value)) {
-    return fallback;
-  }
-  return value;
-}
-
-function normalizeColor(value: unknown): string {
-  if (typeof value !== 'string') {
-    return '#000000';
-  }
-  const raw = value.trim().replace(/^#/u, '');
-  if (/^[0-9a-fA-F]{3}$/u.test(raw)) {
-    return `#${raw
-      .split('')
-      .map((char) => char + char)
-      .join('')
-      .toLowerCase()}`;
-  }
-  if (/^[0-9a-fA-F]{6}$/u.test(raw)) {
-    return `#${raw.toLowerCase()}`;
-  }
-  return '#000000';
-}
-
-function normalizeTextAlign(value: unknown): WorkerStudioTextAlign {
-  if (value === 'center' || value === 'right') {
-    return value;
-  }
-  return 'left';
-}
-
-function normalizeFontFamily(value: unknown): WorkerStudioFontFamilyId {
-  if (typeof value !== 'string') {
-    return 'sora';
-  }
-  const normalized = value.trim().toLowerCase();
-  if (normalized.includes('arabic')) {
-    return 'noto-arabic';
-  }
-  if (normalized.includes('cjk') || normalized.includes('han') || normalized.includes('kana') || normalized.includes('hangul')) {
-    return 'noto-cjk';
-  }
-  if (normalized.includes('devanagari') || normalized.includes('hindi')) {
-    return 'noto-devanagari';
-  }
-  if (normalized.includes('noto')) {
-    return 'noto';
-  }
-  if (normalized.includes('roboto')) {
-    return 'roboto';
-  }
-  if (normalized.includes('times') || normalized.includes('serif')) {
-    return 'times';
-  }
-  if (normalized.includes('mono') || normalized.includes('courier') || normalized.includes('code')) {
-    return 'mono';
-  }
-  return 'sora';
-}
-
-function normalizeOpacity(value: unknown): number {
-  const numeric = toFiniteNumber(value, 100);
-  if (numeric > 1) {
-    return clamp(numeric / 100, 0, 1);
-  }
-  return clamp(numeric, 0, 1);
 }
 
 function normalizeHorizontalScaling(value: unknown): number {
@@ -129,13 +88,6 @@ function normalizeOriginalRect(value: unknown): { x: number; y: number; w: numbe
     return undefined;
   }
   return { x, y, w, h };
-}
-
-function sanitizeText(value: unknown): string {
-  if (typeof value !== 'string') {
-    return '';
-  }
-  return value.replace(/[\r\n]+/gu, ' ').trim();
 }
 
 function buildCircleStrokePoints(x: number, y: number, w: number, h: number): number[] {
@@ -176,30 +128,32 @@ function collectPreparedEdits(options?: Record<string, unknown>): PreparedPageEd
     const current = grouped.get(pageIndex) ?? [];
 
     if (type === 'line') {
+      const line = raw as PdfEditorLineEdit;
       current.push({
         id: `pdf-editor-${pageIndex}-${index}`,
         type: 'stroke',
         points: [
-          clamp(toFiniteNumber(raw.x1Ratio, 10) / 100, 0, 1),
-          clamp(toFiniteNumber(raw.y1Ratio, 10) / 100, 0, 1),
-          clamp(toFiniteNumber(raw.x2Ratio, 30) / 100, 0, 1),
-          clamp(toFiniteNumber(raw.y2Ratio, 30) / 100, 0, 1),
+          clamp(toFiniteNumber(line.x1Ratio, 10) / 100, 0, 1),
+          clamp(toFiniteNumber(line.y1Ratio, 10) / 100, 0, 1),
+          clamp(toFiniteNumber(line.x2Ratio, 30) / 100, 0, 1),
+          clamp(toFiniteNumber(line.y2Ratio, 30) / 100, 0, 1),
         ],
-        color: normalizeColor(raw.color),
-        width: clamp(toFiniteNumber(raw.strokeWidth, 2), 0.1, 32),
-        opacity: normalizeOpacity(raw.opacity),
+        color: normalizeColor(line.color),
+        width: clamp(toFiniteNumber(line.strokeWidth, 2), 0.1, 32),
+        opacity: normalizeOpacity(line.opacity),
       });
       grouped.set(pageIndex, current);
       continue;
     }
 
     if (type === 'rect' || type === 'whiteout' || type === 'circle') {
-      const x = clamp(toFiniteNumber(raw.xRatio, 10) / 100, 0, 1);
-      const y = clamp(toFiniteNumber(raw.yRatio, 10) / 100, 0, 1);
-      const w = clamp(toFiniteNumber(raw.widthRatio, 20) / 100, 0.001, 1);
-      const h = clamp(toFiniteNumber(raw.heightRatio, 10) / 100, 0.001, 1);
-      const strokeColor = type === 'whiteout' ? '#ffffff' : normalizeColor(raw.color);
-      const rawStrokeWidth = clamp(toFiniteNumber(raw.strokeWidth, 2), 0, 32);
+      const shape = raw as PdfEditorShapeEdit;
+      const x = clamp(toFiniteNumber(shape.xRatio, 10) / 100, 0, 1);
+      const y = clamp(toFiniteNumber(shape.yRatio, 10) / 100, 0, 1);
+      const w = clamp(toFiniteNumber(shape.widthRatio, 20) / 100, 0.001, 1);
+      const h = clamp(toFiniteNumber(shape.heightRatio, 10) / 100, 0.001, 1);
+      const strokeColor = type === 'whiteout' ? '#ffffff' : normalizeColor(shape.color);
+      const rawStrokeWidth = clamp(toFiniteNumber(shape.strokeWidth, 2), 0, 32);
       const strokeWidth = type === 'whiteout' ? 0 : rawStrokeWidth;
 
       if (type === 'circle') {
@@ -209,7 +163,7 @@ function collectPreparedEdits(options?: Record<string, unknown>): PreparedPageEd
           points: buildCircleStrokePoints(x, y, w, h),
           color: strokeColor,
           width: Math.max(0.1, strokeWidth),
-          opacity: normalizeOpacity(raw.opacity),
+          opacity: normalizeOpacity(shape.opacity),
         });
         grouped.set(pageIndex, current);
         continue;
@@ -225,38 +179,39 @@ function collectPreparedEdits(options?: Record<string, unknown>): PreparedPageEd
         fill: type === 'whiteout' ? '#ffffff' : 'transparent',
         stroke: strokeColor,
         strokeWidth: type === 'whiteout' ? 0 : strokeWidth,
-        opacity: normalizeOpacity(raw.opacity),
+        opacity: normalizeOpacity(shape.opacity),
       });
       grouped.set(pageIndex, current);
       continue;
     }
 
-    const text = sanitizeText(raw.text);
+    const textElement = raw as PdfEditorTextEdit;
+    const text = sanitizeText(textElement.text);
     if (!text) {
       continue;
     }
-    const horizontalScaling = normalizeHorizontalScaling(raw.horizontalScaling);
-    const rawAscentRatio = typeof raw.ascentRatio === 'number' && Number.isFinite(raw.ascentRatio) ? raw.ascentRatio : undefined;
-    const rawDescentRatio = typeof raw.descentRatio === 'number' && Number.isFinite(raw.descentRatio) ? raw.descentRatio : undefined;
-    const rawSourceFontSizeRatio = typeof raw.sourceFontSizeRatio === 'number' && Number.isFinite(raw.sourceFontSizeRatio) ? raw.sourceFontSizeRatio : undefined;
-    const originalRect = normalizeOriginalRect(raw.originalRect);
+    const horizontalScaling = normalizeHorizontalScaling(textElement.horizontalScaling);
+    const rawAscentRatio = typeof textElement.ascentRatio === 'number' && Number.isFinite(textElement.ascentRatio) ? textElement.ascentRatio : undefined;
+    const rawDescentRatio = typeof textElement.descentRatio === 'number' && Number.isFinite(textElement.descentRatio) ? textElement.descentRatio : undefined;
+    const rawSourceFontSizeRatio = typeof textElement.sourceFontSizeRatio === 'number' && Number.isFinite(textElement.sourceFontSizeRatio) ? textElement.sourceFontSizeRatio : undefined;
+    const originalRect = normalizeOriginalRect(textElement.originalRect);
     current.push({
       id: `pdf-editor-${pageIndex}-${index}`,
       type: 'text',
-      x: clamp(toFiniteNumber(raw.xRatio, 10) / 100, 0, 1),
-      y: clamp(toFiniteNumber(raw.yRatio, 10) / 100, 0, 1),
-      w: clamp(toFiniteNumber(raw.widthRatio, 30) / 100, 0.001, 1),
-      h: clamp(toFiniteNumber(raw.heightRatio, 8) / 100, 0.001, 1),
-      text,
-      color: normalizeColor(raw.color),
-      fontSize: clamp(toFiniteNumber(raw.fontSize, 16), 4, 144),
-      fontFamily: normalizeFontFamily(raw.fontFamily),
-      fontWeight: raw.bold === true ? 'bold' : 'normal',
-      fontStyle: raw.italic === true ? 'italic' : 'normal',
-      textAlign: normalizeTextAlign(raw.textAlign),
+      x: clamp(toFiniteNumber(textElement.xRatio, 10) / 100, 0, 1),
+      y: clamp(toFiniteNumber(textElement.yRatio, 10) / 100, 0, 1),
+      w: clamp(toFiniteNumber(textElement.widthRatio, 30) / 100, 0.001, 1),
+      h: clamp(toFiniteNumber(textElement.heightRatio, 8) / 100, 0.001, 1),
+      text: text,
+      color: normalizeColor(textElement.color),
+      fontSize: clamp(toFiniteNumber(textElement.fontSize, 16), 4, 144),
+      fontFamily: normalizeFontFamily(textElement.fontFamily),
+      fontWeight: textElement.bold === true ? 'bold' : 'normal',
+      fontStyle: textElement.italic === true ? 'italic' : 'normal',
+      textAlign: normalizeTextAlign(textElement.textAlign),
       lineHeight: 1.2,
       letterSpacing: clamp((horizontalScaling - 1) * 3, -2, 20),
-      opacity: normalizeOpacity(raw.opacity),
+      opacity: normalizeOpacity(textElement.opacity),
       ...(rawAscentRatio !== undefined ? { ascentRatio: rawAscentRatio } : {}),
       ...(rawDescentRatio !== undefined ? { descentRatio: rawDescentRatio } : {}),
       ...(rawSourceFontSizeRatio !== undefined ? { sourceFontSizeRatio: rawSourceFontSizeRatio } : {}),
@@ -270,7 +225,11 @@ function collectPreparedEdits(options?: Record<string, unknown>): PreparedPageEd
     .map(([pageIndex, elements]) => ({ pageIndex, elements }));
 }
 
-export const run: ToolLogicFunction = async ({ inputIds, fs, options, emitProgress }) => {
+type ExtendedRunParams = Parameters<ToolLogicFunction>[0] & { signal?: AbortSignal };
+
+export const run: ToolLogicFunction = async (rawParams) => {
+  const { inputIds, fs, options, emitProgress } = rawParams;
+  const signal = (rawParams as ExtendedRunParams).signal;
   if (inputIds.length === 0) {
     throw new Error('PDF Editor requires at least one input file');
   }
@@ -289,11 +248,13 @@ export const run: ToolLogicFunction = async ({ inputIds, fs, options, emitProgre
 
       if (applicableEdits.length > 0) {
         for (let pageEditIndex = 0; pageEditIndex < applicableEdits.length; pageEditIndex += 1) {
+          signal?.throwIfAborted();
           const pageEdit = applicableEdits[pageEditIndex];
           const applied = await applyStudioTextEditsToPdfBytes({
             sourceBytes: outputBytes,
             pageIndex: pageEdit.pageIndex,
             elements: pageEdit.elements,
+            signal,
           });
           outputBytes = applied.outputBytes;
 

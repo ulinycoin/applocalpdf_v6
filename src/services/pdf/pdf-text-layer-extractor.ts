@@ -16,6 +16,14 @@ export interface PdfTextLayerSpan {
   fontFamilyHint?: string;
   pageHeightPt?: number;
   ascentRatio?: number;
+  descentRatio?: number;
+}
+
+export interface PdfTextLayerResult {
+  spans: PdfTextLayerSpan[];
+  pageCount: number;
+  width: number;
+  height: number;
 }
 
 let pdfJsPromise: Promise<PdfJsLike | null> | null = null;
@@ -124,6 +132,11 @@ export async function extractPdfTextLayerSpans(
       fontAscent = (1 + style.descent) * fontHeight;
     }
 
+    let fontDescent = fontHeight * 0.18;
+    if (style?.descent) {
+      fontDescent = Math.abs(style.descent) * fontHeight;
+    }
+
     const estimatedWidth = fontHeight * item.str.length * 0.46;
     const width = Math.max(1, (Number(item.width) * scale || estimatedWidth));
     const height = Math.max(1, (Number(item.height) * scale || fontHeight * 1.1));
@@ -141,8 +154,78 @@ export async function extractPdfTextLayerSpans(
       fontFamilyHint: style?.fontFamily,
       pageHeightPt: pageViewport.height,
       ascentRatio: clamp01(fontAscent / viewport.height),
+      descentRatio: clamp01(fontDescent / viewport.height),
     });
   }
 
   return spans;
+}
+
+export async function extractTextLayerForPreview(
+  pdfBytes: Uint8Array,
+  pageNumber: number,
+  scale = 2.0,
+): Promise<PdfTextLayerResult> {
+  const pdfjs = await loadPdfJs();
+  if (!pdfjs) {
+    return { spans: [], pageCount: 1, width: 595, height: 842 };
+  }
+
+  const safeBytes = new Uint8Array(pdfBytes);
+  const loadingTask = pdfjs.getDocument({
+    data: safeBytes,
+    disableWorker: true,
+    verbosity: pdfjs.VerbosityLevel?.ERRORS ?? 0,
+  });
+  const pdf = await loadingTask.promise;
+  const page = await pdf.getPage(pageNumber);
+  const viewport = page.getViewport({ scale });
+  const textContent = await page.getTextContent();
+  const textStyles = textContent.styles as Record<string, { ascent?: number; descent?: number; fontFamily?: string }>;
+
+  const spans: PdfTextLayerSpan[] = [];
+  for (let i = 0; i < textContent.items.length; i += 1) {
+    const item = textContent.items[i] as any;
+    if (!item || typeof item.str !== 'string' || item.str.trim().length === 0 || !Array.isArray(item.transform)) {
+      continue;
+    }
+
+    const tx = multiplyTransform(viewport.transform as number[], item.transform as number[]);
+    const x = tx[4];
+    const y = tx[5];
+    const fontHeight = Math.hypot(tx[2], tx[3]) || (Number(item.height) * scale) || 8;
+    const style = textStyles[item.fontName];
+    let fontAscent = fontHeight;
+    if (style?.ascent) {
+      fontAscent = style.ascent * fontHeight;
+    } else if (style?.descent) {
+      fontAscent = (1 + style.descent) * fontHeight;
+    }
+
+    let fontDescent = fontHeight * 0.18;
+    if (style?.descent) {
+      fontDescent = Math.abs(style.descent) * fontHeight;
+    }
+
+    const estimatedWidth = fontHeight * item.str.length * 0.46;
+    const width = Math.max(1, (Number(item.width) * scale || estimatedWidth));
+    const height = Math.max(1, (Number(item.height) * scale || fontHeight * 1.1));
+    const top = y - fontAscent;
+
+    spans.push({
+      id: `span-${pageNumber}-${i}`,
+      text: item.str,
+      xRatio: clamp01(x / viewport.width),
+      yRatio: clamp01(top / viewport.height),
+      widthRatio: clamp(width / viewport.width, 0.001, 1),
+      heightRatio: clamp(height / viewport.height, 0.001, 1),
+      fontSizeRatio: clamp(fontHeight / viewport.height, 0.001, 1),
+      ascentRatio: clamp01(fontAscent / viewport.height),
+      descentRatio: clamp01(fontDescent / viewport.height),
+      fontName: item.fontName,
+      fontFamilyHint: style?.fontFamily,
+    });
+  }
+
+  return { spans, pageCount: pdf.numPages, width: viewport.width, height: viewport.height };
 }

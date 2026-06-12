@@ -11,6 +11,16 @@ import {
 import { usePlatform } from '../../../app/react/platform-context';
 import { defaultFilePreviewService } from '../../../v6/preview/preview-service';
 import { LinearIcon } from '../../../v6/components/icons/linear-icon';
+import type { PdfTextLayerSpan } from '../../../services/pdf/pdf-text-layer-extractor';
+import { extractTextLayerForPreview } from '../../../services/pdf/pdf-text-layer-extractor';
+import {
+  clamp,
+  normalizeText,
+  isEditableTarget,
+  mergeLineSpans,
+  centerIsInsideRect,
+  toStagePoint,
+} from './text-edit-ui-utils';
 
 interface Props {
   inputFiles: string[];
@@ -76,27 +86,6 @@ type EditorElement =
     opacity: number;
   };
 
-interface TextLayerSpan {
-  id: string;
-  text: string;
-  xRatio: number;
-  yRatio: number;
-  widthRatio: number;
-  heightRatio: number;
-  fontSizeRatio: number;
-  ascentRatio: number;
-  descentRatio: number;
-  fontName?: string;
-  fontFamilyHint?: string;
-}
-
-interface PdfJsLike {
-  getDocument(params: { data: Uint8Array; disableWorker: boolean; verbosity?: number }): { promise: Promise<any> };
-  GlobalWorkerOptions?: { workerSrc?: string };
-  VerbosityLevel?: { ERRORS?: number };
-  Util: { transform: (m1: number[], m2: number[]) => number[] };
-}
-
 interface DraggingEdit {
   id: string;
   startClientX: number;
@@ -120,12 +109,6 @@ const PREVIEW_SCALE = 2.1;
 const HISTORY_LIMIT = 80;
 const DEFAULT_PAGE_SIZE = { width: 595, height: 842 };
 
-let pdfJsPromise: Promise<PdfJsLike | null> | null = null;
-
-function clamp(value: number, min: number, max: number): number {
-  return Math.max(min, Math.min(max, value));
-}
-
 function createElementId(prefix: string): string {
   return `${prefix}-${crypto.randomUUID()}`;
 }
@@ -140,168 +123,6 @@ function cloneElements(elements: EditorElement[]): EditorElement[] {
 
 function serializeElements(elements: EditorElement[]): string {
   return JSON.stringify(elements);
-}
-
-function isEditableTarget(target: EventTarget | null): boolean {
-  return target instanceof HTMLElement && (target.isContentEditable || target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement);
-}
-
-function normalizeText(value: string): string {
-  return value.replace(/\r\n/gu, '\n').replace(/\r/gu, '\n').replace(/\n+/gu, ' ').replace(/\s+/gu, ' ').trim();
-}
-
-async function loadPdfJs(): Promise<PdfJsLike | null> {
-  if (!pdfJsPromise) {
-    pdfJsPromise = (async () => {
-      try {
-        const pdfjs = (await import('pdfjs-dist/legacy/build/pdf.mjs')) as unknown as PdfJsLike;
-        if (pdfjs.GlobalWorkerOptions && !pdfjs.GlobalWorkerOptions.workerSrc) {
-          const workerSrcModule = await import('pdfjs-dist/legacy/build/pdf.worker.min.mjs?url') as { default?: string };
-          if (workerSrcModule.default) {
-            pdfjs.GlobalWorkerOptions.workerSrc = workerSrcModule.default;
-          }
-        }
-        return pdfjs;
-      } catch {
-        return null;
-      }
-    })();
-  }
-  return pdfJsPromise;
-}
-
-function getFontFamilyHint(style: unknown): string | undefined {
-  if (!style || typeof style !== 'object') {
-    return undefined;
-  }
-  const value = (style as { fontFamily?: unknown }).fontFamily;
-  return typeof value === 'string' ? value : undefined;
-}
-
-async function extractTextLayerSpans(params: {
-  pdfBytes: Uint8Array;
-  pageNumber: number;
-}): Promise<{ spans: TextLayerSpan[]; pageCount: number; width: number; height: number }> {
-  const pdfjs = await loadPdfJs();
-  if (!pdfjs) {
-    return { spans: [], pageCount: 1, ...DEFAULT_PAGE_SIZE };
-  }
-
-  const pdf = await pdfjs.getDocument({
-    data: new Uint8Array(params.pdfBytes),
-    disableWorker: true,
-    verbosity: pdfjs.VerbosityLevel?.ERRORS ?? 0,
-  }).promise;
-  const pageNumber = clamp(params.pageNumber, 1, Math.max(1, pdf.numPages));
-  const page = await pdf.getPage(pageNumber);
-  const viewport = page.getViewport({ scale: PREVIEW_SCALE });
-  const textContent = await page.getTextContent({ includeMarkedContent: false });
-  const styles = textContent.styles ?? {};
-  const spans: TextLayerSpan[] = [];
-
-  for (let index = 0; index < textContent.items.length; index += 1) {
-    const item = textContent.items[index] as {
-      str?: unknown;
-      transform?: unknown;
-      width?: unknown;
-      height?: unknown;
-      fontName?: unknown;
-    };
-    if (typeof item.str !== 'string' || item.str.trim().length === 0 || !Array.isArray(item.transform)) {
-      continue;
-    }
-
-    const tx = pdfjs.Util.transform(viewport.transform, item.transform as number[]);
-    const x = Number(tx[4]);
-    const y = Number(tx[5]);
-    const fontHeight = Math.hypot(Number(tx[2]), Number(tx[3])) || 8;
-    const fontName = typeof item.fontName === 'string' ? item.fontName : undefined;
-    const style = fontName ? styles[fontName] as { ascent?: number; descent?: number } | undefined : undefined;
-    const ascent = typeof style?.ascent === 'number' ? Math.max(0, style.ascent * fontHeight) : fontHeight * 0.82;
-    const descent = typeof style?.descent === 'number' ? Math.max(0, Math.abs(style.descent) * fontHeight) : fontHeight * 0.18;
-    const rawWidth = typeof item.width === 'number' ? item.width * PREVIEW_SCALE : 0;
-    const width = Math.max(1, rawWidth || fontHeight * item.str.length * 0.5);
-    const height = Math.max(1, ascent + descent);
-    const top = y - ascent;
-
-    spans.push({
-      id: `span-${pageNumber}-${index}`,
-      text: item.str,
-      xRatio: clamp(x / viewport.width, 0, 1),
-      yRatio: clamp(top / viewport.height, 0, 1),
-      widthRatio: clamp(width / viewport.width, 0.001, 1),
-      heightRatio: clamp(height / viewport.height, 0.001, 1),
-      fontSizeRatio: clamp(fontHeight / viewport.height, 0.001, 1),
-      ascentRatio: clamp(ascent / viewport.height, 0, 1),
-      descentRatio: clamp(descent / viewport.height, 0, 1),
-      fontName,
-      fontFamilyHint: fontName ? getFontFamilyHint(styles[fontName]) : undefined,
-    });
-  }
-
-  return { spans, pageCount: pdf.numPages, width: viewport.width, height: viewport.height };
-}
-
-function mergeLineSpans(anchor: TextLayerSpan, spans: TextLayerSpan[]): {
-  spans: TextLayerSpan[];
-  text: string;
-  rect: { x: number; y: number; w: number; h: number };
-  representative: TextLayerSpan;
-} {
-  const anchorBaseline = anchor.yRatio + anchor.ascentRatio;
-  const tolerance = Math.max(0.004, anchor.heightRatio * 0.65);
-  const lineSpans = spans
-    .filter((span) => Math.abs((span.yRatio + span.ascentRatio) - anchorBaseline) <= tolerance)
-    .sort((left, right) => left.xRatio - right.xRatio);
-
-  let text = '';
-  let left = anchor.xRatio;
-  let top = anchor.yRatio;
-  let right = anchor.xRatio + anchor.widthRatio;
-  let bottom = anchor.yRatio + anchor.heightRatio;
-
-  for (let index = 0; index < lineSpans.length; index += 1) {
-    const span = lineSpans[index]!;
-    const previous = lineSpans[index - 1];
-    if (previous) {
-      const gap = span.xRatio - (previous.xRatio + previous.widthRatio);
-      if (gap > Math.max(0.002, span.heightRatio * 0.25) && !text.endsWith(' ') && !span.text.startsWith(' ')) {
-        text += ' ';
-      }
-    }
-    text += span.text;
-    left = Math.min(left, span.xRatio);
-    top = Math.min(top, span.yRatio);
-    right = Math.max(right, span.xRatio + span.widthRatio);
-    bottom = Math.max(bottom, span.yRatio + span.heightRatio);
-  }
-
-  const representative = lineSpans.find((span) => span.id === anchor.id) ?? lineSpans[0] ?? anchor;
-  return {
-    spans: lineSpans,
-    text: normalizeText(text || anchor.text),
-    rect: {
-      x: left * 100,
-      y: top * 100,
-      w: Math.max(0.1, (right - left) * 100),
-      h: Math.max(0.1, (bottom - top) * 100),
-    },
-    representative,
-  };
-}
-
-function centerIsInsideRect(span: TextLayerSpan, rect: { x: number; y: number; w: number; h: number }): boolean {
-  const centerX = (span.xRatio + span.widthRatio / 2) * 100;
-  const centerY = (span.yRatio + span.heightRatio / 2) * 100;
-  return centerX >= rect.x && centerX <= rect.x + rect.w && centerY >= rect.y && centerY <= rect.y + rect.h;
-}
-
-function toStagePoint(event: ReactMouseEvent<HTMLElement>, stage: HTMLElement): { xRatio: number; yRatio: number } {
-  const rect = stage.getBoundingClientRect();
-  return {
-    xRatio: clamp(((event.clientX - rect.left) / rect.width) * 100, 0, 100),
-    yRatio: clamp(((event.clientY - rect.top) / rect.height) * 100, 0, 100),
-  };
 }
 
 export default function PdfEditorConfig({
@@ -331,7 +152,7 @@ export default function PdfEditorConfig({
   const [zoom, setZoom] = useState(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [spans, setSpans] = useState<TextLayerSpan[]>([]);
+  const [spans, setSpans] = useState<PdfTextLayerSpan[]>([]);
   const [elements, setElements] = useState<EditorElement[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -478,7 +299,7 @@ export default function PdfEditorConfig({
           setPageCount(preview.pageCount);
         }
         const bytes = new Uint8Array(await (await entry.getBlob()).arrayBuffer());
-        const layer = await extractTextLayerSpans({ pdfBytes: bytes, pageNumber });
+        const layer = await extractTextLayerForPreview(bytes, pageNumber, PREVIEW_SCALE);
         if (controller.signal.aborted) {
           return;
         }
@@ -545,7 +366,7 @@ export default function PdfEditorConfig({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [applyElements, commitInlineEdit, elements, redo, selectedId, undo]);
 
-  const createTextEditFromSpan = useCallback((span: TextLayerSpan) => {
+  const createTextEditFromSpan = useCallback((span: PdfTextLayerSpan) => {
     const line = mergeLineSpans(span, spans);
     const existing = pageTextElements.find((element) => (
       element.originalRect && centerIsInsideRect(span, element.originalRect)
@@ -614,7 +435,7 @@ export default function PdfEditorConfig({
     if (event.target !== event.currentTarget && !(event.target instanceof HTMLImageElement)) {
       return;
     }
-    const point = toStagePoint(event, event.currentTarget);
+    const point = toStagePoint(event.clientX, event.clientY, event.currentTarget);
     setSelectedId(null);
     setEditingId(null);
     if (shapeTool) {
@@ -649,7 +470,7 @@ export default function PdfEditorConfig({
       return;
     }
     if (drawing) {
-      const point = toStagePoint(event, event.currentTarget);
+      const point = toStagePoint(event.clientX, event.clientY, event.currentTarget);
       setDrawing({ ...drawing, currentXRatio: point.xRatio, currentYRatio: point.yRatio });
     }
   }, [drawing]);
