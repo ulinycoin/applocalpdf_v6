@@ -4,6 +4,15 @@ import { createRegistry } from '../registry/register-tools';
 import type { IWorkerCommand } from '../types/contracts';
 import { executeWorkerCommand } from './worker-runtime';
 
+// Suppress tesseract.js LSTM-only config warnings ("Parameter not found").
+// Tesseract's LSTM engine doesn't use legacy config params, but the library
+// still tries to set them. These warnings are harmless noise.
+const _warn = console.warn;
+console.warn = (...args) => {
+  if (typeof args[0] === 'string' && args[0].includes('Parameter not found')) return;
+  _warn.apply(console, args);
+};
+
 const registry = createRegistry();
 const fs = new WebFileSystemAdapter();
 

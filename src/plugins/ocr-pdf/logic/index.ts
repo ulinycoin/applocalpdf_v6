@@ -89,7 +89,7 @@ async function remapWordsToRenderBlob(words: OcrWord[], ocrBlob: Blob, renderBlo
 
 const SUPPORTED_LANGUAGES: SupportedOcrLanguage[] = ['eng', 'rus', 'ukr', 'deu', 'fra', 'spa', 'ita', 'por', 'jpn', 'chi_sim', 'hin', 'ara'];
 const DEFAULT_LANGUAGE: SupportedOcrLanguage = 'eng';
-const AUTO_PROBE_LANGUAGE_PACK = 'eng+rus+jpn+chi_sim+hin+ara';
+const AUTO_PROBE_LANGUAGE_PACK = 'eng+jpn+chi_sim';
 const LOW_CONFIDENCE_THRESHOLD = 78;
 const LOW_CONFIDENCE_TEXT_MIN = 40;
 const LOW_CONFIDENCE_MAX_RETRY_PAGES = 6;
@@ -241,8 +241,10 @@ export const run: ToolLogicFunction = async ({ inputIds, options: runOptions, fs
 
       if (mime === 'application/pdf') {
         const embedded = await extractEmbeddedPdfText(blob);
-        const letterCount = embedded?.text ? (embedded.text.match(/\p{L}/ug) || []).length : 0;
-        const hasEmbeddedText = letterCount >= 12;
+        const text = embedded?.text ?? '';
+        const letterCount = (text.match(/\p{L}/ug) || []).length;
+        const wordCount = text.split(/\s+/).filter(Boolean).length;
+        const hasEmbeddedText = letterCount >= 100 || (letterCount >= 20 && wordCount >= 8);
         if (hasEmbeddedText) {
           updateFileProgress(26);
           recognizedText = embedded?.text ?? '';
@@ -290,13 +292,17 @@ export const run: ToolLogicFunction = async ({ inputIds, options: runOptions, fs
               const suggestedPack = enrichAutoLanguagePack(selectAutoOcrLanguagePack(probeDetection), probe.text);
               finalLanguagePack = suggestedPack;
 
-              pageResults = suggestedPack !== initialLanguagePack
-                ? await recognizeChunks(pageImages, suggestedPack, (done, total) => {
-                  updateFileProgress(44 + (done / Math.max(1, total)) * 36);
-                })
-                : [probe, ...(await recognizeChunks(pageImages.slice(1), initialLanguagePack, (done, total) => {
-                  updateFileProgress(48 + (done / Math.max(1, total)) * 32);
-                }))];
+              // For single-page docs, reuse the probe result instead of re-OCRing.
+              // The probe already ran with the full language pack — re-running is redundant.
+              pageResults = pageImages.length <= 1
+                ? [probe]
+                : suggestedPack !== initialLanguagePack
+                  ? await recognizeChunks(pageImages, suggestedPack, (done, total) => {
+                    updateFileProgress(44 + (done / Math.max(1, total)) * 36);
+                  })
+                  : [probe, ...(await recognizeChunks(pageImages.slice(1), initialLanguagePack, (done, total) => {
+                    updateFileProgress(48 + (done / Math.max(1, total)) * 32);
+                  }))];
               autoSecondPassApplied = suggestedPack !== initialLanguagePack;
             } else {
               pageResults = await recognizeChunks(pageImages, initialLanguagePack, (done, total) => {
@@ -304,7 +310,10 @@ export const run: ToolLogicFunction = async ({ inputIds, options: runOptions, fs
               });
             }
 
-            if (options.mode === 'accurate') {
+            // Single-page docs skip the low-confidence retry: the probe already
+            // ran with the full language pack and re-OCRing adds latency without
+            // meaningful quality gain for practical document types.
+            if (options.mode === 'accurate' && sourceImages.length > 1) {
               const retryCandidates = pageResults
                 .map((result, idx) => ({ idx, result }))
                 .filter((item) => isLowConfidence(item.result))
@@ -459,17 +468,19 @@ export const run: ToolLogicFunction = async ({ inputIds, options: runOptions, fs
 
       const reportBlob = options.outputFormat === 'searchable-pdf'
         ? await (async () => {
+          if (usedEmbeddedText && mime === 'application/pdf') {
+            // The source PDF already has a text layer; return PDF to preserve searchable preview/download UX.
+            return blob;
+          }
+          if (pageLayers.length === 0) {
+            throw new Error('Cannot create Searchable PDF: no page layers available from OCR');
+          }
           try {
-            if (usedEmbeddedText && mime === 'application/pdf') {
-              // The source PDF already has a text layer; return PDF to preserve searchable preview/download UX.
-              return blob;
-            }
-            if (pageLayers.length === 0) {
-              return txtReport;
-            }
             return await buildSearchablePdfFromImages(pageLayers);
-          } catch {
-            return txtReport;
+          } catch (err) {
+            throw new Error(
+              `Failed to build Searchable PDF: ${err instanceof Error ? err.message : 'unknown error'}`,
+            );
           }
         })()
         : options.outputFormat === 'json'

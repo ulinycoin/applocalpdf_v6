@@ -816,7 +816,7 @@ export function useStudioEditController(ui: any) {
                 deleteSelected();
             } else if ((event.ctrlKey || event.metaKey) && key === 'z') {
                 event.preventDefault();
-                event.shiftKey ? redo() : undo();
+                if (event.shiftKey) { redo(); } else { undo(); }
             } else if ((event.ctrlKey || event.metaKey) && key === 's') {
                 event.preventDefault();
                 if (!isApplying && (historyIndex > 0 || hasDirtyChanges)) {

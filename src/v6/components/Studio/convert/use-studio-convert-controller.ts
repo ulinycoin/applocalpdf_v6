@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { usePlatform } from '../../../../app/react/platform-context';
 
@@ -10,6 +10,7 @@ import type { WorkerPdfImageCandidate } from '../../../../core/public/contracts'
 import { createZipBlob } from '../../../utils/zip';
 import { type PageItem, type StudioDocument, type StudioState, useStudioStore } from '../studio-store';
 import { showStudioPaywall } from '../../../../app/react/studio-paywall';
+import { getDailyUsage, OCR_DAILY_LIMIT } from '../../../../app/platform/daily-usage';
 import { useHistoryStore } from '../store/history-store';
 import type { StudioToolRouteState } from '../../../studio/navigation/studio-tool-context';
 
@@ -157,22 +158,13 @@ function maybePdfName(fileName: string): boolean {
   return fileName.toLowerCase().endsWith('.pdf');
 }
 
-function getDailyUsage(toolId: string): number {
-    try {
-        const key = `localpdf_usage_${toolId}`;
-        const raw = localStorage.getItem(key);
-        if (!raw) return 0;
-        const { date, count } = JSON.parse(raw);
-        const today = new Date().toISOString().slice(0, 10);
-        return date === today ? count : 0;
-    } catch { return 0; }
-}
-
-const OCR_DAILY_LIMIT = 3;
-
 export function useStudioConvertController(initialToolOverride?: StudioConvertToolId) {
   const { runtime } = usePlatform();
-  const isPro = runtime.billing.getContext().plan === 'pro';
+  const billingPlan = useSyncExternalStore(
+    (onChange) => runtime.billing.subscribe(onChange),
+    () => runtime.billing.getContext().plan,
+  );
+  const isPro = billingPlan === 'pro';
   const allowOcrDownload = isPro || getDailyUsage('ocr-pdf') < OCR_DAILY_LIMIT;
   const location = useLocation();
   const navigate = useNavigate();

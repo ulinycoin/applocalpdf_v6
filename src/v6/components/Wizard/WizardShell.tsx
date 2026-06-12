@@ -17,7 +17,6 @@ import { useNavigate } from 'react-router-dom';
 import { usePlatform } from '../../../app/react/platform-context';
 import { LinearIcon } from '../icons/linear-icon';
 import { useWizardFlow } from '../../hooks/useWizardFlow';
-import { getOrCreateFlowId } from '../../../app/platform/browser-context';
 import { useFilePreviews } from '../../hooks/use-file-previews';
 import { PreviewPanel } from './PreviewPanel';
 import type { IOAdapter, SmartUploadZoneProps, WizardShellProps } from './types';

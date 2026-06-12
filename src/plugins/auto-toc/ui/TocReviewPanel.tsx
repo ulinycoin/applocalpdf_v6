@@ -23,7 +23,7 @@ export function TocReviewPanel({
   headers,
   bodyTextSize,
   headingCandidatesFound,
-  totalSpansExtracted,
+  totalSpansExtracted: _totalSpansExtracted,
   onHeadersChange,
   onApply,
   onBack,

@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useStudioStore, type PageItem, type StudioDocument, type StudioState } from '../../v6/components/Studio/studio-store';
-import { LinearIcon } from '../../v6/components/icons/linear-icon';
 import { usePlatform } from './platform-context';
 import { PipelineRunner } from '../../v6/studio/pipeline/PipelineRunner';
 import type { IPipelineRecipe } from '../../v6/studio/pipeline/types';

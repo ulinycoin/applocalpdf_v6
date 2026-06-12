@@ -37,6 +37,9 @@
 
 
 
+    <!-- Preload tesseract WASM core for instant OCR startup -->
+    <link rel="prefetch" href="/vendor/tesseract/core/tesseract-core-lstm.wasm" as="fetch" crossorigin="anonymous" />
+    <link rel="prefetch" href="/vendor/tesseract/core/tesseract-core-simd-lstm.wasm" as="fetch" crossorigin="anonymous" />
   </head>
   <body>
     <div id="root"></div>

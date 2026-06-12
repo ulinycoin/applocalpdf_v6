@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { usePlatform } from '../../../app/react/platform-context';
 import { canUseDocumentWithPageCount } from '../../../app/platform/plan-limits';
 import { showStudioPaywall } from '../../../app/react/studio-paywall';
@@ -13,7 +12,6 @@ import { getPdfJs } from '../../services/pdf/pdf-loader';
 
 export function StudioFloatingMenu() {
     const { runtime } = usePlatform();
-    const navigate = useNavigate();
     const selection = useStudioStore((s: StudioState) => s.selection);
     const activeDocumentId = useStudioStore((s: StudioState) => s.activeDocumentId);
     const requestedInlineTool = useStudioStore((s: StudioState) => s.requestedInlineTool);

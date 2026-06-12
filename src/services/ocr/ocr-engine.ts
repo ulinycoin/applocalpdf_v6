@@ -91,7 +91,7 @@ interface TesseractModule {
   ): Promise<TesseractResult>;
 }
 
-const TESSERACT_CACHE_METHOD = 'none';
+const TESSERACT_CACHE_METHOD = 'indexeddb';
 
 // Vite serves public/ files from root, not from BASE_URL (/app/)
 // On Vercel, vendor files are also at root (/vendor/...)

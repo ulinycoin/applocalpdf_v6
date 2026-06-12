@@ -81,7 +81,7 @@ export function StudioToolRail({
     onToolClick,
     onUpload,
     hasFiles,
-    onNewSpace,
+    onNewSpace: _onNewSpace,
     onHistoryToggle,
     isHistoryOpen,
     plan,

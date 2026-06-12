@@ -2,6 +2,7 @@ import React, { useEffect, useMemo } from 'react';
 import { LinearIcon } from '../../icons/linear-icon';
 import { useStudioConvertController } from './use-studio-convert-controller';
 import { trackMonetizationEvent } from '../../../../app/react/monetization-telemetry';
+import { openCheckout } from '../../../../app/react/billing';
 
 interface StudioConvertWorkspaceProps {
   onClose?: () => void;
@@ -83,16 +84,14 @@ function OcrPaywallOverlay({ content }: { content: string }) {
           <button
             type="button"
             onClick={() => {
-              trackMonetizationEvent('paywall_cta_clicked', {
+              openCheckout(checkoutUrl, {
                 source: 'ocr_result_preview',
-                toolId: 'ocr-pdf',
                 trigger: 'upgrade_pro',
+                plan: 'pro',
+                variant: 'monthly',
                 userState: 'local',
                 hadPriorSuccessfulRun: true,
               });
-              if (checkoutUrl) {
-                window.open(checkoutUrl, '_blank', 'noopener,noreferrer');
-              }
             }}
             style={{ background: '#142028', color: '#f9f5ee', border: 'none', borderRadius: 999, padding: '10px 24px', fontWeight: 800, fontSize: 14, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6 }}
           >

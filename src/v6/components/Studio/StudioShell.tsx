@@ -9,7 +9,6 @@ import { useStudioStore, PageItem, StudioDocument as IStudioDocument, StudioStat
 import { StudioDocument } from './StudioDocument';
 import { DetachedPageObject } from './DetachedPageObject';
 import { StudioToolRail } from './StudioToolRail';
-import { LinearIcon } from '../icons/linear-icon';
 import { ThumbnailService } from '../../studio/thumbnail/thumbnail-service';
 import { StudioTimeline } from './branching/StudioTimeline';
 import type { StudioReturnContext, StudioToolRouteState } from '../../studio/navigation/studio-tool-context';
@@ -20,40 +19,8 @@ import { canAddDocumentToStudio, canCreateWorkspace, canUseDocumentWithPageCount
 import { showStudioPaywall } from '../../../app/react/studio-paywall';
 import { PaywallModal } from '../../../app/react/PaywallModal';
 import { useHistoryStore } from './store/history-store';
+import { getDailyUsage, incrementDailyUsage, FREE_TOOL_DAILY_LIMITS } from '../../../app/platform/daily-usage';
 import { getOrCreateFlowId } from '../../../app/platform/browser-context';
-
-// Daily usage helpers for free-tier tools
-const DAILY_FREE_LIMIT: Record<string, number> = {
-    'compress-pdf': 3,
-    'pdf-to-jpg': 3,
-    'extract-images': 3,
-    'ocr-pdf': 3,
-    'text': 3,
-    'annotate': 3,
-    'sign': 3,
-    'whiteout': 3,
-    'watermark': 3,
-    'forms': 3,
-    'protect': 3,
-    'auto-toc': 3,
-};
-function getDailyUsage(toolId: string): number {
-    try {
-        const key = `localpdf_usage_${toolId}`;
-        const raw = localStorage.getItem(key);
-        if (!raw) return 0;
-        const { date, count } = JSON.parse(raw);
-        const today = new Date().toISOString().slice(0, 10);
-        return date === today ? count : 0;
-    } catch { return 0; }
-}
-function incrementDailyUsage(toolId: string): void {
-    try {
-        const key = `localpdf_usage_${toolId}`;
-        const today = new Date().toISOString().slice(0, 10);
-        localStorage.setItem(key, JSON.stringify({ date: today, count: getDailyUsage(toolId) + 1 }));
-    } catch { /* best-effort */ }
-}
 
 const StudioEditWorkspace = lazy(async () => {
     const m = await import('./StudioEditWorkspace');
@@ -288,7 +255,7 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
     const setSelection = useStudioStore((s: StudioState) => s.setSelection);
     const setInteractionMode = useStudioStore((s: StudioState) => s.setInteractionMode);
     const startEditSession = useStudioStore((s: StudioState) => s.startEditSession);
-    const setActiveEditPageId = useStudioStore((s: StudioState) => s.setActiveEditPageId);
+    const _setActiveEditPageId = useStudioStore((s: StudioState) => s.setActiveEditPageId);
     const editSession = useStudioStore((s: StudioState) => s.editSession);
     const clearEditSession = useStudioStore((s: StudioState) => s.clearEditSession);
     const updateDocument = useStudioStore((s: StudioState) => s.updateDocument);
@@ -384,7 +351,7 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
         return selectedPage ?? activeDocWithPage ?? (fallbackDoc && fallbackPage ? { doc: fallbackDoc, page: fallbackPage } : null);
     }, [activeDocument, documents, selection]);
 
-    const zoomToDocument = useCallback((doc: IStudioDocument) => {
+    const _zoomToDocument = useCallback((doc: IStudioDocument) => {
         const MIN_READABLE_SCALE = 1.4;
         if (viewScale >= MIN_READABLE_SCALE) return;
 
@@ -438,7 +405,7 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
         const editToolIds: string[] = ['text', 'annotate', 'sign', 'whiteout', 'watermark', 'forms', 'protect'];
 
         // Daily limit for free-tier tools
-        const dailyLimit = DAILY_FREE_LIMIT[tool];
+        const dailyLimit = FREE_TOOL_DAILY_LIMITS[tool];
         if (dailyLimit !== undefined && billingContext.plan === 'basic') {
             const usage = getDailyUsage(tool);
             if (usage >= dailyLimit) {
@@ -459,7 +426,7 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
         }
 
         // Track successful tool start for daily-limited tools
-        if (DAILY_FREE_LIMIT[tool] !== undefined && billingContext.plan === 'basic') {
+        if (FREE_TOOL_DAILY_LIMITS[tool] !== undefined && billingContext.plan === 'basic') {
             incrementDailyUsage(tool);
         }
     }, [startEditFromCanvas, startConvertFromCanvas, runtime.billing, runtime.telemetry]);

@@ -40,7 +40,6 @@ There are four agent roles. Each session should declare its role at start.
 
 ### CONTENT
 - Works on `website/src/content/blog/`, `website/src/pages/`
-- Uses `skills/localpdf-seo/` as reference
 - Does not touch `src/` application code
 
 ### ANALYST

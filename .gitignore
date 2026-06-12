@@ -29,9 +29,8 @@ QA_AUDIT_REPORT.md
 MEMORY.md
 docs/
 
-# Skills: keep agent skills, ignore old SEO references dist
-skills/localpdf-seo/references/
-skills/dist/
+# Agent skills (AI operational files)
+skills/
 
 # IndexNow operational files
 .well-known/
@@ -44,3 +43,11 @@ website/submit-batch.js
 # Temp PDF generators
 generate-large.js
 generate-large.mjs
+
+# Developer scratch / mockups / logs
+scratch/
+mockup-*.html
+mockup.html
+pbn/
+e2e-ocr.log
+backlink-directories-*.csv

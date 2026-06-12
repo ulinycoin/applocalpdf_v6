@@ -4,7 +4,7 @@ import { trackMonetizationEvent } from './monetization-telemetry';
 export function showStudioPaywall(
   telemetry: TelemetrySink,
   reason: string,
-  billingUrl?: string,
+  _billingUrl?: string,
 ): string {
   const runId = crypto.randomUUID();
   telemetry.track({

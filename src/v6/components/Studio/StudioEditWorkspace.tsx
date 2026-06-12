@@ -143,27 +143,6 @@ export function StudioEditWorkspace({ onClose }: StudioEditWorkspaceProps = {}) 
         ctrl.pushHistory(patched);
     };
 
-    if (!ctrl.preview) {
-        return null;
-    }
-
-    // Calculation for canvas wrapper sizing
-    const scaledWidth = canvasSize.width * zoom.zoomLevel;
-    const scaledHeight = canvasSize.height * zoom.zoomLevel;
-    const canvasPadding = 40;
-    const stageWidth = Math.max(canvasSize.width, scaledWidth) + canvasPadding * 2;
-    const stageHeight = Math.max(canvasSize.height, scaledHeight) + canvasPadding * 2;
-    const selectedTextElement = ctrl.selectedElementId
-        ? ctrl.elements.find(e => e.id === ctrl.selectedElementId && e.type === 'text') as import('./editor-types').TextElement | undefined
-        : undefined;
-
-    const selectedRectElement = ctrl.selectedElementId
-        ? ctrl.elements.find(e => e.id === ctrl.selectedElementId && e.type === 'rect') as import('./editor-types').RectElement | undefined
-        : undefined;
-
-    const selectedStrokeElement = ctrl.selectedElementId
-        ? ctrl.elements.find(e => e.id === ctrl.selectedElementId && e.type === 'stroke') as import('./editor-types').StrokeElement | undefined
-        : undefined;
     const selectedImageElement = ctrl.selectedElementId
         ? ctrl.elements.find(e => e.id === ctrl.selectedElementId && e.type === 'image') as import('./editor-types').ImageElement | undefined
         : undefined;
@@ -239,6 +218,28 @@ export function StudioEditWorkspace({ onClose }: StudioEditWorkspaceProps = {}) 
             ctrl.setSignTypedFontSize(nextSize);
         }
     }, [ctrl, selectedTypedSignature]);
+
+    if (!ctrl.preview) {
+        return null;
+    }
+
+    // Calculation for canvas wrapper sizing
+    const scaledWidth = canvasSize.width * zoom.zoomLevel;
+    const scaledHeight = canvasSize.height * zoom.zoomLevel;
+    const canvasPadding = 40;
+    const stageWidth = Math.max(canvasSize.width, scaledWidth) + canvasPadding * 2;
+    const stageHeight = Math.max(canvasSize.height, scaledHeight) + canvasPadding * 2;
+    const selectedTextElement = ctrl.selectedElementId
+        ? ctrl.elements.find(e => e.id === ctrl.selectedElementId && e.type === 'text') as import('./editor-types').TextElement | undefined
+        : undefined;
+
+    const selectedRectElement = ctrl.selectedElementId
+        ? ctrl.elements.find(e => e.id === ctrl.selectedElementId && e.type === 'rect') as import('./editor-types').RectElement | undefined
+        : undefined;
+
+    const selectedStrokeElement = ctrl.selectedElementId
+        ? ctrl.elements.find(e => e.id === ctrl.selectedElementId && e.type === 'stroke') as import('./editor-types').StrokeElement | undefined
+        : undefined;
 
     const topSettingsPanel = ctrl.tool === 'text'
         ? (
