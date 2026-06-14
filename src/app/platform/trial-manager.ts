@@ -1,5 +1,6 @@
 const TRIAL_STORAGE_KEY = 'localpdf_trial_start';
 const TRIAL_STATE_KEY = 'localpdf_trial_state';
+const TRIAL_USED_KEY = 'localpdf_trial_used';
 const TRIAL_DURATION_MS = 3 * 24 * 60 * 60 * 1000; // 3 дня
 
 const DB_NAME = 'localpdf_db';
@@ -13,6 +14,7 @@ export interface TrialState {
   daysRemaining: number;
   hoursRemaining: number;
   isExpiredButNotTracked: boolean;
+  trialAvailable: boolean;
 }
 
 // Инициализация IndexedDB
@@ -76,6 +78,7 @@ export async function syncTrialStateWithIndexedDB(): Promise<void> {
       localStorage.removeItem(TRIAL_STORAGE_KEY);
       localStorage.removeItem(TRIAL_STATE_KEY);
     }
+    localStorage.setItem(TRIAL_USED_KEY, 'true');
     return;
   }
 
@@ -89,11 +92,24 @@ export async function syncTrialStateWithIndexedDB(): Promise<void> {
 // Получить текущее состояние триала
 export function getTrialState(): TrialState {
   if (typeof localStorage === 'undefined') {
-    return { isActive: false, startedAt: null, endsAt: null, daysRemaining: 0, hoursRemaining: 0, isExpiredButNotTracked: false };
+    return { isActive: false, startedAt: null, endsAt: null, daysRemaining: 0, hoursRemaining: 0, isExpiredButNotTracked: false, trialAvailable: true };
   }
 
+  const isUsed = localStorage.getItem(TRIAL_USED_KEY) === 'true';
   const stateVal = localStorage.getItem(TRIAL_STATE_KEY);
   const raw = localStorage.getItem(TRIAL_STORAGE_KEY);
+
+  if (isUsed) {
+    return {
+      isActive: false,
+      startedAt: raw ? Number(raw) : null,
+      endsAt: raw ? Number(raw) + TRIAL_DURATION_MS : null,
+      daysRemaining: 0,
+      hoursRemaining: 0,
+      isExpiredButNotTracked: false,
+      trialAvailable: false,
+    };
+  }
 
   if (stateVal === 'expired') {
     return {
@@ -103,17 +119,18 @@ export function getTrialState(): TrialState {
       daysRemaining: 0,
       hoursRemaining: 0,
       isExpiredButNotTracked: true,
+      trialAvailable: false,
     };
   }
 
   if (!raw) {
-    return { isActive: false, startedAt: null, endsAt: null, daysRemaining: 0, hoursRemaining: 0, isExpiredButNotTracked: false };
+    return { isActive: false, startedAt: null, endsAt: null, daysRemaining: 0, hoursRemaining: 0, isExpiredButNotTracked: false, trialAvailable: true };
   }
 
   const startedAt = Number(raw);
   if (Number.isNaN(startedAt)) {
     localStorage.removeItem(TRIAL_STORAGE_KEY);
-    return { isActive: false, startedAt: null, endsAt: null, daysRemaining: 0, hoursRemaining: 0, isExpiredButNotTracked: false };
+    return { isActive: false, startedAt: null, endsAt: null, daysRemaining: 0, hoursRemaining: 0, isExpiredButNotTracked: false, trialAvailable: true };
   }
 
   const endsAt = startedAt + TRIAL_DURATION_MS;
@@ -128,6 +145,7 @@ export function getTrialState(): TrialState {
       daysRemaining: 0,
       hoursRemaining: 0,
       isExpiredButNotTracked: true,
+      trialAvailable: false,
     };
   }
 
@@ -139,10 +157,17 @@ export function getTrialState(): TrialState {
     daysRemaining: Math.floor(remaining / (24 * 60 * 60 * 1000)),
     hoursRemaining: Math.floor((remaining % (24 * 60 * 60 * 1000)) / (60 * 60 * 1000)),
     isExpiredButNotTracked: false,
+    trialAvailable: false,
   };
 }
 
 export function startTrial(): TrialState {
+  if (typeof localStorage !== 'undefined') {
+    const isUsed = localStorage.getItem(TRIAL_USED_KEY) === 'true';
+    if (isUsed) {
+      return getTrialState();
+    }
+  }
   const now = Date.now();
   localStorage.setItem(TRIAL_STORAGE_KEY, String(now));
   localStorage.removeItem(TRIAL_STATE_KEY);
@@ -153,6 +178,7 @@ export function startTrial(): TrialState {
 export function markTrialTracked(): void {
   localStorage.removeItem(TRIAL_STORAGE_KEY);
   localStorage.removeItem(TRIAL_STATE_KEY);
+  localStorage.setItem(TRIAL_USED_KEY, 'true');
   dbSet(KEY_START_TIME, -1).catch(() => {}); // Помечаем как закрытый триал
 }
 

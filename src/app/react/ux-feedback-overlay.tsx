@@ -154,7 +154,9 @@ export function UxFeedbackOverlay() {
                 <p className="ux-upsell-sub">
                   {trialState.isActive
                     ? 'You have full Pro access during your trial. Upgrade now to keep it after the trial ends.'
-                    : 'Start a 3-day free trial to unlock unlimited pages and all Pro tools.'}
+                    : trialState.trialAvailable
+                    ? 'Start a 3-day free trial to unlock unlimited pages and all Pro tools.'
+                    : 'Upgrade to Pro to unlock unlimited pages and all Pro tools.'}
                 </p>
               </div>
             </div>
@@ -165,7 +167,7 @@ export function UxFeedbackOverlay() {
               <button
                 className="ux-upsell-btn-primary"
                 onClick={() => {
-                  if (trialState.isActive) {
+                  if (trialState.isActive || !trialState.trialAvailable) {
                     const baseCheckoutUrl = import.meta.env.VITE_LS_CHECKOUT_URL_PRO_MONTHLY;
                     const checkoutUrl = buildCheckoutUrlWithDistinctId(baseCheckoutUrl);
                     runtime.telemetry.track({
@@ -200,7 +202,7 @@ export function UxFeedbackOverlay() {
                   setUpsell(null);
                 }}
               >
-                {trialState.isActive ? 'Upgrade to Pro' : 'Start free trial'}
+                {(trialState.isActive || !trialState.trialAvailable) ? 'Upgrade to Pro' : 'Start free trial'}
               </button>
             </div>
           </div>

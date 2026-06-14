@@ -76,6 +76,13 @@ describe('BillingService', () => {
       length: 0,
       key: mock.fn(),
     };
+    // Мокаем global.fetch для предотвращения ошибок при фоновом обновлении JWT
+    global.fetch = mock.fn(async (input, init) => {
+      return {
+        ok: true,
+        json: async () => ({ success: true, token: 'mocked.new.token' }),
+      } as Response;
+    });
   });
 
   test('initializes with BASIC_CONTEXT when no token is present', async () => {
@@ -159,6 +166,40 @@ describe('BillingService', () => {
     assert.strictEqual(service.getContext().plan, 'pro');
     assert.strictEqual(listener.mock.calls.length, 1);
     assert.deepStrictEqual(listener.mock.calls[0].arguments, [service.getContext()]);
+  });
+
+  test('triggers background token refresh when token is close to expiry', async () => {
+    // Создаем токен, у которого осталось менее 5 дней (например, 1 час)
+    const token = await createValidToken({ exp: Math.floor(Date.now() / 1000) + 3600 });
+    localStorage.setItem('test_storage', token);
+
+    const service = new BillingService('test_storage', publicKeyPem);
+    
+    // Подменяем verifyToken, чтобы он принимал наш замоканный новый токен как валидный
+    mock.method(service as any, 'verifyToken', async (t: string) => {
+      if (t === token) {
+        return { plan: 'pro' as const, entitlements: ['pdf.edit'] };
+      }
+      if (t === 'mocked.new.token') {
+        return { plan: 'pro' as const, entitlements: ['pdf.edit', 'pdf.ocr'] };
+      }
+      return null;
+    });
+
+    await service.initialize();
+
+    // Даем фоновому промису выполниться
+    await new Promise(resolve => setTimeout(resolve, 10));
+
+    // Проверяем, что fetch был вызван для обновления
+    // @ts-expect-error Mock type
+    assert.strictEqual(fetch.mock.calls.length, 1);
+    // @ts-expect-error Mock type
+    assert.strictEqual(fetch.mock.calls[0].arguments[0], '/api/billing/refresh');
+
+    // Проверяем, что токен обновился в localStorage
+    assert.strictEqual(localStorage.getItem('test_storage'), 'mocked.new.token');
+    assert.deepStrictEqual(service.getContext().entitlements, ['pdf.edit', 'pdf.ocr']);
   });
 
   test('saveToken refuses invalid token', async () => {

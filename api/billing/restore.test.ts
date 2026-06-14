@@ -1,6 +1,6 @@
 import { after, beforeEach, describe, test } from 'node:test';
 import * as assert from 'node:assert';
-import { getMappedLicense } from './restore';
+import { getMappedLicense, encryptString, decryptString } from './restore';
 
 const originalEnv = {
   monthlyProducts: process.env.LEMON_SQUEEZY_PRO_MONTHLY_PRODUCT_IDS,
@@ -10,6 +10,17 @@ const originalEnv = {
 };
 
 describe('billing restore mapping', () => {
+
+  test('encrypts and decrypts string correctly using secret key', () => {
+    const text = 'my-secret-license-key-123';
+    const secret = 'super-secret-key-material';
+    const encrypted = encryptString(text, secret);
+    assert.notStrictEqual(encrypted, text);
+    assert.ok(encrypted.includes(':'));
+
+    const decrypted = decryptString(encrypted, secret);
+    assert.strictEqual(decrypted, text);
+  });
 
   beforeEach(() => {
     process.env.LEMON_SQUEEZY_PRO_MONTHLY_PRODUCT_IDS = '908866';

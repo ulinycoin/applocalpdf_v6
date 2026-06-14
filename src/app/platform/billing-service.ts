@@ -124,6 +124,20 @@ export class BillingService {
     }
 
     this.notify();
+
+    // Запускаем фоновое обновление токена, если до его истечения осталось менее 5 дней
+    try {
+      const parts = rawToken.split('.');
+      const payload = JSON.parse(decodeBase64UrlUTF8(parts[1]));
+      const now = Math.floor(Date.now() / 1000);
+      if (typeof payload.exp === 'number' && (payload.exp - now) < 5 * 24 * 60 * 60) {
+        this.refreshBillingToken(rawToken).then(async (newToken) => {
+          if (newToken) {
+            await this.saveToken(newToken);
+          }
+        }).catch(() => {});
+      }
+    } catch {}
   }
 
   public async saveToken(rawToken: string): Promise<boolean> {
@@ -163,6 +177,26 @@ export class BillingService {
       entitlements: getDefaultEntitlementsForPlan('trial'),
     };
     this.notify();
+  }
+
+  private async refreshBillingToken(token: string): Promise<string | null> {
+    try {
+      const response = await fetch('/api/billing/refresh', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ token }),
+      });
+      if (!response.ok) return null;
+      const data = await response.json();
+      if (data.success && typeof data.token === 'string') {
+        return data.token;
+      }
+    } catch (err) {
+      console.error('Error in refreshBillingToken:', err);
+    }
+    return null;
   }
 
   private async verifyToken(token: string): Promise<{ plan: 'basic' | 'pro', entitlements: string[] } | null> {

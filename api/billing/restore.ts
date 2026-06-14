@@ -1,4 +1,4 @@
-import { createSign, type KeyLike } from 'node:crypto';
+import { createSign, createCipheriv, createDecipheriv, createHash, randomBytes, type KeyLike } from 'node:crypto';
 
 type BillingPlan = 'basic' | 'pro';
 type BillingTier = 'free' | 'pro_monthly' | 'pro_yearly';
@@ -39,6 +39,26 @@ function getDefaultEntitlementsForPlan(plan: BillingPlan): BillingEntitlement[] 
 
 function isNonEmptyString(value: unknown): value is string {
   return typeof value === 'string' && value.trim().length > 0;
+}
+
+export function encryptString(text: string, secret: string): string {
+  const key = createHash('sha256').update(secret).digest();
+  const iv = randomBytes(16);
+  const cipher = createCipheriv('aes-256-cbc', key, iv);
+  let encrypted = cipher.update(text, 'utf8', 'hex');
+  encrypted += cipher.final('hex');
+  return `${iv.toString('hex')}:${encrypted}`;
+}
+
+export function decryptString(encryptedText: string, secret: string): string {
+  const key = createHash('sha256').update(secret).digest();
+  const [ivHex, encrypted] = encryptedText.split(':');
+  if (!ivHex || !encrypted) return '';
+  const iv = Buffer.from(ivHex, 'hex');
+  const decipher = createDecipheriv('aes-256-cbc', key, iv);
+  let decrypted = decipher.update(encrypted, 'hex', 'utf8');
+  decrypted += decipher.final('utf8');
+  return decrypted;
 }
 
 const RATE_LIMIT_WINDOW_MS = 10 * 60 * 1000;
@@ -213,6 +233,7 @@ export default async function handler(req: any, res: any) {
       plan: mapped.plan,
       tier: mapped.tier,
       entitlements: getDefaultEntitlementsForPlan(mapped.plan),
+      lk: encryptString(licenseKey, privateKeyRaw),
       iat: now,
       nbf: now,
       exp,
