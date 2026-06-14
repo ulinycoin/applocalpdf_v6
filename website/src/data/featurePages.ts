@@ -77,16 +77,16 @@ export const featurePages: FeaturePageData[] = [
     ctaNote: 'Open the editor when the job is to change the PDF itself, not to re-route the document into another stack.',
     quickAnswers: [
       {
-        question: 'When is this page the right fit?',
-        answer: 'When the document already exists as a PDF and the job is to change, cover, or annotate parts of that file directly.',
+        question: 'Can I edit a PDF without uploading it to a server?',
+        answer: 'Yes. LocalPDF runs entirely in your browser. You open a PDF from your device, make changes, and download the result — no file ever leaves your computer.',
       },
       {
-        question: 'Why does local editing matter more here?',
-        answer: 'Editing often touches names, pricing, addresses, signatures, and legal text. That is exactly where users question upload-first tools.',
+        question: 'What kinds of edits can I make?',
+        answer: 'You can replace or cover existing text, add labels and notes, draw annotations, and adjust overlays directly on the PDF page.',
       },
       {
-        question: 'What should the page avoid promising?',
-        answer: 'A clear editing workflow for changing, covering, or annotating a PDF directly.',
+        question: 'Is my document kept private during editing?',
+        answer: 'Yes. All processing happens locally in your browser via WebAssembly. Your file is never uploaded, stored, or transmitted to any server.',
       },
     ],
     intentSection: {
@@ -154,16 +154,16 @@ export const featurePages: FeaturePageData[] = [
     ctaNote: 'Open Merge PDF when the task is to pull pages together, reorder them visually, and export one clean document in seconds.',
     quickAnswers: [
       {
-        question: 'What is the actual job here?',
-        answer: 'Move pages from one PDF to another, drag them into the right order, and export one clean output without wrestling with an upload-first web flow.',
+        question: 'How do I merge multiple PDF files?',
+        answer: 'Open Merge PDF, load your files from your device, then drag pages from different documents into one pile. Export the result when the order looks right.',
       },
       {
-        question: 'Why does the drag-and-drop angle matter?',
-        answer: 'Because merge is easiest when the user can grab a page, move it visually, and rebuild the packet in one motion instead of managing abstract page ranges.',
+        question: 'Can I reorder pages while merging?',
+        answer: 'Yes. Once pages from multiple PDFs are loaded, you can drag them into any order before exporting the final merged document.',
       },
       {
-        question: 'What should make this page convert?',
-        answer: 'A clear promise that merging feels fast, visual, and easy: drag pages into place, export the packet, done.',
+        question: 'Do the original files get uploaded anywhere?',
+        answer: 'No. Everything stays in your browser. Files are loaded from your device and merged locally — nothing is sent to a server.',
       },
     ],
     intentSection: {
@@ -231,16 +231,16 @@ export const featurePages: FeaturePageData[] = [
     ctaNote: 'Open OCR PDF when a scanned document needs to become usable, searchable, and easier to work with.',
     quickAnswers: [
       {
-        question: 'Why is OCR a high-trust workflow?',
-        answer: 'Scanned contracts, records, forms, and archive files are often the last documents users want to send away before they even know the result quality.',
+        question: 'Can I run OCR on a scanned PDF without uploading it?',
+        answer: 'Yes. OCR runs entirely in your browser using WebAssembly. Your scanned document is never uploaded to any server.',
       },
       {
-        question: 'What should the user understand fast?',
-        answer: 'That OCR here is a practical step to make a scanned PDF searchable and usable.',
+        question: 'What languages does OCR support?',
+        answer: 'LocalPDF supports OCR for English, Japanese, Chinese, Korean, German, French, Spanish, Italian, Portuguese, Arabic, Hindi, and Ukrainian.',
       },
       {
-        question: 'What should this page emphasize?',
-        answer: 'Searchable output, local workflow, and the fact that scanned documents are often sensitive by default.',
+        question: 'How long does OCR take per page?',
+        answer: 'OCR typically processes one page in 1–2 seconds, depending on the document complexity and your device speed.',
       },
     ],
     intentSection: {
@@ -308,16 +308,16 @@ export const featurePages: FeaturePageData[] = [
     ctaNote: 'Open Compress PDF when the document is ready but still too heavy for the next step in the workflow.',
     quickAnswers: [
       {
-        question: 'What is the outcome users care about?',
-        answer: 'A smaller file that is easier to send, upload, or archive without turning compression into a separate waiting loop.',
+        question: 'How much can I reduce a PDF file size?',
+        answer: 'LocalPDF can reduce PDF file sizes by up to 75%, depending on the content. Image-heavy documents benefit the most from compression.',
       },
       {
-        question: 'Why keep this page simple?',
-        answer: 'Compression converts poorly when the messaging is vague. Users want to know the next handoff becomes easier.',
+        question: 'Does compression affect PDF quality?',
+        answer: 'You control the DPI and JPEG quality settings. Starting at 110–150 DPI and ~80% quality gives a good balance between file size and readability.',
       },
       {
-        question: 'What should this route avoid?',
-        answer: 'Overclaiming around image quality, AI, or impossible size reduction promises.',
+        question: 'Can I compress a PDF before emailing it?',
+        answer: 'Yes. Compression is designed for exactly this — make the file smaller before sending it via email, uploading to a portal, or archiving it.',
       },
     ],
     intentSection: {
@@ -385,16 +385,16 @@ export const featurePages: FeaturePageData[] = [
     ctaNote: 'Open Split PDF when one large document needs to become several smaller outputs and the easiest path is to pull out the exact pages you need.',
     quickAnswers: [
       {
-        question: 'What is the user trying to control?',
-        answer: 'Which pages leave the original file, which pages stay private, and how quickly the user can pull out the right pages for the next handoff.',
+        question: 'How do I split a PDF into separate files?',
+        answer: 'Open Split PDF, load your document, then select the pages you want to extract. Export each selection as a new separate PDF file.',
       },
       {
-        question: 'Why does object movement help here?',
-        answer: 'Because splitting is easier when the user can work visually, pull pages out directly, and build smaller outputs without thinking in abstract page math first.',
+        question: 'Can I extract just one page from a PDF?',
+        answer: 'Yes. Click on any page tile to select it, then export. You can pull out a single page or any combination of pages from a larger document.',
       },
       {
-        question: 'What should the page make clear?',
-        answer: 'That the job is selective extraction with direct control: grab pages, separate them cleanly, and export only what should be shared.',
+        question: 'Does splitting happen on a server?',
+        answer: 'No. All splitting happens locally in your browser. Your document is never uploaded anywhere — you control which pages leave the file.',
       },
     ],
     intentSection: {
@@ -455,16 +455,16 @@ export const featurePages: FeaturePageData[] = [
     ctaNote: 'Open Sign PDF when the job is quick approval, lightweight signature placement, and a shorter path from document to completion.',
     quickAnswers: [
       {
-        question: 'What is the page really selling?',
-        answer: 'A simpler path from document to signed output when the user needs a lightweight approval step.',
+        question: 'Can I sign a PDF without printing it?',
+        answer: 'Yes. Open Sign PDF, place your signature on the document, and export the signed version — no printing or scanning needed.',
       },
       {
-        question: 'Why stay careful with the copy?',
-        answer: 'Signature workflows can easily drift into legal overclaiming. Keep the page grounded in product behavior, not legal theater.',
+        question: 'Is my signature data kept private?',
+        answer: 'Yes. The signing process happens entirely in your browser. Your signature and document are never uploaded to any server.',
       },
       {
-        question: 'What should make users trust it?',
-        answer: 'A direct local flow, clear limits, and less bouncing between unrelated PDF utilities.',
+        question: 'What types of documents can I sign?',
+        answer: 'You can sign any PDF document — contracts, forms, invoices, approval letters, and other routine documents that need a signature.',
       },
     ],
     intentSection: {
@@ -526,16 +526,16 @@ export const featurePages: FeaturePageData[] = [
     ctaNote: 'Open Convert PDF when the workflow is about moving between document formats without leaving the main LocalPDF product path.',
     quickAnswers: [
       {
-        question: 'Why unify conversion into one page?',
-        answer: 'Because users are choosing the right workflow for the job, not browsing a directory of lookalike conversion pages.',
+        question: 'Can I convert PDF to Word without uploading?',
+        answer: 'Yes. LocalPDF converts PDF to Word format entirely in your browser. Your document never leaves your device during the conversion.',
       },
       {
-        question: 'What does this help explain?',
-        answer: 'That LocalPDF handles conversion as part of a wider document workflow rather than as an isolated task.',
+        question: 'What file formats can I convert between?',
+        answer: 'LocalPDF supports PDF to Word, Word to PDF, PDF to images (PNG/JPG), and images to PDF — all in one workspace.',
       },
       {
-        question: 'What should the page make easy?',
-        answer: 'Choosing the right conversion path and moving straight into the app without second-guessing where to start.',
+        question: 'Is conversion quality preserved?',
+        answer: 'LocalPDF preserves the original layout and content as closely as possible. Text-based PDFs convert cleanly; image-based PDFs are handled through OCR.',
       },
     ],
     intentSection: {
