@@ -1,7 +1,7 @@
 import { GlobalRegistry } from '../registry/global-registry';
 import type { IFileSystem, IWorkerCommand, IWorkerEvent } from '../types/contracts';
 import { getPdfPageCountFromBytes } from '../pdf/page-count';
-import { extractPdfTextLayerSpans } from '../../services/pdf/pdf-text-layer-extractor';
+import { extractTextLayerForPreview } from '../../services/pdf/pdf-text-layer-extractor';
 import { scanPdfImageCandidatesFromBlob } from '../../services/pdf/pdf-image-extractor';
 import { applyStudioTextEditsToPdfBytes } from '../../services/pdf/studio-text-edit-applier';
 import { normalizeAndValidateStudioEditRequest } from '../../services/pdf/studio-text-edit-validation';
@@ -74,11 +74,21 @@ export async function executeWorkerCommand(
         const blob = await entry.getBlob();
         pdfBytes = new Uint8Array(await blob.arrayBuffer());
       }
-      const spans = await extractPdfTextLayerSpans(pdfBytes, pageNumber);
+      const layer = await extractTextLayerForPreview(pdfBytes, pageNumber);
       return {
         id: command.id,
         type: 'EVENT',
-        payload: { type: 'TEXT_LAYER_RESULT', payload: { fileId, pageNumber, spans } },
+        payload: {
+          type: 'TEXT_LAYER_RESULT',
+          payload: {
+            fileId,
+            pageNumber,
+            spans: layer.spans,
+            width: layer.width,
+            height: layer.height,
+            pageCount: layer.pageCount,
+          },
+        },
       };
     }
 

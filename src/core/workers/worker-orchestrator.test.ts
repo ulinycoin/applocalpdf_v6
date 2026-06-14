@@ -121,7 +121,7 @@ test('WebWorkerOrchestrator resolves on TEXT_LAYER_RESULT final event', async ()
             type: 'EVENT',
             payload: {
               type: 'TEXT_LAYER_RESULT',
-              payload: { fileId: 'f1', pageNumber: 1, spans: [] },
+              payload: { fileId: 'f1', pageNumber: 1, spans: [], width: 595, height: 842, pageCount: 1 },
             },
           },
         });

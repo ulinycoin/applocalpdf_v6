@@ -97,6 +97,7 @@ export interface WorkerPdfTextLayerSpan {
   fontFamilyHint?: string;
   pageHeightPt?: number;
   ascentRatio?: number;
+  descentRatio?: number;
 }
 
 export interface WorkerPdfImageCandidate {
@@ -252,7 +253,17 @@ export type WorkerEventPayload =
   | { type: 'DIAGNOSTIC'; payload: { channel: 'PAGE_COUNT'; stage: string; fileId?: string; durationMs?: number; note?: string } }
   | { type: 'RESULT'; payload: { outputIds: string[] } }
   | { type: 'PAGE_COUNT_RESULT'; payload: { fileId: string; pageCount: number } }
-  | { type: 'TEXT_LAYER_RESULT'; payload: { fileId: string; pageNumber: number; spans: WorkerPdfTextLayerSpan[] } }
+  | {
+      type: 'TEXT_LAYER_RESULT';
+      payload: {
+        fileId: string;
+        pageNumber: number;
+        spans: WorkerPdfTextLayerSpan[];
+        width: number;
+        height: number;
+        pageCount: number;
+      };
+    }
   | { type: 'IMAGE_CANDIDATES_RESULT'; payload: { fileId: string; pageNumber: number; candidates: WorkerPdfImageCandidate[] } }
   | {
     type: 'STUDIO_TEXT_EDITS_APPLIED';

@@ -1,4 +1,4 @@
-import type { PdfTextLayerSpan } from '../../../services/pdf/pdf-text-layer-extractor';
+import type { WorkerPdfTextLayerSpan } from '../../../core/public/contracts';
 
 export function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
@@ -13,13 +13,13 @@ export function isEditableTarget(target: EventTarget | null): boolean {
 }
 
 export interface MergedLineResult {
-  spans: PdfTextLayerSpan[];
+  spans: WorkerPdfTextLayerSpan[];
   text: string;
   rect: { x: number; y: number; w: number; h: number };
-  representative: PdfTextLayerSpan;
+  representative: WorkerPdfTextLayerSpan;
 }
 
-export function mergeLineSpans(anchor: PdfTextLayerSpan, spans: PdfTextLayerSpan[]): MergedLineResult {
+export function mergeLineSpans(anchor: WorkerPdfTextLayerSpan, spans: WorkerPdfTextLayerSpan[]): MergedLineResult {
   const anchorBaseline = anchor.yRatio + (anchor.ascentRatio ?? 0);
   const tolerance = Math.max(0.004, (anchor.heightRatio ?? 0.02) * 0.65);
   const lineSpans = spans
@@ -65,7 +65,7 @@ export function mergeLineSpans(anchor: PdfTextLayerSpan, spans: PdfTextLayerSpan
   };
 }
 
-export function centerIsInsideRect(span: PdfTextLayerSpan, rect: { x: number; y: number; w: number; h: number }): boolean {
+export function centerIsInsideRect(span: WorkerPdfTextLayerSpan, rect: { x: number; y: number; w: number; h: number }): boolean {
   const centerX = (span.xRatio + span.widthRatio / 2) * 100;
   const centerY = (span.yRatio + span.heightRatio / 2) * 100;
   return centerX >= rect.x && centerX <= rect.x + rect.w && centerY >= rect.y && centerY <= rect.y + rect.h;

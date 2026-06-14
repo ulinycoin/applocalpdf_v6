@@ -11,8 +11,7 @@ import {
 import { usePlatform } from '../../../app/react/platform-context';
 import { defaultFilePreviewService } from '../../../v6/preview/preview-service';
 import { LinearIcon } from '../../../v6/components/icons/linear-icon';
-import type { PdfTextLayerSpan } from '../../../services/pdf/pdf-text-layer-extractor';
-import { extractTextLayerForPreview } from '../../../services/pdf/pdf-text-layer-extractor';
+import type { WorkerPdfTextLayerSpan, IWorkerCommand } from '../../../core/public/contracts';
 import {
   clamp,
   normalizeText,
@@ -152,7 +151,7 @@ export default function PdfEditorConfig({
   const [zoom, setZoom] = useState(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [spans, setSpans] = useState<PdfTextLayerSpan[]>([]);
+  const [spans, setSpans] = useState<WorkerPdfTextLayerSpan[]>([]);
   const [elements, setElements] = useState<EditorElement[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -287,9 +286,17 @@ export default function PdfEditorConfig({
       setLoading(true);
       setError(null);
       try {
-        const [preview, entry] = await Promise.all([
+        const command: IWorkerCommand = {
+          id: crypto.randomUUID(),
+          type: 'COMMAND',
+          payload: {
+            type: 'GET_PDF_TEXT_LAYER',
+            payload: { fileId, pageNumber },
+          },
+        };
+        const [preview, finalEvent] = await Promise.all([
           defaultFilePreviewService.getPdfPagePreview(runtime, fileId, pageNumber, { scale: PREVIEW_SCALE }, controller.signal),
-          runtime.vfs.read(fileId),
+          runtime.workerOrchestrator.dispatch(command, undefined, controller.signal),
         ]);
         if (controller.signal.aborted) {
           return;
@@ -298,14 +305,16 @@ export default function PdfEditorConfig({
         if (preview.pageCount) {
           setPageCount(preview.pageCount);
         }
-        const bytes = new Uint8Array(await (await entry.getBlob()).arrayBuffer());
-        const layer = await extractTextLayerForPreview(bytes, pageNumber, PREVIEW_SCALE);
-        if (controller.signal.aborted) {
-          return;
+        if (finalEvent.payload.type === 'TEXT_LAYER_RESULT') {
+          const { spans: layerSpans, width, height, pageCount: layerPageCount } = finalEvent.payload.payload;
+          setSpans(layerSpans);
+          setStageSize({ width, height });
+          setPageCount(layerPageCount);
+        } else if (finalEvent.payload.type === 'ERROR') {
+          throw new Error(finalEvent.payload.payload.message);
+        } else {
+          throw new Error('Unexpected worker response');
         }
-        setSpans(layer.spans);
-        setStageSize({ width: layer.width, height: layer.height });
-        setPageCount(layer.pageCount);
       } catch {
         if (!controller.signal.aborted) {
           setError('Could not load PDF preview.');
@@ -366,7 +375,7 @@ export default function PdfEditorConfig({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [applyElements, commitInlineEdit, elements, redo, selectedId, undo]);
 
-  const createTextEditFromSpan = useCallback((span: PdfTextLayerSpan) => {
+  const createTextEditFromSpan = useCallback((span: WorkerPdfTextLayerSpan) => {
     const line = mergeLineSpans(span, spans);
     const existing = pageTextElements.find((element) => (
       element.originalRect && centerIsInsideRect(span, element.originalRect)

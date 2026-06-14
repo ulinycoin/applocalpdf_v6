@@ -170,6 +170,9 @@ test('executeWorkerCommand returns TEXT_LAYER_RESULT for GET_PDF_TEXT_LAYER', as
     assert.equal(event.payload.payload.fileId, 'pdf-text-layer');
     assert.equal(event.payload.payload.pageNumber, 1);
     assert.ok(event.payload.payload.spans.length > 0);
+    assert.ok(event.payload.payload.width > 0);
+    assert.ok(event.payload.payload.height > 0);
+    assert.equal(event.payload.payload.pageCount, 1);
     const mergedText = event.payload.payload.spans.map((span) => span.text).join(' ');
     assert.match(mergedText, /Hello/);
   }
