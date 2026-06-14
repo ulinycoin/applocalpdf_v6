@@ -1,4 +1,4 @@
-export type BillingPlan = 'basic' | 'pro';
+export type BillingPlan = 'basic' | 'pro' | 'trial';
 export type BillingTier = 'free' | 'pro_monthly' | 'pro_yearly';
 
 export const BASIC_ENTITLEMENTS = [
@@ -29,16 +29,18 @@ export function sanitizeEntitlements(raw: unknown, plan: BillingPlan): BillingEn
   const source = Array.isArray(raw) ? raw : [];
   const unique = Array.from(new Set(source.filter((value): value is string => typeof value === 'string')));
   const filtered = unique.filter((value): value is BillingEntitlement => ENTITLEMENT_SET.has(value));
-  const allowed = plan === 'pro' ? new Set<string>(PRO_ENTITLEMENTS) : new Set<string>(BASIC_ENTITLEMENTS);
+  const allowed = (plan === 'pro' || plan === 'trial') ? new Set<string>(PRO_ENTITLEMENTS) : new Set<string>(BASIC_ENTITLEMENTS);
   return filtered.filter((value) => allowed.has(value));
 }
 
 export function getDefaultEntitlementsForPlan(plan: BillingPlan): BillingEntitlement[] {
-  return [...(plan === 'pro' ? PRO_ENTITLEMENTS : BASIC_ENTITLEMENTS)];
+  return [...((plan === 'pro' || plan === 'trial') ? PRO_ENTITLEMENTS : BASIC_ENTITLEMENTS)];
 }
 
 export function normalizePlan(raw: unknown): BillingPlan {
-  return raw === 'pro' ? 'pro' : 'basic';
+  if (raw === 'pro') return 'pro';
+  if (raw === 'trial') return 'trial';
+  return 'basic';
 }
 
 export function normalizeTier(raw: unknown, plan: BillingPlan): BillingTier | null {
@@ -46,7 +48,7 @@ export function normalizeTier(raw: unknown, plan: BillingPlan): BillingTier | nu
     return plan === 'basic' ? 'free' : null;
   }
   if (raw === 'pro_monthly' || raw === 'pro_yearly') {
-    return plan === 'pro' ? raw : null;
+    return (plan === 'pro' || plan === 'trial') ? raw : null;
   }
   if (raw === undefined || raw === null || raw === '') {
     return getDefaultTierForPlan(plan);
@@ -55,7 +57,7 @@ export function normalizeTier(raw: unknown, plan: BillingPlan): BillingTier | nu
 }
 
 export function getDefaultTierForPlan(plan: BillingPlan): BillingTier {
-  return plan === 'pro' ? 'pro_monthly' : 'free';
+  return (plan === 'pro' || plan === 'trial') ? 'pro_monthly' : 'free';
 }
 
 export function isNonEmptyString(value: unknown): value is string {

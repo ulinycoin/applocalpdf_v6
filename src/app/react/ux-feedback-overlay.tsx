@@ -3,6 +3,8 @@ import { usePlatform } from './platform-context';
 import type { RunnerTelemetryEvent } from '../../core/public/contracts';
 import { openCheckout } from './billing';
 import { trackMonetizationEvent } from './monetization-telemetry';
+import { getTrialState } from '../platform/trial-manager';
+import { handleTrialStart } from './studio-paywall';
 
 interface UiToastItem {
   id: string;
@@ -52,12 +54,27 @@ function formatUpsellReason(toolId: string, rawReason: string): string {
   return TOOL_UPSELL_MESSAGES[toolId] ?? rawReason;
 }
 
+function buildCheckoutUrlWithDistinctId(baseCheckoutUrl: string): string {
+  if (typeof window === 'undefined') return baseCheckoutUrl;
+  const distinctId = (window as any).posthog?.get_distinct_id?.();
+  if (!distinctId) return baseCheckoutUrl;
+  return `${baseCheckoutUrl}${baseCheckoutUrl.includes('?') ? '&' : '?'}checkout[custom][distinct_id]=${distinctId}`;
+}
+
 export function UxFeedbackOverlay() {
   const { runtime } = usePlatform();
   const [toasts, setToasts] = useState<UiToastItem[]>([]);
   const [upsell, setUpsell] = useState<UpsellState | null>(null);
+  const [trialState, setTrialState] = useState(getTrialState());
   const recentToastByKeyRef = useRef(new Map<string, number>());
   const suppressedCountByKeyRef = useRef(new Map<string, number>());
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setTrialState(getTrialState());
+    }, 60_000);
+    return () => clearInterval(interval);
+  }, []);
 
   useEffect(() => {
     return runtime.telemetry.subscribe((event) => {
@@ -129,46 +146,61 @@ export function UxFeedbackOverlay() {
             <div className="ux-upsell-header">
               <div className="ux-upsell-icon">⚡</div>
               <div className="ux-upsell-body">
-                <h3 className="ux-upsell-title">{formatUpsellReason(upsell.toolId, upsell.reason)}</h3>
-                <p className="ux-upsell-sub">Upgrade to Pro for $3.99/mo — unlimited image extraction, OCR, and more.</p>
+                <h3 className="ux-upsell-title">
+                  {trialState.isActive 
+                    ? `Trial active — ${trialState.daysRemaining}d ${trialState.hoursRemaining}h left`
+                    : formatUpsellReason(upsell.toolId, upsell.reason)}
+                </h3>
+                <p className="ux-upsell-sub">
+                  {trialState.isActive
+                    ? 'You have full Pro access during your trial. Upgrade now to keep it after the trial ends.'
+                    : 'Start a 3-day free trial to unlock unlimited pages and all Pro tools.'}
+                </p>
               </div>
             </div>
             <div className="ux-upsell-actions">
               <button className="ux-upsell-btn-ghost" onClick={() => setUpsell(null)}>
-                Not now
+                {trialState.isActive ? 'Continue trial' : 'Not now'}
               </button>
               <button
                 className="ux-upsell-btn-primary"
                 onClick={() => {
-                  const checkoutUrl = import.meta.env.VITE_LS_CHECKOUT_URL_PRO_MONTHLY;
-                  runtime.telemetry.track({
-                    type: 'UI_UPSELL_CTA_CLICKED',
-                    runId: upsell.runId,
-                    toolId: upsell.toolId,
-                    destination: checkoutUrl ?? null,
-                  });
-                  trackMonetizationEvent('paywall_cta_clicked', {
-                    source: 'upsell_overlay',
-                    toolId: upsell.toolId,
-                    trigger: 'upgrade_pro',
-                    destination: checkoutUrl ?? null,
-                    userState: 'local',
-                    hadPriorSuccessfulRun: true,
-                    flowId: upsell.runId,
-                  });
-                  openCheckout(checkoutUrl, {
-                    source: 'upsell_overlay',
-                    trigger: 'upgrade_pro',
-                    plan: 'pro',
-                    variant: 'monthly',
-                    userState: 'local',
-                    hadPriorSuccessfulRun: true,
-                    flowId: upsell.runId,
-                  });
+                  if (trialState.isActive) {
+                    const baseCheckoutUrl = import.meta.env.VITE_LS_CHECKOUT_URL_PRO_MONTHLY;
+                    const checkoutUrl = buildCheckoutUrlWithDistinctId(baseCheckoutUrl);
+                    runtime.telemetry.track({
+                      type: 'UI_UPSELL_CTA_CLICKED',
+                      runId: upsell.runId,
+                      toolId: upsell.toolId,
+                      destination: checkoutUrl ?? null,
+                    });
+                    trackMonetizationEvent('paywall_cta_clicked', {
+                      source: 'upsell_overlay',
+                      toolId: upsell.toolId,
+                      trigger: 'upgrade_pro',
+                      destination: checkoutUrl ?? null,
+                      userState: 'local',
+                      hadPriorSuccessfulRun: true,
+                      flowId: upsell.runId,
+                    });
+                    openCheckout(checkoutUrl, {
+                      source: 'upsell_overlay',
+                      trigger: 'upgrade_pro',
+                      plan: 'pro',
+                      variant: 'monthly',
+                      userState: 'local',
+                      hadPriorSuccessfulRun: true,
+                      flowId: upsell.runId,
+                    });
+                  } else {
+                    handleTrialStart(runtime.telemetry, upsell.runId);
+                    (runtime.billing as any).startTrial();
+                    setTrialState(getTrialState());
+                  }
                   setUpsell(null);
                 }}
               >
-                Upgrade to Pro
+                {trialState.isActive ? 'Upgrade to Pro' : 'Start free trial'}
               </button>
             </div>
           </div>

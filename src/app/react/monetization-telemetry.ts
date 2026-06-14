@@ -10,7 +10,10 @@ declare global {
 export type MonetizationEventName =
   | 'paywall_shown'
   | 'paywall_cta_clicked'
-  | 'checkout_opened';
+  | 'checkout_opened'
+  | 'trial_started'
+  | 'trial_expired'
+  | 'trial_convert';
 
 export interface MonetizationEventProps {
   source?: string;
@@ -26,6 +29,8 @@ export interface MonetizationEventProps {
   reason?: string;
   status?: string;
   flowId?: string;
+  trialDaysRemaining?: number;
+  trialSource?: string;
 }
 
 function withRoute(props: MonetizationEventProps): Record<string, unknown> {

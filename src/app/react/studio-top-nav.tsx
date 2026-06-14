@@ -6,6 +6,8 @@ import type { IPipelineRecipe } from '../../v6/studio/pipeline/types';
 import { openBillingPlans } from './billing';
 import { getOrCreateFlowId } from '../platform/browser-context';
 import { StudioDownloadModal } from './StudioDownloadModal';
+import { getTrialState } from '../platform/trial-manager';
+import { TrialBanner } from './trial-banner';
 
 function truncateFileName(name: string, maxLen = 22): string {
   if (name.length <= maxLen) return name;
@@ -217,7 +219,9 @@ export function StudioTopNav({ telemetryEnabled, onToggleTelemetry, telemetryOpe
   };
 
   return (
-    <header className="studio-top-nav" aria-label="Studio top navigation">
+    <div className="studio-top-nav-container">
+      <TrialBanner />
+      <header className="studio-top-nav" aria-label="Studio top navigation">
       <a href={marketingSiteUrl} className="studio-logo" style={{ flexShrink: 0 }}>
         <div className="studio-nav-logo-icon">L</div>
         <span className="studio-logo-title">LocalPDF</span>
@@ -266,8 +270,27 @@ export function StudioTopNav({ telemetryEnabled, onToggleTelemetry, telemetryOpe
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
           Download
         </button>
-        {billingContext.plan === 'pro' ? (
+        {billingContext.plan === 'pro' && !getTrialState().isActive ? (
           <div className="studio-badge-pro">PRO</div>
+        ) : getTrialState().isActive ? (
+          <>
+            <div className="studio-badge-trial">TRIAL</div>
+            <button
+              type="button"
+              className="studio-activate-btn"
+              onClick={() => { setIsActivateOpen(true); }}
+              title="Enter license key after purchase"
+            >
+              Activate
+            </button>
+            <button
+              type="button"
+              className="studio-upgrade-btn"
+              onClick={() => { openBillingPlans(import.meta.env.VITE_BILLING_URL); }}
+            >
+              Upgrade
+            </button>
+          </>
         ) : (
           <>
             <button
@@ -335,6 +358,7 @@ export function StudioTopNav({ telemetryEnabled, onToggleTelemetry, telemetryOpe
           void handleConfirmDownload(filename);
         }}
       />
-    </header>
+      </header>
+    </div>
   );
 }

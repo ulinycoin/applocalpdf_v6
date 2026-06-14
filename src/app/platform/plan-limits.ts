@@ -35,7 +35,7 @@ function normalizeCount(value: number): number {
 }
 
 export function getPlanLimits(plan: BillingPlan): PlanLimits {
-  return plan === 'pro' ? PRO_PLAN_LIMITS : BASIC_PLAN_LIMITS;
+  return (plan === 'pro' || plan === 'trial') ? PRO_PLAN_LIMITS : BASIC_PLAN_LIMITS;
 }
 
 export function canCreateWorkspace(context: PlanContext, currentWorkspaceCount: number): LimitCheckResult {

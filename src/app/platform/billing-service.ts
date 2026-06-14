@@ -5,6 +5,13 @@ import {
   normalizeTier,
   sanitizeEntitlements,
 } from './billing-contract';
+import {
+  getTrialState,
+  markTrialTracked,
+  startTrial,
+  syncTrialStateWithIndexedDB,
+} from './trial-manager';
+import { trackMonetizationEvent } from '../react/monetization-telemetry';
 
 export const BASIC_CONTEXT: ToolRunContext = {
   userId: 'local-user',
@@ -58,9 +65,27 @@ export class BillingService {
   }
 
   public async initialize(): Promise<void> {
+    if (typeof localStorage !== 'undefined') {
+      await syncTrialStateWithIndexedDB();
+    }
+
+    const trialState = getTrialState();
+    if (trialState.isExpiredButNotTracked) {
+      trackMonetizationEvent('trial_expired', { source: 'billing_init' });
+      markTrialTracked();
+    }
+
     const rawToken = typeof localStorage !== 'undefined' ? localStorage.getItem(this.storageKey) : null;
     if (!rawToken) {
-      this.currentContext = BASIC_CONTEXT;
+      if (trialState.isActive) {
+        this.currentContext = {
+          userId: 'local-user',
+          plan: 'pro',
+          entitlements: getDefaultEntitlementsForPlan('trial'),
+        };
+      } else {
+        this.currentContext = BASIC_CONTEXT;
+      }
       this.notify();
       return;
     }
@@ -70,7 +95,15 @@ export class BillingService {
       if (typeof localStorage !== 'undefined') {
         localStorage.removeItem(this.storageKey);
       }
-      this.currentContext = BASIC_CONTEXT;
+      if (trialState.isActive) {
+        this.currentContext = {
+          userId: 'local-user',
+          plan: 'pro',
+          entitlements: getDefaultEntitlementsForPlan('trial'),
+        };
+      } else {
+        this.currentContext = BASIC_CONTEXT;
+      }
       this.notify();
       return;
     }
@@ -80,6 +113,16 @@ export class BillingService {
       plan: verified.plan,
       entitlements: verified.entitlements,
     };
+
+    // Если токен валиден и у пользователя был активен триал, отправляем trial_convert
+    if (trialState.isActive || trialState.isExpiredButNotTracked) {
+      trackMonetizationEvent('trial_convert', {
+        trialDaysRemaining: trialState.daysRemaining,
+        source: 'token_verified_init'
+      });
+      markTrialTracked();
+    }
+
     this.notify();
   }
 
@@ -89,8 +132,18 @@ export class BillingService {
       return false;
     }
 
+    const trialState = getTrialState();
+    const wasTrial = trialState.isActive || trialState.isExpiredButNotTracked;
+
     if (typeof localStorage !== 'undefined') {
       localStorage.setItem(this.storageKey, rawToken);
+      if (wasTrial) {
+        trackMonetizationEvent('trial_convert', {
+          trialDaysRemaining: trialState.daysRemaining,
+          source: 'manual_save'
+        });
+        markTrialTracked();
+      }
     }
 
     this.currentContext = {
@@ -100,6 +153,16 @@ export class BillingService {
     };
     this.notify();
     return true;
+  }
+
+  public startTrial(): void {
+    startTrial();
+    this.currentContext = {
+      userId: 'local-user',
+      plan: 'pro',
+      entitlements: getDefaultEntitlementsForPlan('trial'),
+    };
+    this.notify();
   }
 
   private async verifyToken(token: string): Promise<{ plan: 'basic' | 'pro', entitlements: string[] } | null> {
@@ -145,6 +208,7 @@ export class BillingService {
       if (!isValid) return null;
 
       const plan = normalizePlan(payload.plan);
+      if (plan === 'trial') return null;
       const tier = normalizeTier(payload.tier, plan);
       if (!tier) return null;
       const entitlements = sanitizeEntitlements(payload.entitlements, plan);
