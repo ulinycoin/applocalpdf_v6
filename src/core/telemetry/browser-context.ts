@@ -103,17 +103,4 @@ export function getTelemetryBrowserContext(): Record<string, string | number | b
   };
 }
 
-export function buildSessionAttributedEvent(): RunnerTelemetryEvent {
-  const context = getTelemetryBrowserContext();
-  return {
-    type: 'APP_SESSION_ATTRIBUTED',
-    flowId: String(context.flow_id || ''),
-    entryUrl: String(context.entry_url || ''),
-    entryPath: String(context.entry_path || ''),
-    referrer: String(context.entry_referrer || '$direct'),
-    referringDomain: String(context.entry_referring_domain || '$direct'),
-    utmSource: typeof context.entry_utm_source === 'string' ? context.entry_utm_source : undefined,
-    utmMedium: typeof context.entry_utm_medium === 'string' ? context.entry_utm_medium : undefined,
-    utmCampaign: typeof context.entry_utm_campaign === 'string' ? context.entry_utm_campaign : undefined,
-  };
-}
+

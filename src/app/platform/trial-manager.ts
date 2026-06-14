@@ -156,6 +156,4 @@ export function markTrialTracked(): void {
   dbSet(KEY_START_TIME, -1).catch(() => {}); // Помечаем как закрытый триал
 }
 
-export function isTrialActive(): boolean {
-  return getTrialState().isActive;
-}
+

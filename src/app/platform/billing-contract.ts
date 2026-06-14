@@ -60,6 +60,4 @@ export function getDefaultTierForPlan(plan: BillingPlan): BillingTier {
   return (plan === 'pro' || plan === 'trial') ? 'pro_monthly' : 'free';
 }
 
-export function isNonEmptyString(value: unknown): value is string {
-  return typeof value === 'string' && value.trim().length > 0;
-}
+
