@@ -44,7 +44,8 @@ import {
   FileSignature,
   Copy,
   Stamp,
-  History
+  History,
+  Share2
 } from 'lucide-react';
 
 export type LinearIconName =
@@ -94,7 +95,8 @@ export type LinearIconName =
   | 'feather'
   | 'stamp'
   | 'copy'
-  | 'history';
+  | 'history'
+  | 'share';
 
 interface LinearIconProps extends Omit<SVGProps<SVGSVGElement>, 'children'> {
   name: LinearIconName;
@@ -148,7 +150,8 @@ const iconMap: Record<LinearIconName, React.FC<any>> = {
   feather: PenTool, // Alias
   stamp: Stamp,
   copy: Copy,
-  history: History
+  history: History,
+  share: Share2
 };
 
 export function LinearIcon({ name, size, ...props }: LinearIconProps): JSX.Element {

@@ -12,6 +12,7 @@ const EDIT_TOOL_IDS = new Set<string>([
   'encrypt-pdf',
   'protect-pdf',
   'pdf-editor',
+  'share-pdf',
 ]);
 
 const CONVERT_TOOL_IDS = new Set<string>([

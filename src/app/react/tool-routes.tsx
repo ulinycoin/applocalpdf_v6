@@ -27,6 +27,11 @@ const OcrPdfTestPage = lazy(async () => {
   return { default: module.OcrPdfTestPage };
 });
 
+const MobileShareDownloader = lazy(async () => {
+  const module = await import('./mobile-share-downloader');
+  return { default: module.MobileShareDownloader };
+});
+
 function LoadingScreen() {
   return <div>Loading tool...</div>;
 }
@@ -63,6 +68,7 @@ export function ToolRoutes() {
         <Route path="/studio/edit" element={<StudioEditWorkspace />} />
         <Route path="/studio/convert" element={<StudioConvertWorkspace />} />
         <Route path="/ocr-pdf-test" element={<Navigate to="/ocr-pdf" replace />} />
+        <Route path="/share" element={<MobileShareDownloader />} />
         <Route path="*" element={<Navigate to="/studio" replace />} />
       </Routes>
     </Suspense>

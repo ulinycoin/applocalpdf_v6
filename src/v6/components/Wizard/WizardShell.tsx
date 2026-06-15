@@ -145,6 +145,7 @@ const PROCESSING_VERB_BY_TOOL: Record<string, string> = {
   'encrypt-pdf': 'Encrypting',
   'protect-pdf': 'Protecting',
   'unlock-pdf': 'Unlocking',
+  'share-pdf': 'Preparing share',
 };
 
 const COMPLETION_BY_TOOL: Record<string, string> = {
@@ -161,6 +162,7 @@ const COMPLETION_BY_TOOL: Record<string, string> = {
   'encrypt-pdf': 'Encryption complete',
   'protect-pdf': 'Protection complete',
   'unlock-pdf': 'Unlock complete',
+  'share-pdf': 'Share ready',
 };
 
 function getProcessingLabel(toolId: string): string {

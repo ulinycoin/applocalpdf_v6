@@ -39,6 +39,8 @@ function getToolIcon(toolId: string): Parameters<typeof LinearIcon>[0]['name'] {
       return 'pen-tool';
     case 'auto-toc':
       return 'edit';
+    case 'share-pdf':
+      return 'share';
     default:
       return 'tool';
   }
@@ -72,6 +74,8 @@ function getToolShortLabel(toolId: string): string {
       return 'EDT';
     case 'auto-toc':
       return 'TOC';
+    case 'share-pdf':
+      return 'SHR';
     default:
       return 'TOOL';
   }
