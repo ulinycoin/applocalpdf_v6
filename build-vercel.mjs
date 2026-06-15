@@ -133,6 +133,7 @@ try {
     path.join('app', 'studio', 'edit'),
     path.join('app', 'studio', 'convert'),
     path.join('app', 'ocr-pdf'),
+    path.join('app', 'share'),
   ];
   for (const route of spaFallbackRoutes) {
     const routeIndex = path.join(appDistPath, route, 'index.html');
@@ -176,6 +177,7 @@ try {
     path.join('app', 'studio', 'index.html'),
     path.join('app', 'studio', 'edit', 'index.html'),
     path.join('app', 'studio', 'convert', 'index.html'),
+    path.join('app', 'share', 'index.html'),
   ];
   for (const nestedRoute of appNestedRoutes) {
     const nestedRoutePath = path.join(appDistPath, nestedRoute);
