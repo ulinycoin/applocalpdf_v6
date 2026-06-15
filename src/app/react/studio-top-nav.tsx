@@ -8,6 +8,8 @@ import { getOrCreateFlowId } from '../platform/browser-context';
 import { StudioDownloadModal } from './StudioDownloadModal';
 import { getTrialState } from '../platform/trial-manager';
 import { TrialBanner } from './trial-banner';
+import QRCode from 'qrcode';
+import { APP_BASE_PATH } from '../../../shared/app-routes';
 
 function truncateFileName(name: string, maxLen = 22): string {
   if (name.length <= maxLen) return name;
@@ -189,6 +191,112 @@ export function StudioTopNav({ telemetryEnabled, onToggleTelemetry, telemetryOpe
     setIsDownloadModalOpen(true);
   };
 
+  const handleShareToPhone = async (
+    filename: string,
+    onProgress: (msg: string) => void
+  ): Promise<{ qrCodeUrl: string; shareLink: string }> => {
+    const targetDocument = downloadTargetDocumentId
+      ? documents.find((doc: StudioDocument) => doc.id === downloadTargetDocumentId) ?? null
+      : activeDocument;
+    if (!targetDocument || targetDocument.pages.length === 0) {
+      throw new Error('No pages in workspace to share.');
+    }
+
+    const name = filename.trim() || targetDocument.name;
+    const safeName = name.replace(/[<>:"/\\|?*]/g, '_').slice(0, 64) || 'Workspace';
+
+    // 1. Compile PDF document inside the browser using PipelineRunner
+    onProgress('Compiling PDF document...');
+    const sequence = targetDocument.pages.map((page: PageItem) => ({
+      sourceFileId: page.fileId,
+      pageIndex: page.pageIndex,
+      rotation: page.rotation,
+    }));
+    const recipe: IPipelineRecipe = {
+      inputs: Array.from(new Set(sequence.map((item) => item.sourceFileId))),
+      operations: [{ type: 'reorder', sequence }],
+      outputName: `${safeName}.pdf`,
+    };
+
+    const runner = new PipelineRunner(runtime.vfs);
+    const result = await runner.execute(recipe);
+    const pdfBuffer = new ArrayBuffer(result.buffer.byteLength);
+    new Uint8Array(pdfBuffer).set(result.buffer);
+
+    // 2. Generate E2EE AES Key and IV
+    onProgress('Encrypting document locally...');
+    const key = await window.crypto.subtle.generateKey(
+      { name: 'AES-GCM', length: 256 },
+      true,
+      ['encrypt', 'decrypt']
+    );
+    const iv = window.crypto.getRandomValues(new Uint8Array(12));
+
+    // 3. Encrypt the compiled PDF buffer
+    const encryptedBuffer = await window.crypto.subtle.encrypt(
+      { name: 'AES-GCM', iv },
+      key,
+      pdfBuffer
+    );
+
+    // 4. Export key & iv to HEX for URL query representation
+    const exportedKey = await window.crypto.subtle.exportKey('raw', key);
+    const keyHex = Array.from(new Uint8Array(exportedKey))
+      .map((b) => b.toString(16).padStart(2, '0'))
+      .join('');
+    const ivHex = Array.from(iv)
+      .map((b) => b.toString(16).padStart(2, '0'))
+      .join('');
+
+    onProgress('Uploading encrypted payload...');
+    // 5. Upload to tmpfiles.org
+    const encryptedBlob = new Blob([encryptedBuffer], { type: 'application/octet-stream' });
+    const formData = new FormData();
+    formData.append('file', encryptedBlob, 'secured_workspace.pdf');
+
+    const response = await fetch('https://tmpfiles.org/api/v1/upload', {
+      method: 'POST',
+      body: formData,
+    });
+
+    if (!response.ok) {
+      throw new Error(`Upload server responded with code ${response.status}`);
+    }
+
+    const json = await response.json();
+    if (json.status !== 'success' || !json.data?.url) {
+      throw new Error('Upload failed to return a valid sharing URL');
+    }
+
+    const uploadUrl = json.data.url as string;
+    const downloadUrl = uploadUrl.replace('https://tmpfiles.org/', 'https://tmpfiles.org/dl/');
+
+    // 6. Build the share link (encryption key goes in hash)
+    const baseUrl = `${window.location.origin}${APP_BASE_PATH}/share`;
+    const shareLink = `${baseUrl}#url=${encodeURIComponent(downloadUrl)}&key=${keyHex}&iv=${ivHex}`;
+
+    // 7. Generate QR-code
+    onProgress('Generating QR code...');
+    const qrCodeUrl = await QRCode.toDataURL(shareLink, {
+      width: 200,
+      margin: 1,
+      color: {
+        dark: '#142028',
+        light: '#ffffff',
+      },
+    });
+
+    runtime.telemetry.track({
+      type: 'OUTPUT_DOWNLOADED',
+      flowId: getOrCreateFlowId(),
+      toolId: 'studio-share',
+      outputCount: 1,
+      surface: 'studio',
+    });
+
+    return { qrCodeUrl, shareLink };
+  };
+
   const handleConfirmDownload = async (filename: string): Promise<void> => {
     const targetDocument = downloadTargetDocumentId
       ? documents.find((doc: StudioDocument) => doc.id === downloadTargetDocumentId) ?? null
@@ -357,6 +465,7 @@ export function StudioTopNav({ telemetryEnabled, onToggleTelemetry, telemetryOpe
         onDownload={(filename) => {
           void handleConfirmDownload(filename);
         }}
+        onShare={handleShareToPhone}
       />
       </header>
     </div>
