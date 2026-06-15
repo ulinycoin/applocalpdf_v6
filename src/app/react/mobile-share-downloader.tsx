@@ -31,8 +31,9 @@ export function MobileShareDownloader() {
 
         setStatusMessage('Connecting to secure cloud...');
         
-        // 2. Fetch encrypted binary payload
-        const response = await fetch(encryptedUrl);
+        // 2. Fetch encrypted binary payload via proxy to bypass CORS
+        const proxyUrl = `/api/download-proxy?url=${encodeURIComponent(encryptedUrl)}`;
+        const response = await fetch(proxyUrl);
         if (!response.ok) {
           throw new Error(`Failed to fetch file. Server returned code ${response.status}.`);
         }
