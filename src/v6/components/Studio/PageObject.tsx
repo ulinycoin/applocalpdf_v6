@@ -9,15 +9,17 @@ import { canUseDocumentWithPageCount } from '../../../app/platform/plan-limits';
 import { showStudioPaywall } from '../../../app/react/studio-paywall';
 import { getPdfJs } from '../../services/pdf/pdf-loader';
 import { useHistoryStore } from './store/history-store';
+import { acquireCanvas, releaseCanvas } from '../../utils/canvas-pool';
+import { onMemoryPressure } from '../../utils/memory-pressure';
 
-// --- LRU Cache for High-Res Bitmaps ---
-const HIGH_RES_CACHE_LIMIT = 30; // Max number of high-res canvases to keep in memory (approx 100-300MB depending on resolution)
+// --- LRU Cache for High-Res Bitmaps (uses canvas pool for memory efficiency) ---
+const HIGH_RES_CACHE_LIMIT = 30;
+const HIGH_RES_CACHE_AGGRESSIVE_LIMIT = 10;
 const highResCache = new Map<string, HTMLCanvasElement>();
 
 function getCachedHighRes(key: string): HTMLCanvasElement | undefined {
     const canvas = highResCache.get(key);
     if (canvas) {
-        // Refresh position in LRU
         highResCache.delete(key);
         highResCache.set(key, canvas);
     }
@@ -26,11 +28,94 @@ function getCachedHighRes(key: string): HTMLCanvasElement | undefined {
 
 function setCachedHighRes(key: string, canvas: HTMLCanvasElement) {
     if (highResCache.size >= HIGH_RES_CACHE_LIMIT) {
-        // Evict oldest (Map iterates in insertion order, so first key is oldest)
         const oldestKey = highResCache.keys().next().value;
-        if (oldestKey) highResCache.delete(oldestKey);
+        if (oldestKey) {
+            const evicted = highResCache.get(oldestKey);
+            if (evicted) releaseCanvas(evicted);
+            highResCache.delete(oldestKey);
+        }
     }
     highResCache.set(key, canvas);
+}
+
+function evictHighResCache(targetSize: number): void {
+    while (highResCache.size > targetSize) {
+        const oldestKey = highResCache.keys().next().value;
+        if (!oldestKey) break;
+        const evicted = highResCache.get(oldestKey);
+        if (evicted) releaseCanvas(evicted);
+        highResCache.delete(oldestKey);
+    }
+}
+
+let memoryPressureCleanup: (() => void) | null = null;
+function ensureMemoryPressureListener(): void {
+    if (memoryPressureCleanup) return;
+    memoryPressureCleanup = onMemoryPressure(() => {
+        evictHighResCache(HIGH_RES_CACHE_AGGRESSIVE_LIMIT);
+        clearPdfDocumentCache();
+    });
+}
+
+// --- LRU Cache for Loaded PDFJS Document Proxies ---
+const PDF_DOCUMENT_CACHE_LIMIT = 5;
+const pdfDocumentCache = new Map<string, Promise<any>>();
+
+async function getCachedPdfDocument(fileId: string, runtime: any): Promise<any> {
+    const cachedPromise = pdfDocumentCache.get(fileId);
+    if (cachedPromise) {
+        // Refresh position in Map for LRU eviction
+        pdfDocumentCache.delete(fileId);
+        pdfDocumentCache.set(fileId, cachedPromise);
+        return cachedPromise;
+    }
+
+    const pdfPromise = (async () => {
+        try {
+            const pdfjs = await getPdfJs();
+            const entry = await runtime.vfs.read(fileId);
+            const blob = await entry.getBlob();
+            const buffer = await blob.arrayBuffer();
+            const loadingTask = pdfjs.getDocument({ data: new Uint8Array(buffer) });
+            return await loadingTask.promise;
+        } catch (error) {
+            // Remove broken promise from cache so next try can start fresh
+            pdfDocumentCache.delete(fileId);
+            throw error;
+        }
+    })();
+
+    if (pdfDocumentCache.size >= PDF_DOCUMENT_CACHE_LIMIT) {
+        const oldestKey = pdfDocumentCache.keys().next().value;
+        if (oldestKey) {
+            const oldestPromise = pdfDocumentCache.get(oldestKey);
+            pdfDocumentCache.delete(oldestKey);
+            if (oldestPromise) {
+                try {
+                    const pdf = await oldestPromise;
+                    await pdf.destroy();
+                } catch (e) {
+                    console.error("Failed to destroy cached pdf document:", e);
+                }
+            }
+        }
+    }
+
+    pdfDocumentCache.set(fileId, pdfPromise);
+    return pdfPromise;
+}
+
+async function clearPdfDocumentCache(): Promise<void> {
+    const promises = Array.from(pdfDocumentCache.values());
+    pdfDocumentCache.clear();
+    for (const p of promises) {
+        try {
+            const pdf = await p;
+            await pdf.destroy();
+        } catch (e) {
+            // Silence destruction errors
+        }
+    }
 }
 
 
@@ -217,6 +302,7 @@ export const PageObject: React.FC<PageObjectProps> = ({ page, docId, x, y, curre
 
     // Trigger High-Res render when component mounts (it only mounts when visible due to culling)
     React.useEffect(() => {
+        ensureMemoryPressureListener();
         let isMounted = true;
         const cacheKey = `${page.fileId}_${page.pageIndex}_${highResRenderScale}`;
 
@@ -230,49 +316,30 @@ export const PageObject: React.FC<PageObjectProps> = ({ page, docId, x, y, curre
             if (isRenderingHighRes) return;
             setIsRenderingHighRes(true);
 
+            let pooledCanvas: ReturnType<typeof acquireCanvas> | null = null;
             try {
-                const pdfjs = await getPdfJs();
-                // Read from VFS
-                const entry = await runtime.vfs.read(page.fileId);
-                const blob = await entry.getBlob();
-                const buffer = await blob.arrayBuffer();
+                const pdf = await getCachedPdfDocument(page.fileId, runtime);
 
-                // Get PDF Document
-                const loadingTask = pdfjs.getDocument({ data: new Uint8Array(buffer) });
-                const pdf = await loadingTask.promise;
-
-                if (!isMounted) {
-                    await pdf.destroy();
-                    return;
-                }
+                if (!isMounted) return;
 
                 const pdfPage = await pdf.getPage(page.pageIndex + 1);
-
                 const viewport = pdfPage.getViewport({ scale: highResRenderScale });
 
-                const canvas = document.createElement('canvas');
-                const context = canvas.getContext('2d');
-                if (!context) throw new Error("Could not get 2d context for high-res render");
+                pooledCanvas = acquireCanvas(viewport.width, viewport.height);
 
-                canvas.height = viewport.height;
-                canvas.width = viewport.width;
-
-                const renderContext = {
-                    canvasContext: context,
-                    viewport: viewport,
-                    canvas: canvas
-                };
-
-                await pdfPage.render(renderContext).promise;
+                await pdfPage.render({
+                    canvasContext: pooledCanvas.ctx,
+                    viewport,
+                    canvas: pooledCanvas.canvas,
+                }).promise;
 
                 if (isMounted) {
-                    setCachedHighRes(cacheKey, canvas);
-                    setHighResCanvas(canvas);
+                    setCachedHighRes(cacheKey, pooledCanvas.canvas);
+                    setHighResCanvas(pooledCanvas.canvas);
                 }
-
-                await pdf.destroy();
             } catch (error) {
                 console.error("Failed to render high-res page:", error);
+                if (pooledCanvas) releaseCanvas(pooledCanvas.canvas);
             } finally {
                 if (isMounted) setIsRenderingHighRes(false);
             }

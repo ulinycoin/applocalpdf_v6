@@ -203,6 +203,7 @@ export function PreviewPanel({ runtime, previews, isLoading, toolId, title = 'Pr
             <article
               key={preview.fileId}
               className={`preview-card${isFocusedPreview ? ' preview-card-focus' : ''}${isCompressFullPageMode ? ' preview-card-full-page' : ''}`}
+              style={{ contentVisibility: 'auto', containIntrinsicSize: '280px 200px' }}
             >
               <div
                 className={`preview-thumb${isFocusedPreview ? ' preview-thumb-focus' : ''}${isCompressFullPageMode ? ' preview-thumb-full-page' : ''}`}
@@ -323,6 +324,7 @@ export function PreviewPanel({ runtime, previews, isLoading, toolId, title = 'Pr
                           key={`${preview.fileId}-page-${gridPage}`}
                           type="button"
                           className={`preview-page-tile${gridPage === currentPage ? ' active' : ''}`}
+                          style={{ contentVisibility: 'auto', containIntrinsicSize: '48px 48px' }}
                           onClick={() =>
                             setPdfPageByFileId((current) => ({
                               ...current,
