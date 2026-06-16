@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback, useMemo, lazy, Suspense } from 'react';
+import { isVfsQuotaExceededError } from '../../../app/platform/error-utils';
 import { createPortal } from 'react-dom';
 import { Stage, Layer, Rect } from 'react-konva';
 import type Konva from 'konva';
@@ -672,8 +673,12 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
                     await runtime.vfs.delete(writtenFileId).catch(() => undefined);
                 }
                 console.error('Failed to load file into Studio:', error);
-                const message = error instanceof Error ? error.message : 'Failed to load file into Studio.';
-                notifyStudioError(message);
+                if (isVfsQuotaExceededError(error)) {
+                    notifyStudioError('Storage quota exceeded. Close some documents or clear the workspace and try again.');
+                } else {
+                    const message = error instanceof Error ? error.message : 'Failed to load file into Studio.';
+                    notifyStudioError(message);
+                }
             }
         }
 
@@ -975,8 +980,12 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
             } catch (error) {
                 if (!cancelled) {
                     console.error('Failed to apply tool result in Studio:', error);
-                    const message = error instanceof Error ? error.message : 'Failed to apply tool result in Studio.';
-                    notifyStudioError(message);
+                    if (isVfsQuotaExceededError(error)) {
+                        notifyStudioError('Storage quota exceeded. Close some documents or clear the workspace and try again.');
+                    } else {
+                        const message = error instanceof Error ? error.message : 'Failed to apply tool result in Studio.';
+                        notifyStudioError(message);
+                    }
                 }
             } finally {
                 for (const skippedOutputId of skippedOutputIds) {
