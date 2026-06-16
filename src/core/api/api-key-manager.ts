@@ -1,5 +1,10 @@
-import { kv } from '@vercel/kv';
+import { Redis } from '@upstash/redis';
 import { randomBytes, createHash } from 'node:crypto';
+
+const redis = new Redis({
+  url: process.env.UPSTASH_REDIS_REST_URL!,
+  token: process.env.UPSTASH_REDIS_REST_TOKEN!,
+});
 
 export interface ApiKeyRecord {
   id: string;
@@ -58,8 +63,8 @@ export async function createApiKey(
     requestsResetAt: tomorrow,
   };
 
-  await kv.hset(`apikeys:${userId}`, { [keyHash]: JSON.stringify(record) });
-  await kv.set(`apikey:${keyHash}`, userId, { ex: 365 * 86400 });
+  await redis.hset(`apikeys:${userId}`, { [keyHash]: JSON.stringify(record) });
+  await redis.set(`apikey:${keyHash}`, userId, { ex: 365 * 86400 });
 
   return { key, record };
 }
@@ -72,13 +77,13 @@ export async function validateApiKey(
   }
 
   const keyHash = hashKey(key);
-  const userId = await kv.get<string>(`apikey:${keyHash}`);
+  const userId = await redis.get<string>(`apikey:${keyHash}`);
 
   if (!userId) {
     return { valid: false, error: 'Key not found' };
   }
 
-  const recordJson = await kv.hget<string>(`apikeys:${userId}`, keyHash);
+  const recordJson = await redis.hget<string>(`apikeys:${userId}`, keyHash);
   if (!recordJson) {
     return { valid: false, error: 'Key record not found' };
   }
@@ -90,7 +95,7 @@ export async function validateApiKey(
   if (now >= resetAt) {
     record.requestsToday = 0;
     record.requestsResetAt = new Date(now.getTime() + 86400000).toISOString();
-    await kv.hset(`apikeys:${userId}`, { [keyHash]: JSON.stringify(record) });
+    await redis.hset(`apikeys:${userId}`, { [keyHash]: JSON.stringify(record) });
   }
 
   const dailyLimit = getDailyLimit(record.tier);
@@ -105,20 +110,20 @@ export async function incrementUsage(
   userId: string,
   keyHash: string
 ): Promise<void> {
-  const recordJson = await kv.hget<string>(`apikeys:${userId}`, keyHash);
+  const recordJson = await redis.hget<string>(`apikeys:${userId}`, keyHash);
   if (!recordJson) return;
 
   const record = JSON.parse(recordJson) as ApiKeyRecord;
   record.requestsToday += 1;
   record.lastUsedAt = new Date().toISOString();
 
-  await kv.hset(`apikeys:${userId}`, { [keyHash]: JSON.stringify(record) });
+  await redis.hset(`apikeys:${userId}`, { [keyHash]: JSON.stringify(record) });
 }
 
 export async function listApiKeys(
   userId: string
 ): Promise<ApiKeyRecord[]> {
-  const all = await kv.hgetall<Record<string, string>>(`apikeys:${userId}`);
+  const all = await redis.hgetall<Record<string, string>>(`apikeys:${userId}`);
   if (!all) return [];
 
   return Object.values(all).map((json) => JSON.parse(json) as ApiKeyRecord);
@@ -128,7 +133,7 @@ export async function deleteApiKey(
   userId: string,
   keyHash: string
 ): Promise<boolean> {
-  const exists = await kv.hdel(`apikeys:${userId}`, keyHash);
-  await kv.del(`apikey:${keyHash}`);
+  const exists = await redis.hdel(`apikeys:${userId}`, keyHash);
+  await redis.del(`apikey:${keyHash}`);
   return exists > 0;
 }
