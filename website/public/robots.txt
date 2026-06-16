@@ -6,7 +6,7 @@ Disallow: /app
 Allow: /
 
 # Sitemaps
-Sitemap: https://localpdf.online/sitemap-index.xml
+Sitemap: https://localpdf.online/sitemap.xml
 
 # LLM context file
 # llm.txt: https://localpdf.online/llm.txt
