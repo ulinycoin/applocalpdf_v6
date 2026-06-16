@@ -1,10 +1,19 @@
 import { Redis } from '@upstash/redis';
 import { randomBytes, createHash } from 'node:crypto';
 
-const redis = new Redis({
-  url: process.env.UPSTASH_REDIS_REST_URL!,
-  token: process.env.UPSTASH_REDIS_REST_TOKEN!,
-});
+let redis: Redis | null = null;
+
+function getRedis(): Redis {
+  if (!redis) {
+    const url = process.env.UPSTASH_REDIS_REST_URL;
+    const token = process.env.UPSTASH_REDIS_REST_TOKEN;
+    if (!url || !token) {
+      throw new Error('UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN must be set');
+    }
+    redis = new Redis({ url, token });
+  }
+  return redis;
+}
 
 export interface ApiKeyRecord {
   id: string;
@@ -63,8 +72,8 @@ export async function createApiKey(
     requestsResetAt: tomorrow,
   };
 
-  await redis.hset(`apikeys:${userId}`, { [keyHash]: JSON.stringify(record) });
-  await redis.set(`apikey:${keyHash}`, userId, { ex: 365 * 86400 });
+  await getRedis().hset(`apikeys:${userId}`, { [keyHash]: JSON.stringify(record) });
+  await getRedis().set(`apikey:${keyHash}`, userId, { ex: 365 * 86400 });
 
   return { key, record };
 }
@@ -77,13 +86,13 @@ export async function validateApiKey(
   }
 
   const keyHash = hashKey(key);
-  const userId = await redis.get<string>(`apikey:${keyHash}`);
+  const userId = await getRedis().get<string>(`apikey:${keyHash}`);
 
   if (!userId) {
     return { valid: false, error: 'Key not found' };
   }
 
-  const recordJson = await redis.hget<string>(`apikeys:${userId}`, keyHash);
+  const recordJson = await getRedis().hget<string>(`apikeys:${userId}`, keyHash);
   if (!recordJson) {
     return { valid: false, error: 'Key record not found' };
   }
@@ -95,7 +104,7 @@ export async function validateApiKey(
   if (now >= resetAt) {
     record.requestsToday = 0;
     record.requestsResetAt = new Date(now.getTime() + 86400000).toISOString();
-    await redis.hset(`apikeys:${userId}`, { [keyHash]: JSON.stringify(record) });
+    await getRedis().hset(`apikeys:${userId}`, { [keyHash]: JSON.stringify(record) });
   }
 
   const dailyLimit = getDailyLimit(record.tier);
@@ -110,20 +119,20 @@ export async function incrementUsage(
   userId: string,
   keyHash: string
 ): Promise<void> {
-  const recordJson = await redis.hget<string>(`apikeys:${userId}`, keyHash);
+  const recordJson = await getRedis().hget<string>(`apikeys:${userId}`, keyHash);
   if (!recordJson) return;
 
   const record = JSON.parse(recordJson) as ApiKeyRecord;
   record.requestsToday += 1;
   record.lastUsedAt = new Date().toISOString();
 
-  await redis.hset(`apikeys:${userId}`, { [keyHash]: JSON.stringify(record) });
+  await getRedis().hset(`apikeys:${userId}`, { [keyHash]: JSON.stringify(record) });
 }
 
 export async function listApiKeys(
   userId: string
 ): Promise<ApiKeyRecord[]> {
-  const all = await redis.hgetall<Record<string, string>>(`apikeys:${userId}`);
+  const all = await getRedis().hgetall<Record<string, string>>(`apikeys:${userId}`);
   if (!all) return [];
 
   return Object.values(all).map((json) => JSON.parse(json) as ApiKeyRecord);
@@ -133,7 +142,7 @@ export async function deleteApiKey(
   userId: string,
   keyHash: string
 ): Promise<boolean> {
-  const exists = await redis.hdel(`apikeys:${userId}`, keyHash);
-  await redis.del(`apikey:${keyHash}`);
+  const exists = await getRedis().hdel(`apikeys:${userId}`, keyHash);
+  await getRedis().del(`apikey:${keyHash}`);
   return exists > 0;
 }
