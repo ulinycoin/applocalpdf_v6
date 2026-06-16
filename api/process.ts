@@ -1,5 +1,5 @@
-import { validateApiKey, incrementUsage } from '../../src/core/api/api-key-manager';
-import { processPdf, type ProcessOptions } from '../../src/core/api/server-processor';
+import { validateApiKey, incrementUsage } from '../src/core/api/api-key-manager';
+import { processPdf, type ProcessOptions } from '../src/core/api/server-processor';
 
 export const config = {
   api: {
@@ -16,6 +16,22 @@ const CORS_HEADERS = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type, x-api-key',
 };
+
+async function downloadFile(url: string): Promise<Buffer> {
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(`Failed to download file: ${response.statusText}`);
+  }
+  const arrayBuffer = await response.arrayBuffer();
+  return Buffer.from(arrayBuffer);
+}
+
+async function resolveFileInput(fileInput: string): Promise<Buffer> {
+  if (fileInput.startsWith('http://') || fileInput.startsWith('https://')) {
+    return downloadFile(fileInput);
+  }
+  return Buffer.from(fileInput, 'base64');
+}
 
 export default async function handler(req: any, res: any) {
   if (req.method === 'OPTIONS') {
@@ -40,7 +56,7 @@ export default async function handler(req: any, res: any) {
     const { file, tool, options } = req.body || {};
 
     if (!file || typeof file !== 'string') {
-      return res.status(400).json({ error: 'file (base64) is required' });
+      return res.status(400).json({ error: 'file (base64 or URL) is required' });
     }
 
     if (!tool || typeof tool !== 'string') {
@@ -52,7 +68,7 @@ export default async function handler(req: any, res: any) {
       return res.status(400).json({ error: `Invalid tool. Valid: ${validTools.join(', ')}` });
     }
 
-    const fileBytes = Buffer.from(file, 'base64');
+    const fileBytes = await resolveFileInput(file);
     const tier = validation.record!.tier;
     const maxBytes = tier === 'free' ? 1 * 1024 * 1024 : MAX_FILE_SIZE;
 
@@ -71,7 +87,8 @@ export default async function handler(req: any, res: any) {
       signaturePosition: options?.signaturePosition,
     };
 
-    const result = await processPdf(file, tool, processOptions);
+    const fileBase64 = fileBytes.toString('base64');
+    const result = await processPdf(fileBase64, tool, processOptions);
 
     return res.status(200).json({
       success: true,

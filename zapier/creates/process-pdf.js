@@ -1,10 +1,28 @@
 const perform = async (z: any, bundle: any) => {
   const { file, tool, quality, languages, signature_image, signature_x, signature_y, signature_page } = bundle.inputData;
 
+  // Zapier file fields are URLs - download them first and convert to base64
+  const fileResponse = await z.request({
+    url: file,
+    method: 'GET',
+    raw: true,
+  });
+  const fileBase64 = Buffer.from(fileResponse).toString('base64');
+
   const options: Record<string, any> = {};
   if (quality) options.quality = quality;
   if (languages) options.languages = languages.split(',').map((l: string) => l.trim());
-  if (signature_image) options.signatureImage = signature_image;
+  
+  // Handle signature image (also a URL from Zapier)
+  if (signature_image) {
+    const sigResponse = await z.request({
+      url: signature_image,
+      method: 'GET',
+      raw: true,
+    });
+    options.signatureImage = Buffer.from(sigResponse).toString('base64');
+  }
+  
   if (signature_x !== undefined && signature_y !== undefined) {
     options.signaturePosition = {
       x: Number(signature_x),
@@ -21,7 +39,7 @@ const perform = async (z: any, bundle: any) => {
       'Content-Type': 'application/json',
     },
     body: {
-      file,
+      file: fileBase64,
       tool,
       options,
     },
