@@ -1,18 +1,27 @@
-import { Redis } from '@upstash/redis';
 import { randomBytes, createHash } from 'node:crypto';
 
-let redis: Redis | null = null;
+const UPSTASH_URL = process.env.UPSTASH_REDIS_REST_URL;
+const UPSTASH_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN;
 
-function getRedis(): Redis {
-  if (!redis) {
-    const url = process.env.UPSTASH_REDIS_REST_URL;
-    const token = process.env.UPSTASH_REDIS_REST_TOKEN;
-    if (!url || !token) {
-      throw new Error('UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN must be set');
-    }
-    redis = new Redis({ url, token });
+async function upstashCommand(command: string[]): Promise<any> {
+  if (!UPSTASH_URL || !UPSTASH_TOKEN) {
+    throw new Error('UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN must be set');
   }
-  return redis;
+
+  const response = await fetch(UPSTASH_URL, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${UPSTASH_TOKEN}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(command),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Upstash error: ${response.status}`);
+  }
+
+  return response.json();
 }
 
 export interface ApiKeyRecord {
@@ -72,8 +81,8 @@ export async function createApiKey(
     requestsResetAt: tomorrow,
   };
 
-  await getRedis().hset(`apikeys:${userId}`, { [keyHash]: JSON.stringify(record) });
-  await getRedis().set(`apikey:${keyHash}`, userId, { ex: 365 * 86400 });
+  await upstashCommand(['HSET', `apikeys:${userId}`, keyHash, JSON.stringify(record)]);
+  await upstashCommand(['SET', `apikey:${keyHash}`, userId, 'EX', String(365 * 86400)]);
 
   return { key, record };
 }
@@ -86,13 +95,15 @@ export async function validateApiKey(
   }
 
   const keyHash = hashKey(key);
-  const userId = await getRedis().get<string>(`apikey:${keyHash}`);
+  const userIdResult = await upstashCommand(['GET', `apikey:${keyHash}`]);
+  const userId = userIdResult?.result;
 
   if (!userId) {
     return { valid: false, error: 'Key not found' };
   }
 
-  const recordJson = await getRedis().hget<string>(`apikeys:${userId}`, keyHash);
+  const recordResult = await upstashCommand(['HGET', `apikeys:${userId}`, keyHash]);
+  const recordJson = recordResult?.result;
   if (!recordJson) {
     return { valid: false, error: 'Key record not found' };
   }
@@ -104,7 +115,7 @@ export async function validateApiKey(
   if (now >= resetAt) {
     record.requestsToday = 0;
     record.requestsResetAt = new Date(now.getTime() + 86400000).toISOString();
-    await getRedis().hset(`apikeys:${userId}`, { [keyHash]: JSON.stringify(record) });
+    await upstashCommand(['HSET', `apikeys:${userId}`, keyHash, JSON.stringify(record)]);
   }
 
   const dailyLimit = getDailyLimit(record.tier);
@@ -119,30 +130,32 @@ export async function incrementUsage(
   userId: string,
   keyHash: string
 ): Promise<void> {
-  const recordJson = await getRedis().hget<string>(`apikeys:${userId}`, keyHash);
+  const recordResult = await upstashCommand(['HGET', `apikeys:${userId}`, keyHash]);
+  const recordJson = recordResult?.result;
   if (!recordJson) return;
 
   const record = JSON.parse(recordJson) as ApiKeyRecord;
   record.requestsToday += 1;
   record.lastUsedAt = new Date().toISOString();
 
-  await getRedis().hset(`apikeys:${userId}`, { [keyHash]: JSON.stringify(record) });
+  await upstashCommand(['HSET', `apikeys:${userId}`, keyHash, JSON.stringify(record)]);
 }
 
 export async function listApiKeys(
   userId: string
 ): Promise<ApiKeyRecord[]> {
-  const all = await getRedis().hgetall<Record<string, string>>(`apikeys:${userId}`);
-  if (!all) return [];
+  const allResult = await upstashCommand(['HGETALL', `apikeys:${userId}`]);
+  const all = allResult?.result;
+  if (!all || typeof all !== 'object') return [];
 
-  return Object.values(all).map((json) => JSON.parse(json) as ApiKeyRecord);
+  return Object.values(all).map((json) => JSON.parse(json as string) as ApiKeyRecord);
 }
 
 export async function deleteApiKey(
   userId: string,
   keyHash: string
 ): Promise<boolean> {
-  const exists = await getRedis().hdel(`apikeys:${userId}`, keyHash);
-  await getRedis().del(`apikey:${keyHash}`);
-  return exists > 0;
+  await upstashCommand(['HDEL', `apikeys:${userId}`, keyHash]);
+  await upstashCommand(['DEL', `apikey:${keyHash}`]);
+  return true;
 }
