@@ -11,7 +11,7 @@ describe('plan-limits', () => {
   test('resolves free plan limits', () => {
     const limits = getPlanLimits('basic');
     assert.strictEqual(limits.maxWorkspaces, 3);
-    assert.strictEqual(limits.maxPagesPerDocument, 25);
+    assert.strictEqual(limits.maxPagesPerDocument, Number.POSITIVE_INFINITY);
   });
 
   test('resolves pro plan limits', () => {
@@ -28,22 +28,16 @@ describe('plan-limits', () => {
     assert.strictEqual(result.current, 3);
   });
 
-  test('allows document import up to the free page limit', () => {
-    const allowed = canUseDocumentWithPageCount({ plan: 'basic' }, 25);
-    assert.strictEqual(allowed.allowed, true);
-    const blocked = canUseDocumentWithPageCount({ plan: 'basic' }, 26);
-    assert.strictEqual(blocked.allowed, false);
-    assert.strictEqual(blocked.reason, 'page_limit');
-    assert.strictEqual(blocked.limit, 25);
+  test('allows document import without page limits on the free plan', () => {
+    const allowed25 = canUseDocumentWithPageCount({ plan: 'basic' }, 25);
+    assert.strictEqual(allowed25.allowed, true);
+    const allowedLarge = canUseDocumentWithPageCount({ plan: 'basic' }, 1000);
+    assert.strictEqual(allowedLarge.allowed, true);
   });
 
-  test('blocks document creation when either limit is exceeded', () => {
-    const workspaceBlocked = canAddDocumentToStudio({ plan: 'basic' }, 3, 1);
+  test('blocks document creation when workspace limit is exceeded', () => {
+    const workspaceBlocked = canAddDocumentToStudio({ plan: 'basic' }, 3, 100);
     assert.strictEqual(workspaceBlocked.allowed, false);
     assert.strictEqual(workspaceBlocked.reason, 'workspace_limit');
-
-    const pageBlocked = canAddDocumentToStudio({ plan: 'basic' }, 1, 26);
-    assert.strictEqual(pageBlocked.allowed, false);
-    assert.strictEqual(pageBlocked.reason, 'page_limit');
   });
 });

@@ -19,7 +19,7 @@ type PlanContext = Pick<ToolRunContext, 'plan'>;
 
 const BASIC_PLAN_LIMITS: PlanLimits = {
   maxWorkspaces: 3,
-  maxPagesPerDocument: 25,
+  maxPagesPerDocument: Number.POSITIVE_INFINITY,
 };
 
 const PRO_PLAN_LIMITS: PlanLimits = {
