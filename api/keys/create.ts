@@ -3,6 +3,8 @@ import { randomBytes, createHash } from 'node:crypto';
 const UPSTASH_URL = process.env.UPSTASH_REDIS_REST_URL;
 const UPSTASH_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN;
 
+console.log('Create API key endpoint loaded', { hasUrl: !!UPSTASH_URL, hasToken: !!UPSTASH_TOKEN });
+
 async function redis(command: string[]): Promise<any> {
   if (!UPSTASH_URL || !UPSTASH_TOKEN) {
     throw new Error('Redis not configured');
