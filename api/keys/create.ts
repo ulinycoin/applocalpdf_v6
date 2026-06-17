@@ -8,6 +8,7 @@ async function redis(command: string[]): Promise<any> {
   if (!UPSTASH_URL || !UPSTASH_TOKEN) {
     throw new Error('Redis not configured');
   }
+  console.log(`[redis] → ${command[0]} ${command.slice(1, 3).join(' ')}...`);
   const res = await fetch(UPSTASH_URL, {
     method: 'POST',
     headers: {
@@ -16,7 +17,14 @@ async function redis(command: string[]): Promise<any> {
     },
     body: JSON.stringify(command),
   });
-  return res.json();
+  const body = await res.json();
+  if (!res.ok) {
+    throw new Error(`Upstash ${res.status}: ${body?.error || JSON.stringify(body)}`);
+  }
+  if (body?.error) {
+    throw new Error(`Upstash error: ${body.error}`);
+  }
+  return body;
 }
 
 function hashKey(key: string): string {
