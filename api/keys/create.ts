@@ -66,8 +66,13 @@ export default async function handler(req: any, res: any) {
       requestsResetAt: new Date(Date.now() + 86400000).toISOString(),
     };
 
-    await redis(['HSET', `apikeys:${userId}`, keyHash, JSON.stringify(record)]);
-    await redis(['SET', `apikey:${keyHash}`, userId, 'EX', String(365 * 86400)]);
+    console.log('Creating key:', { userId, keyHash: keyHash.slice(0, 8) + '...' });
+    
+    const hsetResult = await redis(['HSET', `apikeys:${userId}`, keyHash, JSON.stringify(record)]);
+    console.log('HSET result:', hsetResult);
+    
+    const setResult = await redis(['SET', `apikey:${keyHash}`, userId, 'EX', String(365 * 86400)]);
+    console.log('SET result:', setResult);
 
     return res.status(201).json({
       id: record.id,
