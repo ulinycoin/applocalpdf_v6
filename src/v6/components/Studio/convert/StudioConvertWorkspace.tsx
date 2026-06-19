@@ -52,38 +52,52 @@ const ALSO_TRY = [
   { tool: 'extract-images', label: 'Extract Images', icon: 'image' },
 ] as const;
 
-function OcrPaywallOverlay({ content }: { content: string }) {
+interface PreviewPageInfo {
+  pageId: string;
+  pageIndex: number;
+  thumbnailUrl: string | null;
+}
+
+function OcrPaywallOverlay({ content, pages, totalPages }: { content: string; pages?: PreviewPageInfo[]; totalPages?: number }) {
   useEffect(() => {
     trackMonetizationEvent('paywall_shown', {
       source: 'ocr_result_preview',
       toolId: 'ocr-pdf',
-      trigger: 'value_preview',
+      trigger: 'ocr_trial_limit',
       userState: 'local',
       hadPriorSuccessfulRun: true,
     });
   }, []);
 
   const checkoutUrl = import.meta.env.VITE_LS_CHECKOUT_URL_PRO_MONTHLY;
+  const remainingPages = totalPages ? totalPages - 3 : 0;
 
   return (
-    <div style={{ position: 'relative', overflow: 'hidden', borderRadius: 6 }}>
-      <textarea
-        value={content.slice(0, 500)}
-        readOnly
-        style={{ width: '100%', minHeight: 320, border: '1px solid var(--border)', borderRadius: 6, background: 'var(--bg-1)', resize: 'none', outline: 'none', color: 'inherit', fontFamily: 'monospace', padding: 12, lineHeight: 1.6, fontSize: 13, filter: 'blur(4px)', userSelect: 'none', cursor: 'default' }}
-        spellCheck={false}
-        placeholder="No text content available."
-      />
-      <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255,253,249,0.85)', backdropFilter: 'blur(2px)', borderRadius: 6, zIndex: 2 }}>
-        <div style={{ textAlign: 'center', padding: 24, maxWidth: 360 }}>
+    <div>
+      {/* Paywall overlay */}
+      <div style={{ position: 'relative', overflow: 'hidden', borderRadius: 6 }}>
+        <div style={{ textAlign: 'center', padding: 24, maxWidth: 400, margin: '0 auto' }}>
           <div style={{ fontSize: 28, marginBottom: 8 }}>⚡</div>
-          <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 4, color: '#142028' }}>OCR found text — unlock to download</div>
+          <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 4, color: '#142028' }}>
+            {remainingPages > 0
+              ? `${remainingPages} more page${remainingPages !== 1 ? 's' : ''} — Pro`
+              : 'Unlock all pages'}
+          </div>
           <div style={{ fontSize: 13, color: '#52606b', marginBottom: 16, lineHeight: 1.5 }}>
-            Upgrade to Pro to download the full OCR result
+            Free plan processes 3 pages. Upgrade to Pro for all {totalPages ?? '?'} pages and unlimited tools.
           </div>
           <button
             type="button"
             onClick={() => {
+              trackMonetizationEvent('paywall_cta_clicked', {
+                source: 'ocr_result_preview',
+                toolId: 'ocr-pdf',
+                trigger: 'upgrade_pro',
+                destination: checkoutUrl ?? null,
+                plan: 'pro',
+                userState: 'local',
+                hadPriorSuccessfulRun: true,
+              });
               openCheckout(checkoutUrl, {
                 source: 'ocr_result_preview',
                 trigger: 'upgrade_pro',
@@ -97,6 +111,7 @@ function OcrPaywallOverlay({ content }: { content: string }) {
           >
             Upgrade to Pro — $3.99/mo
           </button>
+          <p style={{ fontSize: 12, color: '#8a9aa4', marginTop: 8 }}>Or try free for 3 days</p>
         </div>
       </div>
     </div>
@@ -678,7 +693,7 @@ export function StudioConvertWorkspace({ onClose, initialTool }: StudioConvertWo
                     </div>
                   ) : (
                     <div style={{ padding: '0 18px 18px' }}>
-                      <OcrPaywallOverlay content={ctrl.ocrResult.content || ''} />
+                      <OcrPaywallOverlay content={ctrl.ocrResult.content || ''} pages={ctrl.previewPages} totalPages={ctrl.totalPageCount} />
                     </div>
                   )}
                   <div className="cvt-result-actions">

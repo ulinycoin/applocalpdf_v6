@@ -10,7 +10,7 @@ import type { WorkerPdfImageCandidate } from '../../../../core/public/contracts'
 import { createZipBlob } from '../../../utils/zip';
 import { type PageItem, type StudioDocument, type StudioState, useStudioStore } from '../studio-store';
 import { showStudioPaywall } from '../../../../app/react/studio-paywall';
-import { getDailyUsage, OCR_DAILY_LIMIT } from '../../../../app/platform/daily-usage';
+import { getDailyUsage } from '../../../../app/platform/daily-usage';
 import { useHistoryStore } from '../store/history-store';
 import type { StudioToolRouteState } from '../../../studio/navigation/studio-tool-context';
 
@@ -165,7 +165,8 @@ export function useStudioConvertController(initialToolOverride?: StudioConvertTo
     () => runtime.billing.getContext().plan,
   );
   const isPro = billingPlan === 'pro';
-  const allowOcrDownload = isPro || getDailyUsage('ocr-pdf') < OCR_DAILY_LIMIT;
+  const [totalPageCount, setTotalPageCount] = useState(0);
+  const allowOcrDownload = isPro || totalPageCount <= 3;
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -240,7 +241,7 @@ export function useStudioConvertController(initialToolOverride?: StudioConvertTo
     : selectedScopePages.length > 0
       ? 'selection'
       : 'document';
-  const targetPages = useMemo<StudioConvertPageRef[]>(() => {
+  const allPages = useMemo<StudioConvertPageRef[]>(() => {
     if (operationScope === 'selection') {
       return selectedScopePages;
     }
@@ -249,6 +250,16 @@ export function useStudioConvertController(initialToolOverride?: StudioConvertTo
     }
     return collectDocumentPages(activeDocument);
   }, [activeDocument, operationScope, selectedScopePages]);
+
+  const MAX_TRIAL_OCR_PAGES = 3;
+  const targetPages = useMemo<StudioConvertPageRef[]>(() => {
+    if (isPro || activeTool !== 'ocr-pdf') return allPages;
+    return allPages.slice(0, MAX_TRIAL_OCR_PAGES);
+  }, [allPages, isPro, activeTool]);
+
+  useEffect(() => {
+    setTotalPageCount(allPages.length);
+  }, [allPages.length]);
 
   const releaseResultUrls = useCallback(() => {
     for (const url of objectUrlsRef.current) {
@@ -815,6 +826,7 @@ export function useStudioConvertController(initialToolOverride?: StudioConvertTo
     setMessage,
     outputIds,
     ocrResult,
+    totalPageCount,
     compressResultSummary,
     jpgResults,
     updateOcrResultContent,

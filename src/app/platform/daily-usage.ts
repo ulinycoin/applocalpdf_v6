@@ -23,12 +23,10 @@ export function incrementDailyUsage(toolId: string): void {
   }
 }
 
-export const OCR_DAILY_LIMIT = 3;
 export const FREE_TOOL_DAILY_LIMITS: Record<string, number> = {
   'compress-pdf': 3,
   'pdf-to-jpg': 3,
   'extract-images': 3,
-  'ocr-pdf': 3,
   'text': 3,
   'annotate': 3,
   'sign': 3,

@@ -22,6 +22,7 @@ import { PaywallModal } from '../../../app/react/PaywallModal';
 import { useHistoryStore } from './store/history-store';
 import { getDailyUsage, incrementDailyUsage, FREE_TOOL_DAILY_LIMITS } from '../../../app/platform/daily-usage';
 import { getOrCreateFlowId } from '../../../app/platform/browser-context';
+import { LinearIcon, type LinearIconName } from '../icons/linear-icon';
 
 const StudioEditWorkspace = lazy(async () => {
     const m = await import('./StudioEditWorkspace');
@@ -43,6 +44,14 @@ export interface StudioShellProps {
 }
 
 type StudioConvertToolId = 'ocr-pdf' | 'pdf-to-jpg' | 'extract-images' | 'compress-pdf' | 'auto-toc';
+type StudioEmptyStateCtaAction = 'upload' | 'compress-pdf' | 'ocr-pdf' | 'merge-pdf';
+
+const EMPTY_STATE_TOOLS: Array<{ action: Exclude<StudioEmptyStateCtaAction, 'upload'>; label: string; icon: LinearIconName }> = [
+    { action: 'compress-pdf', label: 'Compress', icon: 'compress' },
+    { action: 'ocr-pdf', label: 'OCR', icon: 'ocr' },
+    { action: 'merge-pdf', label: 'Merge', icon: 'merge' },
+];
+
 const STUDIO_TOOL_RAIL_WIDTH = 220;
 
 const CARD_WIDTH = 200;
@@ -405,9 +414,9 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
         const billingContext = runtime.billing.getContext();
         const editToolIds: string[] = ['text', 'annotate', 'sign', 'whiteout', 'watermark', 'forms', 'protect'];
 
-        // Daily limit for free-tier tools
+        // Daily limit for free-tier tools (OCR uses page-based trial, not daily limit)
         const dailyLimit = FREE_TOOL_DAILY_LIMITS[tool];
-        if (dailyLimit !== undefined && billingContext.plan === 'basic') {
+        if (dailyLimit !== undefined && billingContext.plan === 'basic' && tool !== 'ocr-pdf') {
             const usage = getDailyUsage(tool);
             if (usage >= dailyLimit) {
                 showStudioPaywall(
@@ -720,6 +729,19 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
     const openUploadDialog = useCallback(() => {
         uploadInputRef.current?.click();
     }, []);
+
+    const handleEmptyStateCta = useCallback((action: StudioEmptyStateCtaAction) => {
+        runtime.telemetry.track({
+            type: 'STUDIO_EMPTY_STATE_CTA',
+            runId: uiRunIdRef.current,
+            action,
+        });
+        if (action === 'upload') {
+            openUploadDialog();
+            return;
+        }
+        navigate(`/${action}`);
+    }, [navigate, openUploadDialog, runtime.telemetry]);
 
     const copySelectedPages = useCallback(() => {
         if (selection.length === 0) {
@@ -1186,6 +1208,29 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
                             </div>
                             <h2 className="studio-empty-state-title">Drop a PDF to get started</h2>
                             <p className="studio-empty-state-copy">All processing happens locally.<br/>Your files never leave your device.</p>
+                            <div className="studio-empty-state-actions">
+                                <button
+                                    type="button"
+                                    className="studio-empty-state-upload-btn"
+                                    onClick={() => { handleEmptyStateCta('upload'); }}
+                                >
+                                    <LinearIcon name="upload" size={18} />
+                                    Upload PDF
+                                </button>
+                                <div className="studio-empty-state-tools" role="group" aria-label="Popular tools">
+                                    {EMPTY_STATE_TOOLS.map((item) => (
+                                        <button
+                                            key={item.action}
+                                            type="button"
+                                            className="studio-empty-state-tool-btn"
+                                            onClick={() => { handleEmptyStateCta(item.action); }}
+                                        >
+                                            <LinearIcon name={item.icon} size={16} />
+                                            {item.label}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
                             <div className="studio-empty-state-hints" aria-label="Studio shortcuts">
                                 <span className="studio-empty-state-hint">U</span>
                                 <span className="studio-empty-state-hint-sep">upload</span>
