@@ -1,5 +1,6 @@
 import type { PDFFont } from 'pdf-lib';
-import { inferSourceTextStyle as inferSourceTextStyleFromServices } from '../../../services/pdf/studio-text-edit-utils';
+
+export { inferSourceTextStyle } from '../../../../shared/studio-text-edit/infer-source-text-style';
 
 export type FontFamilyId =
   | 'sora'
@@ -453,14 +454,6 @@ export function mergeTextLine(spans: TextLayerSpanLike[], anchor: TextLayerSpanL
     ascentRatio: anchor.ascentRatio,
     transform: anchor.transform,
   };
-}
-
-export function inferSourceTextStyle(
-  fontName?: string,
-  fontFamilyHint?: string,
-  transform?: number[],
-): { fontWeight: 'normal' | 'bold'; fontStyle: 'normal' | 'italic' } {
-  return inferSourceTextStyleFromServices(fontName, fontFamilyHint, transform);
 }
 
 export function estimateInlineFontSizePt(fontSizeRatio: number, pageHeightPt: number): number {

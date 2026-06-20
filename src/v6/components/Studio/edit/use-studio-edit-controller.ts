@@ -27,7 +27,11 @@ import {
     EditorToolId
 } from '../editor-types';
 import { normalizeTextLayerSpans, type FontFamilyId } from '../inline-text-utils';
-import { filterTextLayerSpansByEditedElements, isStudioTextEditV2Enabled, dedupeStackedTextLayerSpans } from '../../../../services/pdf/text-edit';
+import {
+  dedupeStackedTextLayerSpans,
+  filterTextLayerSpansByEditedElements,
+  isStudioTextEditV2Enabled,
+} from '../../../../../shared/studio-text-edit';
 
 const STUDIO_TOOL_CONTEXT = {
     userId: 'studio-user',

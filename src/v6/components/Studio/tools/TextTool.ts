@@ -6,8 +6,8 @@ import {
   mergeTextLine,
   resolveFontFamily,
 } from '../inline-text-utils';
-import { inferSourceTextStyle } from '../../../../services/pdf/studio-text-edit-utils';
-import { buildOriginalRect } from '../../../../services/pdf/text-edit';
+import { inferSourceTextStyle } from '../../../../../shared/studio-text-edit/infer-source-text-style';
+import { buildOriginalRect } from '../../../../../shared/studio-text-edit/original-rect';
 import { clamp01 } from '../../../utils/studio-edit-math';
 import { findNearestTextSpan } from '../inline-text-utils';
 
