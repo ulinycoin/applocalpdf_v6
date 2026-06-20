@@ -17,6 +17,7 @@ export interface PdfTextLayerSpan {
   pageHeightPt?: number;
   ascentRatio?: number;
   descentRatio?: number;
+  transform?: number[];
 }
 
 export interface PdfTextLayerResult {
@@ -34,6 +35,15 @@ function clamp(value: number, min: number, max: number): number {
 
 function clamp01(value: number): number {
   return clamp(value, 0, 1);
+}
+
+function readFontSizePt(transform: number[]): number {
+  if (!Array.isArray(transform) || transform.length < 4) {
+    return 8;
+  }
+  return Math.hypot(transform[2] ?? 0, transform[3] ?? 0)
+    || Math.hypot(transform[0] ?? 0, transform[1] ?? 0)
+    || 8;
 }
 
 function multiplyTransform(m1: number[], m2: number[]): number[] {
@@ -123,7 +133,8 @@ export async function extractPdfTextLayerSpans(
     const tx = multiplyTransform(viewport.transform as number[], item.transform as number[]);
     const x = tx[4];
     const y = tx[5];
-    const fontHeight = Math.hypot(tx[2], tx[3]) || (Number(item.height) * scale) || 8;
+    const fontSizePt = readFontSizePt(item.transform as number[]);
+    const fontHeight = Math.hypot(tx[2], tx[3]) || (Number(item.height) * scale) || fontSizePt * scale;
     const style = textStyles[item.fontName];
     let fontAscent = fontHeight;
     if (style?.ascent) {
@@ -149,12 +160,13 @@ export async function extractPdfTextLayerSpans(
       yRatio: clamp01(top / viewport.height),
       widthRatio: clamp(width / viewport.width, 0.001, 1),
       heightRatio: clamp(height / viewport.height, 0.001, 1),
-      fontSizeRatio: clamp(fontHeight / viewport.height, 0.004, 0.25),
+      fontSizeRatio: clamp(fontSizePt / pageViewport.height, 0.004, 0.25),
       fontName: item.fontName,
       fontFamilyHint: style?.fontFamily,
       pageHeightPt: pageViewport.height,
       ascentRatio: clamp01(fontAscent / viewport.height),
       descentRatio: clamp01(fontDescent / viewport.height),
+      transform: item.transform as number[],
     });
   }
 
@@ -179,6 +191,7 @@ export async function extractTextLayerForPreview(
   });
   const pdf = await loadingTask.promise;
   const page = await pdf.getPage(pageNumber);
+  const pageViewport = page.getViewport({ scale: 1.0 });
   const viewport = page.getViewport({ scale });
   const textContent = await page.getTextContent();
   const textStyles = textContent.styles as Record<string, { ascent?: number; descent?: number; fontFamily?: string }>;
@@ -193,7 +206,8 @@ export async function extractTextLayerForPreview(
     const tx = multiplyTransform(viewport.transform as number[], item.transform as number[]);
     const x = tx[4];
     const y = tx[5];
-    const fontHeight = Math.hypot(tx[2], tx[3]) || (Number(item.height) * scale) || 8;
+    const fontSizePt = readFontSizePt(item.transform as number[]);
+    const fontHeight = Math.hypot(tx[2], tx[3]) || (Number(item.height) * scale) || fontSizePt * scale;
     const style = textStyles[item.fontName];
     let fontAscent = fontHeight;
     if (style?.ascent) {
@@ -219,11 +233,13 @@ export async function extractTextLayerForPreview(
       yRatio: clamp01(top / viewport.height),
       widthRatio: clamp(width / viewport.width, 0.001, 1),
       heightRatio: clamp(height / viewport.height, 0.001, 1),
-      fontSizeRatio: clamp(fontHeight / viewport.height, 0.001, 1),
+      fontSizeRatio: clamp(fontSizePt / pageViewport.height, 0.004, 0.25),
       ascentRatio: clamp01(fontAscent / viewport.height),
       descentRatio: clamp01(fontDescent / viewport.height),
       fontName: item.fontName,
       fontFamilyHint: style?.fontFamily,
+      pageHeightPt: pageViewport.height,
+      transform: item.transform as number[],
     });
   }
 

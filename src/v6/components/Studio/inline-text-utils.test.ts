@@ -168,6 +168,17 @@ test('normalizeTextLayerSpans removes overlapping duplicate spans', () => {
   assert.deepEqual(normalized.map((span) => span.id), ['a1', 'b1']);
 });
 
+test('mergeTextLine ignores stacked overlay duplicate at same column', () => {
+  const spans = [
+    { id: 'old', text: 'Privacy-First PDF Processing', xRatio: 0.147, yRatio: 0.166, widthRatio: 0.34, heightRatio: 0.019, fontSizeRatio: 0.019 },
+    { id: 'new', text: 'Privacy-First true PDF Processing', xRatio: 0.147, yRatio: 0.172, widthRatio: 0.36, heightRatio: 0.019, fontSizeRatio: 0.019 },
+  ];
+
+  const mergedFromOverlay = mergeTextLine(spans, spans[1]!);
+  assert.ok(mergedFromOverlay);
+  assert.equal(mergedFromOverlay?.text, 'Privacy-First true PDF Processing');
+});
+
 test('fitTextToWidth reduces font size/tracking for long text', async () => {
   const doc = await PDFDocument.create();
   const font = await doc.embedFont(StandardFonts.Helvetica);

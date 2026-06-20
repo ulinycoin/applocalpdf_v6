@@ -14,6 +14,7 @@ import {
   normalizeFillColor,
   normalizeFontFamilyFromId as normalizeFontFamily,
 } from './studio-text-edit-utils';
+import { normalizeOriginalRectInput } from './text-edit';
 
 const MAX_EDIT_ELEMENTS = 2000;
 const MAX_TEXT_LENGTH = 20_000;
@@ -73,6 +74,7 @@ function normalizeTextElement(input: WorkerStudioTextEditElement): WorkerStudioT
     sourceFontSizeRatio: typeof input.sourceFontSizeRatio === 'number' && Number.isFinite(input.sourceFontSizeRatio)
       ? clamp(input.sourceFontSizeRatio, 0.004, 0.25)
       : undefined,
+    originalRect: normalizeOriginalRectInput(input.originalRect),
   };
 }
 

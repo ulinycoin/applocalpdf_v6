@@ -245,6 +245,10 @@ export function StudioEditWorkspace({ onClose }: StudioEditWorkspaceProps = {}) 
         ? (
             <StudioTextSettingsPanel
                 title={ui.text}
+                addTextBoxLabel={ui.addTextBox}
+                addTextBoxActiveLabel={ui.addTextBoxActive}
+                textAddMode={ctrl.textAddMode}
+                onToggleTextAddMode={() => ctrl.setTextAddMode(!ctrl.textAddMode)}
                 fontFamilyLabel={ui.textFontFamily}
                 fontSizeLabel={ui.textFontSize}
                 textColorLabel={ui.textColor}
@@ -596,6 +600,8 @@ export function StudioEditWorkspace({ onClose }: StudioEditWorkspaceProps = {}) 
                                     textSelectionMode={ctrl.textSelectionMode}
                                     onTextSelectionModeChange={ctrl.setTextSelectionMode}
                                     textInteractionMode={ctrl.textInteractionMode}
+                                    textAddMode={ctrl.textAddMode}
+                                    onTextAddModeChange={ctrl.setTextAddMode}
                                     annotateColor={ctrl.annotateColor}
                                     annotateMode={ctrl.annotateMode}
                                     annotateStrokeWidth={ctrl.annotateMode === 'shapes' ? ctrl.shapeStrokeWidth : ctrl.annotateStrokeWidth}

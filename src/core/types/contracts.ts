@@ -98,6 +98,7 @@ export interface WorkerPdfTextLayerSpan {
   pageHeightPt?: number;
   ascentRatio?: number;
   descentRatio?: number;
+  transform?: number[];
 }
 
 export interface WorkerPdfImageCandidate {

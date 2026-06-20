@@ -28,6 +28,12 @@ export interface TextElement {
     sourceFontName?: string;
     sourceFontFamilyHint?: string;
     sourceFontSizeRatio?: number;
+    originalRect?: {
+        x: number;
+        y: number;
+        w: number;
+        h: number;
+    };
 }
 
 export interface StrokeElement {

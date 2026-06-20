@@ -1,4 +1,5 @@
 import type { PDFFont } from 'pdf-lib';
+import { inferSourceTextStyle as inferSourceTextStyleFromServices } from '../../../services/pdf/studio-text-edit-utils';
 
 export type FontFamilyId =
   | 'sora'
@@ -22,6 +23,7 @@ export interface TextLayerSpanLike {
   fontFamilyHint?: string;
   pageHeightPt?: number;
   ascentRatio?: number;
+  transform?: number[];
 }
 
 export interface PointRatio {
@@ -40,6 +42,7 @@ export interface MergedTextLine {
   fontFamilyHint?: string;
   pageHeightPt?: number;
   ascentRatio?: number;
+  transform?: number[];
 }
 
 const FONT_EXACT_MAP: Record<string, FontFamilyId> = {
@@ -218,7 +221,31 @@ export function mergeTextLine(spans: TextLayerSpanLike[], anchor: TextLayerSpanL
       const topMatch = Math.abs(candidate.yRatio - anchor.yRatio) <= lineThreshold;
       const bottomMatch = Math.abs((candidate.yRatio + candidate.heightRatio) - (anchor.yRatio + anchor.heightRatio)) <= lineThreshold;
 
-      return baselineMatch || (topMatch && bottomMatch);
+      if (!(baselineMatch || (topMatch && bottomMatch))) {
+        return false;
+      }
+
+      const xTolerance = Math.max(0.01, anchor.widthRatio * 0.08);
+      const sameColumn = Math.abs(candidate.xRatio - anchor.xRatio) <= xTolerance;
+      const rowOffset = Math.abs(candidate.yRatio - anchor.yRatio);
+      const stackedRows = sameColumn
+        && candidate.id !== anchor.id
+        && rowOffset > Math.max(0.0025, anchor.heightRatio * 0.25);
+      if (stackedRows) {
+        const anchorText = anchor.text.replace(/\s+/gu, ' ').trim();
+        const candidateText = candidate.text.replace(/\s+/gu, ' ').trim();
+        if (
+          !anchorText
+          || !candidateText
+          || candidateText.includes(anchorText)
+          || anchorText.includes(candidateText)
+          || rowOffset <= Math.max(0.004, anchor.heightRatio * 2.5)
+        ) {
+          return false;
+        }
+      }
+
+      return true;
     })
     .sort((a, b) => a.xRatio - b.xRatio);
 
@@ -424,7 +451,16 @@ export function mergeTextLine(spans: TextLayerSpanLike[], anchor: TextLayerSpanL
     fontFamilyHint: anchor.fontFamilyHint,
     pageHeightPt: anchor.pageHeightPt,
     ascentRatio: anchor.ascentRatio,
+    transform: anchor.transform,
   };
+}
+
+export function inferSourceTextStyle(
+  fontName?: string,
+  fontFamilyHint?: string,
+  transform?: number[],
+): { fontWeight: 'normal' | 'bold'; fontStyle: 'normal' | 'italic' } {
+  return inferSourceTextStyleFromServices(fontName, fontFamilyHint, transform);
 }
 
 export function estimateInlineFontSizePt(fontSizeRatio: number, pageHeightPt: number): number {

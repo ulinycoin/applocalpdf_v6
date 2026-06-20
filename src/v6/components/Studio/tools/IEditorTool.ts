@@ -23,6 +23,8 @@ export interface ToolContext {
     isSelectMode: boolean;
     textSelectionMode: 'line' | 'word';
     textInteractionMode: 'edit' | 'move';
+    textAddMode: boolean;
+    setTextAddMode: (active: boolean) => void;
     textEditor: TextEditorState | null;
     commitTextEditor: () => void;
     startEditingText: (element: TextElement) => void;

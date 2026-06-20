@@ -27,6 +27,7 @@ import {
     EditorToolId
 } from '../editor-types';
 import { normalizeTextLayerSpans, type FontFamilyId } from '../inline-text-utils';
+import { filterTextLayerSpansByEditedElements, isStudioTextEditV2Enabled, dedupeStackedTextLayerSpans } from '../../../../services/pdf/text-edit';
 
 const STUDIO_TOOL_CONTEXT = {
     userId: 'studio-user',
@@ -181,6 +182,7 @@ export function useStudioEditController(ui: any) {
     // Local State
     const [tool, setTool] = useState<EditorToolId | null>(editSession?.activeTool ?? null);
     const [textInteractionMode, setTextInteractionMode] = useState<'edit' | 'move'>('edit');
+    const [textAddMode, setTextAddMode] = useState(false);
     const [elements, setElements] = useState<EditElement[]>([]);
     const elementsRef = useRef<EditElement[]>([]);
     const [history, setHistory] = useState<EditElement[][]>([[]]);
@@ -320,6 +322,9 @@ export function useStudioEditController(ui: any) {
     const selectTool = useCallback((nextTool: StudioEditToolId, method: 'ui' | 'shortcut' = 'ui') => {
         const resolvedTool: StudioEditToolId = nextTool === 'shapes' ? 'annotate' : nextTool;
         setTool(resolvedTool);
+        if (resolvedTool !== 'text') {
+            setTextAddMode(false);
+        }
         updateEditSessionTool(resolvedTool);
         runtime.telemetry.track({ type: 'STUDIO_EDIT_TOOL_SELECTED', runId: sessionRunId, toolId: 'studio.edit', tool: resolvedTool, method });
     }, [updateEditSessionTool, runtime, sessionRunId]);
@@ -365,20 +370,20 @@ export function useStudioEditController(ui: any) {
             try {
                 const workerSpans = await requestTextLayerSpans(runtime, preview.page.fileId, preview.page.pageIndex + 1, abortController.signal);
                 if (abortController.signal.aborted) return;
-                const spans = normalizeTextLayerSpans(
+                const spans = dedupeStackedTextLayerSpans(normalizeTextLayerSpans(
                     workerSpans.length > 0
                         ? workerSpans
                         : await requestTextLayerSpansFallback(runtime, preview.page.fileId, preview.page.pageIndex + 1),
-                );
+                ));
                 if (abortController.signal.aborted) return;
                 setTextLayerSpans(spans);
                 if (spans.length === 0) setMessage(ui.noTextLayer);
             } catch (error) {
                 if (abortController.signal.aborted) return;
                 try {
-                    const fallbackSpans = normalizeTextLayerSpans(
+                    const fallbackSpans = dedupeStackedTextLayerSpans(normalizeTextLayerSpans(
                         await requestTextLayerSpansFallback(runtime, preview.page.fileId, preview.page.pageIndex + 1),
-                    );
+                    ));
                     if (abortController.signal.aborted) return;
                     setTextLayerSpans(fallbackSpans);
                     if (fallbackSpans.length === 0) setMessage(ui.noTextLayer);
@@ -838,6 +843,13 @@ export function useStudioEditController(ui: any) {
         return () => window.removeEventListener('keydown', onKeyDown);
     }, [deleteSelected, redo, undo, applyChanges, isApplying, historyIndex, hasDirtyChanges, textEditor, selectTool]);
 
+    const visibleTextLayerSpans = useMemo(() => {
+        if (!isStudioTextEditV2Enabled()) {
+            return textLayerSpans;
+        }
+        return filterTextLayerSpansByEditedElements(textLayerSpans, elements);
+    }, [elements, textLayerSpans]);
+
     return {
         runId: sessionRunId,
         navigate,
@@ -850,10 +862,11 @@ export function useStudioEditController(ui: any) {
         isApplying,
         textEditor, setTextEditor, commitTextEditor,
         inlineUiState, setInlineUiState,
-        textLayerSpans,
+        textLayerSpans: visibleTextLayerSpans,
         isSelectMode, setIsSelectMode,
         textSelectionMode, setTextSelectionMode,
         textInteractionMode, setTextInteractionMode,
+        textAddMode, setTextAddMode,
         annotateColor, setAnnotateColor,
         annotateMode, setAnnotateMode,
         annotateStrokeWidth, setAnnotateStrokeWidth,

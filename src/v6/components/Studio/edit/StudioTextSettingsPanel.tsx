@@ -3,6 +3,10 @@ import { LinearIcon } from '../../icons/linear-icon';
 
 interface StudioTextSettingsPanelProps {
     title: string;
+    addTextBoxLabel: string;
+    addTextBoxActiveLabel: string;
+    textAddMode: boolean;
+    onToggleTextAddMode: () => void;
     fontFamilyLabel: string;
     fontSizeLabel: string;
     textColorLabel: string;
@@ -46,6 +50,10 @@ function ColorSwatch({ label, value, onChange }: { label: string; value: string;
 }
 
 export function StudioTextSettingsPanel({
+    addTextBoxLabel,
+    addTextBoxActiveLabel,
+    textAddMode,
+    onToggleTextAddMode,
     fontFamily,
     fontSize,
     fontWeight,
@@ -60,6 +68,15 @@ export function StudioTextSettingsPanel({
 }: StudioTextSettingsPanelProps) {
     return (
         <div className="ep">
+
+            <button
+                type="button"
+                className={`ep-select${textAddMode ? ' ep-fmt-btn--on' : ''}`}
+                onClick={onToggleTextAddMode}
+                style={{ marginBottom: 8, cursor: 'pointer', fontWeight: textAddMode ? 600 : 400 }}
+            >
+                {textAddMode ? addTextBoxActiveLabel : addTextBoxLabel}
+            </button>
 
             {/* Section: Typography */}
             <div className="ep-section-title">Typography</div>

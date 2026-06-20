@@ -24,6 +24,7 @@ import {
 import { TOOLS, ToolContext } from './tools';
 import { finalizeAnnotatePenDraft, hasAnnotatePenDraft } from './tools/AnnotateTool';
 import { finalizeSignatureDraft, hasSignatureDraft } from './tools/SignTool';
+import { isLinkedTextBackground, moveTextWithBackground, resizeTextWithBackground } from './text-element-layout';
 
 export interface StudioPageEditorHandle {
     commitPendingSignDraft: () => boolean;
@@ -54,6 +55,8 @@ export interface StudioPageEditorProps {
     textSelectionMode?: 'line' | 'word';
     onTextSelectionModeChange?: (_mode: 'line' | 'word') => void;
     textInteractionMode?: 'edit' | 'move';
+    textAddMode?: boolean;
+    onTextAddModeChange?: (active: boolean) => void;
     annotateColor?: string;
     annotateMode?: 'highlight' | 'pen' | 'shapes';
     annotateStrokeWidth?: number;
@@ -116,6 +119,8 @@ export const StudioPageEditor = forwardRef<StudioPageEditorHandle, StudioPageEdi
     textSelectionMode: externalTextSelectionMode,
     onTextSelectionModeChange: _onTextSelectionModeChange,
     textInteractionMode: externalTextInteractionMode,
+    textAddMode: externalTextAddMode = false,
+    onTextAddModeChange: _onTextAddModeChange,
     annotateColor = '#fff176',
     annotateMode = 'highlight',
     annotateStrokeWidth = 5,
@@ -187,6 +192,7 @@ export const StudioPageEditor = forwardRef<StudioPageEditorHandle, StudioPageEdi
 
     const textSelectionMode = externalTextSelectionMode ?? 'line';
     const textInteractionMode = externalTextInteractionMode ?? 'edit';
+    const textAddMode = externalTextAddMode ?? false;
     const activeTool = externalActiveTool;
     const hasPendingSignDraft = activeTool === 'sign' && signMode === 'draw' && hasSignatureDraft(draftStroke);
     const hasPendingAnnotatePenDraft = activeTool === 'annotate' && annotateMode === 'pen' && hasAnnotatePenDraft(draftStroke);
@@ -230,6 +236,8 @@ export const StudioPageEditor = forwardRef<StudioPageEditorHandle, StudioPageEdi
         isSelectMode,
         textSelectionMode,
         textInteractionMode,
+        textAddMode,
+        setTextAddMode: (active: boolean) => _onTextAddModeChange?.(active),
         textEditor,
         commitTextEditor,
         startEditingText,
@@ -343,21 +351,54 @@ export const StudioPageEditor = forwardRef<StudioPageEditorHandle, StudioPageEdi
         tool.onPointerUp(buildToolContext(), event, worldPos);
     };
 
-    const handleElementAction = (id: string, action: 'delete' | 'duplicate' | 'update', patch?: any) => {
+    const handleElementAction = (id: string, action: 'delete' | 'duplicate' | 'update', patch?: any, shouldPushHistory = true) => {
         if (action === 'delete') {
-            applyElements(elements.filter(el => el.id !== id));
+            applyElements(elements.filter(el => el.id !== id), shouldPushHistory);
             setSelectedElementId(null);
         } else if (action === 'duplicate') {
             const el = elements.find(e => e.id === id);
             if (el) {
                 const nextX = ('x' in el) ? el.x + 0.02 : 0;
                 const nextY = ('y' in el) ? el.y + 0.02 : 0;
-                applyElements([...elements, { ...el, id: crypto.randomUUID(), ...(('x' in el) ? { x: nextX, y: nextY } : {}) } as EditElement]);
+                applyElements([...elements, { ...el, id: crypto.randomUUID(), ...(('x' in el) ? { x: nextX, y: nextY } : {}) } as EditElement], shouldPushHistory);
             }
         } else if (action === 'update' && patch) {
-            applyElements(elements.map(el => el.id === id ? { ...el, ...patch } : el));
+            const target = elements.find((item) => item.id === id);
+            if (target?.type === 'text' && ('x' in patch || 'y' in patch) && !('w' in patch || 'h' in patch || 'fontSize' in patch)) {
+                const nextX = typeof patch.x === 'number' ? patch.x : target.x;
+                const nextY = typeof patch.y === 'number' ? patch.y : target.y;
+                applyElements(moveTextWithBackground(elements, id, nextX, nextY), shouldPushHistory);
+                return;
+            }
+            if (target?.type === 'text' && ('w' in patch || 'h' in patch || 'fontSize' in patch)) {
+                applyElements(resizeTextWithBackground(elements, id, patch), shouldPushHistory);
+                return;
+            }
+            applyElements(elements.map(el => el.id === id ? { ...el, ...patch } : el), shouldPushHistory);
         }
     };
+
+    const finalizeDragSession = useCallback((session: DragSession | null) => {
+        if (!session || !onPushHistory) {
+            return;
+        }
+        const current = elements.find((item) => item.id === session.id);
+        const initial = session.initialElements.find((item) => item.id === session.id);
+        if (!current || !initial) {
+            return;
+        }
+        if (session.mode === 'move-text' && 'x' in current && 'x' in initial) {
+            if (current.x !== initial.x || current.y !== initial.y) {
+                onPushHistory(elements);
+            }
+            return;
+        }
+        if (session.mode === 'resize-text' && current.type === 'text' && initial.type === 'text') {
+            if (current.w !== initial.w || current.h !== initial.h || current.fontSize !== initial.fontSize) {
+                onPushHistory(elements);
+            }
+        }
+    }, [elements, onPushHistory]);
 
     const textLayerNodes = useMemo(() => {
         return textLayerSpans.map((span, idx) => (
@@ -397,7 +438,12 @@ export const StudioPageEditor = forwardRef<StudioPageEditorHandle, StudioPageEdi
         <div
             ref={canvasRef}
             className="studio-page-editor-container studio-edit-canvas-content"
-            style={{ width, height, position: 'relative' }}
+            style={{
+                width,
+                height,
+                position: 'relative',
+                cursor: activeTool === 'text' && textAddMode ? 'crosshair' : undefined,
+            }}
             onPointerDown={onCanvasPointerDown}
             onPointerMove={onCanvasPointerMove}
             onPointerUp={onCanvasPointerUp}
@@ -448,7 +494,7 @@ export const StudioPageEditor = forwardRef<StudioPageEditorHandle, StudioPageEdi
                                 : (el.type === 'watermark' && el.repeatEnabled
                                     ? '100%'
                                     : (('h' in el) ? `${el.h * 100}%` : 'auto')),
-                            pointerEvents: 'auto',
+                            pointerEvents: isLinkedTextBackground(el, elements) ? 'none' : 'auto',
                             zIndex: selectedElementId === el.id ? 1001 : 1,
                         }}
                         onPointerDown={(e) => {
@@ -509,6 +555,12 @@ export const StudioPageEditor = forwardRef<StudioPageEditorHandle, StudioPageEdi
                                     x: nextX,
                                     y: nextY,
                                 });
+                            } else if (sess && sess.id === el.id && sess.mode === 'move-text' && el.type === 'text') {
+                                const dx = (e.clientX - sess.startClientX) / width;
+                                const dy = (e.clientY - sess.startClientY) / height;
+                                const nextX = clamp01(sess.originX + dx);
+                                const nextY = clamp01(sess.originY + dy);
+                                applyElements(moveTextWithBackground(elements, el.id, nextX, nextY), false);
                             } else if (sess && sess.id === el.id && sess.mode.startsWith('move-')) {
                                 const dx = (e.clientX - sess.startClientX) / width;
                                 const dy = (e.clientY - sess.startClientY) / height;
@@ -567,7 +619,7 @@ export const StudioPageEditor = forwardRef<StudioPageEditorHandle, StudioPageEdi
                                     h: nextH,
                                     fontSize: nextFontSize,
                                 });
-                            } else if (sess && sess.id === el.id && sess.mode === 'resize-text') {
+                            } else if (sess && sess.id === el.id && sess.mode === 'resize-text' && el.type === 'text') {
                                 const dx = (e.clientX - sess.startClientX) / width;
                                 const dy = (e.clientY - sess.startClientY) / height;
                                 const delta = Math.max(dx, dy);
@@ -575,15 +627,16 @@ export const StudioPageEditor = forwardRef<StudioPageEditorHandle, StudioPageEdi
                                 const nextW = clamp(sess.originW * scale, 0.05, 0.95);
                                 const nextH = clamp(sess.originH * scale, 0.02, 0.6);
                                 const nextFontSize = clamp(sess.originFontSize * scale, 8, 144);
-                                handleElementAction(el.id, 'update', {
+                                applyElements(resizeTextWithBackground(elements, el.id, {
                                     w: nextW,
                                     h: nextH,
                                     fontSize: nextFontSize,
-                                });
+                                }), false);
                             }
                         }}
                         onPointerUp={(e) => {
                             if (dragSessionRef.current && dragSessionRef.current.id === el.id) {
+                                finalizeDragSession(dragSessionRef.current);
                                 dragSessionRef.current = null;
                                 try {
                                     (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
@@ -592,6 +645,7 @@ export const StudioPageEditor = forwardRef<StudioPageEditorHandle, StudioPageEdi
                         }}
                         onPointerCancel={(e) => {
                             if (dragSessionRef.current && dragSessionRef.current.id === el.id) {
+                                finalizeDragSession(dragSessionRef.current);
                                 dragSessionRef.current = null;
                                 try {
                                     (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
@@ -606,9 +660,9 @@ export const StudioPageEditor = forwardRef<StudioPageEditorHandle, StudioPageEdi
                                 lineHeight: el.lineHeight, letterSpacing: el.letterSpacing,
                                 whiteSpace: 'nowrap', position: 'relative', display: 'grid',
                                 overflow: 'visible',
-                                cursor: textInteractionMode === 'move' ? 'grab' : 'text'
+                                cursor: selectedElementId === el.id && textEditor?.id !== el.id ? 'grab' : 'text',
                             }}>
-                                {selectedElementId === el.id && textInteractionMode === 'move' && textEditor?.id !== el.id && (
+                                {selectedElementId === el.id && textEditor?.id !== el.id && (
                                     <div style={{
                                         position: 'absolute',
                                         top: -28,
@@ -645,6 +699,7 @@ export const StudioPageEditor = forwardRef<StudioPageEditorHandle, StudioPageEdi
                                         <textarea
                                             autoFocus
                                             className="studio-edit-textarea"
+                                            placeholder={ui.addTextPlaceholder}
                                             value={textEditor.value}
                                             onChange={(e) => handleTextEditorChange(el.id, e.target.value)}
                                             style={{

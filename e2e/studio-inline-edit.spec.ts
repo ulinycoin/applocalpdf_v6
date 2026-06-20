@@ -82,6 +82,19 @@ test.describe('Studio inline text edit', () => {
       await expect(page.getByTestId('studio-edit-save-btn')).toBeDisabled({ timeout: 15000 });
 
       await expect(page.locator('.studio-edit-text').first()).toContainText('INLINE UPDATED');
+
+      await page.getByRole('button', { name: 'Edit', exact: true }).click();
+      await expect(page.locator('.studio-edit-shell')).toBeVisible({ timeout: 20000 });
+      await selectTextBtn.click();
+      const highlightAfterSave = page.locator('.studio-edit-text-highlight').first();
+      await expect(highlightAfterSave).toBeVisible({ timeout: 15000 });
+      await highlightAfterSave.click({ force: true });
+      const textareaAfterSave = page.locator('.studio-edit-textarea').first();
+      await expect(textareaAfterSave).toBeVisible({ timeout: 10000 });
+      await textareaAfterSave.fill('INLINE UPDATED AGAIN');
+      await page.getByTestId('studio-edit-save-btn').click();
+      await expect(page.getByTestId('studio-edit-save-btn')).toBeDisabled({ timeout: 15000 });
+      await expect(page.locator('.studio-edit-text').first()).toContainText('INLINE UPDATED AGAIN');
     } finally {
       safeDelete(pdfPath);
     }

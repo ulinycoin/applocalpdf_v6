@@ -6,6 +6,9 @@ export interface StudioEditMessages {
   selectText: string;
   text: string;
   moveText: string;
+  addTextBox: string;
+  addTextBoxActive: string;
+  addTextPlaceholder: string;
   textFontFamily: string;
   textFontSize: string;
   textColor: string;
@@ -69,6 +72,9 @@ const EN_MESSAGES: StudioEditMessages = {
   selectText: 'Select Text',
   text: 'Text',
   moveText: 'Move Text',
+  addTextBox: 'Add Text Box',
+  addTextBoxActive: 'Click on page to place',
+  addTextPlaceholder: 'Type here',
   textFontFamily: 'Font',
   textFontSize: 'Size',
   textColor: 'Color',

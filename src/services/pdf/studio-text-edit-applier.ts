@@ -11,6 +11,18 @@ import type {
   WorkerStudioWatermarkEditElement,
 } from '../../core/types/contracts';
 import { parsePdfTextOperators } from './pdf-content-stream-parser';
+import {
+  collectOperatorsForRedaction,
+  collectOperatorsInRect,
+  isStudioTextEditV2Enabled,
+  matchesPatchedOperator,
+  redactOperatorsInDecodedStreams,
+  resolveTargetRect,
+  resolveTypographyFromElement,
+  resolveFontSizeFromElement,
+  textElementMovedFromOriginal as hasTextElementMovedFromOriginal,
+  type StreamOperatorRef,
+} from './text-edit';
 
 const getPdfCore = (() => {
   let promise: Promise<{ decodePDFRawStream?: (stream: unknown) => { decode: () => Uint8Array } } | null> | null = null;
@@ -553,13 +565,17 @@ async function loadPageStreamState(pdf: PDFDocument, pageIndex: number): Promise
   const decodedByStream: Array<{ index: number; content: string; operators: ReturnType<typeof parsePdfTextOperators> }> = [];
   for (const entry of streamEntries) {
     const decodedContent = await decodePageStreamToLatin1(entry.stream);
-    if (decodedContent === null) {
+    if (decodedContent === null || decodedContent.length === 0) {
+      continue;
+    }
+    const operators = parsePdfTextOperators(decodedContent);
+    if (operators.length === 0) {
       continue;
     }
     decodedByStream.push({
       index: entry.index,
       content: decodedContent,
-      operators: parsePdfTextOperators(decodedContent),
+      operators,
     });
   }
   if (decodedByStream.length === 0) {
@@ -579,8 +595,10 @@ function tryPatchStreamOperator(params: {
   targetTextAlign: 'left' | 'center' | 'right';
   pageWidth: number;
   pageHeight: number;
-}): { applied: boolean; reason?: string } {
+  persist?: boolean;
+}): { applied: boolean; reason?: string; patchedOperator?: StreamOperatorRef } {
   const { state, text } = params;
+  const persist = params.persist !== false;
   const { resolved, decodedByStream, PDFName, page } = state;
 
   const candidates = decodedByStream.flatMap((entry) => entry.operators.map((operator) => ({
@@ -626,16 +644,47 @@ function tryPatchStreamOperator(params: {
   streamTarget.content = updatedContent;
   streamTarget.operators = parsePdfTextOperators(updatedContent);
 
-  const updatedBytes = encodeLatin1(updatedContent);
-  const updatedStream = state.pdf.context.flateStream(updatedBytes);
-  const updatedRef = state.pdf.context.register(updatedStream);
+  if (persist) {
+    const updatedBytes = encodeLatin1(updatedContent);
+    const updatedStream = state.pdf.context.flateStream(updatedBytes);
+    const updatedRef = state.pdf.context.register(updatedStream);
 
-  if (resolved && typeof resolved.size === 'function' && typeof resolved.set === 'function') {
-    resolved.set(target.streamIndex, updatedRef);
-  } else {
-    page.node.set(PDFName.of('Contents'), updatedRef);
+    if (resolved && typeof resolved.size === 'function' && typeof resolved.set === 'function') {
+      resolved.set(target.streamIndex, updatedRef);
+    } else {
+      page.node.set(PDFName.of('Contents'), updatedRef);
+    }
   }
-  return { applied: true };
+
+  return {
+    applied: true,
+    patchedOperator: {
+      streamIndex: target.streamIndex,
+      operator: target.operator,
+    },
+  };
+}
+
+function persistDecodedStreamChanges(state: PageStreamState, modifiedStreamIndices: ReadonlySet<number>): void {
+  if (modifiedStreamIndices.size === 0) {
+    return;
+  }
+
+  const { pdf, resolved, decodedByStream, PDFName, page } = state;
+  for (const entry of decodedByStream) {
+    if (!modifiedStreamIndices.has(entry.index)) {
+      continue;
+    }
+    const updatedBytes = encodeLatin1(entry.content);
+    const updatedStream = pdf.context.flateStream(updatedBytes);
+    const updatedRef = pdf.context.register(updatedStream);
+
+    if (resolved && typeof resolved.size === 'function' && typeof resolved.set === 'function') {
+      resolved.set(entry.index, updatedRef);
+    } else if (entry.index === 0) {
+      page.node.set(PDFName.of('Contents'), updatedRef);
+    }
+  }
 }
 
 async function tryApplyTrueReplaceSingleTextOperator(params: {
@@ -672,17 +721,6 @@ async function tryApplyTrueReplaceSingleTextOperator(params: {
     pageWidth: params.pageWidth,
     pageHeight: params.pageHeight,
   });
-}
-
-function textElementMovedFromOriginal(element: WorkerStudioEditElement): boolean {
-  if (element.type !== 'text' || !element.originalRect) {
-    return false;
-  }
-  const tolerance = 0.0025;
-  return (
-    Math.abs(element.x - element.originalRect.x) > tolerance
-    || Math.abs(element.y - element.originalRect.y) > tolerance
-  );
 }
 
 export async function applyStudioTextEditsToPdfBytes(params: {
@@ -754,20 +792,14 @@ export async function applyStudioTextEditsToPdfBytes(params: {
   // Standard PDF fonts for ASCII-only text.
   void pdf.embedFont(StandardFonts.Helvetica).then((f) => fontCache.set('helvetica', f));
   void pdf.embedFont(StandardFonts.TimesRoman).then((f) => fontCache.set('times', f));
+  void pdf.embedFont(StandardFonts.Courier).then((f) => fontCache.set('courier', f));
 
-  const getStandardFontSync = (family: WorkerStudioFontFamilyId): PDFFont | null => {
-    if (family === 'times' || family === 'mono') {
-      return fontCache.get('times') ?? null;
-    }
-    return fontCache.get('helvetica') ?? null;
-  };
-
-  const getPreferredFontCandidates = (
+  const getPreferredFontCandidates = async (
     family: WorkerStudioFontFamilyId,
     weight: 'normal' | 'bold',
     style: 'normal' | 'italic',
     text: string,
-  ): PDFFont[] => {
+  ): Promise<PDFFont[]> => {
     const needsExtended = !canEncodeAsLatin1(text);
     const candidates: PDFFont[] = [];
     const addUnique = (font: PDFFont | null) => {
@@ -776,12 +808,10 @@ export async function applyStudioTextEditsToPdfBytes(params: {
       }
     };
 
-    // For ASCII only: standard PDF fonts are fine — they load from the built-in set.
     if (!needsExtended) {
-      addUnique(getStandardFontSync(family));
+      addUnique(await getStandardFont(family, weight, style));
     }
 
-    // Primary embedded fonts — cover Latin, Latin-Ext, Cyrillic.
     addUnique(fontCache.get('noto-sans-latin-ext-400') ?? null);
     addUnique(fontCache.get('noto-sans-cyrillic-400') ?? null);
     addUnique(fontCache.get('noto-sans-latin-400') ?? null);
@@ -799,7 +829,7 @@ export async function applyStudioTextEditsToPdfBytes(params: {
     text: string;
   }): Promise<{ font: PDFFont; text: string }> => {
     const needsExtended = !canEncodeAsLatin1(params.text);
-    const candidates = getPreferredFontCandidates(params.family, params.weight, params.style, params.text);
+    const candidates = await getPreferredFontCandidates(params.family, params.weight, params.style, params.text);
     for (const candidate of candidates) {
       if (canFontEncodeText(candidate, params.text)) {
         if (!needsExtended || !hasMissingGlyphs(candidate, params.text)) {
@@ -851,11 +881,13 @@ export async function applyStudioTextEditsToPdfBytes(params: {
     elements: WorkerStudioEditElement[],
     streamState: PageStreamState | null,
   ): Promise<void> {
+    const textEditV2 = isStudioTextEditV2Enabled();
+    const modifiedStreamIndices = new Set<number>();
     const textElements = elements.filter((e): e is WorkerStudioTextEditElement => e.type === 'text');
     for (const target of textElements) {
       const sanitizedText = sanitizeInlineText(target.text || ' ');
-      const movedFromOriginal = textElementMovedFromOriginal(target);
-      const targetRect = target.originalRect ?? { x: target.x, y: target.y, w: target.w, h: target.h };
+      const movedFromOriginal = hasTextElementMovedFromOriginal(target);
+      const targetRect = resolveTargetRect(target);
       if (!streamState) {
         trueReplaceFallbackReason = 'STREAM_DECODE_FAILED';
         continue;
@@ -874,8 +906,12 @@ export async function applyStudioTextEditsToPdfBytes(params: {
         targetTextAlign: target.textAlign,
         pageWidth,
         pageHeight,
+        persist: !textEditV2,
       });
       if (result.applied) {
+        if (result.patchedOperator) {
+          modifiedStreamIndices.add(result.patchedOperator.streamIndex);
+        }
         if (!movedFromOriginal && !isNonLatin1) {
           consumedTextIds.add(target.id);
         }
@@ -884,6 +920,31 @@ export async function applyStudioTextEditsToPdfBytes(params: {
       } else {
         trueReplaceFallbackReason = result.reason ?? 'TRUE_REPLACE_FAILED';
       }
+
+      if (textEditV2) {
+        const operatorsInRect = collectOperatorsForRedaction({
+          decodedByStream: streamState.decodedByStream,
+          pageWidth,
+          pageHeight,
+          rect: targetRect,
+          anchorOperator: result.patchedOperator?.operator,
+          fontSizeRatio: target.sourceFontSizeRatio,
+        });
+        const shouldPreservePatch = result.applied && !movedFromOriginal && !isNonLatin1;
+        const operatorsToRedact = shouldPreservePatch && result.patchedOperator
+          ? operatorsInRect.filter((item) => !matchesPatchedOperator(item, result.patchedOperator))
+          : operatorsInRect;
+        if (operatorsToRedact.length > 0) {
+          for (const item of operatorsToRedact) {
+            modifiedStreamIndices.add(item.streamIndex);
+          }
+          redactOperatorsInDecodedStreams(streamState.decodedByStream, operatorsToRedact);
+        }
+      }
+    }
+
+    if (textEditV2 && streamState && modifiedStreamIndices.size > 0) {
+      persistDecodedStreamChanges(streamState, modifiedStreamIndices);
     }
   }
 
@@ -892,10 +953,11 @@ export async function applyStudioTextEditsToPdfBytes(params: {
       return;
     }
     const line = sanitizeInlineText(element.text || ' ');
+    const typography = resolveTypographyFromElement(element);
     const rendered = await resolveRenderableText({
-      family: element.fontFamily,
-      weight: element.fontWeight,
-      style: element.fontStyle,
+      family: typography.fontFamily,
+      weight: typography.fontWeight,
+      style: typography.fontStyle,
       text: line,
     });
     const font = rendered.font;
@@ -905,13 +967,7 @@ export async function applyStudioTextEditsToPdfBytes(params: {
     const blockHeight = element.h * pageHeight;
     const yTop = element.y * pageHeight;
 
-    const requestedFontSize = clamp(
-      element.sourceFontSizeRatio !== undefined
-        ? element.sourceFontSizeRatio * pageHeight
-        : (element.fontSize || 12),
-      4,
-      144,
-    );
+    const requestedFontSize = resolveFontSizeFromElement(element, pageHeight);
 
     let renderFontSize = requestedFontSize;
     const textWidth = measureTextWidthWithTracking(font, textToDraw, renderFontSize, element.letterSpacing ?? 0);

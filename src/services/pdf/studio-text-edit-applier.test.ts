@@ -6,6 +6,15 @@ import { PDFDocument, StandardFonts } from 'pdf-lib';
 import { applyStudioTextEditsToPdfBytes } from './studio-text-edit-applier';
 import { parsePdfTextOperators } from './pdf-content-stream-parser';
 import { extractEmbeddedPdfText } from './pdf-text-extractor';
+import { extractTextLayerForPreview } from './pdf-text-layer-extractor';
+import { dedupeStackedTextLayerSpans } from './text-edit/span-filter';
+import { mergeTextLine } from '../../v6/components/Studio/inline-text-utils';
+import { inferSourceTextStyle } from './studio-text-edit-utils';
+
+test('inferSourceTextStyle detects oblique transform skew', () => {
+  const style = inferSourceTextStyle('Helvetica', 'sans-serif', [1, 0, 0.25, 1, 0, 0]);
+  assert.equal(style.fontStyle, 'italic');
+});
 
 async function createBlankPdfBytes(): Promise<Uint8Array> {
   const doc = await PDFDocument.create();
@@ -732,6 +741,186 @@ test('fixture taxonomy matrix keeps expected true-replace and fallback behavior'
       );
     }
   }
+});
+
+test('applyStudioTextEditsToPdfBytes v2 avoids ghost text on second save with originalRect', async () => {
+  const sourceBytes = await createSingleLinePdfBytes('ORIGINAL TOKEN');
+  const anchor = await getFirstTextOperatorAnchor(sourceBytes);
+  assert.ok(anchor, 'expected text anchor');
+
+  const baseElement = {
+    type: 'text' as const,
+    x: anchor.xRatio,
+    y: anchor.yRatio,
+    w: 0.5,
+    h: 0.08,
+    color: '#000000',
+    fontSize: 20,
+    fontFamily: 'sora' as const,
+    fontWeight: 'normal' as const,
+    fontStyle: 'normal' as const,
+    textAlign: 'left' as const,
+    lineHeight: 1.2,
+    letterSpacing: 0,
+    opacity: 1,
+    originalRect: {
+      x: anchor.xRatio,
+      y: anchor.yRatio,
+      w: 0.5,
+      h: 0.08,
+    },
+  };
+
+  const firstPass = await applyStudioTextEditsToPdfBytes({
+    sourceBytes,
+    pageIndex: 0,
+    elements: [{ ...baseElement, id: 'txt-pass-1', text: 'FIRST PASS' }],
+  });
+
+  const secondPass = await applyStudioTextEditsToPdfBytes({
+    sourceBytes: firstPass.outputBytes,
+    pageIndex: 0,
+    elements: [{ ...baseElement, id: 'txt-pass-2', text: 'SECOND PASS' }],
+  });
+
+  const extracted = await extractEmbeddedPdfText(toPdfBlob(secondPass.outputBytes));
+  const text = extracted?.text ?? '';
+  assert.match(text, /SECOND PASS/u);
+  assert.doesNotMatch(text, /ORIGINAL TOKEN/u);
+});
+
+test('applyStudioTextEditsToPdfBytes v2 preserves untouched lines on multi-line page', async () => {
+  const sourceBytes = await createTwoLinePdfBytes('TOP LINE', 'BOTTOM LINE');
+  const topAnchor = await getFirstTextOperatorAnchor(sourceBytes);
+  assert.ok(topAnchor, 'expected top-line anchor');
+
+  const result = await applyStudioTextEditsToPdfBytes({
+    sourceBytes,
+    pageIndex: 0,
+    elements: [{
+      id: 'txt-top',
+      type: 'text',
+      x: topAnchor.xRatio,
+      y: topAnchor.yRatio,
+      w: 0.5,
+      h: 0.08,
+      text: 'TOP REPLACED',
+      color: '#000000',
+      fontSize: 20,
+      fontFamily: 'sora',
+      fontWeight: 'normal',
+      fontStyle: 'normal',
+      textAlign: 'left',
+      lineHeight: 1.2,
+      letterSpacing: 0,
+      opacity: 1,
+      originalRect: {
+        x: topAnchor.xRatio,
+        y: topAnchor.yRatio,
+        w: 0.5,
+        h: 0.08,
+      },
+    }],
+  });
+
+  const extracted = await extractEmbeddedPdfText(toPdfBlob(result.outputBytes));
+  const text = extracted?.text ?? '';
+  assert.match(text, /TOP REPLACED/u);
+  assert.match(text, /BOTTOM LINE/u);
+  assert.doesNotMatch(text, /TOP LINE/u);
+});
+
+test('applyStudioTextEditsToPdfBytes demo fixture avoids duplicate line on re-edit', async () => {
+  const sourceBytes = await readFixturePdfBytes('debug', 'LocalPDF Demo Short.pdf');
+  const layer = await extractTextLayerForPreview(sourceBytes, 1, 2);
+  const privacySpan = layer.spans.find((span) => span.text === 'Privacy-First PDF Processing');
+  assert.ok(privacySpan, 'expected privacy heading span in demo fixture');
+  assert.ok(privacySpan.pageHeightPt && privacySpan.pageHeightPt > 0);
+  const sourceFontSizePt = privacySpan.fontSizeRatio * privacySpan.pageHeightPt!;
+  assert.ok(sourceFontSizePt >= 14 && sourceFontSizePt <= 16, `expected ~15pt heading, got ${sourceFontSizePt}`);
+
+  const originalRect = {
+    x: privacySpan.xRatio,
+    y: privacySpan.yRatio,
+    w: privacySpan.widthRatio,
+    h: privacySpan.heightRatio,
+  };
+
+  const firstPass = await applyStudioTextEditsToPdfBytes({
+    sourceBytes,
+    pageIndex: 0,
+    elements: [{
+      id: 'demo-edit-1',
+      type: 'text',
+      x: originalRect.x,
+      y: originalRect.y,
+      w: originalRect.w + 0.05,
+      h: originalRect.h + 0.01,
+      text: 'Privacy-First true PDF Processing',
+      color: '#000000',
+      fontSize: 24,
+      fontFamily: 'sora',
+      fontWeight: 'normal',
+      fontStyle: 'normal',
+      textAlign: 'left',
+      opacity: 1,
+      originalRect,
+      sourceFontSizeRatio: privacySpan.fontSizeRatio,
+      sourceFontName: privacySpan.fontName,
+      sourceFontFamilyHint: privacySpan.fontFamilyHint,
+    }],
+  });
+
+  const layerAfterFirst = await extractTextLayerForPreview(firstPass.outputBytes, 1, 2);
+  const dedupedAfterFirst = dedupeStackedTextLayerSpans(layerAfterFirst.spans);
+  const privacyAfterFirst = dedupedAfterFirst.filter((span) => /Privacy-First/i.test(span.text));
+  assert.equal(privacyAfterFirst.length, 1);
+  assert.equal(privacyAfterFirst[0]?.text, 'Privacy-First true PDF Processing');
+  const savedFontSizePt = privacyAfterFirst[0]!.fontSizeRatio * (privacyAfterFirst[0]!.pageHeightPt ?? layer.height);
+  assert.ok(Math.abs(savedFontSizePt - sourceFontSizePt) <= 1.5, `font size drift ${savedFontSizePt} vs ${sourceFontSizePt}`);
+
+  const overlaySpan = privacyAfterFirst[0]!;
+  const mergedForSecondEdit = mergeTextLine(dedupedAfterFirst, overlaySpan);
+  assert.ok(mergedForSecondEdit);
+  assert.equal(mergedForSecondEdit?.text, 'Privacy-First true PDF Processing');
+
+  const secondPass = await applyStudioTextEditsToPdfBytes({
+    sourceBytes: firstPass.outputBytes,
+    pageIndex: 0,
+    elements: [{
+      id: 'demo-edit-2',
+      type: 'text',
+      x: overlaySpan.xRatio,
+      y: overlaySpan.yRatio,
+      w: overlaySpan.widthRatio + 0.05,
+      h: overlaySpan.heightRatio + 0.01,
+      text: 'Privacy-First true PDF Processing v2',
+      color: '#000000',
+      fontSize: 24,
+      fontFamily: 'sora',
+      fontWeight: 'normal',
+      fontStyle: 'normal',
+      textAlign: 'left',
+      opacity: 1,
+      originalRect: {
+        x: overlaySpan.xRatio,
+        y: overlaySpan.yRatio,
+        w: overlaySpan.widthRatio,
+        h: overlaySpan.heightRatio,
+      },
+    }],
+  });
+
+  const layerAfterSecond = await extractTextLayerForPreview(secondPass.outputBytes, 1, 2);
+  const dedupedAfterSecond = dedupeStackedTextLayerSpans(layerAfterSecond.spans);
+  const privacyAfterSecond = dedupedAfterSecond.filter((span) => /Privacy-First/i.test(span.text));
+  assert.equal(privacyAfterSecond.length, 1);
+  assert.equal(privacyAfterSecond[0]?.text, 'Privacy-First true PDF Processing v2');
+
+  const embedded = await extractEmbeddedPdfText(toPdfBlob(secondPass.outputBytes));
+  const text = embedded?.text ?? '';
+  assert.doesNotMatch(text, /Privacy-First PDF ProcessingPrivacy-First true PDF Processing/u);
+  assert.match(text, /Privacy-First true PDF Processing v2/u);
 });
 
 test('applyStudioTextEditsToPdfBytes applies watermark elements with repeat safely', async () => {
