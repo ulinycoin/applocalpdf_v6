@@ -831,7 +831,7 @@ test('applyStudioTextEditsToPdfBytes v2 preserves untouched lines on multi-line 
 });
 
 test('applyStudioTextEditsToPdfBytes demo fixture avoids duplicate line on re-edit', async () => {
-  const sourceBytes = await readFixturePdfBytes('debug', 'LocalPDF Demo Short.pdf');
+  const sourceBytes = await readFixturePdfBytes('documents', 'studio-reedit-demo.pdf');
   const layer = await extractTextLayerForPreview(sourceBytes, 1, 2);
   const privacySpan = layer.spans.find((span) => span.text === 'Privacy-First PDF Processing');
   assert.ok(privacySpan, 'expected privacy heading span in demo fixture');
