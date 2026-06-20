@@ -333,4 +333,4 @@ export type RunnerTelemetryEvent =
   | { type: 'APP_FILE_UPLOADED'; flowId: string; toolId: string; fileCount: number; mimeCategory: string; totalBytes: number; source: 'wizard' | 'studio' }
   | { type: 'TOOL_RUN_ABANDONED'; flowId: string; runId?: string; toolId: string; reason: 'pagehide' | 'visibility_hidden' | 'navigation' | 'cancel' }
   | { type: 'OUTPUT_DOWNLOADED'; flowId: string; runId?: string; toolId: string; outputCount?: number; surface: 'wizard' | 'studio' }
-  | { type: 'STUDIO_EMPTY_STATE_CTA'; runId: string; action: 'upload' | 'compress-pdf' | 'ocr-pdf' | 'merge-pdf' };
+  | { type: 'STUDIO_EMPTY_STATE_CTA'; runId: string; action: 'upload' };

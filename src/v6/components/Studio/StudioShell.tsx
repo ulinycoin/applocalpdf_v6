@@ -9,9 +9,8 @@ import { usePlatform } from '../../../app/react/platform-context';
 import { useStudioStore, PageItem, StudioDocument as IStudioDocument, StudioState, StudioEditToolId } from './studio-store';
 import { StudioDocument } from './StudioDocument';
 import { DetachedPageObject } from './DetachedPageObject';
-import { getConvertToolDisplay, StudioToolRail } from './StudioToolRail';
+import { StudioToolRail } from './StudioToolRail';
 import type { StudioConvertToolId } from './convert/use-studio-convert-controller';
-import { resolveAppRoute } from '../../../../shared/app-routes';
 import { ThumbnailService } from '../../studio/thumbnail/thumbnail-service';
 import { StudioTimeline } from './branching/StudioTimeline';
 import type { StudioReturnContext, StudioToolRouteState } from '../../studio/navigation/studio-tool-context';
@@ -24,7 +23,7 @@ import { PaywallModal } from '../../../app/react/PaywallModal';
 import { useHistoryStore } from './store/history-store';
 import { getDailyUsage, incrementDailyUsage, FREE_TOOL_DAILY_LIMITS } from '../../../app/platform/daily-usage';
 import { getOrCreateFlowId } from '../../../app/platform/browser-context';
-import { LinearIcon, type LinearIconName } from '../icons/linear-icon';
+import { LinearIcon } from '../icons/linear-icon';
 
 const StudioEditWorkspace = lazy(async () => {
     const m = await import('./StudioEditWorkspace');
@@ -44,18 +43,6 @@ const AutoTocStudioPanelLazy = lazy(async () => {
 export interface StudioShellProps {
     onFilesDropped?: (files: File[]) => void;
 }
-
-type StudioEmptyStateCtaAction = 'upload' | 'compress-pdf' | 'ocr-pdf' | 'merge-pdf';
-
-const EMPTY_STATE_TOOL_ACTIONS = ['compress-pdf', 'ocr-pdf', 'merge-pdf'] as const satisfies ReadonlyArray<Exclude<StudioEmptyStateCtaAction, 'upload'>>;
-
-const EMPTY_STATE_TOOLS = EMPTY_STATE_TOOL_ACTIONS.map((action) => {
-    const fromRail = getConvertToolDisplay(action);
-    if (fromRail) {
-        return { action, ...fromRail };
-    }
-    return { action, label: 'Merge', icon: 'merge' as LinearIconName };
-});
 
 const STUDIO_TOOL_RAIL_WIDTH = 220;
 
@@ -735,18 +722,14 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
         uploadInputRef.current?.click();
     }, []);
 
-    const handleEmptyStateCta = useCallback((action: StudioEmptyStateCtaAction) => {
+    const handleEmptyStateUpload = useCallback(() => {
         runtime.telemetry.track({
             type: 'STUDIO_EMPTY_STATE_CTA',
             runId: uiRunIdRef.current,
-            action,
+            action: 'upload',
         });
-        if (action === 'upload') {
-            openUploadDialog();
-            return;
-        }
-        navigate(resolveAppRoute(action));
-    }, [navigate, openUploadDialog, runtime.telemetry]);
+        openUploadDialog();
+    }, [openUploadDialog, runtime.telemetry]);
 
     const copySelectedPages = useCallback(() => {
         if (selection.length === 0) {
@@ -1217,24 +1200,11 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
                                 <button
                                     type="button"
                                     className="studio-upload-btn studio-empty-state-upload-btn"
-                                    onClick={() => { handleEmptyStateCta('upload'); }}
+                                    onClick={handleEmptyStateUpload}
                                 >
                                     <LinearIcon name="upload" size={18} />
                                     Upload PDF
                                 </button>
-                                <div className="studio-empty-state-tools" role="group" aria-label="Popular tools">
-                                    {EMPTY_STATE_TOOLS.map((item) => (
-                                        <button
-                                            key={item.action}
-                                            type="button"
-                                            className="studio-empty-state-tool-btn"
-                                            onClick={() => { handleEmptyStateCta(item.action); }}
-                                        >
-                                            <LinearIcon name={item.icon} size={16} />
-                                            {item.label}
-                                        </button>
-                                    ))}
-                                </div>
                             </div>
                             <div className="studio-empty-state-hints" aria-label="Studio shortcuts">
                                 <span className="studio-empty-state-hint">U</span>
