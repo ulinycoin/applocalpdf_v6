@@ -9,7 +9,9 @@ import { usePlatform } from '../../../app/react/platform-context';
 import { useStudioStore, PageItem, StudioDocument as IStudioDocument, StudioState, StudioEditToolId } from './studio-store';
 import { StudioDocument } from './StudioDocument';
 import { DetachedPageObject } from './DetachedPageObject';
-import { StudioToolRail } from './StudioToolRail';
+import { getConvertToolDisplay, StudioToolRail } from './StudioToolRail';
+import type { StudioConvertToolId } from './convert/use-studio-convert-controller';
+import { resolveAppRoute } from '../../../../shared/app-routes';
 import { ThumbnailService } from '../../studio/thumbnail/thumbnail-service';
 import { StudioTimeline } from './branching/StudioTimeline';
 import type { StudioReturnContext, StudioToolRouteState } from '../../studio/navigation/studio-tool-context';
@@ -43,14 +45,17 @@ export interface StudioShellProps {
     onFilesDropped?: (files: File[]) => void;
 }
 
-type StudioConvertToolId = 'ocr-pdf' | 'pdf-to-jpg' | 'extract-images' | 'compress-pdf' | 'auto-toc';
 type StudioEmptyStateCtaAction = 'upload' | 'compress-pdf' | 'ocr-pdf' | 'merge-pdf';
 
-const EMPTY_STATE_TOOLS: Array<{ action: Exclude<StudioEmptyStateCtaAction, 'upload'>; label: string; icon: LinearIconName }> = [
-    { action: 'compress-pdf', label: 'Compress', icon: 'compress' },
-    { action: 'ocr-pdf', label: 'OCR', icon: 'ocr' },
-    { action: 'merge-pdf', label: 'Merge', icon: 'merge' },
-];
+const EMPTY_STATE_TOOL_ACTIONS = ['compress-pdf', 'ocr-pdf', 'merge-pdf'] as const satisfies ReadonlyArray<Exclude<StudioEmptyStateCtaAction, 'upload'>>;
+
+const EMPTY_STATE_TOOLS = EMPTY_STATE_TOOL_ACTIONS.map((action) => {
+    const fromRail = getConvertToolDisplay(action);
+    if (fromRail) {
+        return { action, ...fromRail };
+    }
+    return { action, label: 'Merge', icon: 'merge' as LinearIconName };
+});
 
 const STUDIO_TOOL_RAIL_WIDTH = 220;
 
@@ -740,7 +745,7 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
             openUploadDialog();
             return;
         }
-        navigate(`/${action}`);
+        navigate(resolveAppRoute(action));
     }, [navigate, openUploadDialog, runtime.telemetry]);
 
     const copySelectedPages = useCallback(() => {
@@ -1211,7 +1216,7 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
                             <div className="studio-empty-state-actions">
                                 <button
                                     type="button"
-                                    className="studio-empty-state-upload-btn"
+                                    className="studio-upload-btn studio-empty-state-upload-btn"
                                     onClick={() => { handleEmptyStateCta('upload'); }}
                                 >
                                     <LinearIcon name="upload" size={18} />

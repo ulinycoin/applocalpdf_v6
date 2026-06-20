@@ -1,7 +1,14 @@
 import { LinearIcon, type LinearIconName } from '../icons/linear-icon';
 import type { StudioEditToolId } from './studio-store';
+import type { StudioConvertToolId } from './convert/use-studio-convert-controller';
 
-type StudioConvertToolId = 'ocr-pdf' | 'pdf-to-jpg' | 'extract-images' | 'compress-pdf' | 'auto-toc';
+export function getConvertToolDisplay(toolId: string): { label: string; icon: LinearIconName } | undefined {
+    const item = CONVERT_TOOLS.find((entry) => entry.tool === toolId);
+    if (!item) {
+        return undefined;
+    }
+    return { label: item.label, icon: item.icon };
+}
 
 interface RailToolItem {
     tool: StudioEditToolId | StudioConvertToolId;
@@ -90,7 +97,7 @@ export function StudioToolRail({
         <aside className="studio-tool-rail" aria-label="Studio tools">
             <button
                 type="button"
-                className="studio-tool-rail-upload"
+                className="studio-upload-btn studio-tool-rail-upload"
                 onClick={onUpload}
                 title="Upload files"
             >

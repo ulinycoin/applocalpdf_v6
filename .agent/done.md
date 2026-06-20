@@ -43,3 +43,21 @@
 - Removed outdated German/Japanese fallback redirects for `/ja` from `vercel.json` to allow correct path routing.
 - Added `/ja` and `/zh` URLs into the `astro.config.mjs` sitemap configuration.
 - Verified compilation and build merged layout success via `npm test`, `npm run audit:workerization:strict`, and `npm run build:all`.
+
+## 2026-06-18
+
+### STUDIO-01: Empty state CTA in Studio
+- Extended `StudioShell.tsx` empty state with Upload button and top-3 tool CTAs (Compress, OCR, Merge).
+- Tool CTAs navigate to wizard routes (`/compress-pdf`, `/ocr-pdf`, `/merge-pdf`); Upload reuses existing file input + U/⌘O shortcuts.
+- Added telemetry event `STUDIO_EMPTY_STATE_CTA` in `contracts.ts`.
+- Added styles in `styles.css` for `.studio-empty-state-actions`, upload and tool buttons.
+- Preserved privacy copy and keyboard/drag hints.
+- Synced agent docs: `CLAUDE.md` priorities, `.agent/tasks.md`, `.agent/done.md`, `.agent/architecture.md`, `.agent/context.md`.
+
+### STUDIO-02: OCR paywall value preview with page thumbnails
+- Enhanced `OcrPaywallOverlay` in `StudioConvertWorkspace.tsx` to show blurred page thumbnail previews alongside the text blur.
+- Displays up to 6 page thumbnails in a horizontal scrollable row, each with page number label.
+- Thumbnails are blurred (3px) with `userSelect: none` to prevent copying.
+- Pages beyond 6 shown as "+N more" pill.
+- Kept existing text blur preview (first 500 chars) and Upgrade CTA with checkout integration.
+- Synced task status to `[x]` in `.agent/tasks.md` and `CLAUDE.md`.

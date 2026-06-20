@@ -2588,6 +2588,62 @@ textarea:focus-visible {
   margin: 0;
 }
 
+.studio-empty-state-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  margin-top: 4px;
+  pointer-events: auto;
+}
+
+.studio-upload-btn {
+  align-items: center;
+  gap: 8px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-strong);
+  background: var(--bg);
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.studio-upload-btn:hover {
+  background: var(--surface-hover);
+}
+
+.studio-empty-state-upload-btn {
+  display: inline-flex;
+  padding: 8px 18px;
+}
+
+.studio-empty-state-tools {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+}
+
+.studio-empty-state-tool-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  background: var(--bg-1);
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.studio-empty-state-tool-btn:hover {
+  background: var(--surface-hover);
+  color: var(--text);
+}
+
 .studio-empty-state-hints {
   display: flex;
   align-items: center;
@@ -2623,22 +2679,10 @@ textarea:focus-visible {
 
 .studio-tool-rail-upload {
   display: flex;
-  align-items: center;
-  gap: 8px;
   padding: 6px 12px;
-  border-radius: 6px;
-  border: 1px solid var(--border-strong);
-  background: var(--bg);
   width: calc(100% - 16px);
   margin: 8px;
-  cursor: pointer;
-  font-size: 13px;
-  font-weight: 600;
   text-align: left;
-}
-
-.studio-tool-rail-upload:hover {
-  background: var(--surface-hover);
 }
 
 .studio-tool-rail-section {

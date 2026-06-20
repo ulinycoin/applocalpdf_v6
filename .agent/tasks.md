@@ -10,32 +10,31 @@ Last updated: 2026-06-19
 
 ---
 
-## Level 1 — Growth (active)
+## Level 1 — Growth (all done)
 
 | # | Task | Status | Notes |
 |---|------|--------|-------|
 | 1 | Empty state CTA in Studio | [x] | Upload + Compress/OCR/Merge CTAs, telemetry `STUDIO_EMPTY_STATE_CTA` |
 | 2 | Upsell → direct checkout | [x] | `ux-feedback-overlay.tsx` opens LemonSqueezy checkout |
 | 3 | OCR paywall value preview | [x] | Text blur + page thumbnails blurred, Upgrade CTA |
+| 4 | OCR trial (3 pages per run) | [x] | 3 стр. OCR бесплатно за запуск. Paywall после 3 стр. |
 
-## Level 1.5 — Bug fix (active)
-
-| # | Task | Status | Notes |
-|---|------|--------|-------|
-| 4 | Fix protect-pdf encrypted error | [ ] | 4/5 падают: `Input document to PDFDocument.load is encrypted`. Пользователь ставит пароль на уже зашифрованный PDF. Ловить и давать нормальное сообщение. |
-| 5 | OCR trial (3 pages per run) | [x] | 3 стр. OCR бесплатно за запуск. Paywall после 3 стр. Убран дневной лимит для OCR. |
-
-## Level 2 — Next
+## Level 2 — Expansion (all done)
 
 | # | Task | Status | Notes |
 |---|------|--------|-------|
-| 6 | Japanese landing page | [x] | `website/src/pages/ja.astro` + hreflang |
-| 7 | SEO articles for OCR queries | [ ] | Not started |
-| 8 | Show HN post | [ ] | Not started |
+| 5 | Japanese landing page | [x] | `website/src/pages/ja.astro` + hreflang |
+| 6 | Chinese landing page | [x] | `website/src/pages/zh.astro` + hreflang |
+| 7 | Auto-TOC refactoring | [x] | PDF outlines rendering, search filter, tool descriptions |
 
-## Level 3 — Later
+---
 
-| # | Task | Status |
-|---|------|--------|
-| 9 | LemonSqueezy webhook → PostHog | [ ] |
-| 10 | Email capture | [ ] |
+## Future candidates (not started)
+
+| # | Task | Priority | Notes |
+|---|------|----------|-------|
+| 8 | SEO articles for OCR queries | Medium | Content marketing for organic traffic |
+| 9 | Show HN post | Low | Product Hunt / Hacker News launch |
+| 10 | LemonSqueezy webhook → PostHog | Medium | Revenue attribution in analytics |
+| 11 | Email capture | Low | Lead nurture for free users |
+| 12 | Fix protect-pdf encrypted error | Medium | 4/5 fail: `Input document to PDFDocument.load is encrypted` |

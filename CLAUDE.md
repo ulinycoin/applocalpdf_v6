@@ -1,7 +1,6 @@
 # LocalPDF V6 — Agent Contract
 
-This file is loaded automatically by Claude Code at session start.
-Every agent, model, and assistant working in this repo must read this first.
+Every agent working in this repo must read this first.
 
 ---
 
@@ -9,7 +8,7 @@ Every agent, model, and assistant working in this repo must read this first.
 
 LocalPDF is a **local-first, privacy-first PDF workspace** built on a Konva canvas.
 Files never leave the browser. All processing runs in Web Workers via WASM.
-The unique technical differentiator: **canvas-based multi-document workspace** with
+Unique differentiator: **canvas-based multi-document workspace** with
 drag-and-drop pages between documents — no competitor has this.
 
 **Two surfaces:**
@@ -19,42 +18,106 @@ drag-and-drop pages between documents — no competitor has this.
 **Stack:** React 18, Vite, Astro 6, Konva, pdf-lib, tesseract.js, Zustand,
 LemonSqueezy (billing), PostHog (analytics), Vercel (deploy)
 
+**Business model:** Freemium via LemonSqueezy.
+- Free: merge, split, compress (up to 25 pages, 3 workspaces)
+- Pro ($3.99/mo): OCR, edit, convert, protect/unlock (unlimited)
+
 ---
 
-## 2. Agent roles
+## 2. Founder profile
 
-There are four agent roles. Each session should declare its role at start.
+Фаундер-инженер. Код — основной инструмент создания ценности.
+
+**Рабочая станция:** MacBook Air M1, macOS.
+
+**Принципы:**
+- Скорость > идеальность. Деплой без multi-pass аудита — норма.
+- Технический долг терпим, пока не блокирует деньги.
+- Тесты только для денежного кода (paywall, плагины, Workers).
+- Никаких Docker, Kubernetes, микросервисов, Redis для этого масштаба.
+- Не переписывать работающий код.
+
+**Финансовые риски:** нулевая толерантность без подтверждения.
+**Репутационные риски:** низкая толерантность. Никаких фейков, спама, deceptive SEO.
+
+---
+
+## 3. Communication rules
+
+- **Русский язык** по умолчанию.
+- **Одна рекомендация.** Не предлагай список равных вариантов. Один лучший путь.
+- **Data-first.** Любое утверждение подкрепляй цифрами.
+- **Честность без смягчений.** Если проект мертв — говори прямо.
+- **Краткость.** Никакого бойлерплейта.
+
+**Триггеры:**
+- **"делай"** — выполни немедленно. Не переспрашивай.
+- **"проверь"** — найди скрытую проблему. Ищи шире.
+- **"сохрани"** — зафиксируй состояние, обнови память.
+
+---
+
+## 4. Agent roles
 
 ### COORDINATOR
-- Reads the growth plan and memory
-- Breaks work into tasks, assigns to specialist roles
-- Reviews and verifies output before marking done
-- Never writes product code directly
-- Files: `CLAUDE.md`, `memory/`
+- Читает план роста и память
+- Разбивает работу на задачи, назначает специалистов
+- Проверяет результат перед пометкой "done"
+- Не пишет продуктовый код
+- Файлы: `CLAUDE.md`, `.agent/`
 
 ### ENGINEER
-- Writes and edits product code (`src/`, `api/`, `shared/`)
-- Follows architecture rules (see §4)
-- Reports back with file paths and line numbers changed
-- Does not touch `website/` unless it's a shared component
+- Пишет и редактирует код (`src/`, `api/`, `shared/`)
+- Следует правилам архитектуры (§5)
+- Не трогает `website/` кроме shared-компонентов
 
 ### CONTENT
-- Works on `website/src/content/blog/`, `website/src/pages/`
-- Does not touch `src/` application code
+- Работает с `website/src/content/blog/`, `website/src/pages/`
+- Не трогает `src/`
 
 ### ANALYST
-- Queries PostHog API (project 110788, EU region)
-- Reads analytics, produces structured reports
-- PostHog read key stored in memory — ask COORDINATOR
-- Does not write code
+- Запрашивает PostHog API (проект 110788, EU регион)
+- Читает аналитику, формирует отчёты
+- Не пишет код
 
 ---
 
-## 3. Memory system
+## 5. Architecture rules (ENGINEER)
 
-All persistent context lives in two places:
+- **Plugin isolation:** логика в `src/plugins/<name>/logic/index.ts`
+- **No logic in UI:** `src/plugins/<name>/ui/index.tsx` — view-only
+- **Worker-first:** тяжёлая обработка через `WorkerOrchestrator`, never on main thread
+- **VFS only:** весь файловый I/O через `runtime.vfs`, never raw File/Blob APIs
+- **Telemetry:** `runtime.telemetry.track()` для всех пользовательских действий
+- **Billing:** `runtime.billing.getContext()`, never hardcode plan checks
+- **No direct DOM:** React state + Konva canvas, not `document.querySelector`
+- **Types:** контракты в `src/core/types/contracts.ts`, do not duplicate
 
-### Project memory (this session's Claude instance)
+---
+
+## 6. Repo layout
+
+```
+src/          React SPA — the product (/app)
+  app/        Platform bootstrap, routing, React shell
+  core/       VFS, workers, telemetry, contracts, runner
+  plugins/    Tool plugins (definition + logic + ui)
+  services/   PDF/OCR engines
+  v6/         Studio (Konva) + Wizard UI
+website/      Astro — marketing site (/)
+api/          Vercel serverless functions (billing)
+shared/       Cross-surface constants
+scripts/      Dev/build utilities
+e2e/          Playwright tests
+test/         Unit test fixtures
+.agent/       Agent coordination files
+```
+
+---
+
+## 7. Memory system
+
+### Project memory
 ```
 ~/.claude/projects/-Users-aleksejs-Desktop-LocalPDF-V6/memory/
   project_growth_plan.md   — growth plan with task checklist
@@ -63,69 +126,36 @@ All persistent context lives in two places:
   architecture.md          — code architecture reference
 ```
 
-### In-repo reference (for agents without global memory access)
+### In-repo reference
 ```
 .agent/
-  context.md               — quick product brief (read first)
+  context.md               — quick product brief
   architecture.md          — code structure and rules
   tasks.md                 — current active tasks
   done.md                  — completed tasks log
+  design-system.md         — design tokens and patterns
 ```
 
-Always check `.agent/tasks.md` for current work before starting anything.
-Always update `.agent/tasks.md` when starting or finishing a task.
+Always check `.agent/tasks.md` before starting work. Update it when starting or finishing a task.
 
 ---
 
-## 4. Architecture rules (ENGINEER must follow)
+## 8. Completed work
 
-- **Plugin isolation:** tool logic goes in `src/plugins/<name>/logic/index.ts` only
-- **No logic in UI:** `src/plugins/<name>/ui/index.tsx` is view-only
-- **Worker-first:** heavy processing via `WorkerOrchestrator`, never on main thread
-- **VFS only:** all file I/O through `runtime.vfs`, never raw File/Blob APIs
-- **Telemetry:** use `runtime.telemetry.track()` for all user actions
-- **Billing:** access via `runtime.billing.getContext()`, never hardcode plan checks
-- **No direct DOM:** use React state and Konva canvas, not `document.querySelector`
-- **Types:** all contracts in `src/core/types/contracts.ts`, do not duplicate
+### Level 1 — Growth (all done)
+1. [x] Empty state CTA in Studio — `StudioShell.tsx`, telemetry `STUDIO_EMPTY_STATE_CTA`
+2. [x] Upsell → direct checkout — `ux-feedback-overlay.tsx` opens LemonSqueezy checkout
+3. [x] OCR paywall value preview — blurred text + page thumbnails in `StudioConvertWorkspace`
+4. [x] OCR trial (3 pages per run) — free tier, paywall after 3 pages
 
----
-
-## 5. Current priorities (from growth plan)
-
-In order. Do not skip levels.
-
-**Level 1 — Active:**
-1. [ ] Empty state in Studio (`src/v6/components/Studio/StudioShell.tsx`)
-2. [ ] Upsell → direct checkout (`src/app/react/ux-feedback-overlay.tsx`)
-3. [ ] OCR paywall with value preview
-
-**Level 2 — Next:**
-4. [ ] Japanese landing page (`website/src/pages/ja/`)
-5. [ ] SEO articles for OCR queries
-6. [ ] Show HN post
-
-**Level 3 — Later:**
-7. [ ] LemonSqueezy webhook → PostHog
-8. [ ] Email capture
-9. [ ] OCR trial (3 pages/month free)
-
-Full plan: `~/.claude/projects/-Users-aleksejs-Desktop-LocalPDF-V6/memory/project_growth_plan.md`
+### Level 2 — Expansion (done)
+5. [x] Japanese landing page — `website/src/pages/ja.astro` + hreflang
+6. [x] Chinese landing page — `website/src/pages/zh.astro` + hreflang
+7. [x] Auto-TOC refactoring — PDF outlines rendering, search filter, tool descriptions
 
 ---
 
-## 6. Key metrics (PostHog snapshot, April 2026)
-
-- 4 900 pageviews/month
-- 58 tool runs/month (only 58 out of ~200 /app visitors)
-- 33 successful runs (57% success rate)
-- 25 upsell shown, 7 checkout opened, ~0 from in-app upsell
-- Top tools: compress-pdf (77), ocr-pdf (52), pdf-to-jpg (24)
-- Top countries: Japan (1553), USA (624), China (417), India (356)
-- Top traffic: Direct, Google, gigazine.net (304)
-
----
-
-## 7. What NOT to do
+## 9. What NOT to do
 
 - Do not commit `dist/`, `website/dist/`, `.DS_Store`, `node_modules/`
 - Do not commit AI operational files (AGENTS.md, MODEL.md, LLM_GUARD.md, MEMORY.md)
@@ -137,7 +167,7 @@ Full plan: `~/.claude/projects/-Users-aleksejs-Desktop-LocalPDF-V6/memory/projec
 
 ---
 
-## 8. Verification checklist (COORDINATOR runs after each task)
+## 10. Verification checklist
 
 Before marking any task done:
 - [ ] `npm test` passes

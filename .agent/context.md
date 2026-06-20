@@ -25,6 +25,11 @@ Desktop 88%. Traffic: Direct + Google + gigazine.net (Japanese tech blog).
 
 ```
 src/          React SPA — the product (/app)
+  app/        Platform bootstrap, routing, React shell
+  core/       VFS, workers, telemetry, contracts, runner
+  plugins/    Tool plugins (definition + logic + ui)
+  services/   PDF/OCR engines
+  v6/         Studio (Konva) + Wizard UI
 website/      Astro — marketing site (/)
 api/          Vercel serverless functions (billing)
 shared/       Cross-surface constants
@@ -33,6 +38,13 @@ e2e/          Playwright tests
 test/         Unit test fixtures
 .agent/       Agent coordination files (this dir)
 ```
+
+See `.agent/architecture.md` for detailed structure.
+
+## Current status (2026-06-19)
+
+Level 1: All done (empty state, upsell, OCR paywall, OCR trial)
+Level 2: All done (JA landing, ZH landing, Auto-TOC)
 
 ## Active tasks
 
