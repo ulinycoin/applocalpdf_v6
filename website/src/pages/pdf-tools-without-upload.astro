@@ -3,18 +3,71 @@ import MarketingLayout from '../layouts/MarketingLayout.astro';
 import { getAppUrl } from '../utils/app-url';
 
 const title = 'PDF tools without upload | Local-first browser workflows for sensitive PDFs';
-const description = 'Use LocalPDF for PDF tools without upload-first pressure: edit, merge, OCR, split, sign, and convert files in a local-first browser workflow.';
+const description = 'Edit, merge, OCR, compress, split, sign, and convert PDFs without upload-first pressure. LocalPDF runs core workflows locally in your browser — free to start, Pro for recurring work.';
 const canonical = 'https://localpdf.online/pdf-tools-without-upload';
 const image = 'https://localpdf.online/logos/localpdf-social-1200x630.png';
 const appUrl = getAppUrl();
 
-const schema = {
+const toolRows = [
+  ['Edit PDF', 'Change text, images, and layout on the page', '/features/edit-pdf'],
+  ['Merge PDF', 'Combine documents by dragging pages together', '/features/merge-pdf'],
+  ['OCR PDF', 'Extract text from scans with local processing', '/features/ocr-pdf'],
+  ['Compress PDF', 'Reduce file size without sending the file to a server queue', '/features/compress-pdf'],
+  ['Split PDF', 'Extract or remove pages from any document', '/features/split-pdf'],
+  ['Sign PDF', 'Add signatures and complete signing workflows', '/features/sign-pdf'],
+  ['Convert PDF', 'PDF ↔ Word, images, and other practical formats', '/features/convert-pdf'],
+];
+
+const faqSchema = {
   '@context': 'https://schema.org',
-  '@type': 'WebPage',
-  name: title,
-  description,
-  url: canonical,
+  '@type': 'FAQPage',
+  mainEntity: [
+    {
+      '@type': 'Question',
+      name: 'Can I use PDF tools without uploading my file?',
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: 'LocalPDF is designed so core PDF workflows can start locally in the browser. That is different from upload-first tools where the default step is sending your file to a remote server before any work begins.',
+      },
+    },
+    {
+      '@type': 'Question',
+      name: 'What PDF tools does LocalPDF include without an upload-first workflow?',
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: 'LocalPDF covers edit, merge, OCR, compress, split, sign, and convert workflows in one workspace-style product path instead of a maze of separate utility pages.',
+      },
+    },
+    {
+      '@type': 'Question',
+      name: 'Is LocalPDF free for PDF tools without upload?',
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: 'Yes. LocalPDF has a free tier for quick tasks on your device. Pro unlocks unlimited workspaces, larger documents, and full Studio access for recurring PDF work.',
+      },
+    },
+    {
+      '@type': 'Question',
+      name: 'Who should look for PDF tools without upload?',
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: 'Teams handling contracts, invoices, HR records, legal drafts, and internal operations PDFs often search for this category when upload-first handling feels like the wrong default.',
+      },
+    },
+  ],
 };
+
+const schema = [
+  {
+    '@context': 'https://schema.org',
+    '@type': 'WebPage',
+    name: title,
+    description,
+    url: canonical,
+    about: { '@type': 'Thing', name: 'PDF tools without upload' },
+  },
+  faqSchema,
+];
 ---
 
 <MarketingLayout title={title} description={description} canonical={canonical} image={image} schema={schema}>
@@ -25,20 +78,162 @@ const schema = {
       <p class="section-intro">
         LocalPDF is built for users who search for PDF tools without upload because the document is sensitive, internal,
         or simply too important to treat as a disposable remote upload. Core workflows are designed to begin locally in
-        the browser.
+        the browser — edit, merge, OCR, compress, split, sign, and convert in one product path.
       </p>
       <div class="cta-row">
-        <a class="btn-primary" href={appUrl}>Open LocalPDF</a>
+        <a class="btn-primary" href={appUrl}>Open LocalPDF — free</a>
+        <a class="btn-secondary" href="/pricing">See pricing</a>
         <a class="btn-secondary" href="/private-pdf-editor">Private PDF editor</a>
       </div>
     </section>
 
+    <section class="section">
+      <h2 class="section-title">Why people search for PDF tools without upload</h2>
+      <p>
+        Most online PDF brands optimize for convenience: drop a file, wait for a server, download a result. That model
+        works for disposable tasks. It breaks down when the PDF is a contract draft, a payroll export, a client invoice,
+        or an internal record that should not enter a third-party upload queue by default.
+      </p>
+      <p>
+        Search queries like <em>pdf editor without upload</em>, <em>merge pdf without uploading</em>, or
+        <em>ocr pdf locally</em> usually mean the same thing: the user wants the job done without handing the file to a
+        remote pipeline first. LocalPDF is positioned for that intent — not as a generic “free online PDF toolbox,” but
+        as a <a href="/private-pdf-editor">private PDF editor</a> with a local-first workflow.
+      </p>
+    </section>
+
     <section class="section card-grid">
-      <article class="card"><h3>Why people search this</h3><p>They want a better answer for contracts, invoices, records, receipts, and internal PDFs than a generic upload queue.</p></article>
-      <article class="card"><h3>What LocalPDF covers</h3><p>Edit, merge, OCR, compress, split, sign, and conversion workflows in one local-first product path.</p></article>
-      <article class="card"><h3>When it is the right fit</h3><p>When trust, speed, and local handling matter together — especially for sensitive or operational document work.</p></article>
+      <article class="card">
+        <h3>Upload-first tools</h3>
+        <p>File leaves your device before work starts. Security depends on vendor policies, retention, and jurisdiction.</p>
+      </article>
+      <article class="card">
+        <h3>Local-first workflow</h3>
+        <p>Work can start on your device in the browser. Better fit when trust and speed matter together.</p>
+      </article>
+      <article class="card">
+        <h3>When LocalPDF wins</h3>
+        <p>Sensitive PDFs, recurring operational work, and teams that need a workspace — not fifty utility bookmarklets.</p>
+      </article>
+    </section>
+
+    <section class="section">
+      <h2 class="section-title">Tools included in LocalPDF</h2>
+      <p class="section-intro">
+        One workspace covers the jobs people actually stack in a week — not a separate landing page per micro-task.
+      </p>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Tool</th><th>What you can do</th><th>Learn more</th></tr>
+          </thead>
+          <tbody>
+            {toolRows.map((row) => (
+              <tr>
+                <td>{row[0]}</td>
+                <td>{row[1]}</td>
+                <td><a href={row[2]}>{row[0]} guide</a></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2 class="section-title">Who this is for</h2>
+      <div class="card-grid">
+        <article class="card">
+          <h3><a href="/use-cases/lawyers">Lawyers &amp; legal ops</a></h3>
+          <p>Redlines, signatures, and matter files where upload-first handling is hard to justify to clients.</p>
+        </article>
+        <article class="card">
+          <h3><a href="/use-cases/accountants">Accountants &amp; finance</a></h3>
+          <p>Invoices, statements, and tax packets that should stay in a controlled local workflow.</p>
+        </article>
+        <article class="card">
+          <h3><a href="/use-cases/hr-sensitive-documents">HR teams</a></h3>
+          <p>Employee records and policy PDFs that are sensitive by definition.</p>
+        </article>
+        <article class="card">
+          <h3><a href="/use-cases/internal-operations">Internal operations</a></h3>
+          <p>SOPs, vendor PDFs, and ops documentation processed every week.</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2 class="section-title">How LocalPDF compares to upload-first suites</h2>
+      <p>
+        Broad online PDF platforms — including brands like Smallpdf and iLovePDF — excel at tool count and brand reach.
+        Their default journey still assumes upload. If you need AI chat over a document in the cloud, those products may
+        fit better. If you need a <strong>privacy-first alternative</strong> for day-to-day PDF work, compare:
+      </p>
+      <ul class="bullet-list compare-links">
+        <li><a href="/compare/localpdf-vs-smallpdf">LocalPDF vs Smallpdf</a> — workspace vs utility suite + AI tools</li>
+        <li><a href="/compare/localpdf-vs-ilovepdf">LocalPDF vs iLovePDF</a> — local-first vs upload-first ecosystem</li>
+        <li><a href="/compare/localpdf-vs-pdf24">LocalPDF vs PDF24</a> — browser workspace vs free online toolbox</li>
+      </ul>
+      <p>
+        Read <a href="/how-local-pdf-processing-works">how local PDF processing works</a> and our
+        <a href="/security">security overview</a> before you choose a workflow for regulated documents.
+      </p>
+    </section>
+
+    <section class="section">
+      <h2 class="section-title">Pricing: free to start, Pro for recurring work</h2>
+      <div class="card-grid pricing-snapshot">
+        <article class="card">
+          <h3>Free</h3>
+          <p><strong>$0</strong> — 3 Studio workspaces, up to 25 pages per document, essential tools on your device.</p>
+        </article>
+        <article class="card">
+          <h3>Pro</h3>
+          <p><strong>$3.99/month</strong> or <strong>$39.99/year</strong> — unlimited workspaces, full Studio, OCR, conversion, and protect workflows.</p>
+        </article>
+      </div>
+      <div class="cta-row">
+        <a class="btn-primary" href={appUrl}>Use LocalPDF free</a>
+        <a class="btn-secondary" href="/pricing">Full pricing</a>
+      </div>
+    </section>
+
+    <section class="section faq-grid">
+      <article class="card">
+        <h3>Can I use PDF tools without uploading?</h3>
+        <p>LocalPDF is built so core workflows can start locally in the browser instead of with a remote upload queue.</p>
+      </article>
+      <article class="card">
+        <h3>Which tools are included?</h3>
+        <p>Edit, merge, OCR, compress, split, sign, and convert — in one workspace, not dozens of separate pages.</p>
+      </article>
+      <article class="card">
+        <h3>Is there a free tier?</h3>
+        <p>Yes. Upgrade to Pro when PDF work becomes recurring enough to need unlimited workspaces and larger documents.</p>
+      </article>
+      <article class="card">
+        <h3>Who is this for?</h3>
+        <p>Legal, finance, HR, and ops teams handling sensitive PDFs — plus privacy-conscious individuals.</p>
+      </article>
     </section>
   </div>
 </MarketingLayout>
 
-<style>.hero-shell h1{font-size:clamp(3rem,5vw,4.8rem);margin-top:18px;margin-bottom:18px;max-width:11ch;}</style>
+<style>
+  .hero-shell h1 {
+    font-size: clamp(3rem, 5vw, 4.8rem);
+    margin-top: 18px;
+    margin-bottom: 18px;
+    max-width: 14ch;
+  }
+  .section p { max-width: 72ch; line-height: 1.65; margin-bottom: 14px; }
+  .table-wrap { overflow-x: auto; margin-top: 18px; }
+  table { width: 100%; border-collapse: collapse; background: var(--surface); border-radius: 18px; overflow: hidden; }
+  th, td { border: 1px solid var(--line); padding: 14px; text-align: left; vertical-align: top; }
+  th { background: rgba(217, 235, 225, 0.45); }
+  .bullet-list { margin: 12px 0 0 1.2rem; line-height: 1.7; }
+  .compare-links a { font-weight: 600; }
+  .pricing-snapshot { margin-top: 12px; }
+  .faq-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+  @media (max-width: 900px) { .faq-grid { grid-template-columns: 1fr; } }
+</style>

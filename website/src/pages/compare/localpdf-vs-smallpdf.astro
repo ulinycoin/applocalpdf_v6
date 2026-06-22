@@ -14,6 +14,10 @@ const comparisonRows = [
   ['How work starts', 'Core workflows can start on the user device', 'Common workflows start with file upload'],
   ['Trust narrative', 'Reduce exposure by avoiding an upload-first handoff', 'Protect uploaded files with security controls and deletion policies'],
   ['Workflow shape', 'Workspace-style product path', 'Large utility-page network'],
+  ['Free tier', 'Free forever — 3 workspaces, up to 25 pages per document', 'Free trial and limited free tools'],
+  ['Paid plans', 'Pro from $3.99/month or $39.99/year (see pricing)', 'Individual and team subscriptions with trial'],
+  ['AI / Chat PDF', 'Not offered — keeps documents off cloud AI pipelines', 'AI PDF Assistant, Chat with PDF, summarizer, and related tools'],
+  ['Tool breadth', 'Focused PDF workspace (edit, merge, OCR, sign, convert)', '30+ utility tools across a large online catalog'],
 ];
 
 const faqSchema = {
@@ -34,6 +38,14 @@ const faqSchema = {
       acceptedAnswer: {
         '@type': 'Answer',
         text: 'The biggest difference is workflow philosophy: LocalPDF emphasizes local-first processing for practical PDF jobs, while Smallpdf is built around a broad online utility suite with upload-first expectations.',
+      },
+    },
+    {
+      '@type': 'Question',
+      name: 'How does LocalPDF pricing compare to Smallpdf?',
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: 'LocalPDF offers a free tier for quick tasks and Pro from $3.99 per month or $39.99 per year for unlimited workspaces and full Studio access. Smallpdf uses a free-trial model with individual and team paid plans. Compare current details on the LocalPDF pricing page before checkout.',
       },
     },
   ],
@@ -74,7 +86,8 @@ const schema = [
         privacy-first PDF editor with a local-first browser workflow.
       </p>
       <div class="cta-row">
-        <a class="btn-primary" href={appUrl}>Open LocalPDF</a>
+        <a class="btn-primary" href={appUrl}>Open LocalPDF — free</a>
+        <a class="btn-secondary" href="/pricing">See pricing</a>
         <a class="btn-secondary" href="/security">Read Security</a>
       </div>
     </section>
@@ -143,6 +156,37 @@ const schema = [
       </div>
     </section>
 
+    <section class="section">
+      <h2 class="section-title">Pricing snapshot</h2>
+      <p class="section-intro">
+        LocalPDF is transparent about free vs Pro on-site. Smallpdf leans on trials and broader paid tiers — verify their
+        current plans before you choose.
+      </p>
+      <div class="card-grid pricing-compare">
+        <article class="card">
+          <h3>LocalPDF</h3>
+          <ul class="bullet-list">
+            <li><strong>Free:</strong> $0 — 3 Studio workspaces, up to 25 pages per document, essential tools.</li>
+            <li><strong>Pro:</strong> $3.99/month or $39.99/year — unlimited workspaces, full Studio, OCR, conversion.</li>
+          </ul>
+          <a class="text-link" href="/pricing">Full pricing details →</a>
+        </article>
+        <article class="card">
+          <h3>Smallpdf (typical model)</h3>
+          <ul class="bullet-list">
+            <li>Free trial and limited free access to online tools.</li>
+            <li>Paid individual and team plans for ongoing use.</li>
+            <li>Extra AI PDF features bundled into the broader product suite.</li>
+          </ul>
+          <p class="muted">Check smallpdf.com/pricing for live rates — they change more often than LocalPDF’s simple Free / Pro split.</p>
+        </article>
+      </div>
+      <div class="cta-row section-cta">
+        <a class="btn-primary" href={appUrl}>Try LocalPDF free</a>
+        <a class="btn-secondary" href="/pdf-tools-without-upload">PDF tools without upload</a>
+      </div>
+    </section>
+
     <section class="section faq-grid">
       <article class="card">
         <h3>When is LocalPDF a better fit than Smallpdf?</h3>
@@ -150,11 +194,11 @@ const schema = [
       </article>
       <article class="card">
         <h3>What is the biggest difference?</h3>
-        <p>LocalPDF starts from the file on your device, while Smallpdf is built more like a large online PDF toolbox.</p>
+        <p>LocalPDF starts from the file on your device, while Smallpdf is built more like a large online PDF toolbox with AI add-ons.</p>
       </article>
       <article class="card">
-        <h3>What should users verify?</h3>
-        <p>Verify how the workflow starts, what kind of files are involved, and whether an upload-first path is acceptable for that document.</p>
+        <h3>How does pricing compare?</h3>
+        <p>LocalPDF keeps a simple Free + Pro model on <a href="/pricing">/pricing</a>. Smallpdf typically routes users through trials and subscription tiers.</p>
       </article>
     </section>
   </div>
@@ -170,8 +214,10 @@ const schema = [
   table { width: 100%; border-collapse: collapse; background: var(--surface); border-radius: 18px; overflow: hidden; }
   th, td { border: 1px solid var(--line); padding: 14px; text-align: left; vertical-align: top; }
   th { background: rgba(217, 235, 225, 0.45); }
-  .faq-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; }
+  .faq-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; }
+  .pricing-compare { margin-top: 18px; }
+  .text-link { display: inline-block; margin-top: 12px; font-weight: 600; }
+  .muted { color: var(--muted, #5a6b63); font-size: 0.95rem; margin-top: 8px; }
+  .section-cta { margin-top: 24px; }
   @media (max-width: 900px) { .faq-grid { grid-template-columns: 1fr; } }
-</style>
-fr; } }
 </style>
