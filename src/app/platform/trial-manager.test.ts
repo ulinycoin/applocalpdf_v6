@@ -14,7 +14,11 @@ describe('trial-manager', () => {
       length: 0,
       key: mock.fn(),
     };
-    (global as typeof globalThis & { window: Record<string, never> }).window = {};
+    Object.defineProperty(globalThis, 'window', {
+      value: {},
+      writable: true,
+      configurable: true,
+    });
   });
 
   test('initializes with trialAvailable: true when no trial has been started', () => {

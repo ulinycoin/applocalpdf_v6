@@ -1,12 +1,10 @@
 import { QpdfPipelineError } from './qpdf-errors';
+import {
+  PROTECT_ALREADY_ENCRYPTED_MESSAGE,
+  isEncryptedPdfLoadMessage,
+} from '../../../shared/protect-errors';
 
-export const PROTECT_ALREADY_ENCRYPTED_MESSAGE =
-  'This PDF is already password-protected. Use Unlock PDF first, then apply new protection.';
-
-export function isEncryptedPdfLoadMessage(message: string): boolean {
-  const normalized = message.toLowerCase();
-  return normalized.includes('encrypted') || normalized.includes('decrypt');
-}
+export { PROTECT_ALREADY_ENCRYPTED_MESSAGE, PROTECT_INPUT_ALREADY_ENCRYPTED_CODE } from '../../../shared/protect-errors';
 
 export function toProtectInputError(error: unknown): Error {
   if (error instanceof QpdfPipelineError) {
