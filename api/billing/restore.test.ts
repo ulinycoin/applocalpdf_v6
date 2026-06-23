@@ -1,6 +1,6 @@
 import { after, beforeEach, describe, test } from 'node:test';
 import * as assert from 'node:assert';
-import { getMappedLicense } from './catalog';
+import { getMappedLicense } from './restore';
 import { encryptString, decryptString } from './restore';
 
 const originalEnv = {

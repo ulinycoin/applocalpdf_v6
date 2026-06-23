@@ -1,6 +1,8 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
-import { mapProductVariantToTier } from './catalog';
-import { capturePostHogEvent } from './posthog-capture';
+
+type BillingTier = 'pro_monthly' | 'pro_yearly';
+
+const DEFAULT_POSTHOG_HOST = 'https://eu.i.posthog.com';
 
 const PURCHASE_EVENTS = new Set([
   'order_created',
@@ -13,6 +15,74 @@ function jsonResponse(status: number, body: Record<string, unknown>): Response {
     status,
     headers: { 'Content-Type': 'application/json' },
   });
+}
+
+function parseIdSet(raw: string | undefined): Set<string> {
+  return new Set((raw ?? '').split(',').map((value) => value.trim()).filter(Boolean));
+}
+
+function mapProductVariantToTier(productId: string, variantId: string): BillingTier | null {
+  const monthlyProductIds = parseIdSet(process.env.LEMON_SQUEEZY_PRO_MONTHLY_PRODUCT_IDS);
+  const monthlyVariantIds = parseIdSet(process.env.LEMON_SQUEEZY_PRO_MONTHLY_VARIANT_IDS);
+  const yearlyProductIds = parseIdSet(process.env.LEMON_SQUEEZY_PRO_YEARLY_PRODUCT_IDS);
+  const yearlyVariantIds = parseIdSet(process.env.LEMON_SQUEEZY_PRO_YEARLY_VARIANT_IDS);
+
+  const hasMonthlyVariant = variantId !== '' && monthlyVariantIds.has(variantId);
+  const hasYearlyVariant = variantId !== '' && yearlyVariantIds.has(variantId);
+  if (hasMonthlyVariant && hasYearlyVariant) return null;
+  if (hasMonthlyVariant) return 'pro_monthly';
+  if (hasYearlyVariant) return 'pro_yearly';
+
+  const hasMonthlyProduct = productId !== '' && monthlyProductIds.has(productId);
+  const hasYearlyProduct = productId !== '' && yearlyProductIds.has(productId);
+  if (hasMonthlyProduct && hasYearlyProduct) return null;
+  if (hasMonthlyProduct) return 'pro_monthly';
+  if (hasYearlyProduct) return 'pro_yearly';
+
+  return null;
+}
+
+async function capturePostHogEvent(input: {
+  event: string;
+  distinctId: string;
+  properties?: Record<string, unknown>;
+  uuid?: string;
+}): Promise<boolean> {
+  const apiKey = process.env.POSTHOG_PROJECT_API_KEY
+    ?? process.env.PUBLIC_POSTHOG_KEY
+    ?? process.env.VITE_PUBLIC_POSTHOG_KEY;
+  if (!apiKey?.trim()) {
+    console.error('[posthog] Missing POSTHOG_PROJECT_API_KEY or PUBLIC_POSTHOG_KEY');
+    return false;
+  }
+
+  const host = (process.env.POSTHOG_HOST ?? DEFAULT_POSTHOG_HOST).replace(/\/$/, '');
+  const body: Record<string, unknown> = {
+    api_key: apiKey.trim(),
+    event: input.event,
+    distinct_id: input.distinctId,
+    properties: {
+      ...input.properties,
+      $lib: 'localpdf-billing-webhook',
+    },
+  };
+  if (input.uuid) {
+    body.uuid = input.uuid;
+  }
+
+  const response = await fetch(`${host}/capture/`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+
+  if (!response.ok) {
+    const text = await response.text().catch(() => '');
+    console.error('[posthog] capture failed', response.status, text);
+    return false;
+  }
+
+  return true;
 }
 
 function verifySignature(rawBody: Buffer, signatureHeader: string | string[] | undefined, secret: string): boolean {
