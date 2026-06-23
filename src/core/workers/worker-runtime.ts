@@ -5,6 +5,7 @@ import { extractTextLayerForPreview } from '../../services/pdf/pdf-text-layer-ex
 import { scanPdfImageCandidatesFromBlob } from '../../services/pdf/pdf-image-extractor';
 import { applyStudioTextEditsToPdfBytes } from '../../services/pdf/studio-text-edit-applier';
 import { normalizeAndValidateStudioEditRequest } from '../../services/pdf/studio-text-edit-validation';
+import { toProtectInputError } from '../../services/pdf/protect-error-messages';
 
 export interface WorkerRuntimeDeps {
   registry: GlobalRegistry;
@@ -186,14 +187,15 @@ export async function executeWorkerCommand(
       payload: { type: 'ERROR', payload: { message: 'Unknown command', code: 'UNKNOWN_COMMAND' } },
     };
   } catch (error) {
-    const typed = error as { code?: unknown; message?: unknown };
+    const normalized = toProtectInputError(error);
+    const typed = normalized as { code?: unknown };
     return {
       id: command.id,
       type: 'EVENT',
       payload: {
         type: 'ERROR',
         payload: {
-          message: error instanceof Error ? error.message : 'Worker runtime failure',
+          message: normalized.message,
           code: typeof typed.code === 'string' ? typed.code : 'WORKER_RUNTIME_ERROR',
         },
       },

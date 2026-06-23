@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { usePlatform } from '../../../../app/react/platform-context';
+import {
+  PROTECT_ALREADY_ENCRYPTED_MESSAGE,
+  PROTECT_INPUT_ALREADY_ENCRYPTED_CODE,
+} from '../../../../../shared/protect-errors';
 import type { IWorkerCommand, WorkerStudioEditElement } from '../../../../core/public/contracts';
 import { defaultFilePreviewService } from '../../../preview/preview-service';
 import {
@@ -703,6 +707,10 @@ export function useStudioEditController(ui: any) {
             );
 
             if (result.type === 'TOOL_ERROR') {
+                if (result.code === PROTECT_INPUT_ALREADY_ENCRYPTED_CODE) {
+                    setMessage(PROTECT_ALREADY_ENCRYPTED_MESSAGE);
+                    return;
+                }
                 setMessage(result.message || ui.saveFailed);
                 return;
             }

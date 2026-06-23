@@ -8,6 +8,8 @@ import {
 import {
   getTrialState,
   markTrialTracked,
+  onTrialExpiry,
+  rescheduleTrialExpiryWatch,
   startTrial,
   syncTrialStateWithIndexedDB,
 } from './trial-manager';
@@ -69,10 +71,25 @@ export class BillingService {
       await syncTrialStateWithIndexedDB();
     }
 
-    const trialState = getTrialState();
+    onTrialExpiry(() => {
+      const expiredState = getTrialState();
+      if (!expiredState.isExpiredButNotTracked) {
+        return;
+      }
+      trackMonetizationEvent('trial_expired', { source: 'trial_watch' });
+      markTrialTracked();
+      if (typeof localStorage !== 'undefined' && !localStorage.getItem(this.storageKey)) {
+        this.currentContext = BASIC_CONTEXT;
+        this.notify();
+      }
+    });
+    rescheduleTrialExpiryWatch();
+
+    let trialState = getTrialState();
     if (trialState.isExpiredButNotTracked) {
       trackMonetizationEvent('trial_expired', { source: 'billing_init' });
       markTrialTracked();
+      trialState = getTrialState();
     }
 
     const rawToken = typeof localStorage !== 'undefined' ? localStorage.getItem(this.storageKey) : null;

@@ -57,6 +57,13 @@ test('PostHogTelemetrySink forwards app analytics events to PostHog', () => {
       reason: 'cancel',
     });
 
+    sink.track({
+      type: 'UI_UPSELL_SHOWN',
+      runId: 'run-upsell',
+      toolId: 'studio',
+      reason: 'Pro required',
+    });
+
     assert.deepEqual(calls, [
       {
         event: 'app_session_attributed',
@@ -99,6 +106,13 @@ test('PostHogTelemetrySink forwards app analytics events to PostHog', () => {
           run_id: 'run-1',
           tool_id: 'merge-pdf',
           reason: 'cancel',
+        },
+      },
+      {
+        event: 'app_upsell_shown',
+        properties: {
+          tool_id: 'studio',
+          reason: 'Pro required',
         },
       },
     ]);

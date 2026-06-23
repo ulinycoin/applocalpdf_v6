@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { getTrialState } from '../platform/trial-manager';
+import { getTrialState, rescheduleTrialExpiryWatch } from '../platform/trial-manager';
 
 function buildCheckoutUrlWithDistinctId(baseCheckoutUrl: string): string {
   if (typeof window === 'undefined') return baseCheckoutUrl;
@@ -15,6 +15,7 @@ export function TrialBanner() {
     const interval = setInterval(() => {
       setTrialState(getTrialState());
     }, 60_000);
+    rescheduleTrialExpiryWatch();
     return () => clearInterval(interval);
   }, []);
 

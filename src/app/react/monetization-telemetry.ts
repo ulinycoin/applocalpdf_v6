@@ -13,7 +13,8 @@ export type MonetizationEventName =
   | 'checkout_opened'
   | 'trial_started'
   | 'trial_expired'
-  | 'trial_convert';
+  | 'trial_convert'
+  | 'purchase_completed';
 
 export interface MonetizationEventProps {
   source?: string;
