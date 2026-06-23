@@ -4,7 +4,7 @@ import type { RunnerTelemetryEvent } from '../../core/public/contracts';
 import { openCheckout } from './billing';
 import { trackMonetizationEvent } from './monetization-telemetry';
 import { getTrialState } from '../platform/trial-manager';
-import { handleTrialStart } from './studio-paywall';
+import { activateProTrial } from './studio-paywall';
 
 interface UiToastItem {
   id: string;
@@ -195,8 +195,7 @@ export function UxFeedbackOverlay() {
                       flowId: upsell.runId,
                     });
                   } else {
-                    handleTrialStart(runtime.telemetry, upsell.runId);
-                    (runtime.billing as any).startTrial();
+                    activateProTrial(runtime.billing, upsell.runId, 'upsell_overlay');
                     setTrialState(getTrialState());
                   }
                   setUpsell(null);

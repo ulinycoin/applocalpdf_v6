@@ -335,7 +335,7 @@
         },
         {
           "key": "Access-Control-Allow-Headers",
-          "value": "Content-Type, x-api-key, Authorization"
+          "value": "Content-Type, x-api-key, Authorization, X-Signature"
         }
       ]
     }

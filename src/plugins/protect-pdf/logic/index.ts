@@ -2,6 +2,7 @@ import type { ToolLogicFunction } from '../../../core/types/contracts';
 import type { QpdfEngine } from '../../../services/pdf/qpdf-engine';
 import { createQpdfEngine } from '../../../services/pdf/qpdf-engine';
 import { QpdfPipelineError } from '../../../services/pdf/qpdf-errors';
+import { toProtectInputError } from '../../../services/pdf/protect-error-messages';
 
 type PrintingPermission = 'none' | 'low' | 'full';
 
@@ -72,17 +73,7 @@ async function encryptInBrowserWithPdfLibPlus(inputBlob: Blob, config: {
   try {
     pdfDoc = await mod.PDFDocument.load(inputBytes);
   } catch (loadErr) {
-    const msg = (loadErr && typeof loadErr === 'object' && 'message' in loadErr && typeof loadErr.message === 'string'
-      ? loadErr.message
-      : String(loadErr ?? '')
-    ).toLowerCase();
-    if (msg.includes('encrypted')) {
-      throw new QpdfPipelineError(
-        'PROTECT_INPUT_ALREADY_ENCRYPTED',
-        'This PDF is already password-protected or encrypted. Please unprotect it first using the "Unlock PDF" tool, then apply new protection settings.',
-      );
-    }
-    throw loadErr;
+    throw toProtectInputError(loadErr);
   }
   await pdfDoc.encrypt({
     userPassword: config.userPassword,

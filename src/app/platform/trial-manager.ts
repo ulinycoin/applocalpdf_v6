@@ -2,6 +2,12 @@ const TRIAL_STORAGE_KEY = 'localpdf_trial_start';
 const TRIAL_STATE_KEY = 'localpdf_trial_state';
 const TRIAL_USED_KEY = 'localpdf_trial_used';
 const TRIAL_DURATION_MS = 3 * 24 * 60 * 60 * 1000; // 3 дня
+const TRIAL_EXPIRY_WATCH_CAP_MS = 60 * 60 * 1000;
+
+type TrialExpiryHandler = () => void;
+
+let expiryHandler: TrialExpiryHandler | null = null;
+let expiryTimer: ReturnType<typeof setTimeout> | null = null;
 
 const DB_NAME = 'localpdf_db';
 const STORE_NAME = 'trial_store';
@@ -161,6 +167,49 @@ export function getTrialState(): TrialState {
   };
 }
 
+export function onTrialExpiry(handler: TrialExpiryHandler): void {
+  expiryHandler = handler;
+  rescheduleTrialExpiryWatch();
+}
+
+export function rescheduleTrialExpiryWatch(): void {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  if (expiryTimer !== null) {
+    clearTimeout(expiryTimer);
+    expiryTimer = null;
+  }
+
+  const state = getTrialState();
+  if (state.isExpiredButNotTracked) {
+    expiryHandler?.();
+    return;
+  }
+
+  if (!state.isActive || state.endsAt === null) {
+    return;
+  }
+
+  const msUntilExpiry = state.endsAt - Date.now();
+  if (msUntilExpiry <= 0) {
+    if (getTrialState().isExpiredButNotTracked) {
+      expiryHandler?.();
+    }
+    return;
+  }
+
+  expiryTimer = setTimeout(() => {
+    expiryTimer = null;
+    if (getTrialState().isExpiredButNotTracked) {
+      expiryHandler?.();
+      return;
+    }
+    rescheduleTrialExpiryWatch();
+  }, Math.min(msUntilExpiry + 250, TRIAL_EXPIRY_WATCH_CAP_MS));
+}
+
 export function startTrial(): TrialState {
   if (typeof localStorage !== 'undefined') {
     const isUsed = localStorage.getItem(TRIAL_USED_KEY) === 'true';
@@ -172,7 +221,9 @@ export function startTrial(): TrialState {
   localStorage.setItem(TRIAL_STORAGE_KEY, String(now));
   localStorage.removeItem(TRIAL_STATE_KEY);
   dbSet(KEY_START_TIME, now).catch(() => {});
-  return getTrialState();
+  const state = getTrialState();
+  rescheduleTrialExpiryWatch();
+  return state;
 }
 
 export function markTrialTracked(): void {

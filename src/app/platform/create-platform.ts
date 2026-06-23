@@ -54,9 +54,11 @@ export function createPlatformRuntime(
   const fs = new WebFileSystemAdapter();
   const vfs = new VirtualFileSystem(fs, DEFAULT_VFS_QUOTA);
   const telemetry = new TelemetryBus();
+  const posthogSink = new PostHogTelemetrySink();
+  telemetry.subscribe((event) => posthogSink.track(event));
+
   const runnerTelemetry = new CompositeTelemetrySink([
     telemetry,
-    new PostHogTelemetrySink(),
     options?.telemetrySink ?? (mode === 'browser-worker' ? new ConsoleTelemetrySink() : new NoopTelemetrySink()),
   ]);
 

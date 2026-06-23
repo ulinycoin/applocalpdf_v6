@@ -1,6 +1,7 @@
 import type { TelemetrySink } from '../../core/public';
 import { trackMonetizationEvent } from './monetization-telemetry';
-import { getTrialState, startTrial } from '../platform/trial-manager';
+import { getTrialState, rescheduleTrialExpiryWatch } from '../platform/trial-manager';
+import type { BillingService } from '../platform/billing-service';
 
 export function showStudioPaywall(
   telemetry: TelemetrySink,
@@ -34,13 +35,20 @@ export function showStudioPaywall(
   return runId;
 }
 
-export function handleTrialStart(telemetry: TelemetrySink, flowId: string): void {
-  startTrial();
-
+export function activateProTrial(
+  billing: BillingService,
+  flowId: string,
+  source = 'studio_paywall',
+): void {
+  if (!getTrialState().trialAvailable) {
+    return;
+  }
+  billing.startTrial();
   trackMonetizationEvent('trial_started', {
-    source: 'studio_paywall',
+    source,
     trigger: 'paywall_offer',
     flowId,
     userState: 'local',
   });
+  rescheduleTrialExpiryWatch();
 }

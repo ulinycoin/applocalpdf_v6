@@ -3,6 +3,9 @@ import { LinearIcon } from '../../icons/linear-icon';
 import { useStudioConvertController } from './use-studio-convert-controller';
 import { trackMonetizationEvent } from '../../../../app/react/monetization-telemetry';
 import { openCheckout } from '../../../../app/react/billing';
+import { activateProTrial } from '../../../../app/react/studio-paywall';
+import { getTrialState } from '../../../../app/platform/trial-manager';
+import { usePlatform } from '../../../../app/react/platform-context';
 
 interface StudioConvertWorkspaceProps {
   onClose?: () => void;
@@ -52,13 +55,15 @@ const ALSO_TRY = [
   { tool: 'extract-images', label: 'Extract Images', icon: 'image' },
 ] as const;
 
-interface PreviewPageInfo {
-  pageId: string;
-  pageIndex: number;
-  thumbnailUrl: string | null;
-}
+function OcrPaywallOverlay({
+  totalPages,
+  onTrialStarted,
+}: {
+  totalPages?: number;
+  onTrialStarted?: () => void;
+}) {
+  const trialAvailable = getTrialState().trialAvailable;
 
-function OcrPaywallOverlay({ content, pages, totalPages }: { content: string; pages?: PreviewPageInfo[]; totalPages?: number }) {
   useEffect(() => {
     trackMonetizationEvent('paywall_shown', {
       source: 'ocr_result_preview',
@@ -74,7 +79,6 @@ function OcrPaywallOverlay({ content, pages, totalPages }: { content: string; pa
 
   return (
     <div>
-      {/* Paywall overlay */}
       <div style={{ position: 'relative', overflow: 'hidden', borderRadius: 6 }}>
         <div style={{ textAlign: 'center', padding: 24, maxWidth: 400, margin: '0 auto' }}>
           <div style={{ fontSize: 28, marginBottom: 8 }}>⚡</div>
@@ -111,7 +115,24 @@ function OcrPaywallOverlay({ content, pages, totalPages }: { content: string; pa
           >
             Upgrade to Pro — $3.99/mo
           </button>
-          <p style={{ fontSize: 12, color: '#8a9aa4', marginTop: 8 }}>Or try free for 3 days</p>
+          {trialAvailable ? (
+            <button
+              type="button"
+              onClick={() => {
+                trackMonetizationEvent('paywall_cta_clicked', {
+                  source: 'ocr_result_preview',
+                  toolId: 'ocr-pdf',
+                  trigger: 'start_trial',
+                  userState: 'local',
+                  hadPriorSuccessfulRun: true,
+                });
+                onTrialStarted?.();
+              }}
+              style={{ display: 'block', width: '100%', marginTop: 10, background: 'transparent', color: '#52606b', border: '1px solid #d5dde3', borderRadius: 999, padding: '10px 24px', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}
+            >
+              Start free trial — 3 days
+            </button>
+          ) : null}
         </div>
       </div>
     </div>
@@ -119,7 +140,12 @@ function OcrPaywallOverlay({ content, pages, totalPages }: { content: string; pa
 }
 
 export function StudioConvertWorkspace({ onClose, initialTool }: StudioConvertWorkspaceProps = {}) {
+  const { runtime } = usePlatform();
   const ctrl = useStudioConvertController(initialTool as import('./use-studio-convert-controller').StudioConvertToolId | undefined);
+
+  const handleOcrTrialStart = () => {
+    activateProTrial(runtime.billing, crypto.randomUUID(), 'ocr_result_preview');
+  };
 
   const meta = useMemo(() => (ctrl.activeTool ? (TOOL_META[ctrl.activeTool] ?? TOOL_META['ocr-pdf']) : TOOL_META['ocr-pdf']), [ctrl.activeTool]);
   const toolIconName = ctrl.activeTool ? (TOOL_ICONS[ctrl.activeTool] ?? 'file') : 'file';
@@ -693,7 +719,7 @@ export function StudioConvertWorkspace({ onClose, initialTool }: StudioConvertWo
                     </div>
                   ) : (
                     <div style={{ padding: '0 18px 18px' }}>
-                      <OcrPaywallOverlay content={ctrl.ocrResult.content || ''} pages={ctrl.previewPages} totalPages={ctrl.totalPageCount} />
+                      <OcrPaywallOverlay totalPages={ctrl.totalPageCount} onTrialStarted={handleOcrTrialStart} />
                     </div>
                   )}
                   <div className="cvt-result-actions">

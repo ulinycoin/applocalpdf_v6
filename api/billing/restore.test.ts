@@ -1,6 +1,7 @@
 import { after, beforeEach, describe, test } from 'node:test';
 import * as assert from 'node:assert';
-import { getMappedLicense, encryptString, decryptString } from './restore';
+import { getMappedLicense } from './catalog';
+import { encryptString, decryptString } from './restore';
 
 const originalEnv = {
   monthlyProducts: process.env.LEMON_SQUEEZY_PRO_MONTHLY_PRODUCT_IDS,
