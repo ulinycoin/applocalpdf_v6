@@ -1,14 +1,6 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
-import type { IncomingMessage } from 'node:http';
-import { buffer } from 'node:stream/consumers';
 import { mapProductVariantToTier } from './catalog';
 import { capturePostHogEvent } from './posthog-capture';
-
-export const config = {
-  api: {
-    bodyParser: false,
-  },
-};
 
 const PURCHASE_EVENTS = new Set([
   'order_created',
@@ -16,14 +8,11 @@ const PURCHASE_EVENTS = new Set([
   'subscription_payment_success',
 ]);
 
-async function readRawBody(req: IncomingMessage & { body?: unknown }): Promise<Buffer> {
-  if (typeof req.body === 'string') {
-    return Buffer.from(req.body);
-  }
-  if (Buffer.isBuffer(req.body)) {
-    return req.body;
-  }
-  return Buffer.from(await buffer(req));
+function jsonResponse(status: number, body: Record<string, unknown>): Response {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { 'Content-Type': 'application/json' },
+  });
 }
 
 function verifySignature(rawBody: Buffer, signatureHeader: string | string[] | undefined, secret: string): boolean {
@@ -173,27 +162,31 @@ export async function handleLemonSqueezyWebhook(
   };
 }
 
-export default async function handler(req: any, res: any) {
-  if (req.method === 'OPTIONS') {
-    return res.status(204).end();
+export default async function handler(request: Request): Promise<Response> {
+  if (request.method === 'OPTIONS') {
+    return new Response(null, { status: 204 });
   }
 
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
+  if (request.method !== 'POST') {
+    return jsonResponse(405, { error: 'Method not allowed' });
   }
 
   const secret = process.env.LEMON_SQUEEZY_WEBHOOK_SECRET ?? process.env.LEMONSQUEEZY_WEBHOOK_SECRET;
   if (!secret?.trim()) {
     console.error('[billing/webhook] Missing LEMON_SQUEEZY_WEBHOOK_SECRET');
-    return res.status(500).json({ error: 'Server configuration error' });
+    return jsonResponse(500, { error: 'Server configuration error' });
   }
 
   try {
-    const rawBody = await readRawBody(req);
-    const result = await handleLemonSqueezyWebhook(rawBody, req.headers?.['x-signature'], secret.trim());
-    return res.status(result.status).json(result.body);
+    const rawBody = Buffer.from(await request.arrayBuffer());
+    const result = await handleLemonSqueezyWebhook(
+      rawBody,
+      request.headers.get('x-signature') ?? undefined,
+      secret.trim(),
+    );
+    return jsonResponse(result.status, result.body);
   } catch (error) {
     console.error('[billing/webhook] handler failed', error);
-    return res.status(500).json({ error: 'Internal server error' });
+    return jsonResponse(500, { error: 'Internal server error' });
   }
 }
