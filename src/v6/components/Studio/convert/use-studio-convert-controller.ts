@@ -67,6 +67,12 @@ interface StudioOcrResult {
   fileName: string;
 }
 
+export interface StudioOcrStreamProgress {
+  partialText: string;
+  completedPages: number;
+  pageCount: number;
+}
+
 interface StudioCompressResultSummary {
   inputBytes: number;
   outputBytes: number;
@@ -215,6 +221,7 @@ export function useStudioConvertController(initialToolOverride?: StudioConvertTo
   const [message, setMessage] = useState<string | null>(null);
   const [outputIds, setOutputIds] = useState<string[]>([]);
   const [ocrResult, setOcrResult] = useState<StudioOcrResult | null>(null);
+  const [ocrStream, setOcrStream] = useState<StudioOcrStreamProgress | null>(null);
   const [compressResultSummary, setCompressResultSummary] = useState<StudioCompressResultSummary | null>(null);
   const [jpgResults, setJpgResults] = useState<StudioJpgResultItem[]>([]);
   const [imageCandidatesByPage, setImageCandidatesByPage] = useState<Record<string, StudioExtractImageCandidate[]>>({});
@@ -222,6 +229,8 @@ export function useStudioConvertController(initialToolOverride?: StudioConvertTo
   const [imageScanPendingByPage, setImageScanPendingByPage] = useState<Record<string, boolean>>({});
   const objectUrlsRef = useRef<string[]>([]);
   const imageScanPendingRef = useRef<Record<string, boolean>>({});
+  const ocrRunAbortRef = useRef<AbortController | null>(null);
+  const ocrPartialTextRef = useRef('');
   const recordHistoryEvent = useHistoryStore((s) => s.recordEvent);
 
   const isRunning = step === 'processing';
@@ -516,6 +525,8 @@ export function useStudioConvertController(initialToolOverride?: StudioConvertTo
     setMessage(null);
     setOutputIds([]);
     setOcrResult(null);
+    setOcrStream(null);
+    ocrPartialTextRef.current = '';
     setCompressResultSummary(null);
     setJpgResults([]);
     setImageScanPendingByPage({});
@@ -581,6 +592,10 @@ export function useStudioConvertController(initialToolOverride?: StudioConvertTo
     setSelectedImageIds((current) => current.filter((globalId) => selectedPageSet.has(globalId.split('::', 1)[0] ?? '')));
   }, [activeTool, selectedPageIds]);
 
+  const cancelRun = useCallback(() => {
+    ocrRunAbortRef.current?.abort();
+  }, []);
+
   const runTool = useCallback(async () => {
     if (!activeTool || selectedPages.length === 0 || isRunning) {
       return;
@@ -588,6 +603,11 @@ export function useStudioConvertController(initialToolOverride?: StudioConvertTo
 
     resetWorkspace();
     setStep('processing');
+    setOcrStream(null);
+    ocrPartialTextRef.current = '';
+
+    const abortController = new AbortController();
+    ocrRunAbortRef.current = abortController;
 
     try {
       const inputIds = activeTool === 'extract-images'
@@ -645,9 +665,42 @@ export function useStudioConvertController(initialToolOverride?: StudioConvertTo
         (event) => {
           if (event.type === 'TOOL_PROGRESS') {
             setProgress(Math.max(0, Math.min(100, Math.round(event.progress))));
+            if (activeTool === 'ocr-pdf' && event.detail?.partialText) {
+              ocrPartialTextRef.current = event.detail.partialText;
+              setOcrStream({
+                partialText: event.detail.partialText,
+                completedPages: event.detail.completedPages ?? 0,
+                pageCount: event.detail.pageCount ?? 0,
+              });
+            }
           }
         },
+        abortController.signal,
       );
+
+      if (result.type === 'TOOL_ERROR' && result.code === 'WORKER_ABORTED') {
+        runtime.telemetry.track({
+          type: 'TOOL_RUN_ABANDONED',
+          flowId: crypto.randomUUID(),
+          toolId: activeTool,
+          reason: 'cancel',
+        });
+        const partialText = ocrPartialTextRef.current.trim();
+        if (activeTool === 'ocr-pdf' && partialText.length > 0) {
+          setOcrResult({
+            kind: ocrSettings.outputFormat === 'json' ? 'json' : 'text',
+            content: ocrPartialTextRef.current,
+            pdfUrl: null,
+            fileName: ocrSettings.outputFormat === 'json' ? 'ocr-partial.json' : 'ocr-partial.txt',
+          });
+          setMessage('OCR canceled — partial results shown.');
+          setStep('result');
+        } else {
+          setMessage('Processing canceled.');
+          setStep('config');
+        }
+        return;
+      }
 
       if (result.type === 'TOOL_ACCESS_DENIED') {
         // Runner already emits UI_UPSELL_SHOWN — no need to call showStudioPaywall here
@@ -698,6 +751,9 @@ export function useStudioConvertController(initialToolOverride?: StudioConvertTo
       const runMessage = runError instanceof Error ? runError.message : 'Conversion failed.';
       setError(runMessage);
       setStep('config');
+    } finally {
+      ocrRunAbortRef.current = null;
+      setOcrStream(null);
     }
   }, [
     activeTool,
@@ -721,6 +777,7 @@ export function useStudioConvertController(initialToolOverride?: StudioConvertTo
     compressPdfSettings.quality,
     resetWorkspace,
     runtime.runner,
+    runtime.telemetry,
     selectedExtractImageCandidates,
     selectedPages,
     targetPages,
@@ -826,11 +883,13 @@ export function useStudioConvertController(initialToolOverride?: StudioConvertTo
     setMessage,
     outputIds,
     ocrResult,
+    ocrStream,
     totalPageCount,
     compressResultSummary,
     jpgResults,
     updateOcrResultContent,
     runTool,
+    cancelRun,
     downloadResults,
     resetWorkspace,
     navigateBack,

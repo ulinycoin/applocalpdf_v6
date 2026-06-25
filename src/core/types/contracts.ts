@@ -34,11 +34,25 @@ export interface ToolUiModule {
   default: ComponentType<any>;
 }
 
+export type ToolProgressDetail = {
+  pageIndex?: number;
+  pageCount?: number;
+  partialText?: string;
+  completedPages?: number;
+};
+
+export type ToolProgressUpdate = {
+  progress: number;
+  detail?: ToolProgressDetail;
+};
+
+export type ToolProgressEmitter = (update: number | ToolProgressUpdate) => void;
+
 export type ToolLogicFunction = (params: {
   inputIds: string[];
   options?: Record<string, unknown>;
   fs: IFileSystem;
-  emitProgress?: (percent: number) => void;
+  emitProgress?: ToolProgressEmitter;
 }) => Promise<{ outputIds: string[] }>;
 
 export interface ToolLogicModule {
@@ -250,7 +264,7 @@ export interface IWorkerCommand {
 }
 
 export type WorkerEventPayload =
-  | { type: 'PROGRESS'; payload: { progress: number } }
+  | { type: 'PROGRESS'; payload: { progress: number; detail?: ToolProgressDetail } }
   | { type: 'DIAGNOSTIC'; payload: { channel: 'PAGE_COUNT'; stage: string; fileId?: string; durationMs?: number; note?: string } }
   | { type: 'RESULT'; payload: { outputIds: string[] } }
   | { type: 'PAGE_COUNT_RESULT'; payload: { fileId: string; pageCount: number } }
@@ -295,6 +309,7 @@ export type RunnerExecuteResult =
 export type RunnerProgressEvent = {
   type: 'TOOL_PROGRESS';
   progress: number;
+  detail?: ToolProgressDetail;
 };
 
 export type RunnerTelemetryEvent =

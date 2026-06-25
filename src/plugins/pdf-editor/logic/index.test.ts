@@ -58,7 +58,7 @@ test('pdf-editor logic applies text edits and reports progress', async () => {
       ],
     },
     emitProgress: (value) => {
-      progressUpdates.push(value);
+      progressUpdates.push(typeof value === 'number' ? value : value.progress);
     },
   });
 

@@ -616,7 +616,9 @@ export function StudioConvertWorkspace({ onClose, initialTool }: StudioConvertWo
                         : 'Extracting images…'}
                     </div>
                     <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>
-                      Processing in your browser. Your file stays on your device.
+                      {ctrl.activeTool === 'ocr-pdf' && ctrl.ocrStream && ctrl.ocrStream.pageCount > 0
+                        ? `Page ${ctrl.ocrStream.completedPages} of ${ctrl.ocrStream.pageCount} — text appears as each page finishes.`
+                        : 'Processing in your browser. Your file stays on your device.'}
                     </div>
                   </div>
                   <div className="cvt-progress-track">
@@ -626,9 +628,40 @@ export function StudioConvertWorkspace({ onClose, initialTool }: StudioConvertWo
                     <span>Processing…</span>
                     <span className="cvt-progress-pct">{Math.round(ctrl.progress)}%</span>
                   </div>
+                  {ctrl.activeTool === 'ocr-pdf' && ctrl.ocrStream?.partialText ? (
+                    <textarea
+                      readOnly
+                      value={ctrl.ocrStream.partialText}
+                      style={{
+                        width: '100%',
+                        minHeight: 200,
+                        marginTop: 16,
+                        border: '1px solid var(--border)',
+                        borderRadius: 6,
+                        background: 'var(--bg-1)',
+                        resize: 'vertical',
+                        color: 'inherit',
+                        fontFamily: 'monospace',
+                        padding: 12,
+                        lineHeight: 1.6,
+                        fontSize: 13,
+                      }}
+                      spellCheck={false}
+                      placeholder="Recognized text will appear here…"
+                    />
+                  ) : null}
                   <div className="cvt-processing-note">
                     <div className="cvt-spinner" />
                     Worker executing in private sandbox · 0 bytes sent to server
+                  </div>
+                  <div style={{ marginTop: 16, display: 'flex', justifyContent: 'flex-end' }}>
+                    <button
+                      type="button"
+                      className="cvt-btn-ghost"
+                      onClick={ctrl.cancelRun}
+                    >
+                      Cancel
+                    </button>
                   </div>
                 </div>
               </div>

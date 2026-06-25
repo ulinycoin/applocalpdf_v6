@@ -210,6 +210,52 @@ test('UnifiedToolRunner routes OCR through the worker path', async () => {
   assert.deepEqual(result, { type: 'TOOL_RESULT', outputIds: ['ocr-out'] });
 });
 
+test('UnifiedToolRunner forwards PROGRESS detail events', async () => {
+  const registry = new GlobalRegistry();
+  registry.register(tool);
+
+  const fs = new InMemoryFileSystem();
+  fs.seed('f1', new Blob([new Uint8Array([1, 2])]));
+
+  const runner = new UnifiedToolRunner(
+    registry,
+    {
+      dispatch: async (command: IWorkerCommand, onEvent): Promise<IWorkerEvent> => {
+        onEvent?.({
+          id: command.id,
+          type: 'EVENT',
+          payload: {
+            type: 'PROGRESS',
+            payload: {
+              progress: 55,
+              detail: { pageIndex: 1, pageCount: 3, completedPages: 2, partialText: 'hello' },
+            },
+          },
+        });
+        return {
+          id: command.id,
+          type: 'EVENT',
+          payload: { type: 'RESULT', payload: { outputIds: ['out-detail'] } },
+        };
+      },
+    },
+    fs,
+  );
+
+  let detailSeen: string | undefined;
+  const result = await runner.execute(
+    'merge-pdf',
+    { inputIds: ['f1'] },
+    { userId: 'u1', plan: 'basic', entitlements: ['pdf.merge'] },
+    (event) => {
+      detailSeen = event.detail?.partialText;
+    },
+  );
+
+  assert.equal(detailSeen, 'hello');
+  assert.deepEqual(result, { type: 'TOOL_RESULT', outputIds: ['out-detail'] });
+});
+
 test('UnifiedToolRunner forwards PROGRESS events', async () => {
   const registry = new GlobalRegistry();
   registry.register(tool);

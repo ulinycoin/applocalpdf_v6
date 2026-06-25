@@ -1,11 +1,11 @@
-import type { ToolLogicFunction } from '../../../core/types/contracts';
+import type { ToolLogicFunction, ToolProgressDetail } from '../../../core/types/contracts';
 import { createOcrEngine, type OcrWord } from '../../../services/ocr/ocr-engine';
 import { OcrPipelineError } from '../../../services/ocr/ocr-errors';
 import { buildFontSupportProfile } from '../../../services/ocr/font-profile';
 import { detectDocumentLanguage, selectAutoOcrLanguagePack, type SupportedOcrLanguage } from '../../../services/ocr/language-detector';
 import { detectTablesFromWords, renderDetectedTablesAsMarkdown, type DetectedTable } from '../../../services/ocr/table-detector';
 import { buildSearchablePdfFromImages } from '../../../services/ocr/searchable-pdf';
-import { preprocessImageForOcr } from '../../../services/ocr/image-preprocess';
+import { preprocessImageForOcr, type OcrPreprocessProfile } from '../../../services/ocr/image-preprocess';
 import { createPdfRasterizer } from '../../../services/pdf/pdf-rasterizer';
 import { extractEmbeddedPdfText } from '../../../services/pdf/pdf-text-extractor';
 
@@ -89,10 +89,23 @@ async function remapWordsToRenderBlob(words: OcrWord[], ocrBlob: Blob, renderBlo
 
 const SUPPORTED_LANGUAGES: SupportedOcrLanguage[] = ['eng', 'rus', 'ukr', 'deu', 'fra', 'spa', 'ita', 'por', 'jpn', 'chi_sim', 'hin', 'ara'];
 const DEFAULT_LANGUAGE: SupportedOcrLanguage = 'eng';
-const AUTO_PROBE_LANGUAGE_PACK = 'eng+jpn+chi_sim';
+const AUTO_PROBE_LANGUAGE_PACK = 'eng';
+const OCR_FAST_RASTER_SCALE = 1.25;
+const OCR_ACCURATE_RASTER_SCALE = 2.0;
 const LOW_CONFIDENCE_THRESHOLD = 78;
 const LOW_CONFIDENCE_TEXT_MIN = 40;
 const LOW_CONFIDENCE_MAX_RETRY_PAGES = 6;
+
+function ocrRasterScale(mode: OcrMode): number {
+  return mode === 'fast' ? OCR_FAST_RASTER_SCALE : OCR_ACCURATE_RASTER_SCALE;
+}
+
+function ocrPreprocessProfile(mode: OcrMode, retry = false): OcrPreprocessProfile {
+  if (mode === 'fast') {
+    return 'none';
+  }
+  return retry ? 'aggressive' : 'balanced';
+}
 
 function normalizeLanguagePack(raw: string | undefined): string {
   const input = (raw ?? '').trim().toLowerCase();
@@ -177,6 +190,26 @@ function scoreResult(result: OcrChunkResult): number {
   return confidence + textScore + wordScore;
 }
 
+function emitFileProgress(
+  emitProgress: Parameters<ToolLogicFunction>[0]['emitProgress'],
+  fileIndex: number,
+  fileCount: number,
+  localPercent: number,
+  detail?: ToolProgressDetail,
+): void {
+  const safeLocal = Math.max(0, Math.min(100, localPercent));
+  const overall = Math.round(((fileIndex + safeLocal / 100) / fileCount) * 100);
+  const progress = Math.max(0, Math.min(100, overall));
+  if (!emitProgress) {
+    return;
+  }
+  if (detail) {
+    emitProgress({ progress, detail });
+  } else {
+    emitProgress(progress);
+  }
+}
+
 export const run: ToolLogicFunction = async ({ inputIds, options: runOptions, fs, emitProgress }) => {
   if (inputIds.length === 0) {
     throw new Error('OCR PDF requires at least one input file');
@@ -198,24 +231,9 @@ export const run: ToolLogicFunction = async ({ inputIds, options: runOptions, fs
       };
     };
 
-    const recognizeChunks = async (
-      chunks: Blob[],
-      language: string,
-      onChunkDone?: (done: number, total: number) => void,
-    ): Promise<OcrChunkResult[]> => {
-      const results: OcrChunkResult[] = [];
-      for (let idx = 0; idx < chunks.length; idx += 1) {
-        results.push(await recognizeChunk(chunks[idx], language));
-        onChunkDone?.(idx + 1, chunks.length);
-      }
-      return results;
-    };
-
     for (let i = 0; i < inputIds.length; i += 1) {
-      const updateFileProgress = (localPercent: number): void => {
-        const safeLocal = Math.max(0, Math.min(100, localPercent));
-        const overall = ((i + safeLocal / 100) / inputIds.length) * 100;
-        emitProgress?.(Math.max(0, Math.min(100, Math.round(overall))));
+      const updateFileProgress = (localPercent: number, detail?: ToolProgressDetail): void => {
+        emitFileProgress(emitProgress, i, inputIds.length, localPercent, detail);
       };
 
       updateFileProgress(2);
@@ -255,7 +273,12 @@ export const run: ToolLogicFunction = async ({ inputIds, options: runOptions, fs
           }];
           languageDetection = detectDocumentLanguage(recognizedText);
           usedEmbeddedText = true;
-          updateFileProgress(78);
+          updateFileProgress(78, {
+            pageIndex: 0,
+            pageCount: 1,
+            completedPages: 1,
+            partialText: recognizedText,
+          });
         } else {
           updateFileProgress(20);
           // Emit progress before rasterization to reset the worker timeout window.
@@ -271,75 +294,81 @@ export const run: ToolLogicFunction = async ({ inputIds, options: runOptions, fs
             );
           }
 
-          const sourceImages = await rasterizer.rasterize(blob);
-          if (sourceImages.length === 0) {
-            recognizedText = '';
-          } else {
-            const balancedImages: Blob[] = [];
-            for (let idx = 0; idx < sourceImages.length; idx += 1) {
-              balancedImages.push(await preprocessImageForOcr(sourceImages[idx], 'balanced'));
-              updateFileProgress(34 + ((idx + 1) / sourceImages.length) * 6);
-            }
+          const rasterOptions = {
+            scale: ocrRasterScale(options.mode),
+            imageFormat: 'image/jpeg' as const,
+          };
+          const preprocessProfile = ocrPreprocessProfile(options.mode);
+          const pageResults: OcrChunkResult[] = [];
+          const pageImages: Blob[] = [];
+          const pageRenderImages: Blob[] = [];
+          let probeLanguageResolved = false;
+          let lowConfidenceRetriesThisDoc = 0;
 
-            let pageImages = balancedImages;
-            const pageRenderImages = sourceImages;
-            let pageResults: OcrChunkResult[] = [];
+          const pageCount = await rasterizer.forEachPage(blob, rasterOptions, async (info) => {
+            const { pageIndex, pageCount: totalPages, blob: sourceImage } = info;
+            updateFileProgress(24 + (pageIndex / Math.max(1, totalPages)) * 14);
 
-            if (options.languageMode === 'auto') {
-              const probe = await recognizeChunk(pageImages[0], initialLanguagePack);
-              updateFileProgress(44);
+            const ocrImage = await preprocessImageForOcr(sourceImage, preprocessProfile);
+            pageRenderImages.push(sourceImage);
+            pageImages.push(ocrImage);
+
+            let pageResult: OcrChunkResult;
+            if (options.languageMode === 'auto' && !probeLanguageResolved) {
+              const probe = await recognizeChunk(ocrImage, initialLanguagePack);
               const probeDetection = detectDocumentLanguage(probe.text);
               const suggestedPack = enrichAutoLanguagePack(selectAutoOcrLanguagePack(probeDetection), probe.text);
               finalLanguagePack = suggestedPack;
-
-              // For single-page docs, reuse the probe result instead of re-OCRing.
-              // The probe already ran with the full language pack — re-running is redundant.
-              pageResults = pageImages.length <= 1
-                ? [probe]
-                : suggestedPack !== initialLanguagePack
-                  ? await recognizeChunks(pageImages, suggestedPack, (done, total) => {
-                    updateFileProgress(44 + (done / Math.max(1, total)) * 36);
-                  })
-                  : [probe, ...(await recognizeChunks(pageImages.slice(1), initialLanguagePack, (done, total) => {
-                    updateFileProgress(48 + (done / Math.max(1, total)) * 32);
-                  }))];
               autoSecondPassApplied = suggestedPack !== initialLanguagePack;
+              probeLanguageResolved = true;
+              pageResult = suggestedPack !== initialLanguagePack
+                ? await recognizeChunk(ocrImage, suggestedPack)
+                : probe;
             } else {
-              pageResults = await recognizeChunks(pageImages, initialLanguagePack, (done, total) => {
-                updateFileProgress(44 + (done / Math.max(1, total)) * 36);
-              });
+              const languagePack = options.languageMode === 'auto' ? finalLanguagePack : initialLanguagePack;
+              pageResult = await recognizeChunk(ocrImage, languagePack);
             }
 
-            // Single-page docs skip the low-confidence retry: the probe already
-            // ran with the full language pack and re-OCRing adds latency without
-            // meaningful quality gain for practical document types.
-            if (options.mode === 'accurate' && sourceImages.length > 1) {
-              const retryCandidates = pageResults
-                .map((result, idx) => ({ idx, result }))
-                .filter((item) => isLowConfidence(item.result))
-                .slice(0, LOW_CONFIDENCE_MAX_RETRY_PAGES);
-
-              for (let retryIdx = 0; retryIdx < retryCandidates.length; retryIdx += 1) {
-                const target = retryCandidates[retryIdx];
-                const aggressiveBlob = await preprocessImageForOcr(sourceImages[target.idx], 'aggressive');
-                const languagePack = options.languageMode === 'auto' ? finalLanguagePack : initialLanguagePack;
-                const retried = await recognizeChunk(aggressiveBlob, languagePack);
-                const oldScore = scoreResult(pageResults[target.idx]);
-                const newScore = scoreResult(retried);
-                if (newScore >= oldScore + 2 || (!isLowConfidence(retried) && isLowConfidence(pageResults[target.idx]))) {
-                  pageResults[target.idx] = retried;
-                  pageImages[target.idx] = aggressiveBlob;
-                }
-                lowConfidenceRetryApplied = true;
-                lowConfidenceRetryCount += 1;
-                updateFileProgress(82 + ((retryIdx + 1) / Math.max(1, retryCandidates.length)) * 8);
+            if (
+              options.mode === 'accurate'
+              && totalPages > 1
+              && isLowConfidence(pageResult)
+              && lowConfidenceRetriesThisDoc < LOW_CONFIDENCE_MAX_RETRY_PAGES
+            ) {
+              const aggressiveBlob = await preprocessImageForOcr(sourceImage, ocrPreprocessProfile(options.mode, true));
+              const languagePack = options.languageMode === 'auto' ? finalLanguagePack : initialLanguagePack;
+              const retried = await recognizeChunk(aggressiveBlob, languagePack);
+              const oldScore = scoreResult(pageResult);
+              const newScore = scoreResult(retried);
+              if (newScore >= oldScore + 2 || (!isLowConfidence(retried) && isLowConfidence(pageResult))) {
+                pageResult = retried;
+                pageImages[pageImages.length - 1] = aggressiveBlob;
               }
+              lowConfidenceRetryApplied = true;
+              lowConfidenceRetriesThisDoc += 1;
+              lowConfidenceRetryCount = lowConfidenceRetriesThisDoc;
             }
 
+            pageResults.push(pageResult);
+
+            const partialAnalysis = analyzePages(
+              pageResults.map((item) => ({ text: item.text, words: item.words })),
+              options,
+            );
+            const partialText = partialAnalysis.map((page) => page.text).join('\n\n');
+            updateFileProgress(38 + ((pageIndex + 1) / Math.max(1, totalPages)) * 50, {
+              pageIndex,
+              pageCount: totalPages,
+              completedPages: pageIndex + 1,
+              partialText,
+            });
+          });
+
+          if (pageCount === 0) {
+            recognizedText = '';
+          } else {
             pageAnalysis = analyzePages(pageResults.map((item) => ({ text: item.text, words: item.words })), options);
             recognizedText = pageAnalysis.map((item) => item.text).join('\n\n');
-            // Keep original page render for final Searchable PDF visuals;
-            // preprocess variants are used only for OCR recognition quality.
             const remappedLayers: Array<{ imageBlob: Blob; words: OcrWord[] }> = [];
             for (let idx = 0; idx < pageRenderImages.length; idx += 1) {
               const recognizedWords = pageResults[idx]?.words ?? [];
@@ -358,7 +387,7 @@ export const run: ToolLogicFunction = async ({ inputIds, options: runOptions, fs
           }
         }
       } else {
-        const preparedBlob = await preprocessImageForOcr(blob, 'balanced');
+        const preparedBlob = await preprocessImageForOcr(blob, ocrPreprocessProfile(options.mode));
         const imageRenderBlob =
           blob.type === 'image/png' || blob.type === 'image/jpeg' || blob.type === 'image/jpg'
             ? blob
@@ -377,7 +406,7 @@ export const run: ToolLogicFunction = async ({ inputIds, options: runOptions, fs
           autoSecondPassApplied = finalLanguagePack !== initialLanguagePack;
 
           if (options.mode === 'accurate' && isLowConfidence(finalResult)) {
-            const aggressiveBlob = await preprocessImageForOcr(blob, 'aggressive');
+            const aggressiveBlob = await preprocessImageForOcr(blob, ocrPreprocessProfile(options.mode, true));
             const retried = await recognizeChunk(aggressiveBlob, finalLanguagePack);
             if (scoreResult(retried) >= scoreResult(finalResult) + 2 || (!isLowConfidence(retried) && isLowConfidence(finalResult))) {
               finalResult = retried;
@@ -402,7 +431,7 @@ export const run: ToolLogicFunction = async ({ inputIds, options: runOptions, fs
         } else {
           let recognized = await recognizeChunk(preparedBlob, initialLanguagePack);
           if (options.mode === 'accurate' && isLowConfidence(recognized)) {
-            const aggressiveBlob = await preprocessImageForOcr(blob, 'aggressive');
+            const aggressiveBlob = await preprocessImageForOcr(blob, ocrPreprocessProfile(options.mode, true));
             const retried = await recognizeChunk(aggressiveBlob, initialLanguagePack);
             if (scoreResult(retried) >= scoreResult(recognized) + 2 || (!isLowConfidence(retried) && isLowConfidence(recognized))) {
               recognized = retried;
@@ -425,6 +454,13 @@ export const run: ToolLogicFunction = async ({ inputIds, options: runOptions, fs
           }
           languageFallbackUsed = recognized.languageFallbackUsed;
         }
+
+        updateFileProgress(88, {
+          pageIndex: 0,
+          pageCount: 1,
+          completedPages: 1,
+          partialText: recognizedText,
+        });
       }
 
       const fontProfile = buildFontSupportProfile(recognizedText, languageDetection);

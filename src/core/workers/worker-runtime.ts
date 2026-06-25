@@ -157,11 +157,13 @@ export async function executeWorkerCommand(
         inputIds,
         options,
         fs: deps.fs,
-        emitProgress: (progress) => {
+        emitProgress: (update) => {
+          const progress = typeof update === 'number' ? update : update.progress;
+          const detail = typeof update === 'number' ? undefined : update.detail;
           onProgress?.({
             id: command.id,
             type: 'EVENT',
-            payload: { type: 'PROGRESS', payload: { progress } },
+            payload: { type: 'PROGRESS', payload: { progress, detail } },
           });
         },
       });

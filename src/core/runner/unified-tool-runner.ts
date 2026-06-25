@@ -38,6 +38,7 @@ export class UnifiedToolRunner {
     input: ToolRunInput,
     context: ToolRunContext,
     onProgress?: (event: RunnerProgressEvent) => void,
+    signal?: AbortSignal,
   ): Promise<RunnerExecuteResult> {
     // Calculate total input size if possible
     let totalInputSize = 0;
@@ -88,18 +89,20 @@ export class UnifiedToolRunner {
     try {
       event = await this.workerOrchestrator.dispatch(command, (workerEvent) => {
         if (workerEvent.payload.type === 'PROGRESS') {
+          const { progress, detail } = workerEvent.payload.payload;
           this.telemetry.track({
             type: 'TOOL_RUN_PROGRESS',
             runId,
             toolId,
-            progress: workerEvent.payload.payload.progress,
+            progress,
           });
           onProgress?.({
             type: 'TOOL_PROGRESS',
-            progress: workerEvent.payload.payload.progress,
+            progress,
+            detail,
           });
         }
-      });
+      }, signal);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unexpected worker dispatch failure';
       this.telemetry.track({

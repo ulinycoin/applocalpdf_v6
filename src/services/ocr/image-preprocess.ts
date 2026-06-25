@@ -1,4 +1,6 @@
-export type OcrPreprocessProfile = 'balanced' | 'aggressive';
+export type OcrPreprocessProfile = 'balanced' | 'aggressive' | 'none';
+
+const OCR_JPEG_QUALITY = 0.85;
 
 async function decodeImage(blob: Blob): Promise<{ width: number; height: number; drawTo: (ctx: any, w: number, h: number) => void }> {
   if (typeof createImageBitmap === 'function') {
@@ -169,6 +171,10 @@ export async function preprocessImageForOcr(
   blob: Blob,
   profile: OcrPreprocessProfile = 'balanced',
 ): Promise<Blob> {
+  if (profile === 'none') {
+    return blob;
+  }
+
   if (!blob.type.startsWith('image/')) {
     return blob;
   }
@@ -255,9 +261,11 @@ export async function preprocessImageForOcr(
 
     let outBlob: Blob | null = null;
     if (typeof OffscreenCanvas !== 'undefined' && canvas instanceof OffscreenCanvas) {
-      outBlob = await canvas.convertToBlob({ type: 'image/png' });
+      outBlob = await canvas.convertToBlob({ type: 'image/jpeg', quality: OCR_JPEG_QUALITY });
     } else if ('toBlob' in canvas && typeof (canvas as any).toBlob === 'function') {
-      outBlob = await new Promise<Blob | null>((resolve) => (canvas as any).toBlob(resolve, 'image/png'));
+      outBlob = await new Promise<Blob | null>((resolve) => (
+        (canvas as any).toBlob(resolve, 'image/jpeg', OCR_JPEG_QUALITY)
+      ));
     }
 
     return outBlob ?? blob;

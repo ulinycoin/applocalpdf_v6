@@ -1,6 +1,27 @@
-export interface PdfRasterizer {
-  rasterize(pdfBlob: Blob): Promise<Blob[]>;
+export interface PdfRasterizeOptions {
+  scale?: number;
+  imageFormat?: 'image/png' | 'image/jpeg';
+  jpegQuality?: number;
 }
+
+export interface PdfRasterizedPageInfo {
+  pageIndex: number;
+  pageCount: number;
+  blob: Blob;
+}
+
+export interface PdfRasterizer {
+  rasterize(pdfBlob: Blob, options?: PdfRasterizeOptions): Promise<Blob[]>;
+  forEachPage(
+    pdfBlob: Blob,
+    options: PdfRasterizeOptions | undefined,
+    handler: (info: PdfRasterizedPageInfo) => void | Promise<void>,
+  ): Promise<number>;
+}
+
+const DEFAULT_RASTER_SCALE = 2.0;
+const DEFAULT_IMAGE_FORMAT: NonNullable<PdfRasterizeOptions['imageFormat']> = 'image/png';
+const DEFAULT_JPEG_QUALITY = 0.85;
 
 interface PdfPageLike {
   getViewport(params: { scale: number }): { width: number; height: number };
@@ -167,7 +188,7 @@ class PdfJsRasterizer implements PdfRasterizer {
     }
   }
 
-  async rasterize(pdfBlob: Blob): Promise<Blob[]> {
+  private async openPdf(pdfBlob: Blob): Promise<PdfDocumentLike> {
     const arrayBuffer = await pdfBlob.arrayBuffer();
     const errorOnlyVerbosity = this.pdfjs.VerbosityLevel?.ERRORS ?? 0;
 
@@ -181,7 +202,6 @@ class PdfJsRasterizer implements PdfRasterizer {
       },
     } : undefined;
 
-    // Use OffscreenCanvas-safe pdfjs options
     const loadingTask = this.pdfjs.getDocument({
       data: arrayBuffer,
       disableWorker: true,
@@ -192,30 +212,57 @@ class PdfJsRasterizer implements PdfRasterizer {
       disableFontFace: true,
       ownerDocument: mockDocument,
     });
-    const pdf = await loadingTask.promise;
-    const blobs: Blob[] = [];
+    return loadingTask.promise;
+  }
 
-    for (let i = 1; i <= pdf.numPages; i++) {
-      const page = await pdf.getPage(i);
-      const viewport = page.getViewport({ scale: 2.0 });
+  private async renderPageBlob(
+    page: PdfPageLike,
+    options: PdfRasterizeOptions,
+    pageNumber: number,
+  ): Promise<Blob> {
+    const scale = options.scale ?? DEFAULT_RASTER_SCALE;
+    const imageFormat = options.imageFormat ?? DEFAULT_IMAGE_FORMAT;
+    const jpegQuality = options.jpegQuality ?? DEFAULT_JPEG_QUALITY;
+    const viewport = page.getViewport({ scale });
+    const canvas = await this.renderPageToCanvas(page, viewport);
 
-      const canvas = await this.renderPageToCanvas(page, viewport);
-
-      const blob = await new Promise<Blob | null>((resolve) => {
-        if (typeof OffscreenCanvas !== 'undefined') {
-          canvas.convertToBlob({ type: 'image/png' }).then(resolve);
-        } else {
-          // Fallback — should not be reached since renderPageToCanvas already checks
-          resolve(null);
-        }
-      });
-
-      if (!blob) {
-        throw new Error(`Failed to create image blob for page ${i}`);
+    const blob = await new Promise<Blob | null>((resolve) => {
+      if (typeof OffscreenCanvas !== 'undefined') {
+        canvas.convertToBlob({
+          type: imageFormat,
+          ...(imageFormat === 'image/jpeg' ? { quality: jpegQuality } : {}),
+        }).then(resolve);
+      } else {
+        resolve(null);
       }
-      blobs.push(blob);
-    }
+    });
 
+    if (!blob) {
+      throw new Error(`Failed to create image blob for page ${pageNumber}`);
+    }
+    return blob;
+  }
+
+  async forEachPage(
+    pdfBlob: Blob,
+    options: PdfRasterizeOptions | undefined,
+    handler: (info: PdfRasterizedPageInfo) => void | Promise<void>,
+  ): Promise<number> {
+    const pdf = await this.openPdf(pdfBlob);
+    const resolvedOptions = options ?? {};
+    for (let i = 1; i <= pdf.numPages; i += 1) {
+      const page = await pdf.getPage(i);
+      const blob = await this.renderPageBlob(page, resolvedOptions, i);
+      await handler({ pageIndex: i - 1, pageCount: pdf.numPages, blob });
+    }
+    return pdf.numPages;
+  }
+
+  async rasterize(pdfBlob: Blob, options: PdfRasterizeOptions = {}): Promise<Blob[]> {
+    const blobs: Blob[] = [];
+    await this.forEachPage(pdfBlob, options, (info) => {
+      blobs.push(info.blob);
+    });
     return blobs;
   }
 }
