@@ -24,17 +24,17 @@ describe('billing restore mapping', () => {
   });
 
   beforeEach(() => {
-    process.env.LEMON_SQUEEZY_PRO_MONTHLY_PRODUCT_IDS = '908866';
-    process.env.LEMON_SQUEEZY_PRO_MONTHLY_VARIANT_IDS = '1429374';
-    process.env.LEMON_SQUEEZY_PRO_YEARLY_PRODUCT_IDS = '908866';
-    process.env.LEMON_SQUEEZY_PRO_YEARLY_VARIANT_IDS = '1429309';
+    process.env.LEMON_SQUEEZY_PRO_MONTHLY_PRODUCT_IDS = '917519';
+    process.env.LEMON_SQUEEZY_PRO_MONTHLY_VARIANT_IDS = '1442622';
+    process.env.LEMON_SQUEEZY_PRO_YEARLY_PRODUCT_IDS = '917519';
+    process.env.LEMON_SQUEEZY_PRO_YEARLY_VARIANT_IDS = '1442621';
   });
 
   test('prefers yearly variant match even when product ids overlap', () => {
     const mapped = getMappedLicense({
       meta: {
-        product_id: 908866,
-        variant_id: 1429309,
+        product_id: 917519,
+        variant_id: 1442621,
       },
     });
 
@@ -44,8 +44,8 @@ describe('billing restore mapping', () => {
   test('maps monthly variant correctly when product ids overlap', () => {
     const mapped = getMappedLicense({
       meta: {
-        product_id: 908866,
-        variant_id: 1429374,
+        product_id: 917519,
+        variant_id: 1442622,
       },
     });
 
@@ -55,7 +55,7 @@ describe('billing restore mapping', () => {
   test('returns null on ambiguous product-only overlap without variant signal', () => {
     const mapped = getMappedLicense({
       meta: {
-        product_id: 908866,
+        product_id: 917519,
       },
     });
 
