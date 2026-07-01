@@ -39,7 +39,6 @@ async function capturePostHogEvent(input: {
   event: string;
   distinctId: string;
   properties?: Record<string, unknown>;
-  uuid?: string;
 }): Promise<boolean> {
   const apiKey = process.env.POSTHOG_PROJECT_API_KEY
     ?? process.env.PUBLIC_POSTHOG_KEY
@@ -59,9 +58,6 @@ async function capturePostHogEvent(input: {
       $lib: 'localpdf-billing-webhook',
     },
   };
-  if (input.uuid) {
-    body.uuid = input.uuid;
-  }
 
   const response = await fetch(`${host}/capture/`, {
     method: 'POST',
@@ -186,7 +182,6 @@ export async function handleLemonSqueezyWebhook(
   const captured = await capturePostHogEvent({
     event: 'purchase_completed',
     distinctId,
-    uuid: `ls-order-${order.orderId}`,
     properties: {
       source: 'lemonsqueezy_webhook',
       ls_event: order.eventName,
@@ -205,7 +200,6 @@ export async function handleLemonSqueezyWebhook(
   await capturePostHogEvent({
     event: 'trial_convert',
     distinctId,
-    uuid: `ls-trial-convert-${order.orderId}`,
     properties: {
       source: 'lemonsqueezy_webhook',
       order_id: order.orderId,
