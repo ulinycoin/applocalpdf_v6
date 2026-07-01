@@ -2666,23 +2666,61 @@ textarea:focus-visible {
   color: var(--text-dim);
 }
 
+.studio-tool-rail-anchor {
+  position: relative;
+  flex-shrink: 0;
+  width: 52px;
+  z-index: 30;
+}
+
 .studio-tool-rail {
-  width: 220px;
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 52px;
   background: var(--bg-1);
   border-right: 1px solid var(--border);
   display: flex;
   flex-direction: column;
-  flex-shrink: 0;
   overflow-y: auto;
   overflow-x: hidden;
+  padding-top: 8px;
+  transition: width 180ms ease, box-shadow 180ms ease;
 }
 
-.studio-tool-rail-upload {
-  display: flex;
-  padding: 6px 12px;
-  width: calc(100% - 16px);
-  margin: 8px;
-  text-align: left;
+.studio-tool-rail-anchor:hover .studio-tool-rail,
+.studio-tool-rail-anchor:focus-within .studio-tool-rail {
+  width: 220px;
+  box-shadow: var(--shadow);
+}
+
+.studio-tool-rail-collapsible-text {
+  opacity: 0;
+  max-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  transition: opacity 140ms ease, max-width 180ms ease;
+}
+
+.studio-tool-rail-anchor:hover .studio-tool-rail-collapsible-text,
+.studio-tool-rail-anchor:focus-within .studio-tool-rail-collapsible-text {
+  opacity: 1;
+  max-width: 160px;
+}
+
+.studio-tool-rail-anchor:not(:hover):not(:focus-within) .studio-tool-rail-section-label {
+  height: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+  margin: 0;
+}
+
+.studio-tool-rail-anchor:not(:hover):not(:focus-within) .studio-tool-rail-btn {
+  justify-content: center;
+  gap: 0;
+  padding-left: 0;
+  padding-right: 0;
 }
 
 .studio-tool-rail-section {

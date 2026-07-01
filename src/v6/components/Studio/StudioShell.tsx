@@ -44,7 +44,7 @@ export interface StudioShellProps {
     onFilesDropped?: (files: File[]) => void;
 }
 
-const STUDIO_TOOL_RAIL_WIDTH = 220;
+const STUDIO_TOOL_RAIL_WIDTH = 52;
 
 const CARD_WIDTH = 200;
 const CARD_HEIGHT = 280;
@@ -1139,7 +1139,6 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
                 <StudioToolRail
                     activeTool={railActiveTool}
                     onToolClick={handleToolClick}
-                    onUpload={openUploadDialog}
                     hasFiles={hasFiles}
                     onNewSpace={handleNewSpace}
                     onHistoryToggle={handleHistoryToggle}

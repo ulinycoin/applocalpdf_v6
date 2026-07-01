@@ -20,7 +20,6 @@ interface RailToolItem {
 export interface StudioToolRailProps {
     activeTool: string | null;
     onToolClick: (toolId: string) => void;
-    onUpload: () => void;
     hasFiles: boolean;
     onNewSpace?: () => void;
     onHistoryToggle?: () => void;
@@ -75,9 +74,9 @@ function RailButton({
             title={description || label}
         >
             <LinearIcon name={icon} size={20} />
-            <span>{label}</span>
+            <span className="studio-tool-rail-collapsible-text">{label}</span>
             {tool === 'auto-toc' && (
-                <span className="studio-tool-rail-badge-new">NEW</span>
+                <span className="studio-tool-rail-badge-new studio-tool-rail-collapsible-text">NEW</span>
             )}
         </button>
     );
@@ -86,7 +85,6 @@ function RailButton({
 export function StudioToolRail({
     activeTool,
     onToolClick,
-    onUpload,
     hasFiles,
     onNewSpace: _onNewSpace,
     onHistoryToggle,
@@ -94,19 +92,10 @@ export function StudioToolRail({
     plan,
 }: StudioToolRailProps): JSX.Element {
     return (
-        <aside className="studio-tool-rail" aria-label="Studio tools">
-            <button
-                type="button"
-                className="studio-upload-btn studio-tool-rail-upload"
-                onClick={onUpload}
-                title="Upload files"
-            >
-                <LinearIcon name="upload" size={20} />
-                <span>Upload file</span>
-            </button>
-
+        <div className="studio-tool-rail-anchor">
+            <aside className="studio-tool-rail" aria-label="Studio tools">
             <div className="studio-tool-rail-section">
-                <div className="studio-tool-rail-section-label">EDIT</div>
+                <div className="studio-tool-rail-section-label studio-tool-rail-collapsible-text">EDIT</div>
                 {EDIT_TOOLS.map((item) => (
                     <RailButton
                         key={item.tool}
@@ -122,7 +111,7 @@ export function StudioToolRail({
             </div>
 
             <div className="studio-tool-rail-section">
-                <div className="studio-tool-rail-section-label">CONVERT</div>
+                <div className="studio-tool-rail-section-label studio-tool-rail-collapsible-text">CONVERT</div>
                 {CONVERT_TOOLS.map((item) => (
                     <RailButton
                         key={item.tool}
@@ -149,14 +138,15 @@ export function StudioToolRail({
                     title={isHistoryOpen ? 'Hide history' : 'Show history'}
                 >
                     <LinearIcon name="history" size={20} />
-                    <span>History</span>
+                    <span className="studio-tool-rail-collapsible-text">History</span>
                 </button>
                 {plan === 'pro' ? (
-                    <div className="studio-rail-plan-badge studio-rail-plan-badge--pro">Pro</div>
+                    <div className="studio-rail-plan-badge studio-rail-plan-badge--pro studio-tool-rail-collapsible-text">Pro</div>
                 ) : (
-                    <div className="studio-rail-plan-badge studio-rail-plan-badge--free">Free</div>
+                    <div className="studio-rail-plan-badge studio-rail-plan-badge--free studio-tool-rail-collapsible-text">Free</div>
                 )}
             </div>
-        </aside>
+            </aside>
+        </div>
     );
 }
