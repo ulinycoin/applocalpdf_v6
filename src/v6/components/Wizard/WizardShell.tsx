@@ -142,7 +142,6 @@ const PROCESSING_VERB_BY_TOOL: Record<string, string> = {
   'pdf-to-jpg': 'Converting',
   'word-to-pdf': 'Converting',
   'excel-to-pdf': 'Converting',
-  'images-to-pdf': 'Converting',
   'encrypt-pdf': 'Encrypting',
   'protect-pdf': 'Protecting',
   'unlock-pdf': 'Unlocking',
@@ -160,7 +159,6 @@ const COMPLETION_BY_TOOL: Record<string, string> = {
   'pdf-to-jpg': 'Conversion complete',
   'word-to-pdf': 'Conversion complete',
   'excel-to-pdf': 'Conversion complete',
-  'images-to-pdf': 'Conversion complete',
   'encrypt-pdf': 'Encryption complete',
   'protect-pdf': 'Protection complete',
   'unlock-pdf': 'Unlock complete',
@@ -293,9 +291,6 @@ export function WizardShell({ toolId, context, ioAdapter, limitService }: Wizard
     if (toolId === 'ocr-pdf') {
       return 'application/pdf,image/*';
     }
-    if (toolId === 'images-to-pdf') {
-      return 'image/jpeg,image/png,image/webp,image/*';
-    }
     return 'application/pdf';
   }, [toolId]);
   const allowMultiple = useMemo(() => !['pdf-to-jpg', 'split-pdf'].includes(toolId), [toolId]);
@@ -303,9 +298,9 @@ export function WizardShell({ toolId, context, ioAdapter, limitService }: Wizard
   const isStudioFlow = routeState?.source === 'studio';
   const routeStudioContext = routeState?.studioContext;
   const routeReturnContext = routeState?.studioReturnContext;
-  const isInlineUploadConfigFlow = toolId === 'word-to-pdf' || toolId === 'excel-to-pdf' || toolId === 'pdf-to-jpg' || toolId === 'pdf-editor' || toolId === 'images-to-pdf';
-  const isWordSinglePageFlow = toolId === 'word-to-pdf' || toolId === 'excel-to-pdf' || toolId === 'images-to-pdf' || (toolId === 'pdf-to-jpg' && !isStudioFlow) || toolId === 'pdf-editor';
-  const allowStandaloneFlow = toolId === 'word-to-pdf' || toolId === 'excel-to-pdf' || toolId === 'images-to-pdf';
+  const isInlineUploadConfigFlow = toolId === 'word-to-pdf' || toolId === 'excel-to-pdf' || toolId === 'pdf-to-jpg' || toolId === 'pdf-editor';
+  const isWordSinglePageFlow = toolId === 'word-to-pdf' || toolId === 'excel-to-pdf' || (toolId === 'pdf-to-jpg' && !isStudioFlow) || toolId === 'pdf-editor';
+  const allowStandaloneFlow = toolId === 'word-to-pdf' || toolId === 'excel-to-pdf';
   const requiresStudioFlow = !allowStandaloneFlow;
 
   const buildReturnContext = (): StudioReturnContext | undefined => routeReturnContext;
@@ -448,7 +443,7 @@ export function WizardShell({ toolId, context, ioAdapter, limitService }: Wizard
       className={classNames(
         'wz-page',
         isSplitLayout && 'wz-page--split',
-        (toolId === 'word-to-pdf' || toolId === 'excel-to-pdf' || toolId === 'images-to-pdf') && 'wz-page--fullwidth',
+        (toolId === 'word-to-pdf' || toolId === 'excel-to-pdf') && 'wz-page--fullwidth',
       )}
     >
       {/* Tool header */}

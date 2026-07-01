@@ -421,11 +421,6 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
             }
         }
 
-        if (tool === 'images-to-pdf') {
-            navigate('/images-to-pdf');
-            return;
-        }
-
         if (editToolIds.includes(tool)) {
             startEditFromCanvas(tool as StudioEditToolId);
         } else {
@@ -436,7 +431,7 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
         if (FREE_TOOL_DAILY_LIMITS[tool] !== undefined && billingContext.plan === 'basic') {
             incrementDailyUsage(tool);
         }
-    }, [navigate, startEditFromCanvas, startConvertFromCanvas, runtime.billing, runtime.telemetry]);
+    }, [startEditFromCanvas, startConvertFromCanvas, runtime.billing, runtime.telemetry]);
 
     const handleHistoryToggle = useCallback(() => {
         setHistoryOpen(!isHistoryOpen);

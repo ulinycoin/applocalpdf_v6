@@ -43,7 +43,7 @@ const LEGACY_TARGET_ROUTE_MAP: Record<string, string> = {
   'pdf-to-word': APP_STUDIO_CONVERT_ROUTE,
   'word-to-pdf': '/word-to-pdf',
   'excel-to-pdf': '/excel-to-pdf',
-  'images-to-pdf': '/images-to-pdf',
+  'images-to-pdf': APP_STUDIO_CONVERT_ROUTE,
   'pdf-to-images': '/pdf-to-jpg',
   'pdf-to-jpg': '/pdf-to-jpg',
   'extract-images': '/extract-images',
