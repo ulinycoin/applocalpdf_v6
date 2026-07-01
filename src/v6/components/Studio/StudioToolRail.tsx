@@ -1,6 +1,5 @@
 import { LinearIcon, type LinearIconName } from '../icons/linear-icon';
 import type { StudioEditToolId } from './studio-store';
-import type { StudioConvertToolId } from './convert/use-studio-convert-controller';
 
 export function getConvertToolDisplay(toolId: string): { label: string; icon: LinearIconName } | undefined {
     const item = CONVERT_TOOLS.find((entry) => entry.tool === toolId);
@@ -11,7 +10,7 @@ export function getConvertToolDisplay(toolId: string): { label: string; icon: Li
 }
 
 interface RailToolItem {
-    tool: StudioEditToolId | StudioConvertToolId;
+    tool: string;
     icon: LinearIconName;
     label: string;
     description?: string;
@@ -38,6 +37,7 @@ const EDIT_TOOLS: RailToolItem[] = [
 ];
 
 const CONVERT_TOOLS: RailToolItem[] = [
+    { tool: 'images-to-pdf', icon: 'image', label: 'Images to PDF', description: 'Combine JPG, PNG, or WebP images into one PDF document' },
     { tool: 'ocr-pdf', icon: 'ocr', label: 'OCR', description: 'Recognize text in scanned PDFs and make them searchable' },
     { tool: 'auto-toc', icon: 'edit', label: 'TOC', description: 'Auto-detect headings and generate an interactive table of contents with bookmarks' },
     { tool: 'pdf-to-jpg', icon: 'image', label: 'PDF to JPG', description: 'Convert PDF pages to JPEG images' },
@@ -120,7 +120,7 @@ export function StudioToolRail({
                         label={item.label}
                         description={item.description}
                         activeTool={activeTool}
-                        disabled={!hasFiles}
+                        disabled={item.tool !== 'images-to-pdf' && !hasFiles}
                         onClick={() => { onToolClick(item.tool); }}
                     />
                 ))}
