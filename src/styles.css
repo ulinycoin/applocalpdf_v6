@@ -2809,6 +2809,22 @@ textarea:focus-visible {
   background: var(--hover);
 }
 
+.studio-tool-rail-ext-section {
+  padding: 4px 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.studio-tool-rail-ext-section .studio-tool-rail-btn {
+  color: var(--accent);
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.studio-tool-rail-ext-section .studio-tool-rail-btn:hover {
+  background: var(--accent-dim);
+}
+
 .studio-tool-rail-badge-new {
   font-size: 8px;
   font-weight: 800;
