@@ -1139,6 +1139,7 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
                 <StudioToolRail
                     activeTool={railActiveTool}
                     onToolClick={handleToolClick}
+                    onUpload={openUploadDialog}
                     hasFiles={hasFiles}
                     onNewSpace={handleNewSpace}
                     onHistoryToggle={handleHistoryToggle}

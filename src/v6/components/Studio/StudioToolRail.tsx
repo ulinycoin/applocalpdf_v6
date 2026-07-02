@@ -20,6 +20,7 @@ interface RailToolItem {
 export interface StudioToolRailProps {
     activeTool: string | null;
     onToolClick: (toolId: string) => void;
+    onUpload: () => void;
     hasFiles: boolean;
     onNewSpace?: () => void;
     onHistoryToggle?: () => void;
@@ -85,6 +86,7 @@ function RailButton({
 export function StudioToolRail({
     activeTool,
     onToolClick,
+    onUpload,
     hasFiles,
     onNewSpace: _onNewSpace,
     onHistoryToggle,
@@ -94,6 +96,15 @@ export function StudioToolRail({
     return (
         <div className="studio-tool-rail-anchor">
             <aside className="studio-tool-rail" aria-label="Studio tools">
+            <button
+                type="button"
+                className="studio-tool-rail-btn studio-tool-rail-upload-btn"
+                onClick={onUpload}
+                title="Upload files"
+            >
+                <LinearIcon name="upload" size={20} />
+                <span className="studio-tool-rail-collapsible-text">Upload</span>
+            </button>
             <div className="studio-tool-rail-section">
                 <div className="studio-tool-rail-section-label studio-tool-rail-collapsible-text">EDIT</div>
                 {EDIT_TOOLS.map((item) => (
