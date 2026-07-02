@@ -2800,6 +2800,15 @@ textarea:focus-visible {
   text-align: left;
 }
 
+.studio-tool-rail-ext-link {
+  text-decoration: none;
+  color: inherit;
+}
+
+.studio-tool-rail-ext-link:hover {
+  background: var(--hover);
+}
+
 .studio-tool-rail-badge-new {
   font-size: 8px;
   font-weight: 800;

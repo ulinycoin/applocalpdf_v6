@@ -151,6 +151,16 @@ export function StudioToolRail({
                     <LinearIcon name="history" size={20} />
                     <span className="studio-tool-rail-collapsible-text">History</span>
                 </button>
+                <a
+                    href="https://chromewebstore.google.com/detail/localpdf-private-pdf-comp/mjidkeobnlijdjmioniboflmoelmckfl"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="studio-tool-rail-btn studio-tool-rail-ext-link"
+                    title="Install Chrome extension for one-click PDF editing"
+                >
+                    <LinearIcon name="download" size={20} />
+                    <span className="studio-tool-rail-collapsible-text">Extension</span>
+                </a>
                 {plan === 'pro' ? (
                     <div className="studio-rail-plan-badge studio-rail-plan-badge--pro studio-tool-rail-collapsible-text">Pro</div>
                 ) : (
