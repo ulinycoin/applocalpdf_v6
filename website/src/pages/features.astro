@@ -1,0 +1,138 @@
+---
+import MarketingLayout from '../layouts/MarketingLayout.astro';
+import { getAppUrl } from '../utils/app-url';
+
+const title = 'Free PDF Tools — Edit, Merge, OCR, Split, Sign, Convert | LocalPDF';
+const description = 'LocalPDF gives you a complete set of free PDF tools — edit, merge, OCR, compress, split, sign, and convert — all running locally in your browser. No uploads, no server storage.';
+const canonical = 'https://localpdf.online/features';
+const image = 'https://localpdf.online/logos/localpdf-social-1200x630.png';
+const appUrl = getAppUrl();
+
+const tools = [
+  { slug: 'edit-pdf', title: 'Edit PDF', desc: 'Fix typos, add notes, cover sensitive sections, and change text or images directly in your browser.', icon: '✏️' },
+  { slug: 'merge-pdf', title: 'Merge PDF', desc: 'Combine multiple documents into one by dragging pages side by side in a visual workspace.', icon: '📑' },
+  { slug: 'ocr-pdf', title: 'OCR PDF', desc: 'Extract text from scanned PDFs using local OCR processing — no upload needed.', icon: '🔍' },
+  { slug: 'compress-pdf', title: 'Compress PDF', desc: 'Reduce PDF file size without sending your document to a remote server queue.', icon: '📦' },
+  { slug: 'split-pdf', title: 'Split PDF', desc: 'Extract, remove, or reorder pages from any PDF document.', icon: '✂️' },
+  { slug: 'sign-pdf', title: 'Sign PDF', desc: 'Add signatures, initials, and complete signing workflows on your device.', icon: '✍️' },
+  { slug: 'convert-pdf', title: 'Convert PDF', desc: 'Convert PDF to Word, images, and other formats — or convert files to PDF.', icon: '🔄' },
+  { slug: 'auto-toc-pdf', title: 'Auto Table of Contents', desc: 'Generate a table of contents from your PDF headings automatically.', icon: '📋' },
+];
+
+const schema = [
+  {
+    '@context': 'https://schema.org',
+    '@type': 'CollectionPage',
+    name: title,
+    description,
+    url: canonical,
+    isPartOf: { '@type': 'WebSite', name: 'LocalPDF', url: 'https://localpdf.online/' },
+    about: { '@type': 'Thing', name: 'Free PDF tools' },
+    hasPart: tools.map((t) => ({
+      '@type': 'WebPage',
+      name: t.title,
+      url: `https://localpdf.online/features/${t.slug}`,
+    })),
+  },
+  {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: [
+      {
+        '@type': 'Question',
+        name: 'Are these PDF tools really free?',
+        acceptedAnswer: { '@type': 'Answer', text: 'Yes. All core PDF tools — edit, merge, split, compress, sign, convert, and auto TOC — are free. Pro adds unlimited workspaces and larger documents for recurring work.' },
+      },
+      {
+        '@type': 'Question',
+        name: 'Do I need to upload my PDF to use these tools?',
+        acceptedAnswer: { '@type': 'Answer', text: 'No. Every tool runs locally in your browser via WebAssembly. You open a file from your device, work on it, and download the result — no uploads or server storage.' },
+      },
+    ],
+  },
+];
+---
+
+<MarketingLayout title={title} description={description} canonical={canonical} image={image} schema={schema}>
+  <div class="page-shell features-shell">
+    <section class="section hero">
+      <span class="eyebrow">Free PDF Tools</span>
+      <h1>All the PDF tools you need, none of the uploads</h1>
+      <p class="section-intro">
+        Edit, merge, OCR, compress, split, sign, convert, and auto-generate tables of contents —
+        every tool runs locally in your browser. No account, no uploads, no server storage.
+      </p>
+      <div class="cta-row">
+        <a class="btn-primary" href={appUrl}>Open LocalPDF</a>
+        <a class="btn-secondary" href="/security">How local processing works</a>
+      </div>
+    </section>
+
+    <section class="section tools-grid-section">
+      <h2 class="section-title">All tools</h2>
+      <p class="section-intro">Choose a tool to start working — every one runs on your device.</p>
+      <div class="tools-grid">
+        {tools.map((t) => (
+          <a class="card tool-card" href={`/features/${t.slug}`}>
+            <span class="tool-icon">{t.icon}</span>
+            <h3>{t.title}</h3>
+            <p>{t.desc}</p>
+            <span class="card-link">Open tool →</span>
+          </a>
+        ))}
+      </div>
+    </section>
+
+    <section class="section final-section">
+      <h2 class="section-title">Free to start. Pro for recurring work.</h2>
+      <p class="section-intro">
+        The free tier covers everything most people need — quick edits, merges, compression, signing.
+        If PDF work becomes a regular part of your week, Pro unlocks unlimited workspaces, larger documents,
+        and full Studio access.
+      </p>
+      <div class="cta-row">
+        <a class="btn-primary" href="/pricing">See Pro plans</a>
+        <a class="btn-secondary" href={appUrl}>Open LocalPDF</a>
+      </div>
+    </section>
+  </div>
+</MarketingLayout>
+
+<style>
+  .tools-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 16px;
+  }
+  .tool-card {
+    display: flex;
+    flex-direction: column;
+    text-decoration: none;
+    color: inherit;
+    padding: 22px;
+    border: 1px solid var(--line);
+    border-radius: 24px;
+    background: var(--surface);
+    transition: transform 0.15s ease;
+  }
+  .tool-card:hover {
+    transform: translateY(-2px);
+  }
+  .tool-icon {
+    font-size: 1.6rem;
+    margin-bottom: 8px;
+  }
+  .tool-card h3 {
+    font-size: 1.2rem;
+    margin-bottom: 8px;
+  }
+  .tool-card p {
+    flex: 1;
+    margin-bottom: 12px;
+    font-size: 0.95rem;
+  }
+  .card-link {
+    font-weight: 700;
+    color: var(--accent);
+  }
+</style>

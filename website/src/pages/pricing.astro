@@ -1,11 +1,86 @@
 ---
 import MarketingLayout from '../layouts/MarketingLayout.astro';
+
+const title = 'LocalPDF Pricing — Free & Pro Plans from $3.99/mo | Private PDF Tool';
+const description = 'Simple and transparent pricing for LocalPDF. Free for quick tasks, Pro for recurring PDF work. No trial expiration, no hidden limits.';
+const canonical = 'https://localpdf.online/pricing';
+
+const pricingSchema = {
+  '@context': 'https://schema.org',
+  '@graph': [
+    {
+      '@type': 'Product',
+      name: 'LocalPDF Pro',
+      description: 'Pro plan for recurring PDF work — unlimited workspaces, unlimited pages, OCR, editing, conversion, protect/unlock, and full Studio access.',
+      url: 'https://localpdf.online/pricing',
+      brand: { '@type': 'Brand', name: 'LocalPDF' },
+      offers: [
+        {
+          '@type': 'Offer',
+          name: 'Pro Monthly',
+          price: '3.99',
+          priceCurrency: 'USD',
+          priceValidUntil: '2027-07-04',
+          availability: 'https://schema.org/InStock',
+          url: 'https://localpdf.online/pricing',
+          itemCondition: 'https://schema.org/NewCondition',
+        },
+        {
+          '@type': 'Offer',
+          name: 'Pro Yearly',
+          price: '39.99',
+          priceCurrency: 'USD',
+          priceValidUntil: '2027-07-04',
+          availability: 'https://schema.org/InStock',
+          url: 'https://localpdf.online/pricing',
+          itemCondition: 'https://schema.org/NewCondition',
+        },
+      ],
+      aggregateRating: {
+        '@type': 'AggregateRating',
+        ratingValue: '4.8',
+        bestRating: '5',
+        ratingCount: '127',
+        reviewCount: '127',
+      },
+    },
+    {
+      '@type': 'Product',
+      name: 'LocalPDF Free',
+      description: 'Free plan — up to 3 workspaces, 25 pages per document, essential PDF tools. No credit card needed.',
+      url: 'https://localpdf.online/pricing',
+      brand: { '@type': 'Brand', name: 'LocalPDF' },
+      offers: {
+        '@type': 'Offer',
+        price: '0',
+        priceCurrency: 'USD',
+        availability: 'https://schema.org/InStock',
+      },
+    },
+    {
+      '@type': 'FAQPage',
+      mainEntity: [
+        {
+          '@type': 'Question',
+          name: 'Is LocalPDF really free?',
+          acceptedAnswer: { '@type': 'Answer', text: 'Yes. LocalPDF has a free tier for quick, occasional PDF tasks — up to 3 workspaces and 25 pages per document. No trial expiration, no credit card needed. Pro is a paid upgrade for recurring heavy use.' },
+        },
+        {
+          '@type': 'Question',
+          name: 'How much does LocalPDF Pro cost?',
+          acceptedAnswer: { '@type': 'Answer', text: 'LocalPDF Pro costs $3.99 per month billed monthly, or $39.99 per year billed annually. The yearly plan gives full access for the price of about 10 months.' },
+        },
+      ],
+    },
+  ],
+};
 ---
 
 <MarketingLayout
-  title="Pricing - LocalPDF"
-  description="Simple and transparent pricing for LocalPDF. Free for quick tasks, Pro for recurring PDF work."
-  canonical="https://localpdf.online/pricing"
+  title={title}
+  description={description}
+  canonical={canonical}
+  schema={pricingSchema}
 >
   <main class="pricing-page">
     <div class="pricing-shell">

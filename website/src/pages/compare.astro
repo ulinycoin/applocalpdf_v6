@@ -1,0 +1,124 @@
+---
+import MarketingLayout from '../layouts/MarketingLayout.astro';
+import { getAppUrl } from '../utils/app-url';
+
+const title = 'LocalPDF vs other PDF tools | Honest side-by-side comparisons';
+const description = 'See how LocalPDF stacks up against Smallpdf, iLovePDF, PDF24, PDFescape, and Sejda — feature by feature, without the marketing spin.';
+const canonical = 'https://localpdf.online/compare';
+const image = 'https://localpdf.online/logos/localpdf-social-1200x630.png';
+const appUrl = getAppUrl();
+
+const comparisons = [
+  { slug: 'localpdf-vs-smallpdf', name: 'Smallpdf', summary: 'LocalPDF keeps files on your device; Smallpdf uploads them to the cloud. Compare workspace-style workflows, privacy, and pricing.' },
+  { slug: 'localpdf-vs-ilovepdf', name: 'iLovePDF', summary: 'iLovePDF is an upload-first utility suite. LocalPDF builds a local-first workspace for handling contracts, invoices, and sensitive documents.' },
+  { slug: 'localpdf-vs-pdf24', name: 'PDF24', summary: 'Both offer free PDF tools. PDF24 works as a download-and-install desktop app or upload-to-web tool. LocalPDF runs entirely in the browser with a canvas-based workspace.' },
+  { slug: 'localpdf-vs-pdfescape', name: 'PDFescape', summary: 'PDFescape is a long-running free PDF editor with a basic web interface. LocalPDF offers modern workspace, drag-and-drop pages, and local OCR processing.' },
+  { slug: 'localpdf-vs-sejda', name: 'Sejda', summary: 'Sejda offers free PDF tools with file size limits and upload processing. LocalPDF processes everything on-device and has no per-file size cap.' },
+];
+
+const schema = [
+  {
+    '@context': 'https://schema.org',
+    '@type': 'CollectionPage',
+    name: title,
+    description,
+    url: canonical,
+    isPartOf: { '@type': 'WebSite', name: 'LocalPDF', url: 'https://localpdf.online/' },
+    about: { '@type': 'Thing', name: 'PDF tool comparisons' },
+    hasPart: comparisons.map((c) => ({
+      '@type': 'Article',
+      headline: `LocalPDF vs ${c.name}`,
+      url: `https://localpdf.online/compare/${c.slug}`,
+    })),
+  },
+  {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: [
+      {
+        '@type': 'Question',
+        name: 'How does LocalPDF compare to Smallpdf?',
+        acceptedAnswer: { '@type': 'Answer', text: 'LocalPDF is a local-first PDF workspace; Smallpdf uploads files to the cloud. LocalPDF is better for privacy-sensitive workflows, while Smallpdf has broader brand recognition.' },
+      },
+      {
+        '@type': 'Question',
+        name: 'Is there a free alternative to iLovePDF?',
+        acceptedAnswer: { '@type': 'Answer', text: 'LocalPDF is a free alternative to iLovePDF for core PDF tasks. The free tier covers merge, split, compress, and sign. Pro adds OCR, editing, and conversion for recurring work.' },
+      },
+    ],
+  },
+];
+---
+
+<MarketingLayout title={title} description={description} canonical={canonical} image={image} schema={schema}>
+  <div class="page-shell compare-shell">
+    <section class="section hero">
+      <span class="eyebrow">Comparisons</span>
+      <h1>LocalPDF vs other PDF tools</h1>
+      <p class="section-intro">
+        Honest comparisons without the marketing spin. Each page evaluates how LocalPDF stacks up against a popular alternative
+        for a specific job: privacy, workflow shape, brand recognition, and practical fit.
+      </p>
+      <div class="cta-row">
+        <a class="btn-primary" href={appUrl}>Open LocalPDF</a>
+        <a class="btn-secondary" href="/faq">Read FAQ</a>
+      </div>
+    </section>
+
+    <section class="section comparison-grid">
+      <h2 class="section-title">Side-by-side comparisons</h2>
+      <p class="section-intro">
+        Choose a tool to see what works, what doesn't, and when LocalPDF is the better fit — or when the other tool makes more sense.
+      </p>
+      <div class="card-grid">
+        {comparisons.map((c) => (
+          <a class="card compare-card" href={`/compare/${c.slug}`}>
+            <h3>vs {c.name}</h3>
+            <p>{c.summary}</p>
+            <span class="card-link">Read comparison →</span>
+          </a>
+        ))}
+      </div>
+    </section>
+
+    <section class="section final-section">
+      <h2 class="section-title">Not sure which tool fits?</h2>
+      <p class="section-intro">
+        If privacy and local processing matter, start with LocalPDF — it's free, runs in your browser, and there is nothing to install.
+        If you need a large, established ecosystem, the alternatives are worth considering too.
+      </p>
+      <div class="cta-row">
+        <a class="btn-primary" href={appUrl}>Open LocalPDF</a>
+        <a class="btn-secondary" href="/faq">Read FAQ</a>
+      </div>
+    </section>
+  </div>
+</MarketingLayout>
+
+<style>
+  .compare-card {
+    display: flex;
+    flex-direction: column;
+    text-decoration: none;
+    color: inherit;
+    transition: transform 0.15s ease;
+  }
+  .compare-card:hover {
+    transform: translateY(-2px);
+  }
+  .compare-card h3 {
+    font-size: 1.4rem;
+    margin-bottom: 10px;
+  }
+  .compare-card p {
+    margin-bottom: 14px;
+    flex: 1;
+  }
+  .card-link {
+    font-weight: 700;
+    color: var(--accent);
+  }
+  .comparison-grid .card-grid {
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  }
+</style>

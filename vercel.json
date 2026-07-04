@@ -196,6 +196,36 @@
       "source": "/de/:path*",
       "destination": "/",
       "statusCode": 308
+    },
+    {
+      "source": "/features",
+      "destination": "/features/edit-pdf",
+      "statusCode": 301
+    },
+    {
+      "source": "/contact",
+      "destination": "/faq",
+      "statusCode": 301
+    },
+    {
+      "source": "/compare",
+      "destination": "/compare/localpdf-vs-smallpdf",
+      "statusCode": 301
+    },
+    {
+      "source": "/localpdf.online",
+      "destination": "/",
+      "statusCode": 301
+    },
+    {
+      "source": "/ja/:path*",
+      "destination": "/ja",
+      "statusCode": 301
+    },
+    {
+      "source": "/zh/:path*",
+      "destination": "/zh",
+      "statusCode": 301
     }
   ],
   "rewrites": [
