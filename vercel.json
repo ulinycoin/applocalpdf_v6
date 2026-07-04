@@ -198,18 +198,8 @@
       "statusCode": 308
     },
     {
-      "source": "/features",
-      "destination": "/features/edit-pdf",
-      "statusCode": 301
-    },
-    {
       "source": "/contact",
       "destination": "/faq",
-      "statusCode": 301
-    },
-    {
-      "source": "/compare",
-      "destination": "/compare/localpdf-vs-smallpdf",
       "statusCode": 301
     },
     {
