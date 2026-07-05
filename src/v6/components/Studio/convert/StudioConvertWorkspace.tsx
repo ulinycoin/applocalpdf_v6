@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import { LinearIcon } from '../../icons/linear-icon';
 import { useStudioConvertController } from './use-studio-convert-controller';
 import { trackMonetizationEvent } from '../../../../app/react/monetization-telemetry';
@@ -6,6 +6,7 @@ import { openCheckout } from '../../../../app/react/billing';
 import { activateProTrial } from '../../../../app/react/studio-paywall';
 import { getTrialState } from '../../../../app/platform/trial-manager';
 import { usePlatform } from '../../../../app/react/platform-context';
+import { createZipBlob } from '../../../utils/zip';
 
 interface StudioConvertWorkspaceProps {
   onClose?: () => void;
@@ -167,6 +168,70 @@ export function StudioConvertWorkspace({ onClose, initialTool }: StudioConvertWo
     ? Math.max(0, Math.round((compressSavedBytes / ctrl.compressResultSummary.inputBytes) * 100))
     : 0;
 
+  // File size tracking for compress PDF tool
+  const [fileSizeBytes, setFileSizeBytes] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (!ctrl.activeDocument || ctrl.activeTool !== 'compress-pdf') {
+      setFileSizeBytes(null);
+      return;
+    }
+    let cancelled = false;
+    const firstPage = ctrl.activeDocument.pages[0];
+    if (!firstPage) {
+      setFileSizeBytes(null);
+      return;
+    }
+    void (async () => {
+      try {
+        const entry = await runtime.vfs.read(firstPage.fileId);
+        if (!cancelled) {
+          setFileSizeBytes(await entry.getSize());
+        }
+      } catch {
+        if (!cancelled) setFileSizeBytes(null);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [ctrl.activeDocument, ctrl.activeTool, runtime.vfs]);
+
+  const compressEstimates: Record<string, { ratio: number; label: string }> = {
+    low: { ratio: 0.65, label: 'Low' },
+    medium: { ratio: 0.45, label: 'Balanced' },
+    high: { ratio: 0.28, label: 'High' },
+  };
+
+  function formatBytes(bytes: number): string {
+    if (bytes <= 0) return '0 B';
+    const units = ['B', 'KB', 'MB', 'GB'];
+    let value = bytes;
+    let unitIndex = 0;
+    while (value >= 1024 && unitIndex < units.length - 1) {
+      value /= 1024;
+      unitIndex += 1;
+    }
+    return `${value.toFixed(value >= 10 || unitIndex === 0 ? 0 : 1)} ${units[unitIndex]}`;
+  }
+
+  const handleDownloadZip = useCallback(async () => {
+    if (ctrl.outputIds.length === 0 || !ctrl.compressResultSummary) return;
+    const entry = await runtime.vfs.read(ctrl.outputIds[0]);
+    const zipBlob = await createZipBlob([{
+      name: entry.getName(),
+      blob: await entry.getBlob(),
+    }]);
+    const url = URL.createObjectURL(zipBlob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = ctrl.activeDocument
+      ? `${ctrl.activeDocument.name.replace(/\.pdf$/i, '')}-compressed.zip`
+      : 'compressed.zip';
+    document.body.appendChild(anchor);
+    anchor.click();
+    document.body.removeChild(anchor);
+    URL.revokeObjectURL(url);
+  }, [ctrl.outputIds, ctrl.compressResultSummary, ctrl.activeDocument, runtime.vfs]);
+
   const alsoTry = ALSO_TRY.filter((item) => item.tool !== ctrl.activeTool);
 
   useEffect(() => {
@@ -250,6 +315,7 @@ export function StudioConvertWorkspace({ onClose, initialTool }: StudioConvertWo
                   <div className="cvt-file-meta">
                     {ctrl.previewPages.length} page{ctrl.previewPages.length !== 1 ? 's' : ''}
                     {ctrl.operationScope === 'selection' && ` · ${ctrl.selectedPages.length} selected`}
+                    {ctrl.activeTool === 'compress-pdf' && fileSizeBytes !== null && ` · ${formatBytes(fileSizeBytes)}`}
                   </div>
                 </div>
               </div>
@@ -693,6 +759,10 @@ export function StudioConvertWorkspace({ onClose, initialTool }: StudioConvertWo
                     <button type="button" className="cvt-btn-download" onClick={() => { void ctrl.downloadResults(); }}>
                       <LinearIcon name="download" size={12} />
                       Download
+                    </button>
+                    <button type="button" className="cvt-btn-download" onClick={() => { void handleDownloadZip(); }} style={{ marginLeft: 6 }}>
+                      <LinearIcon name="download" size={12} />
+                      ZIP
                     </button>
                   </div>
                   <div className="cvt-result-actions">
