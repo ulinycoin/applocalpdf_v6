@@ -1,0 +1,411 @@
+---
+import MarketingLayout from '../../layouts/MarketingLayout.astro';
+import { getAppUrl } from '../../utils/app-url';
+
+const title = 'LocalPDF vs Smallpdf vs iLovePDF | Security headers & cookie comparison';
+const description = 'Privacy-first, upload-first, or cloud PDF ecosystem — how LocalPDF, Smallpdf, and iLovePDF compare on privacy model, file handling, and security practices based on public scan data.';
+const canonical = 'https://localpdf.online/compare/localpdf-vs-smallpdf-vs-ilovepdf';
+const image = 'https://localpdf.online/logos/localpdf-social-1200x630.png';
+const appUrl = getAppUrl();
+const scanDate = '2026-07-08';
+
+const comparisonRows = [
+  ['Primary model', 'Local-first PDF workspace in the browser', 'Upload-first online PDF utility suite', 'Upload-first online PDF ecosystem'],
+  ['File handling', 'Opens from device — zero bytes uploaded to servers', 'Uploads files to cloud servers for processing', 'Uploads files to cloud servers for processing'],
+  ['Best fit', 'Sensitive PDF work: contracts, invoices, internal records', 'General-purpose online PDF tasks at scale', 'High-volume general-purpose tasks with broader ecosystem'],
+  ['Free tier', 'Free forever — 3 workspaces, up to 25 pages per document', 'Free trial and limited free tools', 'Limited free tools with upload limits'],
+  ['Paid plans', 'Pro from $3.99/month or $39.99/year', 'Individual and team subscriptions with trial', 'Individual and team subscriptions with trial'],
+  ['Tool breadth', 'Focused PDF workspace (edit, merge, OCR, sign, convert)', '30+ utility tools, AI PDF Assistant', 'Very large utility portfolio, AI features, API'],
+];
+
+const headerFacts = [
+  {
+    name: 'Content-Security-Policy',
+    localpdf: 'Present — default-src \'self\', frame-ancestors \'none\', upgrade-insecure-requests',
+    smallpdf: 'Not detected',
+    ilovepdf: 'Not detected',
+  },
+  {
+    name: 'Strict-Transport-Security',
+    localpdf: 'max-age=63072000 (2 years)',
+    smallpdf: 'max-age=15552000 (180 days)',
+    ilovepdf: 'max-age=15552000 (180 days), includeSubDomains, preload',
+  },
+  {
+    name: 'X-Frame-Options',
+    localpdf: 'DENY',
+    smallpdf: 'sameorigin',
+    ilovepdf: 'Not detected',
+  },
+  {
+    name: 'X-Content-Type-Options',
+    localpdf: 'nosniff',
+    smallpdf: 'Not detected',
+    ilovepdf: 'Not detected',
+  },
+  {
+    name: 'Referrer-Policy',
+    localpdf: 'strict-origin-when-cross-origin',
+    smallpdf: 'Not detected',
+    ilovepdf: 'Not detected',
+  },
+  {
+    name: 'Permissions-Policy',
+    localpdf: 'camera=(), microphone=(), geolocation=()',
+    smallpdf: 'Not detected',
+    ilovepdf: 'Not detected',
+  },
+];
+
+const cookieFacts = [
+  {
+    name: 'Cookies set on homepage',
+    localpdf: '4 (PostHog analytics, Google Analytics ×3)',
+    smallpdf: '1 (_s.lt — session/cdn)',
+    ilovepdf: '1 (__cf_bm — Cloudflare bot management)',
+  },
+  {
+    name: 'Cookies with Secure flag',
+    localpdf: 'PostHog cookie — yes; GA cookies — not set on homepage scan',
+    smallpdf: '_s.lt — yes',
+    ilovepdf: '__cf_bm — yes',
+  },
+  {
+    name: 'Cookies with HttpOnly flag',
+    localpdf: 'Not observed on homepage cookies',
+    smallpdf: 'Not observed on _s.lt',
+    ilovepdf: '__cf_bm — yes',
+  },
+  {
+    name: 'Cookies with SameSite',
+    localpdf: 'Lax (PostHog, GA)',
+    smallpdf: 'Strict',
+    ilovepdf: 'None',
+  },
+  {
+    name: 'Notable pricing-page observations',
+    localpdf: 'No payment/session cookies on /pricing',
+    smallpdf: 'Same 1 cookie',
+    ilovepdf: '2 cookies: __cf_bm + _csrf-ilovepdf (HttpOnly, Lax, without Secure flag)',
+  },
+];
+
+const schema = [
+  {
+    '@context': 'https://schema.org',
+    '@type': 'Article',
+    headline: title,
+    description,
+    url: canonical,
+    author: { '@type': 'Organization', name: 'LocalPDF' },
+    publisher: { '@type': 'Organization', name: 'LocalPDF' },
+    mainEntityOfPage: { '@type': 'WebPage', '@id': canonical },
+  },
+  {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'Home', item: 'https://localpdf.online/' },
+      { '@type': 'ListItem', position: 2, name: 'Compare', item: 'https://localpdf.online/compare/localpdf-vs-smallpdf-vs-ilovepdf' },
+      { '@type': 'ListItem', position: 3, name: 'LocalPDF vs Smallpdf vs iLovePDF', item: canonical },
+    ],
+  },
+  {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: [
+      {
+        '@type': 'Question',
+        name: 'How does LocalPDF compare to Smallpdf and iLovePDF on privacy?',
+        acceptedAnswer: {
+          '@type': 'Answer',
+          text: 'LocalPDF is the only tool among the three that processes PDFs locally in the browser. Smallpdf and iLovePDF upload files to cloud servers. This makes LocalPDF the stronger choice for sensitive documents like contracts, invoices, and internal records.',
+        },
+      },
+      {
+        '@type': 'Question',
+        name: 'Does LocalPDF have better security headers than Smallpdf and iLovePDF?',
+        acceptedAnswer: {
+          '@type': 'Answer',
+          text: 'Based on a public automated surface scan conducted on 2026-07-08, LocalPDF.com served Content-Security-Policy, X-Frame-Options: DENY, X-Content-Type-Options: nosniff, Referrer-Policy, and Permissions-Policy headers. Neither Smallpdf.com nor iLovePDF.com served these headers during the same scan. These are factual header observations only and not a full security assessment.',
+        },
+      },
+      {
+        '@type': 'Question',
+        name: 'Which service has fewer third-party cookies?',
+        acceptedAnswer: {
+          '@type': 'Answer',
+          text: 'Smallpdf set 1 cookie on its homepage during testing, and iLovePDF also set 1. LocalPDF set 4 across its homepage. Cookie counts vary by consent state and may change over time.',
+        },
+      },
+    ],
+  },
+];
+---
+
+<MarketingLayout title={title} description={description} canonical={canonical} image={image} schema={schema}>
+  <div class="page-shell compare-shell">
+    <section class="section hero">
+      <span class="eyebrow">Comparison</span>
+      <h1>LocalPDF vs Smallpdf vs iLovePDF</h1>
+      <p class="section-intro">
+        All three tools help users handle PDF files. The fundamental difference is how each handles
+        your documents — whether they stay on your device or are uploaded to a server. This page
+        compares their privacy models, workflows, and public security-related responses observed
+        during an automated surface scan on <strong>{scanDate}</strong>.
+      </p>
+      <div class="cta-row">
+        <a class="btn-primary" href={appUrl}>Open LocalPDF — free</a>
+        <a class="btn-secondary" href="/pricing">See pricing</a>
+        <a class="btn-secondary" href="/security">Read Security</a>
+      </div>
+      <p class="disclaimer">
+        <strong>How this data was collected:</strong> Public HTTP response headers and browser cookies
+        were collected via an automated surface scanner on the dates shown. This is not a full
+        penetration test or vulnerability assessment. Headers, cookies, and site behaviour may
+        change after the scan date. Always verify current practices directly.
+      </p>
+    </section>
+
+    <section class="section">
+      <h2 class="section-title">Quick comparison</h2>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Area</th><th>LocalPDF</th><th>Smallpdf</th><th>iLovePDF</th></tr>
+          </thead>
+          <tbody>
+            {comparisonRows.map((row) => (
+              <tr>
+                <td>{row[0]}</td>
+                <td>{row[1]}</td>
+                <td>{row[2]}</td>
+                <td>{row[3]}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2 class="section-title">Public HTTP security headers (observed {scanDate})</h2>
+      <p class="section-intro">
+        The table below shows which standard response headers were served by each site's
+        homepage during a single automated request. These headers help browsers enforce
+        security-related behaviour. Their presence or absence is a factual observation,
+        not a determination of overall security posture.
+      </p>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Header</th><th>LocalPDF</th><th>Smallpdf</th><th>iLovePDF</th></tr>
+          </thead>
+          <tbody>
+            {headerFacts.map((row) => (
+              <tr>
+                <td><code>{row.name}</code></td>
+                <td class={row.localpdf !== 'Not detected' ? 'present' : ''}>{row.localpdf}</td>
+                <td class={row.smallpdf !== 'Not detected' ? 'present' : ''}>{row.smallpdf}</td>
+                <td class={row.ilovepdf !== 'Not detected' ? 'present' : ''}>{row.ilovepdf}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <div class="cards-note">
+        <p>
+          <strong>Note:</strong> A Content-Security-Policy (CSP) helps limit which scripts and
+          resources a page can load. <code>X-Frame-Options: DENY</code> prevents clickjacking by
+          blocking the page from being embedded via iframe. <code>X-Content-Type-Options: nosniff</code>
+          reduces MIME confusion risks. <code>Referrer-Policy</code> controls what data is sent in
+          the Referer header during navigation.
+        </p>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2 class="section-title">Browser cookies observed (scanned {scanDate})</h2>
+      <p class="section-intro">
+        Cookies were collected from a fresh browser context without prior site interaction.
+        Cookie counts and flags reflect a single scan pass — consent banners, logged-in states,
+        or region may affect what cookies are set.
+      </p>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Observation</th><th>LocalPDF</th><th>Smallpdf</th><th>iLovePDF</th></tr>
+          </thead>
+          <tbody>
+            {cookieFacts.map((row) => (
+              <tr>
+                <td>{row.name}</td>
+                <td>{row.localpdf}</td>
+                <td>{row.smallpdf}</td>
+                <td>{row.ilovepdf}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <div class="cards-note">
+        <p>
+          <strong>Note:</strong> The <code>Secure</code> flag instructs the browser to send the
+          cookie only over HTTPS. <code>HttpOnly</code> prevents JavaScript access to the cookie.
+          <code>SameSite</code> controls when the cookie is sent with cross-site requests.
+          These flags are considered good practices for session and CSRF protection cookies.
+        </p>
+      </div>
+    </section>
+
+    <section class="section card-grid">
+      <article class="card">
+        <h3>Choose LocalPDF when</h3>
+        <ul class="bullet-list">
+          <li>You work with contracts, invoices, or other sensitive PDFs that should not leave your device.</li>
+          <li>You want a local-first workflow without an upload step before processing.</li>
+          <li>You prefer a product workspace over browsing utility pages.</li>
+        </ul>
+      </article>
+      <article class="card">
+        <h3>Choose Smallpdf or iLovePDF when</h3>
+        <ul class="bullet-list">
+          <li>You need access to a very broad set of online PDF utilities and AI features.</li>
+          <li>You are comfortable with an upload-first workflow and cloud processing.</li>
+          <li>Brand recognition and tool volume matter more than local-first handling.</li>
+        </ul>
+      </article>
+      <article class="card">
+        <h3>Main takeaway</h3>
+        <p>
+          LocalPDF is the only tool among the three that processes files on-device without
+          uploading them to a server. It also served more security-related response headers
+          during the automated scan. Smallpdf and iLovePDF offer broader online tool
+          portfolios and AI features, at the cost of a server-upload workflow.
+        </p>
+      </article>
+    </section>
+
+    <section class="section">
+      <h2 class="section-title">Best fit by use case</h2>
+      <div class="card-grid">
+        <article class="card">
+          <h3>Contracts and legal PDFs</h3>
+          <p>LocalPDF is a stronger fit when contract drafts or signed documents should remain local and never reach a third-party server for processing.</p>
+        </article>
+        <article class="card">
+          <h3>Invoices and finance files</h3>
+          <p>LocalPDF keeps invoices, receipts, and financial statements in a local-first workflow — no upload required to edit or review them.</p>
+        </article>
+        <article class="card">
+          <h3>Large-scale utility work</h3>
+          <p>Smallpdf and iLovePDF serve users who need a large online tool set and accept the server-upload model in exchange for feature breadth.</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2 class="section-title">Pricing snapshot</h2>
+      <p class="section-intro">
+        LocalPDF uses a simple Free + Pro model. Smallpdf and iLovePDF use broader subscription tiers
+        with trials. Verify current rates on each site.
+      </p>
+      <div class="card-grid pricing-compare">
+        <article class="card">
+          <h3>LocalPDF</h3>
+          <ul class="bullet-list">
+            <li><strong>Free:</strong> $0 — 3 Studio workspaces, up to 25 pages per document, essential tools.</li>
+            <li><strong>Pro:</strong> $3.99/month or $39.99/year — unlimited workspaces, full Studio, OCR, conversion.</li>
+          </ul>
+          <a class="text-link" href="/pricing">Full pricing details →</a>
+        </article>
+        <article class="card">
+          <h3>Smallpdf (typical model)</h3>
+          <ul class="bullet-list">
+            <li>Free trial and limited free access to online tools.</li>
+            <li>Paid individual and team plans for ongoing use.</li>
+            <li>AI PDF Assistant and chat features bundled.</li>
+          </ul>
+        </article>
+        <article class="card">
+          <h3>iLovePDF (typical model)</h3>
+          <ul class="bullet-list">
+            <li>Limited free daily tool usage.</li>
+            <li>Paid individual and team subscriptions.</li>
+            <li>API access and larger file processing in paid tiers.</li>
+          </ul>
+        </article>
+      </div>
+      <div class="cta-row section-cta">
+        <a class="btn-primary" href={appUrl}>Try LocalPDF free</a>
+        <a class="btn-secondary" href="/pdf-tools-without-upload">PDF tools without upload</a>
+      </div>
+    </section>
+
+    <section class="section faq-grid">
+      <article class="card">
+        <h3>How does LocalPDF compare to Smallpdf and iLovePDF on privacy?</h3>
+        <p>LocalPDF processes files locally in the browser. Smallpdf and iLovePDF upload to servers. For sensitive documents, LocalPDF avoids that handoff entirely.</p>
+      </article>
+      <article class="card">
+        <h3>Does LocalPDF have better security headers?</h3>
+        <p>Based on a public automated scan on {scanDate}, LocalPDF served CSP, XFO: DENY, nosniff, Referrer-Policy, and Permissions-Policy headers. Neither competitor served these in the same scan pass.</p>
+      </article>
+      <article class="card">
+        <h3>Which service has fewer cookies?</h3>
+        <p>Smallpdf and iLovePDF each set 1 cookie during the homepage scan. LocalPDF set 4 (analytics-related). Cookie state depends on consent and region.</p>
+      </article>
+    </section>
+  </div>
+
+    <section class="section more-comparisons">
+      <h2 class="section-title">More comparisons</h2>
+      <p class="section-intro">
+        See how LocalPDF compares to other PDF tools:
+      </p>
+      <div class="compare-links">
+          <a href="/compare/localpdf-vs-smallpdf" class="compare-link">Smallpdf</a>
+          <a href="/compare/localpdf-vs-ilovepdf" class="compare-link">iLovePDF</a>
+          <a href="/compare/localpdf-vs-pdf24" class="compare-link">PDF24</a>
+          <a href="/compare/localpdf-vs-pdfescape" class="compare-link">PDFescape</a>
+          <a href="/compare/localpdf-vs-sejda" class="compare-link">Sejda</a>
+      </div>
+    </section>
+
+</MarketingLayout>
+
+<style>
+  .compare-shell h1 {
+    font-size: clamp(3rem, 5vw, 4.8rem);
+    margin-top: 18px;
+    margin-bottom: 18px;
+  }
+  .disclaimer {
+    margin-top: 18px;
+    padding: 14px;
+    border-radius: 12px;
+    background: rgba(217, 235, 225, 0.3);
+    border: 1px solid var(--line, #d0d9d4);
+    font-size: 0.9rem;
+    line-height: 1.5;
+    color: var(--muted, #5a6b63);
+  }
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; background: var(--surface); border-radius: 18px; overflow: hidden; }
+  th, td { border: 1px solid var(--line); padding: 14px; text-align: left; vertical-align: top; font-size: 0.92rem; }
+  th { background: rgba(217, 235, 225, 0.45); }
+  td code { font-size: 0.88rem; word-break: break-word; }
+  .present { background: rgba(100, 200, 150, 0.08); }
+  .cards-note {
+    margin-top: 14px;
+    padding: 12px;
+    border-radius: 10px;
+    background: rgba(217, 235, 225, 0.2);
+    font-size: 0.9rem;
+  }
+  .faq-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; }
+  .pricing-compare { margin-top: 18px; }
+  .text-link { display: inline-block; margin-top: 12px; font-weight: 600; }
+  .section-cta { margin-top: 24px; }
+  @media (max-width: 900px) { .faq-grid { grid-template-columns: 1fr; } }
+</style>
