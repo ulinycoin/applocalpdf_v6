@@ -107,7 +107,21 @@ export class BillingService {
       return;
     }
 
-    const verified = await this.verifyToken(rawToken);
+    let token = rawToken;
+    let verified = await this.verifyToken(token);
+    if (!verified) {
+      // Токен протух — пробуем обновить через LS перед тем, как удалять
+      const refreshed = await this.refreshBillingToken(token).catch(() => null);
+      if (refreshed) {
+        verified = await this.verifyToken(refreshed);
+        if (verified) {
+          token = refreshed;
+          if (typeof localStorage !== 'undefined') {
+            localStorage.setItem(this.storageKey, token);
+          }
+        }
+      }
+    }
     if (!verified) {
       if (typeof localStorage !== 'undefined') {
         localStorage.removeItem(this.storageKey);
@@ -144,11 +158,11 @@ export class BillingService {
 
     // Запускаем фоновое обновление токена, если до его истечения осталось менее 5 дней
     try {
-      const parts = rawToken.split('.');
+      const parts = token.split('.');
       const payload = JSON.parse(decodeBase64UrlUTF8(parts[1]));
       const now = Math.floor(Date.now() / 1000);
       if (typeof payload.exp === 'number' && (payload.exp - now) < 5 * 24 * 60 * 60) {
-        this.refreshBillingToken(rawToken).then(async (newToken) => {
+        this.refreshBillingToken(token).then(async (newToken) => {
           if (newToken) {
             await this.saveToken(newToken);
           }
