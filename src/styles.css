@@ -7899,4 +7899,131 @@ textarea:focus-visible {
   letter-spacing: 0.05em;
 }
 
+.pdf-info-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.pdf-info-file-name {
+  margin: 8px 0 0;
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: var(--text);
+  word-break: break-word;
+}
+
+.pdf-info-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.pdf-info-section {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  padding: 14px 16px;
+}
+
+.pdf-info-section-title {
+  margin: 0 0 12px;
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.pdf-info-grid {
+  display: grid;
+  gap: 10px;
+}
+
+.pdf-info-row {
+  display: grid;
+  grid-template-columns: minmax(120px, 34%) 1fr;
+  gap: 12px;
+  align-items: start;
+}
+
+.pdf-info-label {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+}
+
+.pdf-info-value {
+  font-size: 0.84rem;
+  color: var(--text);
+  word-break: break-word;
+}
+
+.pdf-info-copy {
+  margin: 0;
+  font-size: 0.84rem;
+  color: var(--text-muted);
+}
+
+.pdf-info-font-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.pdf-info-font-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.pdf-info-font-name {
+  font-size: 0.84rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.pdf-info-font-meta {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+.pdf-info-alert {
+  border-radius: 10px;
+  padding: 12px 14px;
+  background: rgba(245, 158, 11, 0.08);
+  border: 1px solid rgba(245, 158, 11, 0.24);
+  color: var(--text);
+}
+
+.pdf-info-alert strong {
+  display: block;
+  margin-bottom: 4px;
+}
+
+.pdf-info-alert p {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+}
+
+.pdf-info-alert--error {
+  background: rgba(224, 62, 62, 0.08);
+  border-color: rgba(224, 62, 62, 0.24);
+}
+
+.pdf-info-loading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+  font-size: 0.84rem;
+  color: var(--text-muted);
+}
 

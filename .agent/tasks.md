@@ -38,3 +38,5 @@ Last updated: 2026-06-19
 | 10 | LemonSqueezy webhook → PostHog | Medium | Revenue attribution in analytics |
 | 11 | Email capture | Low | Lead nurture for free users |
 | 12 | Fix protect-pdf encrypted error | Medium | 4/5 fail: `Input document to PDFDocument.load is encrypted` |
+| 13 | PDF Info tool | [x] | Local PDF inspector: pages, version, encryption, fonts, XMP self-declared claim |
+| 14 | PDF/A Converter (Pro) | [ ] | Ghostscript → PDF/A-1b → VeraPDF validate → download. Server opt-in |

@@ -468,7 +468,7 @@ export function WizardShell({ toolId, context, ioAdapter, limitService }: Wizard
         </div>
       </div>
 
-      {/* Step indicator — not shown for single-page flows */}
+      {/* Step indicator — not shown for single-page / analysis-only flows */}
       {!isWordSinglePageFlow && (
         <StepIndicator step={state.step as WizardStep} />
       )}

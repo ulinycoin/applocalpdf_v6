@@ -14,7 +14,7 @@ import { getDailyUsage } from '../../../../app/platform/daily-usage';
 import { useHistoryStore } from '../store/history-store';
 import type { StudioToolRouteState } from '../../../studio/navigation/studio-tool-context';
 
-export type StudioConvertToolId = 'ocr-pdf' | 'pdf-to-jpg' | 'extract-images' | 'compress-pdf' | 'auto-toc';
+export type StudioConvertToolId = 'ocr-pdf' | 'pdf-to-jpg' | 'extract-images' | 'compress-pdf' | 'auto-toc' | 'pdf-info';
 export type StudioConvertStep = 'config' | 'processing' | 'result';
 
 export interface StudioOcrSettings {

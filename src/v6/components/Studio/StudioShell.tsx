@@ -40,6 +40,11 @@ const AutoTocStudioPanelLazy = lazy(async () => {
     return { default: m.AutoTocStudioPanel };
 });
 
+const PdfInfoStudioPanelLazy = lazy(async () => {
+    const m = await import('./convert/PdfInfoStudioPanel');
+    return { default: m.PdfInfoStudioPanel };
+});
+
 export interface StudioShellProps {
     onFilesDropped?: (files: File[]) => void;
 }
@@ -1299,6 +1304,8 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
                             ? <StudioEditWorkspace onClose={handleOverlayClose} />
                             : overlayMode === 'auto-toc'
                                 ? <AutoTocStudioPanelLazy onClose={handleOverlayClose} inputFileId={activeDocument?.pages[0]?.fileId ?? ''} fileName={activeDocument?.name ?? 'document.pdf'} runtime={runtime} />
+                                : overlayMode === 'pdf-info'
+                                    ? <PdfInfoStudioPanelLazy onClose={handleOverlayClose} inputFileId={activeDocument?.pages[0]?.fileId ?? ''} fileName={activeDocument?.name ?? 'document.pdf'} runtime={runtime} />
                                 : <StudioConvertWorkspace onClose={handleOverlayClose} initialTool={overlayMode} />
                         }
                     </Suspense>

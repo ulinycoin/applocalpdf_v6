@@ -9,6 +9,7 @@ const SIDEBAR_TOOL_ORDER: Record<string, number> = {
   'word-to-pdf': 1,
   'excel-to-pdf': 2,
   'pdf-to-jpg': 3,
+  'pdf-info': 4,
 };
 
 function getToolIcon(toolId: string): Parameters<typeof LinearIcon>[0]['name'] {
@@ -41,6 +42,8 @@ function getToolIcon(toolId: string): Parameters<typeof LinearIcon>[0]['name'] {
       return 'edit';
     case 'share-pdf':
       return 'share';
+    case 'pdf-info':
+      return 'file-input';
     default:
       return 'tool';
   }
@@ -76,6 +79,8 @@ function getToolShortLabel(toolId: string): string {
       return 'TOC';
     case 'share-pdf':
       return 'SHR';
+    case 'pdf-info':
+      return 'INF';
     default:
       return 'TOOL';
   }

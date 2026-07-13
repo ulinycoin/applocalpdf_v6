@@ -11,7 +11,7 @@ export function getConvertToolDisplay(toolId: string): { label: string; icon: Li
 }
 
 interface RailToolItem {
-    tool: StudioEditToolId | StudioConvertToolId;
+    tool: string;
     icon: LinearIconName;
     label: string;
     description?: string;
@@ -44,6 +44,10 @@ const CONVERT_TOOLS: RailToolItem[] = [
     { tool: 'pdf-to-jpg', icon: 'image', label: 'PDF to JPG', description: 'Convert PDF pages to JPEG images' },
     { tool: 'compress-pdf', icon: 'compress', label: 'Compress', description: 'Reduce PDF file size while maintaining quality' },
     { tool: 'extract-images', icon: 'image', label: 'Extract Images', description: 'Extract all embedded images from PDF document' },
+];
+
+const UTILITY_TOOLS: RailToolItem[] = [
+    { tool: 'pdf-info', icon: 'file-input', label: 'PDF Info', description: 'Inspect pages, PDF version, encryption, fonts, and metadata locally' },
 ];
 
 function RailButton({
@@ -124,6 +128,22 @@ export function StudioToolRail({
             <div className="studio-tool-rail-section">
                 <div className="studio-tool-rail-section-label studio-tool-rail-collapsible-text">CONVERT</div>
                 {CONVERT_TOOLS.map((item) => (
+                    <RailButton
+                        key={item.tool}
+                        tool={item.tool}
+                        icon={item.icon}
+                        label={item.label}
+                        description={item.description}
+                        activeTool={activeTool}
+                        disabled={!hasFiles}
+                        onClick={() => { onToolClick(item.tool); }}
+                    />
+                ))}
+            </div>
+
+            <div className="studio-tool-rail-section">
+                <div className="studio-tool-rail-section-label studio-tool-rail-collapsible-text">INSPECT</div>
+                {UTILITY_TOOLS.map((item) => (
                     <RailButton
                         key={item.tool}
                         tool={item.tool}
