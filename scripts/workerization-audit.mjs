@@ -128,17 +128,19 @@ function resolveServiceImport(filePath, specifier) {
 
 function collectImports(content) {
   const imports = [];
-  const regex = /(?:import\s+(?:type\s+)?(?:[\s\S]*?\sfrom\s*)?['\"]([^'\"]+)['\"]|import\(\s*['\"]([^'\"]+)['\"]\s*\))/g;
+  const regex = /(?:import\s+(type\s+)?(?:[\s\S]*?\sfrom\s*)?['\"]([^'\"]+)['\"]|import\(\s*['\"]([^'\"]+)['\"]\s*\))/g;
 
   let match;
   while ((match = regex.exec(content)) !== null) {
-    const specifier = match[1] ?? match[2];
+    const typeOnly = match[1] !== undefined;
+    const specifier = match[2] ?? match[3];
     if (!specifier) {
       continue;
     }
     imports.push({
       specifier,
       index: match.index,
+      typeOnly,
     });
   }
 
@@ -168,6 +170,7 @@ async function main() {
 
     const relative = toRelative(file);
     for (const item of imports) {
+      if (item.typeOnly) continue;
       const line = getLineNumber(content, item.index);
       const resolvedServiceImport = resolveServiceImport(file, item.specifier);
       if (resolvedServiceImport) {
