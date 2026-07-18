@@ -163,6 +163,14 @@ const canonical = legacy
   : (post?.data.canonicalURL || `https://localpdf.online/blog/${post?.slug}`);
 const title = legacy ? legacy.title : `${post?.data.title} | LocalPDF Blog`;
 const description = legacy ? legacy.description : (post?.data.description ?? '');
+
+// Blog posts with high impressions but zero/negligible clicks — noindex
+const noindexSlugs = new Set([
+  'edit-text-in-pdf-guide',
+  'create-fillable-pdf-forms-guide',
+]);
+const isNoindex = post ? noindexSlugs.has(post.slug) : false;
+
 const image = post?.data.ogImage || 'https://localpdf.online/logos/localpdf-social-1200x630.png';
 const readingTimeSource = post
   ? JSON.stringify(post.data.title) + JSON.stringify(post.data.description) + post.data.tags.join(' ')
@@ -216,7 +224,7 @@ const schema = legacy ? [] : [
     secondaryLabel={legacy.secondaryLabel}
   />
 ) : (
-  <MarketingLayout title={title} description={description} canonical={canonical} image={image} schema={schema}>
+  <MarketingLayout title={title} description={description} canonical={canonical} image={image} schema={schema} noindex={isNoindex}>
     <div class="page-shell">
       <article class="section article-shell">
         <div class="breadcrumbs">

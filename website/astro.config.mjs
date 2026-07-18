@@ -8,6 +8,8 @@ const sitemapBlockedPaths = new Set([
   'https://localpdf.online/blog/flatten-pdf-forms',
   'https://localpdf.online/blog/pdf-optimization-guide',
   'https://localpdf.online/blog/protect-pdf-with-password',
+  'https://localpdf.online/blog/edit-text-in-pdf-guide',
+  'https://localpdf.online/blog/create-fillable-pdf-forms-guide',
 ]);
 
 const TODAY = new Date().toISOString().split('T')[0];

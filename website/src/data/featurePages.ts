@@ -44,9 +44,9 @@ export interface FeaturePageData {
 export const featurePages: FeaturePageData[] = [
   {
     slug: 'edit-pdf',
-    title: 'Edit PDF — Change text without uploading to a server',
-    metaTitle: 'Free PDF Editor — Edit Text Without Upload | LocalPDF',
-    metaDescription: 'Edit PDF text and images without uploading. Fix typos, add notes, cover sensitive sections, and make changes locally in your browser. No account needed.',
+    title: 'Edit PDF Locally — Change Text Without Uploading',
+    metaTitle: 'Edit PDF Locally — Change Text Without Upload | LocalPDF',
+    metaDescription: 'Edit PDF text and images locally — no upload needed. Fix typos, add notes, cover sensitive sections — all in your browser. No account, works offline.',
     intro: 'Use LocalPDF when you need to change a PDF directly without sending a sensitive file through an upload-first editor.',
     appHash: 'studio',
     eyebrow: 'Edit PDF',
@@ -108,7 +108,7 @@ export const featurePages: FeaturePageData[] = [
       ],
     },
     blogLinks: [
-      { href: '/blog/edit-text-in-pdf-guide', title: 'How to Edit Text in PDF Files' },
+      { href: '/blog/how-to-sign-pdf-digitally', title: 'How to Sign PDF Documents Digitally' },
       { href: '/blog/pdf-security-best-practices', title: 'PDF Security Best Practices' },
     ],
     monetizationBlock: {
@@ -121,9 +121,9 @@ export const featurePages: FeaturePageData[] = [
   },
   {
     slug: 'merge-pdf',
-    title: 'Merge PDF — Combine files with drag and drop',
-    metaTitle: 'Free PDF Merger — Combine Files Online | LocalPDF',
-    metaDescription: 'Merge PDF files with drag and drop. Combine documents locally — no upload required. Reorder pages visually and export one clean PDF in seconds.',
+    title: 'Merge PDF Files Locally — Drag, Drop, and Combine Instantly',
+    metaTitle: 'Merge PDF Files Locally — Combine Documents Securely | LocalPDF',
+    metaDescription: 'Merge PDF files locally with drag and drop. Combine documents in your browser — no upload, works offline. Reorder pages visually and export one clean PDF instantly.',
     intro: 'Merge should feel visual. Grab pages, drag them into place, reorder the packet, and export one clean PDF without fighting menus or waiting on upload loops.',
     appHash: 'studio',
     eyebrow: 'Merge PDF',
@@ -198,9 +198,9 @@ export const featurePages: FeaturePageData[] = [
   },
   {
     slug: 'ocr-pdf',
-    title: 'OCR PDF — Make scanned documents searchable instantly',
-    metaTitle: 'Free OCR PDF — Extract Text from Scans Online | LocalPDF',
-    metaDescription: 'Extract text from scanned PDFs instantly. Free OCR runs locally in your browser — no upload, no server, no file leaves your device. Make scans searchable in seconds.',
+    title: 'OCR PDF Locally — Extract Text from Scans Without Upload',
+    metaTitle: 'OCR PDF Locally — Extract Text from Scans, No Upload | LocalPDF',
+    metaDescription: 'Extract text from scanned PDFs locally — no upload, no server. Free OCR runs in your browser via WebAssembly. Make scans searchable in seconds, works offline.',
     intro: 'OCR is a trust-heavy workflow because scanned PDFs often contain legal, medical, or financial information. LocalPDF makes it private and fast.',
     appHash: 'studio',
     eyebrow: 'OCR PDF',
@@ -275,9 +275,9 @@ export const featurePages: FeaturePageData[] = [
   },
   {
     slug: 'compress-pdf',
-    title: 'Compress PDF — Reduce file size before sending',
-    metaTitle: 'Free PDF Compressor — Reduce File Size Online | LocalPDF',
-    metaDescription: 'Reduce PDF file size by up to 75%. Free compression runs locally in your browser — no upload required. Perfect for email, uploads, and archives.',
+    title: 'Compress PDF Locally — Reduce File Size Without Upload',
+    metaTitle: 'Compress PDF Locally — Reduce File Size, No Upload | LocalPDF',
+    metaDescription: 'Compress PDF locally in your browser — reduce file size by up to 75% without uploading. No server, works offline. Perfect for email attachments and sensitive documents.',
     intro: 'Compression is a practical workflow. It should be fast, predictable, and not require an upload loop before you can send a file.',
     appHash: 'studio',
     eyebrow: 'Compress PDF',

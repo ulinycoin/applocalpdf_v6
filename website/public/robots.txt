@@ -2,7 +2,6 @@
 # https://localpdf.online
 
 User-agent: *
-Disallow: /app
 Allow: /
 
 # Sitemaps
@@ -13,13 +12,11 @@ Sitemap: https://localpdf.online/sitemap.xml
 
 # Bingbot
 User-agent: Bingbot
-Disallow: /app
 Allow: /
 Crawl-delay: 1
 
 # YandexBot
 User-agent: YandexBot
-Disallow: /app
 Allow: /
 Crawl-delay: 1
 
