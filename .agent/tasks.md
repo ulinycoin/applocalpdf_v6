@@ -1,6 +1,6 @@
 # Active Tasks
 
-Last updated: 2026-06-19
+Last updated: 2026-07-19
 
 ## Status legend
 - `[ ]` — not started
@@ -34,6 +34,7 @@ Last updated: 2026-06-19
 | # | Task | Priority | Notes |
 |---|------|----------|-------|
 | 8 | SEO articles for OCR queries | Medium | Content marketing for organic traffic |
+| 8a | Noindex dead blog wave 2 | [x] | ocr-extract, how-to-merge, convert-word + /blog hub; sitemap + internal links → features |
 | 9 | Show HN post | Low | Product Hunt / Hacker News launch |
 | 10 | LemonSqueezy webhook → PostHog | Medium | Revenue attribution in analytics |
 | 11 | Email capture | Low | Lead nurture for free users |

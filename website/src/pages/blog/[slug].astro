@@ -1,6 +1,7 @@
 ---
 import LegacyArchivePage from '../../components/marketing/LegacyArchivePage.astro';
 import MarketingLayout from '../../layouts/MarketingLayout.astro';
+import { NOINDEX_BLOG_SLUG_SET } from '../../data/noindexBlog';
 
 const toolRouteMap: Record<string, { href: string; label: string }> = {
   'merge-pdf': { href: '/features/merge-pdf', label: 'Merge PDF' },
@@ -19,10 +20,10 @@ function getLegacyBlogRoutes() {
     description: 'This legacy article has been replaced by a current guide.',
     heading: 'This article moved',
     body: 'That older guide is no longer published. Use the current PDF editing guide instead.',
-    primaryHref: '/blog/edit-text-in-pdf-guide',
-    primaryLabel: 'Read the edit guide',
-    secondaryHref: '/features/edit-pdf',
-    secondaryLabel: 'Open Edit PDF',
+    primaryHref: '/features/edit-pdf',
+    primaryLabel: 'Open Edit PDF',
+    secondaryHref: '/blog/pdf-security-best-practices',
+    secondaryLabel: 'Read the security guide',
   },
   'email-pdf-attachments': {
     title: 'Email PDF Attachments Archive | LocalPDF',
@@ -31,18 +32,18 @@ function getLegacyBlogRoutes() {
     body: 'That older guide is no longer published. Use the current compression guide or browse the blog hub for updated workflows.',
     primaryHref: '/blog/compress-pdf-without-losing-quality',
     primaryLabel: 'Read the compression guide',
-    secondaryHref: '/blog',
-    secondaryLabel: 'Browse the blog',
+    secondaryHref: '/features/compress-pdf',
+    secondaryLabel: 'Open Compress PDF',
   },
   'flatten-pdf-forms': {
     title: 'Flatten PDF Forms Archive | LocalPDF',
     description: 'This legacy article has been replaced by a current guide.',
     heading: 'This article moved',
-    body: 'That older guide is no longer published. Use the current fillable forms guide instead.',
-    primaryHref: '/blog/create-fillable-pdf-forms-guide',
-    primaryLabel: 'Read the form guide',
-    secondaryHref: '/features/edit-pdf',
-    secondaryLabel: 'Open Edit PDF',
+    body: 'That older guide is no longer published. Use the current editing workflow instead.',
+    primaryHref: '/features/edit-pdf',
+    primaryLabel: 'Open Edit PDF',
+    secondaryHref: '/blog/pdf-security-best-practices',
+    secondaryLabel: 'Read the security guide',
   },
   'pdf-optimization-guide': {
     title: 'PDF Optimization Guide Archive | LocalPDF',
@@ -149,6 +150,7 @@ const allPosts = Object.entries(postModules)
 const relatedPosts = post
   ? allPosts
       .filter((candidate) => candidate.slug !== post.slug)
+      .filter((candidate) => !NOINDEX_BLOG_SLUG_SET.has(candidate.slug))
       .filter((candidate) => candidate.data.tags.some((tag) => post.data.tags.includes(tag)))
       .slice(0, 3)
   : [];
@@ -164,12 +166,7 @@ const canonical = legacy
 const title = legacy ? legacy.title : `${post?.data.title} | LocalPDF Blog`;
 const description = legacy ? legacy.description : (post?.data.description ?? '');
 
-// Blog posts with high impressions but zero/negligible clicks — noindex
-const noindexSlugs = new Set([
-  'edit-text-in-pdf-guide',
-  'create-fillable-pdf-forms-guide',
-]);
-const isNoindex = post ? noindexSlugs.has(post.slug) : false;
+const isNoindex = post ? NOINDEX_BLOG_SLUG_SET.has(post.slug) : false;
 
 const image = post?.data.ogImage || 'https://localpdf.online/logos/localpdf-social-1200x630.png';
 const readingTimeSource = post

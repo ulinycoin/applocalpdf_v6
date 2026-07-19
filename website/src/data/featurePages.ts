@@ -185,8 +185,8 @@ export const featurePages: FeaturePageData[] = [
       ],
     },
     blogLinks: [
-      { href: '/blog/how-to-merge-pdf-files', title: 'How to Merge PDF Files' },
       { href: '/blog/how-to-merge-pdfs-locally-for-legal-and-finance-teams', title: 'How to Merge PDFs Locally for Legal and Finance Teams' },
+      { href: '/blog/pdf-security-best-practices', title: 'PDF Security Best Practices' },
     ],
     monetizationBlock: {
       eyebrow: 'Free vs Pro',
@@ -262,8 +262,8 @@ export const featurePages: FeaturePageData[] = [
       ],
     },
     blogLinks: [
-      { href: '/blog/ocr-pdf-extract-text', title: 'OCR PDF: Extract Text from Scanned Documents' },
       { href: '/blog/pdf-security-best-practices', title: 'PDF Security Best Practices' },
+      { href: '/blog/compress-pdf-without-losing-quality', title: 'How to Compress PDF Without Losing Quality' },
     ],
     monetizationBlock: {
       eyebrow: 'Free vs Pro',
@@ -340,7 +340,7 @@ export const featurePages: FeaturePageData[] = [
     },
     blogLinks: [
       { href: '/blog/compress-pdf-without-losing-quality', title: 'How to Compress PDF Files Without Losing Quality' },
-      { href: '/blog/how-to-merge-pdf-files', title: 'How to Merge PDF Files' },
+      { href: '/blog/pdf-security-best-practices', title: 'PDF Security Best Practices' },
     ],
     monetizationBlock: {
       eyebrow: 'Free vs Pro',
@@ -557,8 +557,8 @@ export const featurePages: FeaturePageData[] = [
       ],
     },
     blogLinks: [
-      { href: '/blog/convert-word-pdf-guide', title: 'How to Convert Word to PDF and PDF to Word' },
       { href: '/blog/convert-pdf-to-images-guide', title: 'How to Convert PDF to Images' },
+      { href: '/blog/pdf-security-best-practices', title: 'PDF Security Best Practices' },
     ],
   },
   {

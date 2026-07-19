@@ -10,6 +10,11 @@ const sitemapBlockedPaths = new Set([
   'https://localpdf.online/blog/protect-pdf-with-password',
   'https://localpdf.online/blog/edit-text-in-pdf-guide',
   'https://localpdf.online/blog/create-fillable-pdf-forms-guide',
+  // High GSC impressions, ~0 clicks — noindex wave 2 (2026-07-19)
+  'https://localpdf.online/blog/ocr-pdf-extract-text',
+  'https://localpdf.online/blog/how-to-merge-pdf-files',
+  'https://localpdf.online/blog/convert-word-pdf-guide',
+  'https://localpdf.online/blog',
 ]);
 
 const TODAY = new Date().toISOString().split('T')[0];
@@ -41,7 +46,6 @@ const sitemapAllowList = new Set([
   'https://localpdf.online/ja',
   'https://localpdf.online/zh',
   'https://localpdf.online/about',
-  'https://localpdf.online/blog',
   'https://localpdf.online/privacy',
   'https://localpdf.online/terms',
   'https://localpdf.online/faq',

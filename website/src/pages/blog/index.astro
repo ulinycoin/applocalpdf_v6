@@ -1,5 +1,6 @@
 ---
 import MarketingLayout from '../../layouts/MarketingLayout.astro';
+import { NOINDEX_BLOG_SLUG_SET } from '../../data/noindexBlog';
 
 type BlogModule = {
   frontmatter: {
@@ -21,7 +22,7 @@ const allPosts = Object.entries(postModules)
       pubDate: new Date(module.frontmatter.pubDate),
     },
   }))
-  .filter((post) => !post.data.draft)
+  .filter((post) => !post.data.draft && !NOINDEX_BLOG_SLUG_SET.has(post.slug))
   .sort((a, b) => b.data.pubDate.getTime() - a.data.pubDate.getTime());
 
 const recentPosts = allPosts;
@@ -64,7 +65,7 @@ const schema = [
 ];
 ---
 
-<MarketingLayout title={title} description={description} canonical={canonical} image={image} schema={schema}>
+<MarketingLayout title={title} description={description} canonical={canonical} image={image} schema={schema} noindex={true}>
   <div class="page-shell">
     <section class="section intro">
       <span class="eyebrow">Blog</span>
