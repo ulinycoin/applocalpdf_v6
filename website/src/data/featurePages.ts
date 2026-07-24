@@ -108,9 +108,8 @@ export const featurePages: FeaturePageData[] = [
       ],
     },
     blogLinks: [
-      { href: '/blog/how-to-edit-a-contract-pdf-without-uploading-it', title: 'How to Edit a Contract PDF Without Uploading It' },
-      { href: '/blog/add-watermark-to-pdf', title: 'How to Add a Watermark to PDF' },
-      { href: '/blog/pdf-security-best-practices', title: 'PDF Security Best Practices' },
+      { href: '/security', title: 'Security & privacy model' },
+      { href: '/use-cases/lawyers', title: 'PDF workflows for lawyers' },
     ],
     monetizationBlock: {
       eyebrow: 'Free vs Pro',
@@ -186,8 +185,8 @@ export const featurePages: FeaturePageData[] = [
       ],
     },
     blogLinks: [
-      { href: '/blog/how-to-merge-pdfs-locally-for-legal-and-finance-teams', title: 'How to Merge PDFs Locally for Legal and Finance Teams' },
-      { href: '/blog/pdf-security-best-practices', title: 'PDF Security Best Practices' },
+      { href: '/use-cases/lawyers', title: 'PDF workflows for lawyers' },
+      { href: '/use-cases/accountants', title: 'PDF workflows for accountants' },
     ],
     monetizationBlock: {
       eyebrow: 'Free vs Pro',
@@ -263,9 +262,8 @@ export const featurePages: FeaturePageData[] = [
       ],
     },
     blogLinks: [
-      { href: '/blog/cloud-vs-local-pdf-ocr-for-sensitive-scans', title: 'Cloud vs Local PDF OCR for Sensitive Scans' },
-      { href: '/blog/pdf-security-best-practices', title: 'PDF Security Best Practices' },
-      { href: '/blog/compress-pdf-without-losing-quality', title: 'How to Compress PDF Without Losing Quality' },
+      { href: '/security', title: 'Security & privacy model' },
+      { href: '/features/compress-pdf', title: 'Compress PDF locally' },
     ],
     monetizationBlock: {
       eyebrow: 'Free vs Pro',
@@ -341,8 +339,8 @@ export const featurePages: FeaturePageData[] = [
       ],
     },
     blogLinks: [
-      { href: '/blog/compress-pdf-without-losing-quality', title: 'How to Compress PDF Files Without Losing Quality' },
-      { href: '/blog/pdf-security-best-practices', title: 'PDF Security Best Practices' },
+      { href: '/security', title: 'Security & privacy model' },
+      { href: '/features/merge-pdf', title: 'Merge PDF locally' },
     ],
     monetizationBlock: {
       eyebrow: 'Free vs Pro',
@@ -418,8 +416,8 @@ export const featurePages: FeaturePageData[] = [
       ],
     },
     blogLinks: [
-      { href: '/blog/how-to-split-pdf-files', title: 'How to Split PDF Files' },
-      { href: '/blog/pdf-privacy-checklist-before-sharing-contracts-or-invoices', title: 'PDF Privacy Checklist Before Sharing Contracts or Invoices' },
+      { href: '/features/merge-pdf', title: 'Merge PDF locally' },
+      { href: '/security', title: 'Security & privacy model' },
     ],
   },
   {
@@ -488,8 +486,8 @@ export const featurePages: FeaturePageData[] = [
       ],
     },
     blogLinks: [
-      { href: '/blog/how-to-sign-pdf-digitally', title: 'How to Sign PDF Documents Digitally' },
-      { href: '/blog/pdf-security-best-practices', title: 'PDF Security Best Practices' },
+      { href: '/security', title: 'Security & privacy model' },
+      { href: '/features/edit-pdf', title: 'Edit PDF locally' },
     ],
   },
   {
@@ -559,8 +557,8 @@ export const featurePages: FeaturePageData[] = [
       ],
     },
     blogLinks: [
-      { href: '/blog/convert-pdf-to-images-guide', title: 'How to Convert PDF to Images' },
-      { href: '/blog/pdf-security-best-practices', title: 'PDF Security Best Practices' },
+      { href: '/features/compress-pdf', title: 'Compress PDF locally' },
+      { href: '/security', title: 'Security & privacy model' },
     ],
   },
   {
@@ -629,8 +627,8 @@ export const featurePages: FeaturePageData[] = [
       ],
     },
     blogLinks: [
-      { href: '/blog/how-to-generate-pdf-table-of-contents', title: 'How to Generate a PDF Table of Contents' },
-      { href: '/blog/pdf-security-best-practices', title: 'PDF Security Best Practices' },
+      { href: '/features/edit-pdf', title: 'Edit PDF locally' },
+      { href: '/security', title: 'Security & privacy model' },
     ],
     monetizationBlock: {
       eyebrow: 'Free vs Pro',

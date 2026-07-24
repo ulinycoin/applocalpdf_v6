@@ -1,19 +1,17 @@
 import { defineConfig } from 'astro/config';
 import mdx from '@astrojs/mdx';
 import sitemap from '@astrojs/sitemap';
+import { NOINDEX_BLOG_SITEMAP_URLS } from './src/data/noindexBlog.ts';
 
 const sitemapBlockedPaths = new Set([
+  // Legacy removed guides (archive routes, not in content/)
   'https://localpdf.online/blog/add-text-to-pdf-guide',
   'https://localpdf.online/blog/email-pdf-attachments',
   'https://localpdf.online/blog/flatten-pdf-forms',
   'https://localpdf.online/blog/pdf-optimization-guide',
   'https://localpdf.online/blog/protect-pdf-with-password',
-  'https://localpdf.online/blog/edit-text-in-pdf-guide',
-  'https://localpdf.online/blog/create-fillable-pdf-forms-guide',
-  // High GSC impressions, ~0 clicks — noindex wave 2 (2026-07-19)
-  'https://localpdf.online/blog/ocr-pdf-extract-text',
-  'https://localpdf.online/blog/how-to-merge-pdf-files',
-  'https://localpdf.online/blog/convert-word-pdf-guide',
+  // All cannibal / zero-app blog posts + hub
+  ...NOINDEX_BLOG_SITEMAP_URLS,
   'https://localpdf.online/blog',
 ]);
 
@@ -77,7 +75,6 @@ export default defineConfig({
         !sitemapBlockedPaths.has(page) &&
         (
           sitemapAllowList.has(page) ||
-          page.startsWith('https://localpdf.online/blog/') ||
           page.includes('/compare/') ||
           page.includes('/use-cases/')
         ),

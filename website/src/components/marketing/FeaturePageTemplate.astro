@@ -492,16 +492,16 @@ const schema = [
 
     {page.blogLinks && page.blogLinks.length > 0 && (
       <section class="section">
-        <h2 class="section-title">Guides related to this workflow</h2>
+        <h2 class="section-title">Related workflows</h2>
         <p class="section-intro">
-          Use these guides to compare approaches, understand the workflow faster, and move into the app with more confidence.
+          Stay on product pages that open LocalPDF — compare approaches, then finish the job in the app.
         </p>
         <div class="card-grid related-grid">
           {page.blogLinks.map((item) => (
             <a class="related-card" href={item.href}>
-              <span class="related-label">Guide</span>
+              <span class="related-label">Related</span>
               <h3>{item.title}</h3>
-              <p>Read the guide, then open LocalPDF when you are ready to finish the job.</p>
+              <p>Open the page, then start the workflow in LocalPDF when you are ready.</p>
             </a>
           ))}
         </div>
