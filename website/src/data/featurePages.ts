@@ -108,7 +108,8 @@ export const featurePages: FeaturePageData[] = [
       ],
     },
     blogLinks: [
-      { href: '/blog/how-to-sign-pdf-digitally', title: 'How to Sign PDF Documents Digitally' },
+      { href: '/blog/how-to-edit-a-contract-pdf-without-uploading-it', title: 'How to Edit a Contract PDF Without Uploading It' },
+      { href: '/blog/add-watermark-to-pdf', title: 'How to Add a Watermark to PDF' },
       { href: '/blog/pdf-security-best-practices', title: 'PDF Security Best Practices' },
     ],
     monetizationBlock: {
@@ -262,6 +263,7 @@ export const featurePages: FeaturePageData[] = [
       ],
     },
     blogLinks: [
+      { href: '/blog/cloud-vs-local-pdf-ocr-for-sensitive-scans', title: 'Cloud vs Local PDF OCR for Sensitive Scans' },
       { href: '/blog/pdf-security-best-practices', title: 'PDF Security Best Practices' },
       { href: '/blog/compress-pdf-without-losing-quality', title: 'How to Compress PDF Without Losing Quality' },
     ],

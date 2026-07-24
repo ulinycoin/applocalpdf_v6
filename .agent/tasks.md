@@ -36,6 +36,7 @@ Last updated: 2026-07-24
 | 8 | SEO articles for OCR queries | Medium | Content marketing for organic traffic |
 | 8a | Noindex dead blog wave 2 | [x] | ocr-extract, how-to-merge, convert-word + /blog hub; sitemap + internal links → features |
 | 8b | Fix audit orphans + Offer validFrom | [x] | 2026-07-24: hub links /features /compare /auto-toc /three-way; trim long metas; pricing Offer.validFrom; drop fake AggregateRating |
+| 8c | Link 4 orphan blog posts | [x] | 2026-07-24: contract/watermark/cloud-OCR/convert-images → edit/ocr/convert features + home/security/lawyers/private-editor |
 | 9 | Show HN post | Low | Product Hunt / Hacker News launch |
 | 10 | LemonSqueezy webhook → PostHog | Medium | Revenue attribution in analytics |
 | 11 | Email capture | Low | Lead nurture for free users |
