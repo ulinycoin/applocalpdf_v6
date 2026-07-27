@@ -73,13 +73,9 @@ export function dedupeStackedTextLayerSpans<T extends TextLayerSpanBounds>(spans
         continue;
       }
 
-      const olderIsAbove = older.yRatio < newer.yRatio;
-      if (!olderIsAbove) {
-        continue;
-      }
-
-      const rowOffset = newer.yRatio - older.yRatio;
-      if (rowOffset > Math.max(0.004, older.heightRatio * 2.5)) {
+      const yDelta = newer.yRatio - older.yRatio;
+      const maxOffset = Math.max(0.004, older.heightRatio * 2.5);
+      if (Math.abs(yDelta) > maxOffset) {
         continue;
       }
 
@@ -103,9 +99,28 @@ export function dedupeStackedTextLayerSpans<T extends TextLayerSpanBounds>(spans
         || olderText.startsWith(newerText)
         || sharedPrefixLength >= 12;
 
-      if (related) {
-        removeIds.add(older.id);
+      if (!related) {
+        continue;
       }
+
+      // Paint-over replacements often land on the same baseline (±float). Prefer the
+      // longer edited string instead of whichever span wins a tiny y comparison.
+      const colocated = Math.abs(yDelta) <= Math.max(0.001, older.heightRatio * 0.15);
+      if (colocated) {
+        if (olderText.length < newerText.length) {
+          removeIds.add(older.id);
+        } else if (newerText.length < olderText.length) {
+          removeIds.add(newer.id);
+        } else if (yDelta > 0) {
+          removeIds.add(older.id);
+        }
+        continue;
+      }
+
+      if (yDelta <= 0) {
+        continue;
+      }
+      removeIds.add(older.id);
     }
   }
 

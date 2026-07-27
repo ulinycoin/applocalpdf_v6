@@ -91,6 +91,16 @@ test('dedupeStackedTextLayerSpans keeps newest overlay at same column', () => {
   assert.equal(deduped[0]?.id, 'new');
 });
 
+test('dedupeStackedTextLayerSpans keeps longer edit when baselines coincide', () => {
+  const spans = [
+    { id: 'old', text: 'Privacy-First PDF Processing', xRatio: 0.147, yRatio: 0.16571969, widthRatio: 0.34, heightRatio: 0.019 },
+    { id: 'new', text: 'Privacy-First true PDF Processing', xRatio: 0.147, yRatio: 0.16571969, widthRatio: 0.36, heightRatio: 0.020 },
+  ];
+  const deduped = dedupeStackedTextLayerSpans(spans);
+  assert.equal(deduped.length, 1);
+  assert.equal(deduped[0]?.id, 'new');
+});
+
 test('filterTextLayerSpansByEditedElements hides spans covered by edited regions', () => {
   const spans = [
     { id: 'a', text: 'Hello', xRatio: 0.1, yRatio: 0.2, widthRatio: 0.1, heightRatio: 0.03 },
