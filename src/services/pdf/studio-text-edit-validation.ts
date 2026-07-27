@@ -74,6 +74,9 @@ function normalizeTextElement(input: WorkerStudioTextEditElement): WorkerStudioT
     sourceFontSizeRatio: typeof input.sourceFontSizeRatio === 'number' && Number.isFinite(input.sourceFontSizeRatio)
       ? clamp(input.sourceFontSizeRatio, 0.004, 0.25)
       : undefined,
+    baselineRatio: typeof input.baselineRatio === 'number' && Number.isFinite(input.baselineRatio)
+      ? clamp(input.baselineRatio, 0, 1)
+      : undefined,
     originalRect: normalizeOriginalRectInput(input.originalRect),
   };
 }

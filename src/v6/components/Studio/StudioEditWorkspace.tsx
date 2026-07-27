@@ -268,12 +268,41 @@ export function StudioEditWorkspace({ onClose }: StudioEditWorkspaceProps = {}) 
                 onStyleChange={(patch) => {
                     if (ctrl.selectedElementId) {
                         ctrl.handleElementAction(ctrl.selectedElementId, 'update', patch);
-                        // If color/background changed, and it's color specifically, we might need to handle the bg link here.
-                        if (patch.backgroundColor) {
-                            const newFill = patch.backgroundColor as string;
-                            const bgId = `${ctrl.selectedElementId}_bg`;
-                            const next = ctrl.elements.map(e => e.id === bgId && e.type === 'rect' ? { ...e, fill: newFill } : e);
-                            ctrl.setElements(next);
+                        if (patch.backgroundColor !== undefined) {
+                            const newFill = String(patch.backgroundColor);
+                            const textId = ctrl.selectedElementId;
+                            const bgId = `${textId}_bg`;
+                            const textEl = ctrl.elements.find((e) => e.id === textId && e.type === 'text') as import('./editor-types').TextElement | undefined;
+                            const hasBg = ctrl.elements.some((e) => e.id === bgId && e.type === 'rect');
+                            const opaque = newFill.trim() !== '' && newFill !== 'transparent' && newFill !== 'none';
+
+                            if (!opaque) {
+                                if (hasBg) {
+                                    ctrl.setElements(ctrl.elements.filter((e) => e.id !== bgId));
+                                }
+                            } else if (hasBg) {
+                                ctrl.setElements(ctrl.elements.map((e) => (
+                                  e.id === bgId && e.type === 'rect' ? { ...e, fill: newFill } : e
+                                )));
+                            } else if (textEl) {
+                                const padX = Math.min(0.0025, Math.max(0.0008, textEl.w * 0.03));
+                                const padY = Math.min(0.0009, Math.max(0.0003, textEl.h * 0.04));
+                                ctrl.setElements([
+                                  ...ctrl.elements,
+                                  {
+                                    id: bgId,
+                                    type: 'rect' as const,
+                                    x: Math.max(0, textEl.x - padX),
+                                    y: Math.max(0, textEl.y - padY),
+                                    w: textEl.w + padX * 2,
+                                    h: textEl.h + padY * 2,
+                                    fill: newFill,
+                                    stroke: 'transparent',
+                                    strokeWidth: 0,
+                                    opacity: 1,
+                                  },
+                                ]);
+                            }
                         }
                     } else {
                         ctrl.setTextStyle({ ...ctrl.textStyle, ...patch });

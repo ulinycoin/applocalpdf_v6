@@ -10,6 +10,10 @@ import { defaultFilePreviewService } from '../../preview/preview-service';
 import { getStudioEditMessages } from './studio-edit-i18n';
 import { normalizeTextLayerSpans } from './inline-text-utils';
 import { useHistoryStore } from './store/history-store';
+import {
+    parseWorkerRedactVerify,
+    trackRedactVerifyTelemetry,
+} from '../../utils/redact-verify-ui';
 
 interface StudioInPlaceEditorProps {
     stageRef: React.RefObject<Konva.Stage | null>;
@@ -21,6 +25,7 @@ export function StudioInPlaceEditor({ stageRef }: StudioInPlaceEditorProps) {
     const editSession = useStudioStore((s: StudioState) => s.editSession);
     const documents = useStudioStore((s: StudioState) => s.documents);
     const updatePage = useStudioStore((s: StudioState) => s.updatePage);
+    const updateDocument = useStudioStore((s: StudioState) => s.updateDocument);
     const clearEditSession = useStudioStore((s: StudioState) => s.clearEditSession);
     const setActiveEditPageId = useStudioStore((s: StudioState) => s.setActiveEditPageId);
     const createCheckpoint = useHistoryStore((s) => s.createCheckpoint);
@@ -128,6 +133,17 @@ export function StudioInPlaceEditor({ stageRef }: StudioInPlaceEditorProps) {
             };
             const finalEvent = await runtime.workerOrchestrator.dispatch(command);
             if (finalEvent.payload.type === 'STUDIO_TEXT_EDITS_APPLIED') {
+                const redactPayload = finalEvent.payload.payload.redactVerify;
+                if (redactPayload && editSession) {
+                    const verifyState = parseWorkerRedactVerify(redactPayload, crypto.randomUUID());
+                    trackRedactVerifyTelemetry(runtime.telemetry, verifyState);
+                    updateDocument(editSession.docId, { lastRedactVerify: verifyState });
+                    if (!verifyState.passed) {
+                        setMessage('Redaction checks incomplete — PDF download allowed, certificate only when all pass.');
+                    }
+                } else if (editSession) {
+                    updateDocument(editSession.docId, { lastRedactVerify: undefined });
+                }
                 const preview = await defaultFilePreviewService.getPdfPagePreview(
                     runtime,
                     finalEvent.payload.payload.outputId,

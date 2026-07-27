@@ -1,6 +1,6 @@
 # Active Tasks
 
-Last updated: 2026-07-24
+Last updated: 2026-07-27
 
 ## Status legend
 - `[ ]` — not started
@@ -37,10 +37,13 @@ Last updated: 2026-07-24
 | 8a | Noindex dead blog wave 2 | [x] | ocr-extract, how-to-merge, convert-word + /blog hub; sitemap + internal links → features |
 | 8b | Fix audit orphans + Offer validFrom | [x] | 2026-07-24: hub links /features /compare /auto-toc /three-way; trim long metas; pricing Offer.validFrom; drop fake AggregateRating |
 | 8c | Link 4 orphan blog posts | [x] | superseded by 8d — blog noindex wave 3 |
-| 8d | Noindex all blog cannibals | [~] | 2026-07-24: all 22 blog posts noindex+sitemap drop; internal links → features |
+| 8d | Noindex all blog cannibals | [x] | 2026-07-24: all 22 blog posts noindex+sitemap drop; internal links → features |
 | 9 | Show HN post | Low | Product Hunt / Hacker News launch |
 | 10 | LemonSqueezy webhook → PostHog | Medium | Revenue attribution in analytics |
 | 11 | Email capture | Low | Lead nurture for free users |
 | 12 | Fix protect-pdf encrypted error | Medium | 4/5 fail: `Input document to PDFDocument.load is encrypted` |
 | 13 | PDF Info tool | [x] | Local PDF inspector: pages, version, encryption, fonts, XMP self-declared claim |
 | 14 | PDF/A Converter (Pro) | [ ] | Ghostscript → PDF/A-1b → VeraPDF validate → download. Server opt-in |
+| 15 | Verified Redact + Certificate (engine) | [x] | Worker verify after text edits; `redact-verify/` 4 checks + cert v1; entitlement `pdf.redact.verify`; telemetry types. Non-blocking on fail. |
+| 15a | Redact verify UI + block download | [x] | Download modal 4/4 + fail blocks export/share; Pro cert JSON; Free paywall `REDACT_CERT_*`; store `lastRedactVerify` on doc |
+| 15b | SEO /features/verify-pdf-redaction | [ ] | After 15a ships and we see verify runs in PostHog |

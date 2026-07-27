@@ -10,6 +10,7 @@ import { inferSourceTextStyle } from '../../../../../shared/studio-text-edit/inf
 import { buildOriginalRect } from '../../../../../shared/studio-text-edit/original-rect';
 import { clamp01 } from '../../../utils/studio-edit-math';
 import { findNearestTextSpan } from '../inline-text-utils';
+import { snapOverlayTextToBaselines } from '../text-baseline-snap';
 
 const DEFAULT_PAGE_HEIGHT_PT = 842;
 const DEFAULT_PAGE_WIDTH_PT = 612;
@@ -19,35 +20,45 @@ function clamp(value: number, min: number, max: number): number {
 }
 
 function estimateNewTextBoxSize(fontSize: number, lineHeight: number): { w: number; h: number } {
-  const h = clamp((fontSize * Math.max(1.2, lineHeight) * 1.1) / DEFAULT_PAGE_HEIGHT_PT, 0.025, 0.25);
-  const w = clamp((fontSize * 14) / DEFAULT_PAGE_WIDTH_PT, 0.12, 0.65);
+  // Tight box: ~glyph height, width grows as the user types (editor resizes).
+  const h = clamp((fontSize * Math.max(1.0, Math.min(lineHeight, 1.15))) / DEFAULT_PAGE_HEIGHT_PT, 0.014, 0.2);
+  const w = clamp((fontSize * 6) / DEFAULT_PAGE_WIDTH_PT, 0.06, 0.45);
   return { w, h };
+}
+
+function isOpaqueBackground(color: string | undefined): boolean {
+  const value = (color || '').trim().toLowerCase();
+  return value !== '' && value !== 'transparent' && value !== 'none';
+}
+
+/** Keep whiteout tight to the glyph box so small fonts don't eat neighboring lines. */
+function textBackgroundPad(spanW: number, spanH: number): { padX: number; padY: number } {
+  return {
+    padX: Math.min(0.0025, Math.max(0.0008, spanW * 0.03)),
+    padY: Math.min(0.0009, Math.max(0.0003, spanH * 0.04)),
+  };
 }
 
 function createNewTextAtPoint(ctx: ToolContext, x: number, y: number): void {
   const textId = crypto.randomUUID();
   const { w, h } = estimateNewTextBoxSize(ctx.textStyle.fontSize, ctx.textStyle.lineHeight);
-
-  const whiteout: RectElement = {
-    id: `${textId}_bg`,
-    type: 'rect',
-    x: clamp01(x - 0.004),
-    y: clamp01(y - 0.001),
-    w: w + 0.008,
-    h: h + 0.004,
-    fill: ctx.textStyle.backgroundColor || '#ffffff',
-    stroke: 'transparent',
-    strokeWidth: 0,
-    opacity: 1,
-  };
-
+  const bgColor = ctx.textStyle.backgroundColor;
+  const pageHeightPt = ctx.textLayerSpans.find((span) => span.pageHeightPt)?.pageHeightPt
+    ?? DEFAULT_PAGE_HEIGHT_PT;
+  const snap = snapOverlayTextToBaselines({
+    y: clamp01(y),
+    fontSize: ctx.textStyle.fontSize,
+    lineHeight: ctx.textStyle.lineHeight,
+    pageHeightPt,
+    spans: ctx.textLayerSpans,
+  });
   const next: TextElement = {
     id: textId,
     type: 'text',
     x: clamp01(x),
-    y: clamp01(y),
-    w,
-    h,
+    y: snap.y,
+    w: Math.max(w, 0.08),
+    h: Math.max(h, 0.022),
     text: '',
     color: ctx.textStyle.color,
     fontSize: ctx.textStyle.fontSize,
@@ -58,16 +69,33 @@ function createNewTextAtPoint(ctx: ToolContext, x: number, y: number): void {
     letterSpacing: ctx.textStyle.letterSpacing,
     textAlign: 'left',
     opacity: 1,
+    baselineRatio: snap.baselineRatio,
   };
 
-  ctx.applyElements([...ctx.elements, whiteout, next]);
+  // New overlay text: no white field by default — it covers the document for no reason.
+  const batch: Array<TextElement | RectElement> = [next];
+  if (isOpaqueBackground(bgColor)) {
+    const { padX, padY } = textBackgroundPad(next.w, next.h);
+    batch.unshift({
+      id: `${textId}_bg`,
+      type: 'rect',
+      x: clamp01(x - padX),
+      y: clamp01(y - padY),
+      w: next.w + padX * 2,
+      h: next.h + padY * 2,
+      fill: bgColor,
+      stroke: 'transparent',
+      strokeWidth: 0,
+      opacity: 1,
+    });
+  }
+
+  ctx.applyElements([...ctx.elements, ...batch]);
   ctx.setSelectedElementId(next.id);
   ctx.setTextAddMode(false);
-  if (ctx.textInteractionMode === 'edit') {
-    ctx.startEditingText(next);
-  } else {
-    ctx.setInlineUiState('selected');
-  }
+  // Always open the editor for a fresh box so the caret/placeholder is visible.
+  ctx.startEditingText(next);
+  ctx.setInlineUiState('editing');
 }
 
 export const TextTool: IEditorTool = {
@@ -76,14 +104,16 @@ export const TextTool: IEditorTool = {
     if (ctx.textEditor) ctx.commitTextEditor();
     ctx.setIsPointerDown(true);
 
-    const clickedSpan = findNearestTextSpan({ x, y }, ctx.textLayerSpans);
-    if (clickedSpan) {
-      selectTextSpanForEditing(ctx, clickedSpan);
+    // Add-text mode must win over nearby PDF spans — otherwise clicks on dense
+    // pages never create a box (every click latches onto existing text).
+    if (ctx.textAddMode) {
+      createNewTextAtPoint(ctx, x, y);
       return;
     }
 
-    if (ctx.textAddMode) {
-      createNewTextAtPoint(ctx, x, y);
+    const clickedSpan = findNearestTextSpan({ x, y }, ctx.textLayerSpans);
+    if (clickedSpan) {
+      selectTextSpanForEditing(ctx, clickedSpan);
       return;
     }
 
@@ -144,17 +174,23 @@ function selectTextSpanForEditing(ctx: ToolContext, clickedSpan: TextLayerSpan) 
   }
 
   const textId = crypto.randomUUID();
+  const { padX, padY } = textBackgroundPad(w, h);
 
   const whiteout: RectElement = {
     id: `${textId}_bg`,
     type: 'rect',
-    x: clamp01(left - 0.005), y: clamp01(top - 0.001),
-    w: w + 0.01, h: h + 0.006,
-    fill: ctx.textStyle.backgroundColor || '#ffffff', stroke: 'transparent', strokeWidth: 0, opacity: 1,
+    x: clamp01(left - padX),
+    y: clamp01(top - padY),
+    w: w + padX * 2,
+    h: h + padY * 2,
+    fill: ctx.textStyle.backgroundColor || '#ffffff',
+    stroke: 'transparent',
+    strokeWidth: 0,
+    opacity: 1,
   };
 
   const next: TextElement = {
-    id: textId, type: 'text', x: left, y: top, w: w + 0.05, h: h + 0.01,
+    id: textId, type: 'text', x: left, y: top, w: w + Math.min(0.02, Math.max(0.008, w * 0.12)), h,
     text: mergedLine.text, color: ctx.textStyle.color || '#000000',
     fontSize: estimateInlineFontSizePt(mergedLine.fontSizeRatio, mergedLine.pageHeightPt ?? DEFAULT_PAGE_HEIGHT_PT),
     fontFamily: resolveFontFamily(mergedLine.fontName, mergedLine.fontFamilyHint),

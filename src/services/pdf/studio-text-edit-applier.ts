@@ -987,28 +987,65 @@ export async function applyStudioTextEditsToPdfBytes(params: {
 
     const lineHeightPt = Math.max(1, renderFontSize * Math.max(0.8, lineHeightFactor));
 
-    const ascent = element.ascentRatio !== undefined
+    const ascentHint = element.ascentRatio !== undefined
       ? element.ascentRatio * pageHeight
       : element.ascent !== undefined
         ? element.ascent
-        : renderFontSize * 0.82;
+        : undefined;
+
+    let ascent = ascentHint ?? renderFontSize * 0.8;
+    try {
+      const fontAscent = font.heightAtSize(renderFontSize, { descender: false });
+      if (Number.isFinite(fontAscent) && fontAscent > 0) {
+        // Prefer embedded font ascent for overlay text so Save matches the preview baseline.
+        if (!element.originalRect && !element.sourceFontName) {
+          ascent = fontAscent;
+        } else if (ascentHint === undefined) {
+          ascent = fontAscent;
+        }
+      }
+    } catch {
+      // keep fallback ascent
+    }
 
     const descent = element.descentRatio !== undefined
       ? element.descentRatio * pageHeight
-      : renderFontSize * 0.18;
+      : renderFontSize * 0.2;
 
-    const baseY = pageHeight - yTop - ascent;
+    const isOverlayText = !element.originalRect && !element.sourceFontName;
+    let baseY: number;
+    if (typeof element.baselineRatio === 'number' && Number.isFinite(element.baselineRatio)) {
+      // Snapped to a PDF text-layer baseline — use it directly (WYSIWYG after Save).
+      baseY = pageHeight - clamp(element.baselineRatio, 0, 1) * pageHeight;
+    } else {
+      // Editor positions the box by CSS top; glyphs sit inside the first line-box
+      // (half-leading + em ascent). pdf-lib drawText uses the alphabetic baseline.
+      const lineBox = renderFontSize * Math.max(1, lineHeightFactor);
+      const halfLeading = isOverlayText ? Math.max(0, (lineBox - renderFontSize) / 2) : 0;
+      const baselineFromTop = halfLeading + ascent;
+      baseY = pageHeight - yTop - baselineFromTop;
+    }
 
-    const whiteoutPadX = Math.min(2, blockWidth * 0.008);
-    page.drawRectangle({
-      x: element.x * pageWidth - whiteoutPadX,
-      y: baseY - descent,
-      width: blockWidth + whiteoutPadX * 2,
-      height: ascent + descent,
-      color: rgb(1, 1, 1),
-      opacity: 1,
-      borderWidth: 0,
-    });
+    // Prefer the linked `_bg` rect from the editor; avoid a second oversized whiteout here.
+    // Brand-new overlay text (no originalRect) must NOT paint a white field — it covers the page.
+    const hasLinkedBackground = params.elements.some(
+      (candidate) => candidate.type === 'rect' && candidate.id === `${element.id}_bg`,
+    );
+    const isReplacingExistingPdfText = Boolean(element.originalRect || element.sourceFontName);
+    if (!hasLinkedBackground && isReplacingExistingPdfText) {
+      const whiteoutPadX = Math.min(1.5, blockWidth * 0.006);
+      const whiteoutHeight = Math.min(ascent + descent, renderFontSize * 1.12);
+      const whiteoutDescent = Math.min(descent, renderFontSize * 0.22);
+      page.drawRectangle({
+        x: element.x * pageWidth - whiteoutPadX,
+        y: baseY - whiteoutDescent,
+        width: blockWidth + whiteoutPadX * 2,
+        height: whiteoutHeight,
+        color: rgb(1, 1, 1),
+        opacity: 1,
+        borderWidth: 0,
+      });
+    }
 
     for (let lineIndex = 0; lineIndex < textLayout.lines.length; lineIndex += 1) {
       const layoutLine = textLayout.lines[lineIndex]!;
@@ -1236,6 +1273,31 @@ export async function applyStudioTextEditsToPdfBytes(params: {
   }
 
   async function processRectElement(element: WorkerStudioRectEditElement): Promise<void> {
+    // Intentional whiteout = true redaction: remove text operators under the rect, then paint.
+    if (isAutoWhiteoutRect(element) && streamState) {
+      const rect = { x: element.x, y: element.y, w: element.w, h: element.h };
+      // Prefer loose bbox match for paint-redact; baseline-only collector is tuned for text replace.
+      let operators = collectOperatorsInRect({
+        decodedByStream: streamState.decodedByStream,
+        pageWidth,
+        pageHeight,
+        rect,
+      });
+      if (operators.length === 0) {
+        operators = collectOperatorsForRedaction({
+          decodedByStream: streamState.decodedByStream,
+          pageWidth,
+          pageHeight,
+          rect,
+        });
+      }
+      if (operators.length > 0) {
+        const modifiedStreamIndices = new Set(operators.map((item) => item.streamIndex));
+        redactOperatorsInDecodedStreams(streamState.decodedByStream, operators);
+        persistDecodedStreamChanges(streamState, modifiedStreamIndices);
+      }
+    }
+
     const sx = element.x * pageWidth;
     const sy = pageHeight - ((element.y + element.h) * pageHeight);
     const sw = element.w * pageWidth;

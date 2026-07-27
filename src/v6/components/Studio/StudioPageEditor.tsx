@@ -25,6 +25,7 @@ import { TOOLS, ToolContext } from './tools';
 import { finalizeAnnotatePenDraft, hasAnnotatePenDraft } from './tools/AnnotateTool';
 import { finalizeSignatureDraft, hasSignatureDraft } from './tools/SignTool';
 import { isLinkedTextBackground, moveTextWithBackground, resizeTextWithBackground } from './text-element-layout';
+import { snapOverlayTextToBaselines } from './text-baseline-snap';
 
 export interface StudioPageEditorHandle {
     commitPendingSignDraft: () => boolean;
@@ -141,7 +142,7 @@ export const StudioPageEditor = forwardRef<StudioPageEditorHandle, StudioPageEdi
         lineHeight: 1.2,
         letterSpacing: 0,
         color: '#0f172a',
-        backgroundColor: '#ffffff'
+        backgroundColor: 'transparent'
     },
     watermarkOptions = {
         text: 'CONFIDENTIAL',
@@ -189,6 +190,8 @@ export const StudioPageEditor = forwardRef<StudioPageEditorHandle, StudioPageEdi
     const [isPointerDown, setIsPointerDown] = useState(false);
     const [draftRect, setDraftRect] = useState<RectDraft | null>(null);
     const [draftStroke, setDraftStroke] = useState<StrokeDraft | null>(null);
+    const [baselineGuides, setBaselineGuides] = useState<number[]>([]);
+    const [activeBaselineGuide, setActiveBaselineGuide] = useState<number | null>(null);
 
     const textSelectionMode = externalTextSelectionMode ?? 'line';
     const textInteractionMode = externalTextInteractionMode ?? 'edit';
@@ -450,6 +453,24 @@ export const StudioPageEditor = forwardRef<StudioPageEditorHandle, StudioPageEdi
             data-is-select-mode={isSelectMode}
             data-text-layer-len={textLayerSpans.length}
         >
+            {baselineGuides.map((guide) => (
+                <div
+                    key={`baseline-guide-${guide}`}
+                    data-testid="studio-baseline-guide"
+                    style={{
+                        position: 'absolute',
+                        left: 0,
+                        right: 0,
+                        top: `${guide * 100}%`,
+                        height: 0,
+                        borderTop: activeBaselineGuide !== null && Math.abs(activeBaselineGuide - guide) < 0.0005
+                            ? '1.5px solid rgba(37, 99, 235, 0.95)'
+                            : '1px dashed rgba(37, 99, 235, 0.35)',
+                        pointerEvents: 'none',
+                        zIndex: 1200,
+                    }}
+                />
+            ))}
 
             {/* Built-in Toolbar (Moved to StudioEditWorkspace) */}
 
@@ -559,8 +580,23 @@ export const StudioPageEditor = forwardRef<StudioPageEditorHandle, StudioPageEdi
                                 const dx = (e.clientX - sess.startClientX) / width;
                                 const dy = (e.clientY - sess.startClientY) / height;
                                 const nextX = clamp01(sess.originX + dx);
-                                const nextY = clamp01(sess.originY + dy);
-                                applyElements(moveTextWithBackground(elements, el.id, nextX, nextY), false);
+                                const rawY = clamp01(sess.originY + dy);
+                                const pageHeightPt = textLayerSpans.find((span) => span.pageHeightPt)?.pageHeightPt ?? 842;
+                                const snap = snapOverlayTextToBaselines({
+                                    y: rawY,
+                                    fontSize: el.fontSize,
+                                    lineHeight: el.lineHeight,
+                                    pageHeightPt,
+                                    spans: textLayerSpans,
+                                });
+                                setBaselineGuides(snap.guides);
+                                setActiveBaselineGuide(snap.snapped ? (snap.baselineRatio ?? null) : null);
+                                const moved = moveTextWithBackground(elements, el.id, nextX, snap.y).map((item) => (
+                                    item.id === el.id && item.type === 'text'
+                                        ? { ...item, baselineRatio: snap.baselineRatio }
+                                        : item
+                                ));
+                                applyElements(moved, false);
                             } else if (sess && sess.id === el.id && sess.mode.startsWith('move-')) {
                                 const dx = (e.clientX - sess.startClientX) / width;
                                 const dy = (e.clientY - sess.startClientY) / height;
@@ -638,6 +674,8 @@ export const StudioPageEditor = forwardRef<StudioPageEditorHandle, StudioPageEdi
                             if (dragSessionRef.current && dragSessionRef.current.id === el.id) {
                                 finalizeDragSession(dragSessionRef.current);
                                 dragSessionRef.current = null;
+                                setBaselineGuides([]);
+                                setActiveBaselineGuide(null);
                                 try {
                                     (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
                                 } catch (err) { }
@@ -647,6 +685,8 @@ export const StudioPageEditor = forwardRef<StudioPageEditorHandle, StudioPageEdi
                             if (dragSessionRef.current && dragSessionRef.current.id === el.id) {
                                 finalizeDragSession(dragSessionRef.current);
                                 dragSessionRef.current = null;
+                                setBaselineGuides([]);
+                                setActiveBaselineGuide(null);
                                 try {
                                     (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
                                 } catch (err) { }
@@ -655,11 +695,21 @@ export const StudioPageEditor = forwardRef<StudioPageEditorHandle, StudioPageEdi
                     >
                         {el.type === 'text' && (
                             <div className="studio-edit-text" style={{
-                                fontSize: el.fontSize, color: el.color, fontFamily: toCssFontFamily(el.fontFamily),
+                                // fontSize is PDF points; preview raster height maps ≈ page points at scale≈1.
+                                fontSize: el.fontSize,
+                                color: el.color, fontFamily: toCssFontFamily(el.fontFamily),
                                 fontWeight: el.fontWeight, fontStyle: el.fontStyle, textAlign: el.textAlign,
-                                lineHeight: el.lineHeight, letterSpacing: el.letterSpacing,
-                                whiteSpace: 'nowrap', position: 'relative', display: 'grid',
+                                // Keep line-box math identical to export (half-leading + alphabetic baseline).
+                                lineHeight: el.lineHeight,
+                                letterSpacing: el.letterSpacing,
+                                whiteSpace: 'nowrap', position: 'relative', display: 'block',
                                 overflow: 'visible',
+                                margin: 0,
+                                padding: 0,
+                                outline: selectedElementId === el.id ? '1px solid rgba(37, 99, 235, 0.55)' : undefined,
+                                outlineOffset: 2,
+                                minWidth: 48,
+                                minHeight: Math.max(18, el.fontSize * 1.1),
                                 cursor: selectedElementId === el.id && textEditor?.id !== el.id ? 'grab' : 'text',
                             }}>
                                 {selectedElementId === el.id && textEditor?.id !== el.id && (
@@ -688,11 +738,11 @@ export const StudioPageEditor = forwardRef<StudioPageEditorHandle, StudioPageEdi
                                 )}
                                 {textEditor?.id === el.id ? (
                                     <>
-                                        {/* Mirror span for auto-growth */}
                                         <span style={{
-                                            gridArea: '1/1', visibility: 'hidden', whiteSpace: 'nowrap',
+                                            visibility: 'hidden', whiteSpace: 'nowrap', display: 'block',
                                             padding: 0, border: 'none', font: 'inherit', letterSpacing: 'inherit',
-                                            minWidth: '50px' // Ensure some clickable area
+                                            lineHeight: 'inherit',
+                                            minWidth: '50px',
                                         }}>
                                             {textEditor.value || ' '}
                                         </span>
@@ -703,7 +753,7 @@ export const StudioPageEditor = forwardRef<StudioPageEditorHandle, StudioPageEdi
                                             value={textEditor.value}
                                             onChange={(e) => handleTextEditorChange(el.id, e.target.value)}
                                             style={{
-                                                gridArea: '1/1', width: '100%', height: '100%',
+                                                position: 'absolute', inset: 0, width: '100%', height: '100%',
                                                 background: 'none', border: 'none', resize: 'none', outline: 'none',
                                                 padding: 0, margin: 0, font: 'inherit', color: 'inherit',
                                                 lineHeight: 'inherit', letterSpacing: 'inherit',

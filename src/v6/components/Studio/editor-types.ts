@@ -28,6 +28,8 @@ export interface TextElement {
     sourceFontName?: string;
     sourceFontFamilyHint?: string;
     sourceFontSizeRatio?: number;
+    /** Page-top ratio of alphabetic baseline when snapped to a PDF text guide. */
+    baselineRatio?: number;
     originalRect?: {
         x: number;
         y: number;

@@ -3,13 +3,15 @@ import { useStudioStore, type PageItem, type StudioDocument, type StudioState } 
 import { usePlatform } from './platform-context';
 import { PipelineRunner } from '../../v6/studio/pipeline/PipelineRunner';
 import type { IPipelineRecipe } from '../../v6/studio/pipeline/types';
-import { openBillingPlans } from './billing';
+import { openBillingPlans, openCheckout } from './billing';
 import { getOrCreateFlowId } from '../platform/browser-context';
 import { StudioDownloadModal } from './StudioDownloadModal';
 import { getTrialState } from '../platform/trial-manager';
 import { TrialBanner } from './trial-banner';
 import QRCode from 'qrcode';
 import { APP_BASE_PATH } from '../../../shared/app-routes';
+import { downloadCertificateJson } from '../../v6/utils/redact-verify-ui';
+import { trackMonetizationEvent } from './monetization-telemetry';
 
 function truncateFileName(name: string, maxLen = 22): string {
   if (name.length <= maxLen) return name;
@@ -189,6 +191,26 @@ export function StudioTopNav({ telemetryEnabled, onToggleTelemetry, telemetryOpe
     setDownloadTargetDocumentId(activeDocument.id);
     setDownloadFileName(activeDocument.name);
     setIsDownloadModalOpen(true);
+
+    const verify = activeDocument.lastRedactVerify;
+    const canCert = billingContext.entitlements.includes('pdf.redact.verify');
+    if (verify?.passed && verify.certificateJson && !canCert) {
+      const runId = verify.runId || crypto.randomUUID();
+      runtime.telemetry.track({
+        type: 'REDACT_CERT_PAYWALL',
+        runId,
+        toolId: 'studio.edit.redact',
+        action: 'shown',
+      });
+      trackMonetizationEvent('paywall_shown', {
+        source: 'redact_certificate',
+        toolId: 'studio.edit.redact',
+        trigger: 'cert_download',
+        userState: 'local',
+        hadPriorSuccessfulRun: true,
+        flowId: runId,
+      });
+    }
   };
 
   const handleShareToPhone = async (
@@ -326,6 +348,50 @@ export function StudioTopNav({ telemetryEnabled, onToggleTelemetry, telemetryOpe
     }
   };
 
+  const downloadTargetDocument = useMemo(() => {
+    return downloadTargetDocumentId
+      ? documents.find((doc: StudioDocument) => doc.id === downloadTargetDocumentId) ?? null
+      : activeDocument;
+  }, [activeDocument, documents, downloadTargetDocumentId]);
+
+  const redactVerify = downloadTargetDocument?.lastRedactVerify ?? null;
+  const canDownloadCertificate = billingContext.entitlements.includes('pdf.redact.verify');
+
+  const handleDownloadCertificate = (): void => {
+    if (!redactVerify?.certificateJson || !downloadTargetDocument) {
+      return;
+    }
+    downloadCertificateJson(redactVerify.certificateJson, downloadTargetDocument.name);
+    runtime.telemetry.track({
+      type: 'REDACT_CERT_DOWNLOAD',
+      runId: redactVerify.runId || crypto.randomUUID(),
+      toolId: 'studio.edit.redact',
+    });
+  };
+
+  const handleCertificatePaywall = (): void => {
+    const runId = redactVerify?.runId || crypto.randomUUID();
+    runtime.telemetry.track({
+      type: 'REDACT_CERT_PAYWALL',
+      runId,
+      toolId: 'studio.edit.redact',
+      action: 'cta_clicked',
+    });
+    trackMonetizationEvent('paywall_cta_clicked', {
+      source: 'redact_certificate',
+      toolId: 'studio.edit.redact',
+      trigger: 'cert_download',
+      userState: 'local',
+      hadPriorSuccessfulRun: true,
+      flowId: runId,
+    });
+    openCheckout(import.meta.env.VITE_LS_CHECKOUT_URL_PRO_MONTHLY, {
+      source: 'redact_certificate',
+      trigger: 'cert_download',
+      flowId: runId,
+    });
+  };
+
   return (
     <div className="studio-top-nav-container">
       <TrialBanner />
@@ -458,6 +524,10 @@ export function StudioTopNav({ telemetryEnabled, onToggleTelemetry, telemetryOpe
       <StudioDownloadModal
         isOpen={isDownloadModalOpen}
         fileName={downloadFileName}
+        redactVerify={redactVerify}
+        canDownloadCertificate={canDownloadCertificate}
+        onDownloadCertificate={handleDownloadCertificate}
+        onCertificatePaywall={handleCertificatePaywall}
         onClose={() => {
           setIsDownloadModalOpen(false);
           setDownloadTargetDocumentId(null);

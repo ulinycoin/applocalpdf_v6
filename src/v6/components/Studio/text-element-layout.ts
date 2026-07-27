@@ -17,7 +17,7 @@ function readBackgroundPadding(
   background: EditElement | undefined,
 ): { padX: number; padY: number; padW: number; padH: number } {
   if (!background || background.type !== 'rect' || !('x' in background)) {
-    return { padX: -0.004, padY: -0.001, padW: 0.008, padH: 0.004 };
+    return { padX: -0.002, padY: -0.0005, padW: 0.004, padH: 0.001 };
   }
   return {
     padX: background.x - text.x,

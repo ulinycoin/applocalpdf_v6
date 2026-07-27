@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
+import type { StudioDocumentRedactVerify } from '../../v6/components/Studio/store/studio-store-types';
 
 interface StudioDownloadModalProps {
   isOpen: boolean;
@@ -6,11 +7,31 @@ interface StudioDownloadModalProps {
   onClose: () => void;
   onDownload: (filename: string) => void;
   onShare: (filename: string, onProgress: (msg: string) => void) => Promise<{ qrCodeUrl: string; shareLink: string }>;
+  redactVerify?: StudioDocumentRedactVerify | null;
+  canDownloadCertificate?: boolean;
+  onDownloadCertificate?: () => void;
+  onCertificatePaywall?: () => void;
 }
 
 type ModalMode = 'input' | 'processing' | 'ready' | 'error';
 
-export function StudioDownloadModal({ isOpen, fileName, onClose, onDownload, onShare }: StudioDownloadModalProps) {
+function checkTone(result: string): string {
+  if (result === 'pass') return '#2b8a3e';
+  if (result === 'skip') return 'var(--text-muted)';
+  return 'var(--red, #c92a2a)';
+}
+
+export function StudioDownloadModal({
+  isOpen,
+  fileName,
+  onClose,
+  onDownload,
+  onShare,
+  redactVerify = null,
+  canDownloadCertificate = false,
+  onDownloadCertificate,
+  onCertificatePaywall,
+}: StudioDownloadModalProps) {
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [mode, setMode] = useState<ModalMode>('input');
   const [statusMessage, setStatusMessage] = useState('');
@@ -18,6 +39,9 @@ export function StudioDownloadModal({ isOpen, fileName, onClose, onDownload, onS
   const [shareLink, setShareLink] = useState('');
   const [copied, setCopied] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+
+  const passedCount = redactVerify?.checks.filter((check) => check.result === 'pass').length ?? 0;
+  const totalChecks = redactVerify?.checks.length ?? 0;
 
   useEffect(() => {
     if (!isOpen) {
@@ -104,21 +128,69 @@ export function StudioDownloadModal({ isOpen, fileName, onClose, onDownload, onS
               autoComplete="off"
               spellCheck={false}
             />
+
+            {redactVerify && (
+              <div className="studio-redact-verify-panel" data-testid="studio-redact-verify-panel">
+                <div className="studio-redact-verify-title">
+                  {redactVerify.passed
+                    ? `Redaction verified · ${passedCount}/${totalChecks || 4} checks`
+                    : `Redaction not fully verified · ${passedCount}/${totalChecks || 4} checks`}
+                </div>
+                {!redactVerify.passed && (
+                  <p className="studio-redact-verify-hint">
+                    Text may still be extractable under the whiteout. You can download the PDF; a verification certificate is only available when all checks pass.
+                  </p>
+                )}
+                <ul className="studio-redact-verify-list">
+                  {redactVerify.checks.map((check) => (
+                    <li key={check.id} style={{ color: checkTone(check.result) }}>
+                      <span>{check.label}</span>
+                      <span>{check.result}</span>
+                    </li>
+                  ))}
+                </ul>
+                {redactVerify.passed && redactVerify.certificateJson && (
+                  <div className="studio-redact-verify-cert-row">
+                    {canDownloadCertificate ? (
+                      <button
+                        type="button"
+                        className="studio-download-modal-ghost"
+                        onClick={onDownloadCertificate}
+                        data-testid="studio-redact-cert-download"
+                      >
+                        Download certificate.json
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        className="studio-download-modal-ghost"
+                        onClick={onCertificatePaywall}
+                        data-testid="studio-redact-cert-paywall"
+                        style={{ borderColor: 'var(--accent)', color: 'var(--accent)' }}
+                      >
+                        Certificate — Upgrade to Pro
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
             <div className="studio-download-modal-actions" style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
               <button type="button" className="studio-download-modal-ghost" onClick={onClose}>
                 Cancel
               </button>
-              
-              <button 
-                type="button" 
-                className="studio-download-modal-ghost" 
-                onClick={handleShareToPhone}
-                style={{ 
-                  marginRight: 'auto', 
-                  display: 'flex', 
-                  alignItems: 'center', 
+
+              <button
+                type="button"
+                className="studio-download-modal-ghost"
+                onClick={() => { void handleShareToPhone(); }}
+                style={{
+                  marginRight: 'auto',
+                  display: 'flex',
+                  alignItems: 'center',
                   gap: '6px',
-                  borderColor: '#ced4da' 
+                  borderColor: '#ced4da',
                 }}
               >
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -128,7 +200,11 @@ export function StudioDownloadModal({ isOpen, fileName, onClose, onDownload, onS
                 Share to Phone
               </button>
 
-              <button type="submit" className="studio-download-modal-primary">
+              <button
+                type="submit"
+                className="studio-download-modal-primary"
+                data-testid="studio-download-submit"
+              >
                 Download
               </button>
             </div>
@@ -164,7 +240,7 @@ export function StudioDownloadModal({ isOpen, fileName, onClose, onDownload, onS
         {mode === 'ready' && qrCodeUrl && (
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%', padding: '5px 0' }}>
             <div style={{ fontSize: '14px', fontWeight: 700, marginBottom: '12px', color: 'var(--text)' }}>Scan to Download</div>
-            
+
             <div style={{ background: '#ffffff', padding: '8px', borderRadius: '8px', border: '1px solid var(--border)', marginBottom: '12px' }}>
               <img src={qrCodeUrl} alt="QR Code" style={{ width: '180px', height: '180px', display: 'block' }} />
             </div>
@@ -175,23 +251,23 @@ export function StudioDownloadModal({ isOpen, fileName, onClose, onDownload, onS
               </svg>
               E2EE Secure Link
             </div>
-            
+
             <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '16px' }}>
               Expires in 60 minutes · Auto-destructs after download
             </div>
 
             <div style={{ display: 'flex', gap: '8px', width: '100%' }}>
-              <button 
-                type="button" 
-                onClick={handleCopyLink} 
+              <button
+                type="button"
+                onClick={() => { void handleCopyLink(); }}
                 className="studio-download-modal-ghost"
-                style={{ 
-                  flex: 1, 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  justifyContent: 'center', 
+                style={{
+                  flex: 1,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
                   gap: '6px',
-                  fontSize: '12px' 
+                  fontSize: '12px',
                 }}
               >
                 {copied ? (
@@ -211,7 +287,7 @@ export function StudioDownloadModal({ isOpen, fileName, onClose, onDownload, onS
                   </>
                 )}
               </button>
-              
+
               <button type="button" className="studio-download-modal-primary" onClick={onClose} style={{ flex: 1, fontSize: '12px' }}>
                 Close
               </button>

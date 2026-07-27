@@ -36,6 +36,12 @@ import {
   filterTextLayerSpansByEditedElements,
   isStudioTextEditV2Enabled,
 } from '../../../../../shared/studio-text-edit';
+import {
+  mergeRedactVerifyStates,
+  parseWorkerRedactVerify,
+  trackRedactVerifyTelemetry,
+  type StudioRedactVerifyState,
+} from '../../../utils/redact-verify-ui';
 
 const STUDIO_TOOL_CONTEXT = {
     userId: 'studio-user',
@@ -164,6 +170,7 @@ export function useStudioEditController(ui: any) {
     const studioViewScale = useStudioStore((s) => s.studioViewScale);
     const studioViewPosition = useStudioStore((s) => s.studioViewPosition);
     const updatePage = useStudioStore((s) => s.updatePage);
+    const updateDocument = useStudioStore((s) => s.updateDocument);
     const editSession = useStudioStore((s) => s.editSession);
     const clearEditSession = useStudioStore((s) => s.clearEditSession);
     const updateEditSessionTool = useStudioStore((s) => s.updateEditSessionTool);
@@ -233,7 +240,7 @@ export function useStudioEditController(ui: any) {
         lineHeight: 1.2,
         letterSpacing: 0,
         color: '#0f172a',
-        backgroundColor: '#ffffff'
+        backgroundColor: 'transparent'
     });
     const [watermarkOptions, setWatermarkOptions] = useState<{
         text: string;
@@ -579,6 +586,7 @@ export function useStudioEditController(ui: any) {
         try {
             const failureDetails: string[] = [];
             const checkpointEntries: SaveCheckpointEntry[] = [];
+            const redactByDoc = new Map<string, StudioRedactVerifyState | null>();
 
             for (const target of targets) {
                 try {
@@ -606,6 +614,18 @@ export function useStudioEditController(ui: any) {
                             code: `STUDIO_TRUE_REPLACE_FALLBACK_${finalEvent.payload.payload.trueReplaceFallbackReason}`, message: 'True replace fallback path used',
                         });
                     }
+                    const redactPayload = finalEvent.payload.payload.redactVerify;
+                    if (redactPayload) {
+                        const nextVerify = parseWorkerRedactVerify(redactPayload, runId);
+                        trackRedactVerifyTelemetry(runtime.telemetry, nextVerify);
+                        redactByDoc.set(
+                            target.docId,
+                            mergeRedactVerifyStates(redactByDoc.get(target.docId) ?? null, nextVerify),
+                        );
+                    } else if (!redactByDoc.has(target.docId)) {
+                        // No redact ops in this apply — clear any stale verify state.
+                        redactByDoc.set(target.docId, null);
+                    }
                     const previewPromise = defaultFilePreviewService.getPdfPagePreview(runtime, finalEvent.payload.payload.outputId, target.page.pageIndex + 1, { scale: 2 });
                     const previewData = await Promise.race([previewPromise, new Promise<null>((resolve) => setTimeout(() => resolve(null), 8000))]);
                     const nextThumbnailUrl = previewData?.thumbnailUrl ?? target.page.thumbnailUrl;
@@ -623,6 +643,10 @@ export function useStudioEditController(ui: any) {
                 }
             }
             if (failureCount > 0 && failureCount === targets.length) throw new Error(failureDetails[0] ?? ui.saveFailed);
+
+            for (const [docId, verifyState] of redactByDoc) {
+                updateDocument(docId, { lastRedactVerify: verifyState ?? undefined });
+            }
 
             setInlineUiState(failureCount > 0 ? 'error' : 'saved');
             setTextEditor(null);
@@ -655,13 +679,16 @@ export function useStudioEditController(ui: any) {
                 pagesTotal: targets.length, pagesSucceeded: targets.length - failureCount, pagesFailed: failureCount, overflowCount, message: failureCount > 0 ? ui.partialSaveFailed : ui.changesApplied,
             });
 
+            const verifyFailed = Array.from(redactByDoc.values()).some((state) => state && !state.passed);
             if (targets.length > 1) {
                 const baseMessage = `${ui.changesAppliedSelection} ${targets.length}`;
                 const overflowMessage = overflowCount > 0 ? ` ${ui.overflowWarning}` : '';
                 const partialMessage = failureCount > 0 ? ` ${ui.partialSaveFailed}` : '';
-                setMessage(`${baseMessage}.${overflowMessage}${partialMessage}`.trim());
+                const verifyMessage = verifyFailed ? ' Redaction checks incomplete — PDF download allowed, certificate only when all pass.' : '';
+                setMessage(`${baseMessage}.${overflowMessage}${partialMessage}${verifyMessage}`.trim());
             } else {
-                setMessage(overflowCount > 0 ? `${ui.changesApplied} ${ui.overflowWarning}` : ui.changesApplied);
+                const base = overflowCount > 0 ? `${ui.changesApplied} ${ui.overflowWarning}` : ui.changesApplied;
+                setMessage(verifyFailed ? `${base} Redaction checks incomplete — PDF download allowed, certificate only when all pass.` : base);
             }
         } catch (error) {
             setInlineUiState('error');

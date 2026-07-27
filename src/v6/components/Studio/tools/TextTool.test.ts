@@ -47,7 +47,7 @@ function createContext(overrides: Partial<ToolContext> = {}): ToolContext {
       lineHeight: 1.2,
       letterSpacing: 0,
       color: '#0f172a',
-      backgroundColor: '#ffffff',
+      backgroundColor: 'transparent',
     },
     watermarkOptions: {
       text: 'CONFIDENTIAL',
@@ -73,6 +73,33 @@ function createContext(overrides: Partial<ToolContext> = {}): ToolContext {
   return ctx;
 }
 
+test('TextTool add mode creates text even when a PDF span is nearby', () => {
+  const started: string[] = [];
+  const ctx = createContext({
+    textAddMode: true,
+    textInteractionMode: 'edit',
+    textLayerSpans: [{
+      id: 'span-1',
+      text: 'Hello',
+      xRatio: 0.2,
+      yRatio: 0.3,
+      widthRatio: 0.12,
+      heightRatio: 0.03,
+      fontSizeRatio: 0.02,
+      fontName: 'Helvetica',
+    }],
+    startEditingText: (element) => started.push(element.id),
+  });
+
+  TextTool.onPointerDown(ctx, {} as any, { x: 0.21, y: 0.31 });
+
+  assert.equal(started.length, 1);
+  assert.equal(ctx.elements.length, 1);
+  assert.equal(ctx.elements[0]?.type, 'text');
+  assert.equal(ctx.elements[0]?.text, '');
+  assert.equal(ctx.textAddMode, false);
+});
+
 test('TextTool starts editing after inserting text in add mode', () => {
   const started: string[] = [];
   const ctx = createContext({
@@ -84,10 +111,9 @@ test('TextTool starts editing after inserting text in add mode', () => {
   TextTool.onPointerDown(ctx, {} as any, { x: 0.2, y: 0.3 });
 
   assert.equal(started.length, 1);
-  assert.equal(ctx.elements.length, 2);
-  assert.equal(ctx.elements[0]?.type, 'rect');
-  assert.equal(ctx.elements[1]?.type, 'text');
-  assert.equal(ctx.elements[1]?.text, '');
+  assert.equal(ctx.elements.length, 1);
+  assert.equal(ctx.elements[0]?.type, 'text');
+  assert.equal(ctx.elements[0]?.text, '');
   assert.equal(ctx.textAddMode, false);
 });
 
@@ -133,7 +159,7 @@ test('TextTool stores originalRect when selecting existing text span', () => {
   });
 });
 
-test('TextTool keeps new text selected without auto-edit in move mode', () => {
+test('TextTool opens editor for new text even in move interaction mode', () => {
   const started: string[] = [];
   const states: string[] = [];
   const selected: string[] = [];
@@ -149,9 +175,9 @@ test('TextTool keeps new text selected without auto-edit in move mode', () => {
 
   TextTool.onPointerDown(ctx, {} as any, { x: 0.2, y: 0.3 });
 
-  assert.equal(started.length, 0);
-  assert.equal(states.at(-1), 'selected');
+  assert.equal(started.length, 1);
+  assert.equal(states.at(-1), 'editing');
   assert.equal(selected.length, 1);
-  assert.equal(ctx.elements.length, 2);
-  assert.equal(ctx.elements[1]?.type, 'text');
+  assert.equal(ctx.elements.length, 1);
+  assert.equal(ctx.elements[0]?.type, 'text');
 });

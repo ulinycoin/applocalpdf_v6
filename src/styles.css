@@ -4302,6 +4302,62 @@ textarea:focus-visible {
   transform: translateY(-1px);
 }
 
+.studio-download-modal-ghost:disabled,
+.studio-download-modal-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.studio-redact-verify-panel {
+  margin-top: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface, rgba(0, 0, 0, 0.02));
+}
+
+.studio-redact-verify-title {
+  font-size: 12px;
+  font-weight: 650;
+  color: var(--text);
+  margin-bottom: 8px;
+}
+
+.studio-redact-verify-hint {
+  margin: 0 0 8px;
+  font-size: 11px;
+  line-height: 1.35;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.studio-redact-verify-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.studio-redact-verify-list li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: lowercase;
+}
+
+.studio-redact-verify-cert-row {
+  margin-top: 10px;
+}
+
+.studio-redact-verify-cert-row .studio-download-modal-ghost {
+  width: 100%;
+}
+
 .studio-segmented {
   display: inline-flex;
   align-items: center;

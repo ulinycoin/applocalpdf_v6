@@ -11,6 +11,14 @@ export interface DetachedPageItem extends PageItem {
     y: number;
 }
 
+export interface StudioDocumentRedactVerify {
+    runId: string;
+    passed: boolean;
+    checks: Array<{ id: string; result: string; label: string }>;
+    certificateJson?: string;
+    updatedAt: number;
+}
+
 export interface StudioDocument {
     id: string;
     name: string;
@@ -20,6 +28,8 @@ export interface StudioDocument {
     isModified?: boolean;
     allowEmpty?: boolean;
     includeInExport?: boolean;
+    /** Latest redact verification from Studio text-edit apply; gates export when present. */
+    lastRedactVerify?: StudioDocumentRedactVerify;
 }
 
 export type StudioInteractionMode = 'edit' | 'convert' | null;

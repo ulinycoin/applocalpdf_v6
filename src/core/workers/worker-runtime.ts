@@ -6,6 +6,7 @@ import { scanPdfImageCandidatesFromBlob } from '../../services/pdf/pdf-image-ext
 import { applyStudioTextEditsToPdfBytes } from '../../services/pdf/studio-text-edit-applier';
 import { normalizeAndValidateStudioEditRequest } from '../../services/pdf/studio-text-edit-validation';
 import { toProtectInputError } from '../../services/pdf/protect-error-messages';
+import { shouldRunRedactVerify, verifyRedactedPdf } from '../../services/pdf/redact-verify';
 
 export interface WorkerRuntimeDeps {
   registry: GlobalRegistry;
@@ -132,6 +133,33 @@ export async function executeWorkerCommand(
       stableOutputBytes.set(outputBytes);
       const outputBlob = new Blob([stableOutputBytes.buffer], { type: 'application/pdf' });
       const outputEntry = await deps.fs.write(outputBlob);
+
+      // Run verify pipeline if any redaction elements exist
+      let redactVerify: {
+        passed: boolean;
+        checks: string[];
+        certificateJson?: string;
+      } | undefined;
+
+      const hasRedactOps = shouldRunRedactVerify(elements);
+
+      if (hasRedactOps) {
+        try {
+          const result = await verifyRedactedPdf(sourceBytes, stableOutputBytes, elements, 'studio', pageIndex);
+          redactVerify = {
+            passed: result.passed,
+            checks: result.checks.map((c) => `${c.id}:${c.result}`),
+            certificateJson: result.certificate ? JSON.stringify(result.certificate, null, 2) : undefined,
+          };
+        } catch {
+          // Verify failure is non-blocking — don't prevent download
+          redactVerify = {
+            passed: false,
+            checks: ['error:verify_crashed'],
+          };
+        }
+      }
+
       return {
         id: command.id,
         type: 'EVENT',
@@ -144,6 +172,7 @@ export async function executeWorkerCommand(
             overflowDetected,
             trueReplaceApplied,
             trueReplaceFallbackReason,
+            redactVerify,
           },
         },
       };

@@ -161,6 +161,8 @@ export interface WorkerStudioTextEditElement {
   sourceFontName?: string;
   sourceFontFamilyHint?: string;
   sourceFontSizeRatio?: number;
+  /** Page-top ratio of alphabetic baseline (for overlay text snapped to PDF guides). */
+  baselineRatio?: number;
   originalRect?: {
     x: number;
     y: number;
@@ -289,6 +291,11 @@ export type WorkerEventPayload =
       overflowDetected: boolean;
       trueReplaceApplied: boolean;
       trueReplaceFallbackReason?: string;
+      redactVerify?: {
+        passed: boolean;
+        checks: string[];
+        certificateJson?: string;
+      };
     };
   }
   | { type: 'ERROR'; payload: { message: string; code?: string } };
@@ -348,4 +355,8 @@ export type RunnerTelemetryEvent =
   | { type: 'APP_FILE_UPLOADED'; flowId: string; toolId: string; fileCount: number; mimeCategory: string; totalBytes: number; source: 'wizard' | 'studio' }
   | { type: 'TOOL_RUN_ABANDONED'; flowId: string; runId?: string; toolId: string; reason: 'pagehide' | 'visibility_hidden' | 'navigation' | 'cancel' }
   | { type: 'OUTPUT_DOWNLOADED'; flowId: string; runId?: string; toolId: string; outputCount?: number; surface: 'wizard' | 'studio' }
-  | { type: 'STUDIO_EMPTY_STATE_CTA'; runId: string; action: 'upload' };
+  | { type: 'STUDIO_EMPTY_STATE_CTA'; runId: string; action: 'upload' }
+  | { type: 'REDACT_VERIFY_RUN'; runId: string; toolId: string; passed: boolean; checkCount: number; failCount: number }
+  | { type: 'REDACT_VERIFY_FAIL'; runId: string; toolId: string; checkId: string; message: string }
+  | { type: 'REDACT_CERT_DOWNLOAD'; runId: string; toolId: string }
+  | { type: 'REDACT_CERT_PAYWALL'; runId: string; toolId: string; action: 'shown' | 'cta_clicked' };

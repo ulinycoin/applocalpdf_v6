@@ -33,20 +33,53 @@ interface StudioTextSettingsPanelProps {
     onDuplicate?: () => void;
 }
 
-function ColorSwatch({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
-    return (
-        <label className="ep-color-row">
-            <div className="ep-color-preview" style={{ background: value }}>
-                <input
-                    type="color"
-                    value={value}
-                    onChange={(e) => onChange(e.target.value)}
-                />
-            </div>
-            <span className="ep-color-value">{value}</span>
-            <span className="ep-color-name">{label}</span>
-        </label>
-    );
+function ColorSwatch({
+  label,
+  value,
+  onChange,
+  allowTransparent = false,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  allowTransparent?: boolean;
+}) {
+  const isTransparent = value === 'transparent' || value === 'none' || value === '';
+  const pickerValue = isTransparent || !/^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(value) ? '#ffffff' : value;
+
+  return (
+    <label className="ep-color-row">
+      <div
+        className="ep-color-preview"
+        style={{
+          background: isTransparent
+            ? 'repeating-conic-gradient(#ccc 0% 25%, #fff 0% 50%) 50% / 10px 10px'
+            : value,
+        }}
+      >
+        <input
+          type="color"
+          value={pickerValue}
+          onChange={(e) => onChange(e.target.value)}
+        />
+      </div>
+      <span className="ep-color-value">{isTransparent ? 'none' : value}</span>
+      <span className="ep-color-name">{label}</span>
+      {allowTransparent && !isTransparent && (
+        <button
+          type="button"
+          className="ep-fmt-btn"
+          style={{ marginLeft: 4, fontSize: 10, padding: '2px 6px' }}
+          onClick={(e) => {
+            e.preventDefault();
+            onChange('transparent');
+          }}
+        >
+          Clear
+        </button>
+      )}
+    </label>
+  );
 }
 
 export function StudioTextSettingsPanel({
@@ -163,7 +196,12 @@ export function StudioTextSettingsPanel({
             <div className="ep-section-title" style={{ marginTop: 4 }}>Color</div>
             <div className="ep-colors">
                 <ColorSwatch label="Text" value={color} onChange={(v) => onStyleChange({ color: v })} />
-                <ColorSwatch label="BG" value={backgroundColor} onChange={(v) => onStyleChange({ backgroundColor: v })} />
+                <ColorSwatch
+                  label="BG"
+                  value={backgroundColor}
+                  allowTransparent
+                  onChange={(v) => onStyleChange({ backgroundColor: v })}
+                />
             </div>
 
             {/* Actions */}

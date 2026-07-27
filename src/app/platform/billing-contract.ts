@@ -17,6 +17,7 @@ export const PRO_ENTITLEMENTS = [
   'office.convert',
   'pdf.protect.encrypt',
   'pdf.protect.unlock',
+  'pdf.redact.verify',
 ] as const;
 
 export const ALL_ENTITLEMENTS = [...PRO_ENTITLEMENTS] as const;
