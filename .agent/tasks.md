@@ -2,6 +2,9 @@
 
 Last updated: 2026-07-27
 
+## Hotfix
+- [x] Inline text edit regression — opaque whiteout for PDF spans; click opens editor, drag still moves overlay
+
 ## Status legend
 - `[ ]` — not started
 - `[~]` — in progress

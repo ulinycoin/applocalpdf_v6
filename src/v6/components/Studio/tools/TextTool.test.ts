@@ -134,6 +134,7 @@ test('TextTool empty click without add mode does not insert text', () => {
 });
 
 test('TextTool stores originalRect when selecting existing text span', () => {
+  const started: string[] = [];
   const ctx = createContext({
     textLayerSpans: [{
       id: 'span-1',
@@ -145,12 +146,17 @@ test('TextTool stores originalRect when selecting existing text span', () => {
       fontSizeRatio: 0.02,
       fontName: 'Helvetica',
     }],
+    startEditingText: (element) => started.push(element.id),
   });
 
   TextTool.onPointerDown(ctx, {} as any, { x: 0.11, y: 0.21 });
 
   const textElement = ctx.elements.find((element) => element.type === 'text');
+  const whiteout = ctx.elements.find((element) => element.type === 'rect');
   assert.ok(textElement);
+  assert.ok(whiteout);
+  assert.equal(started.length, 1);
+  assert.equal((whiteout as { fill?: string }).fill, '#ffffff');
   assert.deepEqual((textElement as { originalRect?: { x: number; y: number; w: number; h: number } }).originalRect, {
     x: 0.1,
     y: 0.2,

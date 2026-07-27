@@ -135,7 +135,7 @@ export interface StrokeDraft {
 }
 
 export type DragSession =
-    | { mode: 'move-text'; id: string; startClientX: number; startClientY: number; originX: number; originY: number; initialElements: EditElement[]; }
+    | { mode: 'move-text'; id: string; startClientX: number; startClientY: number; originX: number; originY: number; initialElements: EditElement[]; clickToEdit?: boolean; didDrag?: boolean; }
     | { mode: 'resize-text'; id: string; startClientX: number; startClientY: number; originW: number; originH: number; originFontSize: number; initialElements: EditElement[]; }
     | { mode: 'move-rect'; id: string; startClientX: number; startClientY: number; originX: number; originY: number; initialElements: EditElement[]; }
     | { mode: 'resize-rect'; id: string; startClientX: number; startClientY: number; originW: number; originH: number; initialElements: EditElement[]; }

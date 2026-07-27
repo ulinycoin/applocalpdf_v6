@@ -527,6 +527,9 @@ export const StudioPageEditor = forwardRef<StudioPageEditorHandle, StudioPageEdi
                             }
                             e.preventDefault();
                             if (!textEditor || textEditor.id !== el.id) {
+                                if (textEditor && el.type === 'text') {
+                                    commitTextEditor();
+                                }
                                 dragSessionRef.current = {
                                     mode: el.type === 'text'
                                         ? 'move-text'
@@ -540,6 +543,7 @@ export const StudioPageEditor = forwardRef<StudioPageEditorHandle, StudioPageEdi
                                     startClientY: e.clientY,
                                     originX: ('x' in el) ? el.x : 0,
                                     originY: ('y' in el) ? el.y : 0,
+                                    ...(el.type === 'text' ? { clickToEdit: textInteractionMode === 'edit', didDrag: false } : {}),
                                     ...(el.type === 'image' ? { originW: el.w, originH: el.h } : {}),
                                     ...(el.type === 'stroke' ? { initialPoints: el.points, initialPaths: el.paths ?? [] } : {}),
                                     initialElements: elements
@@ -577,8 +581,17 @@ export const StudioPageEditor = forwardRef<StudioPageEditorHandle, StudioPageEdi
                                     y: nextY,
                                 });
                             } else if (sess && sess.id === el.id && sess.mode === 'move-text' && el.type === 'text') {
-                                const dx = (e.clientX - sess.startClientX) / width;
-                                const dy = (e.clientY - sess.startClientY) / height;
+                                const pixelDx = e.clientX - sess.startClientX;
+                                const pixelDy = e.clientY - sess.startClientY;
+                                // Edit mode: wait for a small drag threshold so a click still opens the editor.
+                                if (sess.clickToEdit && !sess.didDrag) {
+                                    if (Math.hypot(pixelDx, pixelDy) < 4) {
+                                        return;
+                                    }
+                                    sess.didDrag = true;
+                                }
+                                const dx = pixelDx / width;
+                                const dy = pixelDy / height;
                                 const nextX = clamp01(sess.originX + dx);
                                 const rawY = clamp01(sess.originY + dy);
                                 const pageHeightPt = textLayerSpans.find((span) => span.pageHeightPt)?.pageHeightPt ?? 842;
@@ -672,7 +685,17 @@ export const StudioPageEditor = forwardRef<StudioPageEditorHandle, StudioPageEdi
                         }}
                         onPointerUp={(e) => {
                             if (dragSessionRef.current && dragSessionRef.current.id === el.id) {
-                                finalizeDragSession(dragSessionRef.current);
+                                const sess = dragSessionRef.current;
+                                if (
+                                    sess.mode === 'move-text'
+                                    && sess.clickToEdit
+                                    && !sess.didDrag
+                                    && el.type === 'text'
+                                ) {
+                                    startEditingText(el as TextElement);
+                                } else {
+                                    finalizeDragSession(sess);
+                                }
                                 dragSessionRef.current = null;
                                 setBaselineGuides([]);
                                 setActiveBaselineGuide(null);
@@ -702,7 +725,7 @@ export const StudioPageEditor = forwardRef<StudioPageEditorHandle, StudioPageEdi
                                 // Keep line-box math identical to export (half-leading + alphabetic baseline).
                                 lineHeight: el.lineHeight,
                                 letterSpacing: el.letterSpacing,
-                                whiteSpace: 'nowrap', position: 'relative', display: 'block',
+                                whiteSpace: 'nowrap', position: 'relative', display: 'grid',
                                 overflow: 'visible',
                                 margin: 0,
                                 padding: 0,
@@ -739,7 +762,7 @@ export const StudioPageEditor = forwardRef<StudioPageEditorHandle, StudioPageEdi
                                 {textEditor?.id === el.id ? (
                                     <>
                                         <span style={{
-                                            visibility: 'hidden', whiteSpace: 'nowrap', display: 'block',
+                                            gridArea: '1/1', visibility: 'hidden', whiteSpace: 'nowrap',
                                             padding: 0, border: 'none', font: 'inherit', letterSpacing: 'inherit',
                                             lineHeight: 'inherit',
                                             minWidth: '50px',
@@ -753,7 +776,7 @@ export const StudioPageEditor = forwardRef<StudioPageEditorHandle, StudioPageEdi
                                             value={textEditor.value}
                                             onChange={(e) => handleTextEditorChange(el.id, e.target.value)}
                                             style={{
-                                                position: 'absolute', inset: 0, width: '100%', height: '100%',
+                                                gridArea: '1/1', width: '100%', height: '100%',
                                                 background: 'none', border: 'none', resize: 'none', outline: 'none',
                                                 padding: 0, margin: 0, font: 'inherit', color: 'inherit',
                                                 lineHeight: 'inherit', letterSpacing: 'inherit',

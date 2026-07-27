@@ -175,6 +175,11 @@ function selectTextSpanForEditing(ctx: ToolContext, clickedSpan: TextLayerSpan) 
 
   const textId = crypto.randomUUID();
   const { padX, padY } = textBackgroundPad(w, h);
+  // Editing existing PDF glyphs always needs an opaque cover. Transparent is the
+  // default for *new* overlay text, but here it would leave the original visible.
+  const whiteoutFill = isOpaqueBackground(ctx.textStyle.backgroundColor)
+    ? ctx.textStyle.backgroundColor
+    : '#ffffff';
 
   const whiteout: RectElement = {
     id: `${textId}_bg`,
@@ -183,7 +188,7 @@ function selectTextSpanForEditing(ctx: ToolContext, clickedSpan: TextLayerSpan) 
     y: clamp01(top - padY),
     w: w + padX * 2,
     h: h + padY * 2,
-    fill: ctx.textStyle.backgroundColor || '#ffffff',
+    fill: whiteoutFill,
     stroke: 'transparent',
     strokeWidth: 0,
     opacity: 1,
