@@ -420,6 +420,7 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
                     runtime.telemetry,
                     `You've used all ${dailyLimit} free ${tool} runs today. Upgrade to Pro for unlimited use.`,
                     import.meta.env.VITE_BILLING_URL,
+                    { toolId: tool, trigger: 'daily_limit' },
                 );
                 setPaywallReason(`You've used all ${dailyLimit} free uses today. Upgrade to Pro for unlimited use.`);
                 return;
@@ -452,6 +453,7 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
                     ? 'Free includes up to 3 workspaces. Upgrade to Pro for unlimited workspaces.'
                     : 'Free supports documents up to 25 pages. Upgrade to Pro to open larger PDFs.',
                 import.meta.env.VITE_BILLING_URL,
+                { toolId: 'studio', trigger: limitCheck.reason === 'workspace_limit' ? 'workspace_limit_3' : 'page_limit_25' },
             );
             return;
         }
@@ -593,6 +595,7 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
                         runtime.telemetry,
                         'Free includes up to 3 workspaces. Upgrade to Pro for unlimited workspaces.',
                         import.meta.env.VITE_BILLING_URL,
+                        { toolId: 'studio', trigger: 'workspace_limit_3' },
                     );
                     break;
                 }
@@ -643,6 +646,7 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
                         runtime.telemetry,
                         `This document has ${numPages} pages. Free plan supports up to 25 — upgrade to Pro for unlimited.`,
                         import.meta.env.VITE_BILLING_URL,
+                        { toolId: 'studio', trigger: 'page_limit_25' },
                     );
                     await pdf.destroy();
                     await runtime.vfs.delete(entry.id).catch(() => undefined);
@@ -774,6 +778,7 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
                 runtime.telemetry,
                 'Free supports documents up to 25 pages. Upgrade to Pro to keep adding pages.',
                 import.meta.env.VITE_BILLING_URL,
+                { toolId: 'studio', trigger: 'page_limit_25' },
             );
             return false;
         }
@@ -926,6 +931,7 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
                                 runtime.telemetry,
                                 'Free includes up to 3 workspaces. Upgrade to Pro for unlimited workspaces.',
                                 import.meta.env.VITE_BILLING_URL,
+                                { toolId: 'studio', trigger: 'workspace_limit_3' },
                             );
                             skippedOutputIds.push(...outputIds.slice(index));
                             break;
@@ -938,6 +944,7 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
                             runtime.telemetry,
                             'Free supports documents up to 25 pages. Upgrade to Pro to open larger PDFs.',
                             import.meta.env.VITE_BILLING_URL,
+                            { toolId: 'studio', trigger: 'page_limit_25' },
                         );
                         skippedOutputIds.push(outputIds[index]);
                         continue;

@@ -83,6 +83,7 @@ export const DetachedPageObject: React.FC<DetachedPageObjectProps> = ({ page }) 
                         runtime.telemetry,
                         'Free supports documents up to 25 pages. Upgrade to Pro to keep adding pages.',
                         import.meta.env.VITE_BILLING_URL,
+                        { toolId: 'studio', trigger: 'page_limit_25' },
                     );
                     return;
                 }
@@ -124,6 +125,7 @@ export const DetachedPageObject: React.FC<DetachedPageObjectProps> = ({ page }) 
                             runtime.telemetry,
                             'Free supports documents up to 25 pages. Upgrade to Pro to keep adding pages.',
                             import.meta.env.VITE_BILLING_URL,
+                            { toolId: 'studio', trigger: 'page_limit_25' },
                         );
                         return;
                     }

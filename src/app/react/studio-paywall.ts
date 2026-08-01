@@ -1,5 +1,5 @@
 import type { TelemetrySink } from '../../core/public';
-import { trackMonetizationEvent } from './monetization-telemetry';
+import { trackMonetizationEvent, trackPaywallShown } from './monetization-telemetry';
 import { getTrialState, rescheduleTrialExpiryWatch } from '../platform/trial-manager';
 import type { BillingService } from '../platform/billing-service';
 
@@ -7,9 +7,15 @@ export function showStudioPaywall(
   telemetry: TelemetrySink,
   reason: string,
   _billingUrl?: string,
+  metadata: {
+    toolId?: string;
+    trigger?: string;
+  } = {},
 ): string {
   const runId = crypto.randomUUID();
   const trialState = getTrialState();
+  const toolId = metadata.toolId ?? 'studio';
+  const trigger = metadata.trigger ?? 'upsell_guardrail';
 
   const displayReason = trialState.isActive
     ? `Trial: ${trialState.daysRemaining}d ${trialState.hoursRemaining}h remaining`
@@ -18,14 +24,14 @@ export function showStudioPaywall(
   telemetry.track({
     type: 'UI_UPSELL_SHOWN',
     runId,
-    toolId: 'studio',
+    toolId,
     reason: displayReason,
   });
 
-  trackMonetizationEvent('paywall_shown', {
+  trackPaywallShown({
     source: 'studio_paywall',
-    toolId: 'studio',
-    trigger: trialState.isActive ? 'trial_countdown' : 'upsell_guardrail',
+    toolId,
+    trigger: trialState.isActive ? 'trial_countdown' : trigger,
     reason: displayReason,
     userState: 'local',
     hadPriorSuccessfulRun: false,

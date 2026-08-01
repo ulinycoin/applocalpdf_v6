@@ -901,11 +901,13 @@ export function useStudioConvertController(initialToolOverride?: StudioConvertTo
       runtime.telemetry,
       'Download all images requires Pro. Upgrade to unlock unlimited image extraction.',
       import.meta.env.VITE_BILLING_URL,
+      { toolId: 'extract-images', trigger: 'extract_images_pro' },
     ),
     showOcrPaywall: () => showStudioPaywall(
       runtime.telemetry,
       'OCR is a Pro feature. Upgrade to download results.',
       import.meta.env.VITE_BILLING_URL,
+      { toolId: 'ocr-pdf', trigger: 'ocr_pro_download' },
     ),
   };
 }

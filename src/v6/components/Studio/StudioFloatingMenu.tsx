@@ -172,6 +172,7 @@ export function StudioFloatingMenu() {
                         runtime.telemetry,
                         'Free supports documents up to 25 pages. Upgrade to Pro to keep larger documents in Studio.',
                         import.meta.env.VITE_BILLING_URL,
+                        { toolId: 'compress-pdf', trigger: 'page_limit_25' },
                     );
                     setCompressError('Free supports documents up to 25 pages.');
                     await runtime.vfs.delete(compressedFileId).catch(() => undefined);

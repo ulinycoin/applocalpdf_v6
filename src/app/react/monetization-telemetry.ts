@@ -56,3 +56,23 @@ export function trackMonetizationEvent(event: MonetizationEventName, props: Mone
     window.gtag('event', event, payload);
   }
 }
+
+export function trackPaywallShown(props: MonetizationEventProps = {}): boolean {
+  const toolId = props.toolId ?? 'studio';
+  const trigger = props.trigger ?? 'upsell_guardrail';
+  const key = `localpdf_paywall_seen:${toolId}:${trigger}`;
+  let alreadyTracked = false;
+
+  if (typeof window !== 'undefined') {
+    try {
+      alreadyTracked = window.sessionStorage.getItem(key) === '1';
+      if (!alreadyTracked) window.sessionStorage.setItem(key, '1');
+    } catch {
+      // Storage restrictions must not block the paywall.
+    }
+  }
+
+  if (alreadyTracked) return false;
+  trackMonetizationEvent('paywall_shown', props);
+  return true;
+}

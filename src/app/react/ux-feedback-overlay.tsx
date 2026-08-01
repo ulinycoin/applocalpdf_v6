@@ -195,6 +195,14 @@ export function UxFeedbackOverlay() {
                       flowId: upsell.runId,
                     });
                   } else {
+                    trackMonetizationEvent('paywall_cta_clicked', {
+                      source: 'upsell_overlay',
+                      toolId: upsell.toolId,
+                      trigger: 'start_trial',
+                      userState: 'local',
+                      hadPriorSuccessfulRun: true,
+                      flowId: upsell.runId,
+                    });
                     activateProTrial(runtime.billing, upsell.runId, 'upsell_overlay');
                     setTrialState(getTrialState());
                   }

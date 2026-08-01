@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import { LinearIcon } from '../../icons/linear-icon';
 import { useStudioConvertController } from './use-studio-convert-controller';
-import { trackMonetizationEvent } from '../../../../app/react/monetization-telemetry';
+import { trackMonetizationEvent, trackPaywallShown } from '../../../../app/react/monetization-telemetry';
 import { openCheckout } from '../../../../app/react/billing';
 import { activateProTrial } from '../../../../app/react/studio-paywall';
 import { getTrialState } from '../../../../app/platform/trial-manager';
@@ -66,7 +66,7 @@ function OcrPaywallOverlay({
   const trialAvailable = getTrialState().trialAvailable;
 
   useEffect(() => {
-    trackMonetizationEvent('paywall_shown', {
+    trackPaywallShown({
       source: 'ocr_result_preview',
       toolId: 'ocr-pdf',
       trigger: 'ocr_trial_limit',

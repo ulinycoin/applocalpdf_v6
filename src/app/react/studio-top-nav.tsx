@@ -11,7 +11,7 @@ import { TrialBanner } from './trial-banner';
 import QRCode from 'qrcode';
 import { APP_BASE_PATH } from '../../../shared/app-routes';
 import { downloadCertificateJson } from '../../v6/utils/redact-verify-ui';
-import { trackMonetizationEvent } from './monetization-telemetry';
+import { trackMonetizationEvent, trackPaywallShown } from './monetization-telemetry';
 
 function truncateFileName(name: string, maxLen = 22): string {
   if (name.length <= maxLen) return name;
@@ -202,7 +202,7 @@ export function StudioTopNav({ telemetryEnabled, onToggleTelemetry, telemetryOpe
         toolId: 'studio.edit.redact',
         action: 'shown',
       });
-      trackMonetizationEvent('paywall_shown', {
+      trackPaywallShown({
         source: 'redact_certificate',
         toolId: 'studio.edit.redact',
         trigger: 'cert_download',
