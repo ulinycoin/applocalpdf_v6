@@ -63,6 +63,7 @@ const sitemapAllowList = new Set([
   'https://localpdf.online/pdf-tools-without-upload',
   'https://localpdf.online/refund-policy',
   'https://localpdf.online/how-local-pdf-processing-works',
+  'https://localpdf.online/localpdf',
 ]);
 
 // https://astro.build/config

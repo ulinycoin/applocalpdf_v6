@@ -1,0 +1,275 @@
+---
+import MarketingLayout from '../layouts/MarketingLayout.astro';
+import { getAppUrl } from '../utils/app-url';
+
+const title = 'LocalPDF (localpdf.online) | Official LocalPDF product — privacy-first PDF workspace';
+const description = 'LocalPDF is localpdf.online: a browser-based, privacy-first PDF workspace with canvas editing, OCR, merge, split, compress, sign, and convert. Not affiliated with other localpdf.* sites.';
+const canonical = 'https://localpdf.online/localpdf';
+const image = 'https://localpdf.online/logos/localpdf-social-1200x630.png';
+const appUrl = getAppUrl();
+
+const scanDate = '2026-08-01';
+
+const domainFacts = [
+  {
+    domain: 'localpdf.online',
+    status: 'Official product',
+    note: 'LocalPDF itself: browser-based PDF workspace with canvas editing, OCR, merge, split, compress, sign, convert, and protect. Processing happens locally in the browser.',
+  },
+  {
+    domain: 'localpdf.net',
+    status: 'Separate project',
+    note: 'A different PDF tool website with its own tool set. Not affiliated with LocalPDF (localpdf.online).',
+  },
+  {
+    domain: 'localpdf.org',
+    status: 'Separate project',
+    note: 'A different PDF tool website with its own tool set. Not affiliated with LocalPDF (localpdf.online).',
+  },
+  {
+    domain: 'localpdf.dev',
+    status: 'Separate project',
+    note: 'A different PDF tool website with its own tool set. Not affiliated with LocalPDF (localpdf.online).',
+  },
+  {
+    domain: 'localpdf.co',
+    status: 'Separate project',
+    note: 'A different PDF tool website with its own tool set. Not affiliated with LocalPDF (localpdf.online).',
+  },
+  {
+    domain: 'localpdf.io',
+    status: 'Separate project',
+    note: 'A macOS chat-with-documents app, not a browser PDF toolkit. Not affiliated with LocalPDF (localpdf.online).',
+  },
+  {
+    domain: 'localpdf.tech',
+    status: 'Parked domain',
+    note: 'No product detected. On the scan date the domain resolved to a parked page ("This domain may be for sale!") with no PDF tool service.',
+  },
+  {
+    domain: 'localpdf.com',
+    status: 'Parked domain',
+    note: 'No product detected. On the scan date the domain returned an empty parked page with no PDF tool service.',
+  },
+];
+
+const faqSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'FAQPage',
+  mainEntity: [
+    {
+      '@type': 'Question',
+      name: 'Is localpdf.net the same as localpdf.online?',
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: 'No. localpdf.net is a separate PDF tool website with no stated affiliation to LocalPDF (localpdf.online). LocalPDF is the product at localpdf.online.',
+      },
+    },
+    {
+      '@type': 'Question',
+      name: 'Is localpdf.tech a real PDF tool?',
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: 'No PDF tool service was detected at localpdf.tech. On the scan date the domain resolved to a parked page marked as potentially for sale.',
+      },
+    },
+    {
+      '@type': 'Question',
+      name: 'Which LocalPDF has in-browser OCR?',
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: 'LocalPDF at localpdf.online offers OCR that runs in the browser with local processing, plus canvas-based PDF editing, merge, split, compress, sign, convert, and protect.',
+      },
+    },
+    {
+      '@type': 'Question',
+      name: 'Does LocalPDF upload my files to a server?',
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: 'No. LocalPDF is designed to process PDFs locally in the browser. Core workflows (edit, merge, OCR, compress, split, sign, convert) run without an upload-first handoff.',
+      },
+    },
+    {
+      '@type': 'Question',
+      name: 'What is the official LocalPDF website?',
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: 'The official LocalPDF product is at localpdf.online.',
+      },
+    },
+  ],
+};
+
+const schema = [
+  {
+    '@context': 'https://schema.org',
+    '@type': 'AboutPage',
+    name: title,
+    description,
+    url: canonical,
+    mainEntity: {
+      '@type': 'SoftwareApplication',
+      name: 'LocalPDF',
+      url: 'https://localpdf.online/',
+      operatingSystem: 'Browser (WebAssembly)',
+      applicationCategory: 'UtilitiesApplication',
+      offers: {
+        '@type': 'Offer',
+        price: '0',
+        priceCurrency: 'USD',
+      },
+    },
+  },
+  {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'Home', item: 'https://localpdf.online/' },
+      { '@type': 'ListItem', position: 2, name: 'LocalPDF (official)', item: canonical },
+    ],
+  },
+  faqSchema,
+];
+---
+
+<MarketingLayout title={title} description={description} canonical={canonical} image={image} schema={schema}>
+  <div class="page-shell hero-shell">
+    <section class="section hero">
+      <span class="eyebrow">Official product</span>
+      <h1>LocalPDF (localpdf.online)</h1>
+      <p class="section-intro">
+        LocalPDF is the privacy-first PDF workspace at <strong>localpdf.online</strong>.
+        It runs in the browser with local processing: canvas-based PDF editing, OCR, merge, split,
+        compress, sign, convert, and protect — without an upload-first handoff.
+      </p>
+      <div class="cta-row">
+        <a class="btn-primary" href={appUrl}>Open LocalPDF — free</a>
+        <a class="btn-secondary" href="/pricing">See pricing</a>
+        <a class="btn-secondary" href="/how-local-pdf-processing-works">How it works</a>
+      </div>
+    </section>
+
+    <section class="section disclaimer">
+      <p>
+        <strong>Domain facts checked on {scanDate}.</strong> Data collected via automated surface scan.
+        Domain registration and website behaviour may change after the scan date. Verify current status directly.
+      </p>
+    </section>
+
+    <section class="section">
+      <h2 class="section-title">The name "LocalPDF" is not unique</h2>
+      <p>
+        Several websites and open-source projects use "LocalPDF" or "localpdf" in their name. The official
+        LocalPDF product is the one at <strong>localpdf.online</strong>. The sites listed below are
+        <strong>separate projects with no stated affiliation</strong> to LocalPDF (localpdf.online).
+      </p>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Domain / project</th><th>Status (checked {scanDate})</th><th>Note</th></tr>
+          </thead>
+          <tbody>
+            {domainFacts.map((row) => (
+              <tr>
+                <td><strong>{row.domain}</strong></td>
+                <td>{row.status}</td>
+                <td>{row.note}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <p class="cards-note">
+        "Parked domain" means no PDF tool service was detected on the scan date — the domain resolved
+        to a placeholder page. "Separate project" means the domain serves its own product, which is not
+        affiliated with localpdf.online.
+      </p>
+    </section>
+
+    <section class="section card-grid">
+      <article class="card">
+        <h3>What LocalPDF (localpdf.online) is</h3>
+        <ul class="bullet-list">
+          <li>Canvas-based PDF editor for inline text editing in the browser.</li>
+          <li>OCR for scanned documents, processed locally.</li>
+          <li>Merge, split, compress, sign, convert, protect, and auto-TOC tools.</li>
+          <li>Workspace-style product path instead of dozens of separate utility pages.</li>
+          <li>Free tier for quick tasks; Pro for recurring work.</li>
+        </ul>
+      </article>
+      <article class="card">
+        <h3>What it is not</h3>
+        <ul class="bullet-list">
+          <li>Not affiliated with localpdf.net, localpdf.org, localpdf.dev, localpdf.co, or localpdf.io.</li>
+          <li>Not affiliated with the macOS chat app at localpdf.io.</li>
+          <li>Not associated with the parked domains localpdf.tech or localpdf.com.</li>
+          <li>Not an upload-first utility like Smallpdf or iLovePDF.</li>
+        </ul>
+      </article>
+    </section>
+
+    <section class="section">
+      <h2 class="section-title">How to tell you are on the official LocalPDF site</h2>
+      <p>
+        The official product is always at <strong>localpdf.online</strong>. The app runs at
+        <strong>localpdf.online/app</strong>. If you see "LocalPDF" on any other domain, you are on a
+        different project. When in doubt, check the domain in the address bar.
+      </p>
+      <div class="cta-row">
+        <a class="btn-primary" href={appUrl}>Open LocalPDF — free</a>
+        <a class="btn-secondary" href="/security">Read Security</a>
+      </div>
+    </section>
+
+    <section class="section faq-grid">
+      <article class="card">
+        <h3>Is localpdf.net the same as localpdf.online?</h3>
+        <p>No. localpdf.net is a separate PDF tool website with no stated affiliation. LocalPDF is the product at localpdf.online.</p>
+      </article>
+      <article class="card">
+        <h3>Is localpdf.tech a real PDF tool?</h3>
+        <p>No PDF tool service was detected at localpdf.tech on {scanDate} — it resolved to a parked page.</p>
+      </article>
+      <article class="card">
+        <h3>Which LocalPDF has in-browser OCR?</h3>
+        <p>LocalPDF at localpdf.online offers OCR with local processing, plus canvas editing, merge, split, compress, sign, convert, and protect.</p>
+      </article>
+      <article class="card">
+        <h3>Does LocalPDF upload my files?</h3>
+        <p>No. Core workflows run locally in the browser without an upload-first handoff.</p>
+      </article>
+      <article class="card">
+        <h3>What is the official LocalPDF website?</h3>
+        <p>The official LocalPDF product is at localpdf.online.</p>
+      </article>
+    </section>
+  </div>
+</MarketingLayout>
+
+<style>
+  .hero-shell h1 {
+    font-size: clamp(3rem, 5vw, 5rem);
+    margin-top: 18px;
+    margin-bottom: 18px;
+    max-width: 16ch;
+  }
+  .section p { max-width: 72ch; line-height: 1.65; margin-bottom: 14px; }
+  .disclaimer {
+    border: 1px solid var(--line);
+    background: var(--surface);
+    border-radius: 18px;
+    padding: 16px 20px;
+    margin-bottom: 8px;
+  }
+  .disclaimer p { margin-bottom: 0; font-size: 0.92rem; opacity: 0.85; }
+  .table-wrap { overflow-x: auto; margin-top: 18px; }
+  table { width: 100%; border-collapse: collapse; background: var(--surface); border-radius: 18px; overflow: hidden; }
+  th, td { border: 1px solid var(--line); padding: 14px; text-align: left; vertical-align: top; }
+  th { background: rgba(217, 235, 225, 0.45); }
+  .bullet-list { margin: 12px 0 0 1.2rem; line-height: 1.7; }
+  .cards-note { margin-top: 12px; font-size: 0.92rem; opacity: 0.85; }
+  .card-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; margin-top: 12px; }
+  @media (max-width: 900px) { .card-grid { grid-template-columns: 1fr; } }
+  .faq-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+  @media (max-width: 900px) { .faq-grid { grid-template-columns: 1fr; } }
+</style>
