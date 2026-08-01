@@ -36,7 +36,7 @@ function getToolHref(toolId: string): string {
 }
 
 const title = 'Edit PDFs Locally — Private PDF Editor & OCR in Browser | LocalPDF';
-const description = 'Edit, merge, OCR, compress, split, and convert PDFs locally in your browser. Zero uploads, no server, works offline. Free PDF editor — open and start.';
+const description = 'Edit, merge, OCR, compress, split, and convert PDFs locally in your browser. PDF files stay on your device during core processing. Free tier plus Pro for heavier workflows.';
 const canonical = 'https://localpdf.online/';
 const image = 'https://localpdf.online/logos/localpdf-social-1200x630.png';
 const imageAlt = 'LocalPDF — private PDF editor that runs entirely in your browser';
@@ -45,7 +45,7 @@ const appUrl = getAppUrl(undefined, { upload: '1' });
 const homepageFaqs = [
   {
     question: 'Do I need to upload my PDF to use LocalPDF?',
-    answer: 'No. LocalPDF runs entirely in your browser. You open a file from your device, work on it, and download the result — nothing is uploaded to any server.',
+    answer: 'Core PDF processing runs in your browser. Your PDF contents are not uploaded for the processing workflow, while the broader site may still use normal hosting, analytics, billing, and license-validation services.',
   },
   {
     question: 'Can I really drag pages between different PDFs?',
@@ -53,11 +53,11 @@ const homepageFaqs = [
   },
   {
     question: 'Is LocalPDF really free? What\'s the catch?',
-    answer: 'All six core tools — edit PDF, merge PDF, OCR PDF, compress PDF, split PDF, and convert PDF — are completely free. There\'s a Pro plan that unlocks higher workspace limits for heavy users, but there\'s no trial expiration, no hidden limits on basic usage, and no credit card required to start.',
+    answer: 'LocalPDF has a free tier for quick tasks, with limits such as up to 3 workspaces and 25 pages per document. Pro is available for recurring PDF work, with current pricing shown on the pricing page. Eligible users may also see a 3-day free trial.',
   },
   {
     question: 'How is this different from Smallpdf or Adobe Acrobat?',
-    answer: 'Two key differences. First, LocalPDF keeps everything on your device — no uploads, no server storage, no privacy policies to trust. Second, LocalPDF uses a visual canvas where you can work with multiple documents side by side and drag pages between them, not a list of separate tool pages each requiring its own upload.',
+    answer: 'Core PDF processing stays on your device instead of uploading document contents to a processing server. The broader website still uses normal hosting, analytics, billing, and license-validation infrastructure. LocalPDF also uses a visual canvas where you can work with multiple documents side by side and drag pages between them.',
   },
   {
     question: 'Does LocalPDF work without internet?',
@@ -491,7 +491,7 @@ const hreflangs = [
     <section class="section all-tools-section">
       <span class="eyebrow">All Utilities</span>
       <h2 class="section-title">A complete private PDF toolkit on your device</h2>
-      <p class="section-intro">No uploads, no limits, no subscription paywalls for basic usage. Click any tool to open it directly in the canvas.</p>
+      <p class="section-intro">Core PDF processing stays in your browser. The free tier is built for quick tasks; Pro adds higher limits for recurring PDF work.</p>
       
       <div class="toolkit-categories">
         {CATEGORIES.map((category) => (
@@ -540,8 +540,8 @@ const hreflangs = [
             <li>All tools in one canvas, switch freely</li>
             <li>Drag pages between documents directly</li>
             <li>Instant response, no network roundtrips</li>
-            <li>Nothing leaves your device, ever</li>
-            <li>No account, no signup, no subscription</li>
+            <li>PDF contents stay local during core processing</li>
+            <li>No account required for the free tier; Pro billing uses LemonSqueezy</li>
           </ul>
         </div>
       </div>
@@ -551,7 +551,7 @@ const hreflangs = [
     <section id="how-it-works" class="section">
       <span class="eyebrow">How it works</span>
       <h2 class="section-title">Open, work, export — in three steps</h2>
-      <p class="section-intro">No accounts, no uploads, no servers. Just a workspace that works the way you expect.</p>
+      <p class="section-intro">Open a file locally, work in the browser, and export the result. Hosting, analytics, billing, and license services still use normal web infrastructure.</p>
       <div class="steps-grid">
         <div class="step">
           <div class="step-num">1</div>
