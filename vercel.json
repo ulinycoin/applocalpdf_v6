@@ -215,6 +215,10 @@
   ],
   "rewrites": [
     {
+      "source": "/.well-known/llm.txt",
+      "destination": "/llm.txt"
+    },
+    {
       "source": "/sitemap.xml",
       "destination": "/sitemap-index.xml"
     },
