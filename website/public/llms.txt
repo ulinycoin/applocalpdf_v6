@@ -6,6 +6,7 @@ No uploads, no server storage — all processing happens locally via WebAssembly
 ## Pages
 
 - [Home](https://localpdf.online/) — Private PDF Editor — Edit, Merge & OCR in Browser
+- [Official LocalPDF (disambiguation)](https://localpdf.online/localpdf) — The official LocalPDF product is at localpdf.online; localpdf.net/org/dev/co/io/tech/com are separate projects
 - [Edit PDF](https://localpdf.online/features/edit-pdf) — Add text, edit pages, sign, watermark PDFs
 - [Merge PDF](https://localpdf.online/features/merge-pdf) — Combine multiple PDF files
 - [Compress PDF](https://localpdf.online/features/compress-pdf) — Reduce PDF file size
