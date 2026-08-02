@@ -215,7 +215,7 @@
   ],
   "rewrites": [
     {
-      "source": "/.well-known/llm.txt",
+      "source": "/\\.well-known/llm.txt",
       "destination": "/llm.txt"
     },
     {
