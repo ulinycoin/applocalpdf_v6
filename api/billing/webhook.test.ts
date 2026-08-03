@@ -62,7 +62,7 @@ test('handleLemonSqueezyWebhook maps order_created to purchase_completed capture
     assert.equal(result.status, 200);
     assert.equal(result.body.ok, true);
     assert.equal(result.body.tier, 'pro_monthly');
-    assert.deepEqual(calls.map((item) => item.event), ['purchase_completed', 'trial_convert']);
+    assert.deepEqual(calls.map((item) => item.event), ['purchase_completed']);
     assert.equal(calls[0]?.distinctId, 'ph-user-1');
   } finally {
     global.fetch = originalFetch;

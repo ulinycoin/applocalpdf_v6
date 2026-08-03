@@ -197,18 +197,6 @@ export async function handleLemonSqueezyWebhook(
     },
   });
 
-  await capturePostHogEvent({
-    event: 'trial_convert',
-    distinctId,
-    properties: {
-      source: 'lemonsqueezy_webhook',
-      order_id: order.orderId,
-      plan: 'pro',
-      tier,
-      variant,
-    },
-  });
-
   return {
     status: captured ? 200 : 502,
     body: {
