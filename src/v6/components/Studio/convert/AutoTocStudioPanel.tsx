@@ -1,9 +1,10 @@
-import { useCallback, useState, useRef, useEffect } from 'react';
+import { useCallback, useState, useRef, useEffect, useSyncExternalStore } from 'react';
 import { LinearIcon } from '../../icons/linear-icon';
 import type { PlatformRuntime } from '../../../../app/platform/create-platform';
 import { TocReviewPanel, type ApplyOptions } from '../../../../plugins/auto-toc/ui/TocReviewPanel';
 import { requestTocParse, type TocParseResult } from '../../../../plugins/auto-toc/ui/toc-parser-client';
 import type { HeaderNode } from '../../../../plugins/auto-toc/logic/index';
+import { useDownloadMomentUpsell } from '../../../../app/react/download-moment-upsell';
 
 import latinUrl from '@fontsource/noto-sans/files/noto-sans-latin-400-normal.woff?url';
 import latinExtUrl from '@fontsource/noto-sans/files/noto-sans-latin-ext-400-normal.woff?url';
@@ -34,6 +35,11 @@ export function AutoTocStudioPanel({ onClose, inputFileId, fileName, runtime }: 
     const [activeInputFileId, setActiveInputFileId] = useState<string>(inputFileId);
     const parseRequestId = useRef(0);
     const abortRef = useRef<AbortController | null>(null);
+    const billingPlan = useSyncExternalStore(
+        (onChange) => runtime.billing.subscribe(onChange),
+        () => runtime.billing.getContext().plan,
+    );
+    const { requestDownload, overlay: downloadMomentOverlay } = useDownloadMomentUpsell(runtime, billingPlan);
 
     useEffect(() => {
         return () => abortRef.current?.abort();
@@ -269,12 +275,21 @@ export function AutoTocStudioPanel({ onClose, inputFileId, fileName, runtime }: 
                                     {headers.filter((h) => h.enabled).length} headings added to your document outline.
                                 </div>
                                 <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap', alignItems: 'center' }}>
-                                    <a href={outputUrl} download={`${fileName.replace(/\.pdf$/i, '')}-with-toc.pdf`} style={{ textDecoration: 'none' }}>
-                                        <button className="cvt-btn-primary">
-                                            <LinearIcon name="download" size={14} />
-                                            Download PDF
-                                        </button>
-                                    </a>
+                                    <button
+                                        type="button"
+                                        className="cvt-btn-primary"
+                                        onClick={() => requestDownload('auto-toc', () => {
+                                            const anchor = document.createElement('a');
+                                            anchor.href = outputUrl;
+                                            anchor.download = `${fileName.replace(/\.pdf$/i, '')}-with-toc.pdf`;
+                                            document.body.appendChild(anchor);
+                                            anchor.click();
+                                            document.body.removeChild(anchor);
+                                        })}
+                                    >
+                                        <LinearIcon name="download" size={14} />
+                                        Download PDF
+                                    </button>
                                     <button className="cvt-btn-ghost" onClick={() => setPhase('review')}>
                                         <LinearIcon name="chevron-left" size={14} />
                                         Back to Edit
@@ -289,6 +304,7 @@ export function AutoTocStudioPanel({ onClose, inputFileId, fileName, runtime }: 
                     )}
                 </div>
             </div>
+            {downloadMomentOverlay}
         </div>
     );
 }

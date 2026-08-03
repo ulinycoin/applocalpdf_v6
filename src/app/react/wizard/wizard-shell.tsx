@@ -219,6 +219,7 @@ export function WizardShell({ toolId }: WizardShellProps) {
                 <ResultStage
                     outputIds={lastResult.outputIds}
                     baseName={toolId}
+                    toolId={toolId}
                     onRestart={handleRestart}
                 />
             )}

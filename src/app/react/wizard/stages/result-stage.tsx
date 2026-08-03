@@ -1,10 +1,13 @@
+import { useSyncExternalStore } from 'react';
 import { usePlatform } from '../../platform-context';
 import { downloadOutputFiles } from '../../../platform/download-output-files';
 import { getOrCreateFlowId } from '../../../platform/browser-context';
+import { useDownloadMomentUpsell } from '../../download-moment-upsell';
 
 interface ResultStageProps {
     outputIds: string[];
     baseName?: string;
+    toolId?: string;
     onRestart: () => void;
 }
 
@@ -49,18 +52,25 @@ const ALSO_TRY = [
     },
 ];
 
-export function ResultStage({ outputIds, baseName = 'result', onRestart }: ResultStageProps) {
+export function ResultStage({ outputIds, baseName = 'result', toolId = 'wizard', onRestart }: ResultStageProps) {
     const { runtime } = usePlatform();
+    const billingPlan = useSyncExternalStore(
+        (onChange) => runtime.billing.subscribe(onChange),
+        () => runtime.billing.getContext().plan,
+    );
+    const { requestDownload, overlay: downloadMomentOverlay } = useDownloadMomentUpsell(runtime, billingPlan);
 
-    const handleDownload = async () => {
-        runtime.telemetry.track({
-            type: 'OUTPUT_DOWNLOADED',
-            flowId: getOrCreateFlowId(),
-            toolId: 'wizard',
-            outputCount: outputIds.length,
-            surface: 'wizard',
+    const handleDownload = () => {
+        requestDownload(toolId, async () => {
+            runtime.telemetry.track({
+                type: 'OUTPUT_DOWNLOADED',
+                flowId: getOrCreateFlowId(),
+                toolId,
+                outputCount: outputIds.length,
+                surface: 'wizard',
+            });
+            await downloadOutputFiles(runtime, outputIds, { baseName });
         });
-        await downloadOutputFiles(runtime, outputIds, { baseName });
     };
 
     return (
@@ -126,6 +136,7 @@ export function ResultStage({ outputIds, baseName = 'result', onRestart }: Resul
                     ))}
                 </div>
             </div>
+            {downloadMomentOverlay}
         </div>
     );
 }

@@ -12,6 +12,7 @@ import QRCode from 'qrcode';
 import { APP_BASE_PATH } from '../../../shared/app-routes';
 import { downloadCertificateJson } from '../../v6/utils/redact-verify-ui';
 import { trackMonetizationEvent, trackPaywallShown } from './monetization-telemetry';
+import { useDownloadMomentUpsell } from './download-moment-upsell';
 
 function truncateFileName(name: string, maxLen = 22): string {
   if (name.length <= maxLen) return name;
@@ -60,6 +61,7 @@ export function StudioTopNav({ telemetryEnabled, onToggleTelemetry, telemetryOpe
   const [activateStatus, setActivateStatus] = useState<'idle' | 'loading' | 'error'>('idle');
 
   const [billingContext, setBillingContext] = useState(() => runtime.billing.getContext());
+  const { requestDownload, overlay: downloadMomentOverlay } = useDownloadMomentUpsell(runtime, billingContext.plan);
 
   useEffect(() => {
     return runtime.billing.subscribe((ctx) => {
@@ -533,10 +535,11 @@ export function StudioTopNav({ telemetryEnabled, onToggleTelemetry, telemetryOpe
           setDownloadTargetDocumentId(null);
         }}
         onDownload={(filename) => {
-          void handleConfirmDownload(filename);
+          requestDownload('studio', () => handleConfirmDownload(filename));
         }}
         onShare={handleShareToPhone}
       />
+      {downloadMomentOverlay}
       </header>
     </div>
   );
