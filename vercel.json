@@ -263,6 +263,15 @@
   ],
   "headers": [
     {
+      "source": "/",
+      "headers": [
+        {
+          "key": "Link",
+          "value": "</llms.txt>; rel=\"describedby\""
+        }
+      ]
+    },
+    {
       "source": "/(.*)",
       "headers": [
         {
