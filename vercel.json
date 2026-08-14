@@ -203,12 +203,12 @@
       "statusCode": 301
     },
     {
-      "source": "/ja/:path*",
+      "source": "/ja/.*",
       "destination": "/ja",
       "statusCode": 301
     },
     {
-      "source": "/zh/:path*",
+      "source": "/zh/.*",
       "destination": "/zh",
       "statusCode": 301
     }
