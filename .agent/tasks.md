@@ -1,9 +1,18 @@
 # Active Tasks
 
-Last updated: 2026-07-27
+Last updated: 2026-08-06
 
-## Hotfix
+## Hot
+- [x] AI crawler markdown fork `/localpdf` (c1dedf6) — middleware + localpdf-ai.md; cache private/no-store + Vary UA; Googlebot/Bingbot → HTML
+- [x] Push c1dedf6 → origin/main (18808e4..c1dedf6); Vercel Ready `localpdf-v6-kgaomcf5i`
+- [x] Live curl matrix OK — Chrome/Googlebot HTML 24801; ClaudeBot/OAI/Perplexity markdown 4782 + private/no-store + Vary UA + noindex
+- [ ] LLM probe retest web-enabled 1–2d after deploy (Q1/Q3/TECH; parametric не ждать)
+- [x] Disambiguation page `/localpdf` live (16b10c1) — name+domain, parked .tech/.com, FAQ for LLM probe
+- [x] GEO baseline AI answers — `.agent/geo-baseline-2026-08-01.md` (2026-08-01)
+- [x] LLM brand probe baseline — 7 models × 4 questions (OpenRouter) → `/tmp/llm_probe_baseline.json`, Desktop report
+- [x] Disambiguation page `/localpdf` — official product + twin domains table + FAQ + schema (2026-08-01)
 - [x] Inline text edit regression — opaque whiteout for PDF spans; click opens editor, drag still moves overlay
+- [ ] OCR UX: time estimates + chunked processing — 3/5 errors = таймауты (WORKER_TIMEOUT / PAGE_COUNT_CHECK_TIMEOUT). Успешные OCR до 147s. Пользователи не дожидаются.
 
 ## Status legend
 - `[ ]` — not started

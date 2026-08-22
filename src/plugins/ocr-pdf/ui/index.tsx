@@ -59,7 +59,7 @@ export default function OcrPdfConfig({
   const [dragging, setDragging] = useState(false);
   const [languageMode, setLanguageMode] = useState<'auto' | 'manual'>('auto');
   const [language, setLanguage] = useState('eng');
-  const [ocrMode, setOcrMode] = useState<'accurate' | 'fast'>('accurate');
+  const [ocrMode, setOcrMode] = useState<'accurate' | 'fast'>('fast');
   const [preserveFormatting, setPreserveFormatting] = useState(true);
   const [detectTables, setDetectTables] = useState(false);
   const [outputFormat, setOutputFormat] = useState<'txt' | 'json' | 'searchable-pdf'>('txt');

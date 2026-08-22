@@ -15,11 +15,11 @@ export function toUserMessage(result: RunnerExecuteResult): string {
 
   switch (result.code) {
     case 'WORKER_TIMEOUT':
-      return 'Processing timed out. Try smaller files or split the task.';
+      return 'Processing timed out. Try selecting fewer pages or a smaller file.';
     case 'WORKER_CRASH':
       return 'Processing worker crashed. Please retry.';
     case 'PAGE_COUNT_CHECK_TIMEOUT':
-      return 'File validation timed out while reading page count. Try a smaller PDF or retry.';
+      return 'Too many pages — the file is very large for OCR. Try selecting fewer pages or a smaller PDF.';
     case 'VFS_QUOTA_EXCEEDED':
       return 'Storage quota exceeded. Remove temporary files or lower input size.';
     case 'OCR_PDF_RASTERIZER_MISSING':

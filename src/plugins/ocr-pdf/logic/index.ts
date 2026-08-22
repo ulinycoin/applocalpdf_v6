@@ -1,4 +1,4 @@
-import type { ToolLogicFunction, ToolProgressDetail } from '../../../core/types/contracts';
+import type { IFileSystem, ToolLogicFunction, ToolProgressDetail } from '../../../core/types/contracts';
 import { createOcrEngine, type OcrWord } from '../../../services/ocr/ocr-engine';
 import { OcrPipelineError } from '../../../services/ocr/ocr-errors';
 import { buildFontSupportProfile } from '../../../services/ocr/font-profile';
@@ -95,6 +95,14 @@ const OCR_ACCURATE_RASTER_SCALE = 2.0;
 const LOW_CONFIDENCE_THRESHOLD = 78;
 const LOW_CONFIDENCE_TEXT_MIN = 40;
 const LOW_CONFIDENCE_MAX_RETRY_PAGES = 6;
+const CHUNK_SIZE = 5;
+
+/** Write a partial text result to VFS and return its id (survives worker crash). */
+async function savePartialResult(fs: IFileSystem, text: string): Promise<string> {
+  const blob = new Blob([text], { type: 'text/plain' });
+  const entry = await fs.write(blob);
+  return entry.id;
+}
 
 function ocrRasterScale(mode: OcrMode): number {
   return mode === 'fast' ? OCR_FAST_RASTER_SCALE : OCR_ACCURATE_RASTER_SCALE;
@@ -278,6 +286,7 @@ export const run: ToolLogicFunction = async ({ inputIds, options: runOptions, fs
             pageCount: 1,
             completedPages: 1,
             partialText: recognizedText,
+            partialOutputId: await savePartialResult(fs, recognizedText),
           });
         } else {
           updateFileProgress(20);
@@ -356,11 +365,21 @@ export const run: ToolLogicFunction = async ({ inputIds, options: runOptions, fs
               options,
             );
             const partialText = partialAnalysis.map((page) => page.text).join('\n\n');
+
+            // Write partial result to VFS every CHUNK_SIZE pages (survives worker crash)
+            const partialOutputId = (
+              (pageIndex + 1) % CHUNK_SIZE === 0
+              || pageIndex + 1 === totalPages
+            )
+              ? await savePartialResult(fs, partialText)
+              : undefined;
+
             updateFileProgress(38 + ((pageIndex + 1) / Math.max(1, totalPages)) * 50, {
               pageIndex,
               pageCount: totalPages,
               completedPages: pageIndex + 1,
               partialText,
+              partialOutputId,
             });
           });
 
@@ -460,6 +479,7 @@ export const run: ToolLogicFunction = async ({ inputIds, options: runOptions, fs
           pageCount: 1,
           completedPages: 1,
           partialText: recognizedText,
+          partialOutputId: await savePartialResult(fs, recognizedText),
         });
       }
 

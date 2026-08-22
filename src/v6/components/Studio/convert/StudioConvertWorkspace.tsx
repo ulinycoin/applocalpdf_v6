@@ -163,6 +163,16 @@ export function StudioConvertWorkspace({ onClose, initialTool }: StudioConvertWo
 
   const runLabel = meta.runLabel(pageCount);
 
+  const ocrEstimate = useMemo(() => {
+    if (ctrl.activeTool !== 'ocr-pdf') return null;
+    if (pageCount <= 0) return null;
+    // ~3-5s per page in accurate mode, ~2s in fast mode
+    const secondsPerPage = ctrl.ocrSettings.mode === 'fast' ? 2 : 4;
+    const est = Math.max(1, pageCount * secondsPerPage);
+    if (est < 60) return `~${est}s`;
+    return `~${Math.round(est / 60)} min`;
+  }, [ctrl.activeTool, ctrl.ocrSettings.mode, pageCount]);
+
   const runDisabled = ctrl.activeTool === null
     || ctrl.selectedPages.length === 0
     || (ctrl.activeTool === 'extract-images' && ctrl.selectedExtractImageCandidates.length === 0);
@@ -664,6 +674,11 @@ export function StudioConvertWorkspace({ onClose, initialTool }: StudioConvertWo
                   <LinearIcon name="play" size={13} />
                   {runLabel}
                 </button>
+                {ocrEstimate && (
+                  <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4, textAlign: 'center' }}>
+                    Estimated time: {ocrEstimate}
+                  </div>
+                )}
                 <button
                   type="button"
                   className="cvt-btn-ghost"

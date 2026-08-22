@@ -39,6 +39,8 @@ export type ToolProgressDetail = {
   pageCount?: number;
   partialText?: string;
   completedPages?: number;
+  /** VFS file id of a partial result written mid-run (survives worker crash). */
+  partialOutputId?: string;
 };
 
 export type ToolProgressUpdate = {

@@ -194,7 +194,7 @@ export function useStudioConvertController(initialToolOverride?: StudioConvertTo
   const [ocrSettings, setOcrSettings] = useState<StudioOcrSettings>({
     languageMode: 'auto',
     language: 'eng',
-    mode: 'accurate',
+    mode: 'fast',
     preserveFormatting: true,
     detectTables: false,
     outputFormat: 'txt',
@@ -665,13 +665,41 @@ export function useStudioConvertController(initialToolOverride?: StudioConvertTo
         (event) => {
           if (event.type === 'TOOL_PROGRESS') {
             setProgress(Math.max(0, Math.min(100, Math.round(event.progress))));
-            if (activeTool === 'ocr-pdf' && event.detail?.partialText) {
-              ocrPartialTextRef.current = event.detail.partialText;
-              setOcrStream({
-                partialText: event.detail.partialText,
-                completedPages: event.detail.completedPages ?? 0,
-                pageCount: event.detail.pageCount ?? 0,
-              });
+            if (activeTool === 'ocr-pdf') {
+              const partialText = event.detail?.partialText ?? '';
+              if (partialText) {
+                ocrPartialTextRef.current = partialText;
+              }
+              // If worker wrote a partial result to VFS, read it to survive crashes
+              const partialOutputId = event.detail?.partialOutputId as string | undefined;
+              if (partialOutputId) {
+                runtime.vfs.read(partialOutputId).then(async (entry) => {
+                  const vfsText = await entry.getText();
+                  if (vfsText) {
+                    ocrPartialTextRef.current = vfsText;
+                    setOcrStream({
+                      partialText: vfsText,
+                      completedPages: event.detail?.completedPages ?? 0,
+                      pageCount: event.detail?.pageCount ?? 0,
+                    });
+                  }
+                }).catch(() => {
+                  // VFS read failure is non-critical — fall back to partialText in event
+                  if (partialText) {
+                    setOcrStream({
+                      partialText,
+                      completedPages: event.detail?.completedPages ?? 0,
+                      pageCount: event.detail?.pageCount ?? 0,
+                    });
+                  }
+                });
+              } else if (partialText) {
+                setOcrStream({
+                  partialText,
+                  completedPages: event.detail?.completedPages ?? 0,
+                  pageCount: event.detail?.pageCount ?? 0,
+                });
+              }
             }
           }
         },
