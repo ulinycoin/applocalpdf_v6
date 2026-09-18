@@ -1,9 +1,18 @@
 ---
 import MarketingLayout from '../layouts/MarketingLayout.astro';
+import {
+  getLifetimeCheckoutUrl,
+  getMonthlyCheckoutUrl,
+  PRO_LIFETIME_PRICE_USD,
+  PRO_MONTHLY_PRICE_USD,
+} from '../../../src/app/platform/checkout-offers';
 
-const title = 'LocalPDF Pricing — Free & Pro from $3.99/mo';
-const description = 'Simple and transparent pricing for LocalPDF. Free for quick tasks, Pro for recurring PDF work. No trial expiration, no hidden limits.';
+const title = 'LocalPDF Pricing — Free, or $19 once for Pro';
+const description = 'Transparent pricing: LocalPDF is free for quick PDF tasks, and Pro is a one-time $19 payment. No subscription, no renewal, no account.';
 const canonical = 'https://localpdf.online/pricing';
+
+const lifetimeCheckoutUrl = getLifetimeCheckoutUrl() ?? getMonthlyCheckoutUrl() ?? '';
+const monthlyCheckoutUrl = getMonthlyCheckoutUrl() ?? '';
 
 const pricingSchema = {
   '@context': 'https://schema.org',
@@ -11,28 +20,28 @@ const pricingSchema = {
     {
       '@type': 'Product',
       name: 'LocalPDF Pro',
-      description: 'Pro plan for recurring PDF work — unlimited workspaces, unlimited pages, OCR, editing, conversion, protect/unlock, and full Studio access.',
+      description: 'One-time Pro licence — unlimited workspaces, unlimited pages, OCR, editing, conversion, protect/unlock, and full Studio access. One payment, no subscription.',
       url: 'https://localpdf.online/pricing',
       brand: { '@type': 'Brand', name: 'LocalPDF' },
       offers: [
         {
           '@type': 'Offer',
-          name: 'Pro Monthly',
-          price: '3.99',
+          name: 'Pro Lifetime',
+          price: '19',
           priceCurrency: 'USD',
-          validFrom: '2026-07-04',
-          priceValidUntil: '2027-07-04',
+          validFrom: '2026-09-18',
+          priceValidUntil: '2027-09-18',
           availability: 'https://schema.org/InStock',
           url: 'https://localpdf.online/pricing',
           itemCondition: 'https://schema.org/NewCondition',
         },
         {
           '@type': 'Offer',
-          name: 'Pro Yearly',
-          price: '39.99',
+          name: 'Pro Monthly',
+          price: '3.99',
           priceCurrency: 'USD',
-          validFrom: '2026-07-04',
-          priceValidUntil: '2027-07-04',
+          validFrom: '2026-09-18',
+          priceValidUntil: '2027-09-18',
           availability: 'https://schema.org/InStock',
           url: 'https://localpdf.online/pricing',
           itemCondition: 'https://schema.org/NewCondition',
@@ -62,12 +71,17 @@ const pricingSchema = {
         {
           '@type': 'Question',
           name: 'Is LocalPDF really free?',
-          acceptedAnswer: { '@type': 'Answer', text: 'Yes. LocalPDF has a free tier for quick, occasional PDF tasks — up to 3 workspaces and 25 pages per document. No trial expiration, no credit card needed. Pro is a paid upgrade for recurring heavy use.' },
+          acceptedAnswer: { '@type': 'Answer', text: 'Yes. LocalPDF has a free tier for quick, occasional PDF tasks — up to 3 workspaces and 25 pages per document. There is no signup and no credit card needed. Pro is a one-time $19 upgrade, not a subscription.' },
         },
         {
           '@type': 'Question',
           name: 'How much does LocalPDF Pro cost?',
-          acceptedAnswer: { '@type': 'Answer', text: 'LocalPDF Pro costs $3.99 per month billed monthly, or $39.99 per year billed annually. The yearly plan gives full access for the price of about 10 months.' },
+          acceptedAnswer: { '@type': 'Answer', text: 'LocalPDF Pro is $19, paid once. It unlocks every Pro tool permanently and never renews. A $3.99 per month subscription is also available for anyone who prefers paying monthly.' },
+        },
+        {
+          '@type': 'Question',
+          name: 'Is Pro a subscription?',
+          acceptedAnswer: { '@type': 'Answer', text: 'No. The main Pro option is a one-time $19 payment that does not renew, so there is nothing to cancel. The monthly $3.99 subscription is an alternative and renews until canceled through the payment provider.' },
         },
       ],
     },
@@ -85,9 +99,9 @@ const pricingSchema = {
     <div class="pricing-shell">
       <header class="pricing-header">
         <p class="eyebrow">Pricing</p>
-        <h1>Free for quick tasks. Pro for recurring PDF work.</h1>
+        <h1>Free for quick tasks. $19 once for everything else.</h1>
         <p class="subtitle">
-          Keep your files local, move fast on one-off jobs, and upgrade when PDF work becomes recurring enough to need unlimited workspaces, larger documents, and full Studio access.
+          Keep your files local and move fast on one-off jobs. When you need unlimited workspaces, larger documents and full Studio access, pay once — nothing renews, nothing to cancel.
         </p>
       </header>
 
@@ -109,43 +123,44 @@ const pricingSchema = {
         </article>
 
         <article class="plan-card featured">
-          <div class="featured-badge">Recommended</div>
+          <div class="featured-badge">Pay once</div>
           <div class="plan-copy">
-            <p class="plan-kicker">Pro</p>
-            <h2>$3.99</h2>
-            <p class="plan-period">per month</p>
-            <p class="plan-summary">Built for recurring PDF work without workspace or document limits.</p>
+            <p class="plan-kicker">Pro Lifetime</p>
+            <h2>${PRO_LIFETIME_PRICE_USD}</h2>
+            <p class="plan-period">one time · no renewal</p>
+            <p class="plan-summary">Buy once and keep every Pro tool. Nothing renews, nothing to cancel.</p>
           </div>
           <ul class="feature-list">
             <li>Unlimited Studio workspaces</li>
             <li>Unlimited pages per document</li>
             <li>OCR, editing, conversion, protect/unlock</li>
-            <li>Full Studio access</li>
+            <li>Full Studio access, on every device</li>
+            <li>One-time payment — no subscription</li>
           </ul>
           <div class="checkout-stack">
             <button
-              id="buy-pro-monthly"
+              id="buy-pro-lifetime"
               class="plan-link plan-link-primary"
-              data-checkout-url={import.meta.env.VITE_LS_CHECKOUT_URL_PRO_MONTHLY}
+              data-checkout-url={lifetimeCheckoutUrl}
             >
-              Start Pro Monthly
+              Get Pro Lifetime — ${PRO_LIFETIME_PRICE_USD}
             </button>
             <button
-              id="buy-pro-yearly"
+              id="buy-pro-monthly"
               class="plan-link plan-link-secondary"
-              data-checkout-url={import.meta.env.VITE_LS_CHECKOUT_URL_PRO_YEARLY}
+              data-checkout-url={monthlyCheckoutUrl}
             >
-              Start Pro Yearly
+              Prefer monthly? ${PRO_MONTHLY_PRICE_USD}/mo
             </button>
           </div>
-          <p class="annual-note">$39.99/year billed upfront · best value for frequent use</p>
+          <p class="annual-note">One-time payment charged today. No renewal, no account, no email required.</p>
         </article>
       </section>
 
       <section class="legal-note-panel" aria-label="Billing terms notice">
         <p>
-          Pro plans are digital subscriptions. Monthly plans are billed monthly, and yearly plans are billed upfront for one year.
-          Renewals, where applicable, continue automatically until canceled through the payment provider.
+          Pro Lifetime is a one-time payment. It does not renew and there is nothing to cancel.
+          The optional monthly plan is a subscription billed monthly and renews automatically until canceled through the payment provider.
           By purchasing or restoring a paid plan, you agree to the <a href="/terms">Terms of Use</a> and <a href="/privacy">Privacy Policy</a>.
           Billing, cancellations, and refund handling are described in the <a href="/refund-policy">Refund Policy</a>.
         </p>
@@ -183,7 +198,7 @@ const pricingSchema = {
 
   const billingService = new BillingService('v6_subscription_jwt', import.meta.env.VITE_PUBLIC_JWT_KEY);
 
-  function setupCheckout(buttonId: string, variant: 'monthly' | 'yearly') {
+  function setupCheckout(buttonId: string, variant: 'lifetime' | 'monthly') {
     const btn = document.getElementById(buttonId);
     if (!btn) return;
 
@@ -206,8 +221,8 @@ const pricingSchema = {
     });
   }
 
+  setupCheckout('buy-pro-lifetime', 'lifetime');
   setupCheckout('buy-pro-monthly', 'monthly');
-  setupCheckout('buy-pro-yearly', 'yearly');
 
   const restoreBtn = document.getElementById('restore-license-btn') as HTMLButtonElement | null;
   const licenseInput = document.getElementById('license-key-input') as HTMLInputElement | null;

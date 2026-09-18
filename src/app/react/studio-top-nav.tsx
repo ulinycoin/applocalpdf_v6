@@ -7,6 +7,7 @@ import { openBillingPlans, openCheckout } from './billing';
 import { getOrCreateFlowId } from '../platform/browser-context';
 import { StudioDownloadModal } from './StudioDownloadModal';
 import { getTrialState } from '../platform/trial-manager';
+import { getPrimaryPaidOffer } from '../platform/checkout-offers';
 import { TrialBanner } from './trial-banner';
 import QRCode from 'qrcode';
 import { APP_BASE_PATH } from '../../../shared/app-routes';
@@ -61,7 +62,7 @@ export function StudioTopNav({ telemetryEnabled, onToggleTelemetry, telemetryOpe
   const [activateStatus, setActivateStatus] = useState<'idle' | 'loading' | 'error'>('idle');
 
   const [billingContext, setBillingContext] = useState(() => runtime.billing.getContext());
-  const { requestDownload, overlay: downloadMomentOverlay } = useDownloadMomentUpsell(runtime, billingContext.plan);
+  const { requestDownload, overlay: downloadMomentOverlay } = useDownloadMomentUpsell(billingContext.plan);
 
   useEffect(() => {
     return runtime.billing.subscribe((ctx) => {
@@ -387,11 +388,15 @@ export function StudioTopNav({ telemetryEnabled, onToggleTelemetry, telemetryOpe
       hadPriorSuccessfulRun: true,
       flowId: runId,
     });
-    openCheckout(import.meta.env.VITE_LS_CHECKOUT_URL_PRO_MONTHLY, {
-      source: 'redact_certificate',
-      trigger: 'cert_download',
-      flowId: runId,
-    });
+    const offer = getPrimaryPaidOffer();
+    if (offer) {
+      openCheckout(offer.url, {
+        source: 'redact_certificate',
+        trigger: 'cert_download',
+        variant: offer.variant,
+        flowId: runId,
+      });
+    }
   };
 
   return (

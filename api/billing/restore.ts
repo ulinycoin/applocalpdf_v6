@@ -1,7 +1,14 @@
 import { createSign, createCipheriv, createDecipheriv, createHash, randomBytes, type KeyLike } from 'node:crypto';
 
 type BillingPlan = 'basic' | 'pro';
-type BillingTier = 'free' | 'pro_monthly' | 'pro_yearly';
+type BillingTier = 'free' | 'pro_monthly' | 'pro_yearly' | 'pro_lifetime';
+
+/** One-time purchases get a long-lived token instead of the 30-day subscription token. */
+const LIFETIME_JWT_SECONDS = 10 * 365 * 24 * 60 * 60;
+
+/** Filled in once the one-time variant exists in LemonSqueezy (env vars win). */
+const LIFETIME_PRODUCT_ID_FALLBACK = '';
+const LIFETIME_VARIANT_ID_FALLBACK = '';
 
 function parseIdSet(raw: string | undefined): Set<string> {
   return new Set((raw ?? '').split(',').map((value) => value.trim()).filter(Boolean));
@@ -12,16 +19,26 @@ function mapProductVariantToTier(productId: string, variantId: string): BillingT
   const monthlyVariantIds = parseIdSet(process.env.LEMON_SQUEEZY_PRO_MONTHLY_VARIANT_IDS);
   const yearlyProductIds = parseIdSet(process.env.LEMON_SQUEEZY_PRO_YEARLY_PRODUCT_IDS);
   const yearlyVariantIds = parseIdSet(process.env.LEMON_SQUEEZY_PRO_YEARLY_VARIANT_IDS);
+  const lifetimeProductIds = parseIdSet(process.env.LEMON_SQUEEZY_PRO_LIFETIME_PRODUCT_IDS);
+  const lifetimeVariantIds = parseIdSet(process.env.LEMON_SQUEEZY_PRO_LIFETIME_VARIANT_IDS);
+  if (LIFETIME_PRODUCT_ID_FALLBACK) lifetimeProductIds.add(LIFETIME_PRODUCT_ID_FALLBACK);
+  if (LIFETIME_VARIANT_ID_FALLBACK) lifetimeVariantIds.add(LIFETIME_VARIANT_ID_FALLBACK);
 
   const hasMonthlyVariant = variantId !== '' && monthlyVariantIds.has(variantId);
   const hasYearlyVariant = variantId !== '' && yearlyVariantIds.has(variantId);
+  const hasLifetimeVariant = variantId !== '' && lifetimeVariantIds.has(variantId);
   if (hasMonthlyVariant && hasYearlyVariant) return null;
   if (hasMonthlyVariant) return 'pro_monthly';
   if (hasYearlyVariant) return 'pro_yearly';
+  if (hasLifetimeVariant) return 'pro_lifetime';
 
   const hasMonthlyProduct = productId !== '' && monthlyProductIds.has(productId);
   const hasYearlyProduct = productId !== '' && yearlyProductIds.has(productId);
+  const hasLifetimeProduct = productId !== '' && lifetimeProductIds.has(productId);
   if (hasMonthlyProduct && hasYearlyProduct) return null;
+  // The one-time variant shares its product with the subscription variants, so the product id alone
+  // can only mean lifetime when it is listed there and nowhere else.
+  if (hasLifetimeProduct && !hasMonthlyProduct && !hasYearlyProduct) return 'pro_lifetime';
   if (hasMonthlyProduct) return 'pro_monthly';
   if (hasYearlyProduct) return 'pro_yearly';
 
@@ -190,7 +207,7 @@ export default async function handler(req: any, res: any) {
     }
 
     const now = Math.floor(Date.now() / 1000);
-    const exp = now + (60 * 60 * 24 * 30);
+    const exp = now + (mapped.tier === 'pro_lifetime' ? LIFETIME_JWT_SECONDS : 60 * 60 * 24 * 30);
     const claims = {
       iss: 'localpdf-billing',
       aud: 'localpdf-v6',

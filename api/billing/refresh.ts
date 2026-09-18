@@ -69,7 +69,11 @@ const PRO_ENTITLEMENTS = [
   'office.convert',
   'pdf.protect.encrypt',
   'pdf.protect.unlock',
+  'pdf.redact.verify',
 ];
+
+/** One-time purchase tokens are long-lived and never blocked by the staleness window below. */
+const LIFETIME_JWT_SECONDS = 10 * 365 * 24 * 60 * 60;
 
 function encodeBase64Url(buffer: Buffer | Uint8Array): string {
   return Buffer.from(buffer).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
@@ -127,9 +131,11 @@ export default async function handler(req: any, res: any) {
     return res.status(403).json({ error: 'Token is not authorized for renewal' });
   }
 
-  // Ограничение: токен не должен быть протухшим слишком давно (например, не более 30 дней назад)
+  // Ограничение: подписочный токен не должен быть протухшим слишком давно (не более 30 дней назад).
+  // Lifetime-покупка лицензию не теряет — авторитетом остаётся LS validate, поэтому окно не применяется.
   const now = Math.floor(Date.now() / 1000);
-  if (typeof payload.exp !== 'number' || payload.exp < now - (30 * 24 * 60 * 60)) {
+  const isLifetimeTier = payload.tier === 'pro_lifetime';
+  if (!isLifetimeTier && (typeof payload.exp !== 'number' || payload.exp < now - (30 * 24 * 60 * 60))) {
     return res.status(403).json({ error: 'Token has been expired for too long' });
   }
 
@@ -174,8 +180,8 @@ export default async function handler(req: any, res: any) {
       return res.status(403).json({ error: 'License is valid but not allowed for this app configuration.' });
     }
 
-    // Выпуск нового JWT на 30 дней
-    const newExp = now + (60 * 60 * 24 * 30);
+    // Выпуск нового JWT: lifetime-покупки получают долгий срок, подписки — 30 дней
+    const newExp = now + (mapped.tier === 'pro_lifetime' ? LIFETIME_JWT_SECONDS : 60 * 60 * 24 * 30);
     const newClaims = {
       iss: 'localpdf-billing',
       aud: 'localpdf-v6',

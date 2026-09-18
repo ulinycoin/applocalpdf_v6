@@ -1,5 +1,6 @@
 import { trackMonetizationEvent } from './monetization-telemetry';
 import { openCheckout } from './billing';
+import { getPrimaryPaidOffer } from '../platform/checkout-offers';
 
 interface PaywallModalProps {
   toolId: string;
@@ -21,22 +22,25 @@ const PRO_FEATURES = [
 ];
 
 export function PaywallModal({ toolId, toolName, reason, details, onClose }: PaywallModalProps) {
+  const offer = getPrimaryPaidOffer();
+
   const handleUpgrade = () => {
-    const checkoutUrl = import.meta.env.VITE_LS_CHECKOUT_URL_PRO_MONTHLY;
+    if (!offer) return;
     trackMonetizationEvent('paywall_cta_clicked', {
       source: 'paywall_modal',
       toolId,
       trigger: reason,
-      destination: checkoutUrl ?? null,
+      destination: offer.url,
       plan: 'pro',
+      variant: offer.variant,
       userState: 'local',
       hadPriorSuccessfulRun: true,
     });
-    openCheckout(checkoutUrl, {
+    openCheckout(offer.url, {
       source: 'paywall_modal',
       trigger: reason,
       plan: 'pro',
-      variant: 'monthly',
+      variant: offer.variant,
       userState: 'local',
       hadPriorSuccessfulRun: true,
     });
@@ -88,11 +92,11 @@ export function PaywallModal({ toolId, toolName, reason, details, onClose }: Pay
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <polyline points="20 6 9 17 4 12" />
             </svg>
-            Upgrade to Pro — from $3.99/mo
+            {offer ? offer.label : 'Upgrade to Pro'}
           </span>
         </button>
 
-        <p className="paywall-note">No credit card required to start</p>
+        <p className="paywall-note">One-time payment — no subscription, no renewal</p>
       </div>
     </div>
   );

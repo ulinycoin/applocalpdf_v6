@@ -3,8 +3,7 @@ import { LinearIcon } from '../../icons/linear-icon';
 import { useStudioConvertController } from './use-studio-convert-controller';
 import { trackMonetizationEvent, trackPaywallShown } from '../../../../app/react/monetization-telemetry';
 import { openCheckout } from '../../../../app/react/billing';
-import { activateProTrial } from '../../../../app/react/studio-paywall';
-import { getTrialState } from '../../../../app/platform/trial-manager';
+import { getPrimaryPaidOffer } from '../../../../app/platform/checkout-offers';
 import { usePlatform } from '../../../../app/react/platform-context';
 import { useDownloadMomentUpsell } from '../../../../app/react/download-moment-upsell';
 import { createZipBlob } from '../../../utils/zip';
@@ -59,13 +58,9 @@ const ALSO_TRY = [
 
 function OcrPaywallOverlay({
   totalPages,
-  onTrialStarted,
 }: {
   totalPages?: number;
-  onTrialStarted?: () => void;
 }) {
-  const trialAvailable = getTrialState().trialAvailable;
-
   useEffect(() => {
     trackPaywallShown({
       source: 'ocr_result_preview',
@@ -76,7 +71,7 @@ function OcrPaywallOverlay({
     });
   }, []);
 
-  const checkoutUrl = import.meta.env.VITE_LS_CHECKOUT_URL_PRO_MONTHLY;
+  const offer = getPrimaryPaidOffer();
   const remainingPages = totalPages ? totalPages - 3 : 0;
 
   return (
@@ -95,46 +90,30 @@ function OcrPaywallOverlay({
           <button
             type="button"
             onClick={() => {
+              if (!offer) return;
               trackMonetizationEvent('paywall_cta_clicked', {
                 source: 'ocr_result_preview',
                 toolId: 'ocr-pdf',
                 trigger: 'upgrade_pro',
-                destination: checkoutUrl ?? null,
+                destination: offer.url,
                 plan: 'pro',
+                variant: offer.variant,
                 userState: 'local',
                 hadPriorSuccessfulRun: true,
               });
-              openCheckout(checkoutUrl, {
+              openCheckout(offer.url, {
                 source: 'ocr_result_preview',
                 trigger: 'upgrade_pro',
                 plan: 'pro',
-                variant: 'monthly',
+                variant: offer.variant,
                 userState: 'local',
                 hadPriorSuccessfulRun: true,
               });
             }}
             style={{ background: '#142028', color: '#f9f5ee', border: 'none', borderRadius: 999, padding: '10px 24px', fontWeight: 800, fontSize: 14, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6 }}
           >
-            Upgrade to Pro — $3.99/mo
+            {offer ? offer.label : 'Upgrade to Pro'}
           </button>
-          {trialAvailable ? (
-            <button
-              type="button"
-              onClick={() => {
-                trackMonetizationEvent('paywall_cta_clicked', {
-                  source: 'ocr_result_preview',
-                  toolId: 'ocr-pdf',
-                  trigger: 'start_trial',
-                  userState: 'local',
-                  hadPriorSuccessfulRun: true,
-                });
-                onTrialStarted?.();
-              }}
-              style={{ display: 'block', width: '100%', marginTop: 10, background: 'transparent', color: '#52606b', border: '1px solid #d5dde3', borderRadius: 999, padding: '10px 24px', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}
-            >
-              Start free trial — 3 days
-            </button>
-          ) : null}
         </div>
       </div>
     </div>
@@ -148,11 +127,7 @@ export function StudioConvertWorkspace({ onClose, initialTool }: StudioConvertWo
     (onChange) => runtime.billing.subscribe(onChange),
     () => runtime.billing.getContext().plan,
   );
-  const { requestDownload, overlay: downloadMomentOverlay } = useDownloadMomentUpsell(runtime, billingPlan);
-
-  const handleOcrTrialStart = () => {
-    activateProTrial(runtime.billing, crypto.randomUUID(), 'ocr_result_preview');
-  };
+  const { requestDownload, overlay: downloadMomentOverlay } = useDownloadMomentUpsell(billingPlan);
 
   const meta = useMemo(() => (ctrl.activeTool ? (TOOL_META[ctrl.activeTool] ?? TOOL_META['ocr-pdf']) : TOOL_META['ocr-pdf']), [ctrl.activeTool]);
   const toolIconName = ctrl.activeTool ? (TOOL_ICONS[ctrl.activeTool] ?? 'file') : 'file';
@@ -843,7 +818,7 @@ export function StudioConvertWorkspace({ onClose, initialTool }: StudioConvertWo
                     </div>
                   ) : (
                     <div style={{ padding: '0 18px 18px' }}>
-                      <OcrPaywallOverlay totalPages={ctrl.totalPageCount} onTrialStarted={handleOcrTrialStart} />
+                      <OcrPaywallOverlay totalPages={ctrl.totalPageCount} />
                     </div>
                   )}
                   <div className="cvt-result-actions">
@@ -909,7 +884,7 @@ export function StudioConvertWorkspace({ onClose, initialTool }: StudioConvertWo
                                 {lockedItems.length} more image{lockedItems.length !== 1 ? 's' : ''} found
                               </div>
                               <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
-                                Upgrade to Pro to download all {ctrl.jpgResults.length} images — $3.99/mo
+                                Upgrade to Pro to download all {ctrl.jpgResults.length} images — one-time $19
                               </div>
                             </div>
                             <button type="button" className="cvt-btn-primary" style={{ flexShrink: 0, whiteSpace: 'nowrap' }} onClick={ctrl.showExtractPaywall}>

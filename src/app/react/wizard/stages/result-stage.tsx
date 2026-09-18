@@ -58,7 +58,7 @@ export function ResultStage({ outputIds, baseName = 'result', toolId = 'wizard',
         (onChange) => runtime.billing.subscribe(onChange),
         () => runtime.billing.getContext().plan,
     );
-    const { requestDownload, overlay: downloadMomentOverlay } = useDownloadMomentUpsell(runtime, billingPlan);
+    const { requestDownload, overlay: downloadMomentOverlay } = useDownloadMomentUpsell(billingPlan);
 
     const handleDownload = () => {
         requestDownload(toolId, async () => {

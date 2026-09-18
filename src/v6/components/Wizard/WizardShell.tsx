@@ -265,7 +265,7 @@ export function WizardShell({ toolId, context, ioAdapter, limitService }: Wizard
     (onChange) => runtime.billing.subscribe(onChange),
     () => runtime.billing.getContext().plan,
   );
-  const { requestDownload, overlay: downloadMomentOverlay } = useDownloadMomentUpsell(runtime, billingPlan);
+  const { requestDownload, overlay: downloadMomentOverlay } = useDownloadMomentUpsell(billingPlan);
 
   const {
     state,

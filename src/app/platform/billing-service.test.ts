@@ -128,8 +128,16 @@ describe('BillingService', () => {
     assert.deepStrictEqual(service.getContext().entitlements, ['pdf.merge', 'pdf.split', 'pdf.compress']);
   });
 
-  test('rejects token with mismatched tier and plan', async () => {
+  test('accepts a one-time lifetime pro token', async () => {
     const token = await createValidToken({ tier: 'pro_lifetime' });
+    const service = new BillingService('test_storage', publicKeyPem);
+    const result = await service.saveToken(token);
+    assert.strictEqual(result, true);
+    assert.strictEqual(service.getContext().plan, 'pro');
+  });
+
+  test('rejects token with mismatched tier and plan', async () => {
+    const token = await createValidToken({ plan: 'basic', tier: 'pro_monthly' });
     const service = new BillingService('test_storage', publicKeyPem);
     const result = await service.saveToken(token);
     assert.strictEqual(result, false);

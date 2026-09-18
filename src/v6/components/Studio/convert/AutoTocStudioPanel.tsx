@@ -39,7 +39,7 @@ export function AutoTocStudioPanel({ onClose, inputFileId, fileName, runtime }: 
         (onChange) => runtime.billing.subscribe(onChange),
         () => runtime.billing.getContext().plan,
     );
-    const { requestDownload, overlay: downloadMomentOverlay } = useDownloadMomentUpsell(runtime, billingPlan);
+    const { requestDownload, overlay: downloadMomentOverlay } = useDownloadMomentUpsell(billingPlan);
 
     useEffect(() => {
         return () => abortRef.current?.abort();

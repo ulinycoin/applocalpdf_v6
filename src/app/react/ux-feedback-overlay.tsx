@@ -4,7 +4,7 @@ import type { RunnerTelemetryEvent } from '../../core/public/contracts';
 import { openCheckout } from './billing';
 import { trackMonetizationEvent } from './monetization-telemetry';
 import { getTrialState } from '../platform/trial-manager';
-import { activateProTrial } from './studio-paywall';
+import { getPrimaryPaidOffer } from '../platform/checkout-offers';
 
 interface UiToastItem {
   id: string;
@@ -153,10 +153,8 @@ export function UxFeedbackOverlay() {
                 </h3>
                 <p className="ux-upsell-sub">
                   {trialState.isActive
-                    ? 'You have full Pro access during your trial. Upgrade now to keep it after the trial ends.'
-                    : trialState.trialAvailable
-                    ? 'Start a 3-day free trial to unlock unlimited pages and all Pro tools.'
-                    : 'Upgrade to Pro to unlock unlimited pages and all Pro tools.'}
+                    ? 'You have full Pro access during your trial. Buy once to keep it after the trial ends.'
+                    : 'One payment, no subscription — unlock unlimited pages and every Pro tool for good.'}
                 </p>
               </div>
             </div>
@@ -167,20 +165,21 @@ export function UxFeedbackOverlay() {
               <button
                 className="ux-upsell-btn-primary"
                 onClick={() => {
-                  if (trialState.isActive || !trialState.trialAvailable) {
-                    const baseCheckoutUrl = import.meta.env.VITE_LS_CHECKOUT_URL_PRO_MONTHLY;
-                    const checkoutUrl = buildCheckoutUrlWithDistinctId(baseCheckoutUrl);
+                  const offer = getPrimaryPaidOffer();
+                  if (offer) {
+                    const checkoutUrl = buildCheckoutUrlWithDistinctId(offer.url);
                     runtime.telemetry.track({
                       type: 'UI_UPSELL_CTA_CLICKED',
                       runId: upsell.runId,
                       toolId: upsell.toolId,
-                      destination: checkoutUrl ?? null,
+                      destination: checkoutUrl,
                     });
                     trackMonetizationEvent('paywall_cta_clicked', {
                       source: 'upsell_overlay',
                       toolId: upsell.toolId,
                       trigger: 'upgrade_pro',
-                      destination: checkoutUrl ?? null,
+                      destination: checkoutUrl,
+                      variant: offer.variant,
                       userState: 'local',
                       hadPriorSuccessfulRun: true,
                       flowId: upsell.runId,
@@ -189,27 +188,16 @@ export function UxFeedbackOverlay() {
                       source: 'upsell_overlay',
                       trigger: 'upgrade_pro',
                       plan: 'pro',
-                      variant: 'monthly',
+                      variant: offer.variant,
                       userState: 'local',
                       hadPriorSuccessfulRun: true,
                       flowId: upsell.runId,
                     });
-                  } else {
-                    trackMonetizationEvent('paywall_cta_clicked', {
-                      source: 'upsell_overlay',
-                      toolId: upsell.toolId,
-                      trigger: 'start_trial',
-                      userState: 'local',
-                      hadPriorSuccessfulRun: true,
-                      flowId: upsell.runId,
-                    });
-                    activateProTrial(runtime.billing, upsell.runId, 'upsell_overlay');
-                    setTrialState(getTrialState());
                   }
                   setUpsell(null);
                 }}
               >
-                {(trialState.isActive || !trialState.trialAvailable) ? 'Upgrade to Pro' : 'Start free trial'}
+                {getPrimaryPaidOffer()?.label ?? 'Upgrade to Pro'}
               </button>
             </div>
           </div>

@@ -20,7 +20,7 @@ LemonSqueezy (billing), PostHog (analytics), Vercel (deploy)
 
 **Business model:** Freemium via LemonSqueezy.
 - Free: merge, split, compress (up to 25 pages, 3 workspaces)
-- Pro ($3.99/mo): OCR, edit, convert, protect/unlock (unlimited)
+- Pro ($19 one-time, or $3.99/mo): OCR, edit, convert, protect/unlock (unlimited)
 
 ---
 
