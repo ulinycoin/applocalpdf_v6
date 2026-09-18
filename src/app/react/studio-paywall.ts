@@ -41,6 +41,11 @@ export function showStudioPaywall(
   return runId;
 }
 
+/**
+ * LEGACY — the 3-day trial is retired (Sep 2026): it produced 0 purchases while absorbing 35 of 36
+ * paywall CTA clicks, so it is no longer offered anywhere in the UI. Only users who already started
+ * a trial keep their remaining days (see trial-manager). Do not wire new trial CTAs.
+ */
 export function activateProTrial(
   billing: BillingService,
   flowId: string,

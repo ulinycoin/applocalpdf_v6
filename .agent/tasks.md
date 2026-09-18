@@ -1,8 +1,12 @@
 # Active Tasks
 
-Last updated: 2026-08-06
+Last updated: 2026-09-18
 
 ## Hot
+- [~] One-time Pro Lifetime offer ($19) — code shipped (3841fe7): trial CTAs removed, in-app CTAs use `getPrimaryPaidOffer()`, `pro_lifetime` tier + 10-year JWT, /pricing rewritten (yearly retired)
+- [x] One-time Pro Lifetime offer ($19) — LIVE wiring done: LS product 1371816 / variant 2143549, checkout `.../buy/e42c57ec-d7a3-4bd9-9595-3f38f6f2a8f5`; code fallbacks mean no Vercel env change is required (commits 3841fe7 + a258156)
+- [ ] Deploy + first real purchase check: verify the licence key from a $19 order restores Pro (tier `pro_lifetime`)
+- [ ] Watch 14d after launch: `checkout_opened` by `variant=lifetime` vs purchases. ≥8 opens + 0 purchases → offer wrong; <5 opens → intent volume is the wall; ≥2 purchases → model validated
 - [x] AI crawler markdown fork `/localpdf` (c1dedf6) — middleware + localpdf-ai.md; cache private/no-store + Vary UA; Googlebot/Bingbot → HTML
 - [x] Push c1dedf6 → origin/main (18808e4..c1dedf6); Vercel Ready `localpdf-v6-kgaomcf5i`
 - [x] Live curl matrix OK — Chrome/Googlebot HTML 24801; ClaudeBot/OAI/Perplexity markdown 4782 + private/no-store + Vary UA + noindex
