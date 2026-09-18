@@ -6,9 +6,9 @@ type BillingTier = 'free' | 'pro_monthly' | 'pro_yearly' | 'pro_lifetime';
 /** One-time purchases get a long-lived token instead of the 30-day subscription token. */
 const LIFETIME_JWT_SECONDS = 10 * 365 * 24 * 60 * 60;
 
-/** Filled in once the one-time variant exists in LemonSqueezy (env vars win). */
-const LIFETIME_PRODUCT_ID_FALLBACK = '';
-const LIFETIME_VARIANT_ID_FALLBACK = '';
+/** One-time "LocalPDF Pro" product (1371816) and its single variant (2143549); env vars still win. */
+const LIFETIME_PRODUCT_ID_FALLBACK = '1371816';
+const LIFETIME_VARIANT_ID_FALLBACK = '2143549';
 
 function parseIdSet(raw: string | undefined): Set<string> {
   return new Set((raw ?? '').split(',').map((value) => value.trim()).filter(Boolean));

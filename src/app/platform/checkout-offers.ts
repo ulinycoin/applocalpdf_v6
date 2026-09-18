@@ -9,8 +9,8 @@
 export const PRO_LIFETIME_PRICE_USD = 19;
 export const PRO_MONTHLY_PRICE_USD = 3.99;
 
-/** Filled in once the one-time variant exists in LemonSqueezy (see restore.ts for the ids). */
-const LIFETIME_CHECKOUT_URL_FALLBACK = '';
+/** One-time "LocalPDF Pro" product 1371816, variant 2143549 ($19, license keys, never expires). */
+const LIFETIME_CHECKOUT_URL_FALLBACK = 'https://localpdf.lemonsqueezy.com/checkout/buy/e42c57ec-d7a3-4bd9-9595-3f38f6f2a8f5';
 
 type EnvRecord = Record<string, string | undefined>;
 
