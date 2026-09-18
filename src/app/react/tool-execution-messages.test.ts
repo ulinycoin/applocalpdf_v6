@@ -29,7 +29,7 @@ test('toUserMessage maps qpdf unavailable code', () => {
 
 test('toUserMessage maps page-count timeout code', () => {
   const msg = toUserMessage({ type: 'TOOL_ERROR', message: 'x', code: 'PAGE_COUNT_CHECK_TIMEOUT' });
-  assert.match(msg, /validation timed out/i);
+  assert.match(msg, /Too many pages/i);
 });
 
 test('toUserMessage maps TOOL_RESULT', () => {
