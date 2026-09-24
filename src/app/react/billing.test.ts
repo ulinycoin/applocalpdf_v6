@@ -94,17 +94,17 @@ describe('billing helpers', () => {
     test('falls back to window.open if LemonSqueezy is not available and tracks open', () => {
       const openSpy = window.open as any;
       const captureSpy = window.posthog?.capture as any;
-      openCheckout('https://store.lemonsqueezy.com/checkout/buy/123', { source: 'pricing_page', trigger: 'buy-pro-monthly', plan: 'pro', variant: 'monthly' });
+      openCheckout('https://store.lemonsqueezy.com/checkout/buy/123', { source: 'pricing_page', trigger: 'buy-pro-yearly', plan: 'pro', variant: 'yearly' });
       assert.strictEqual(openSpy.mock.calls.length, 1);
       assert.deepStrictEqual(openSpy.mock.calls[0].arguments, ['https://store.lemonsqueezy.com/checkout/buy/123', '_blank', 'noopener,noreferrer']);
       assert.strictEqual(captureSpy.mock.calls.length, 1);
       assert.deepStrictEqual(captureSpy.mock.calls[0].arguments, ['checkout_opened', {
         source: 'pricing_page',
-        trigger: 'buy-pro-monthly',
+        trigger: 'buy-pro-yearly',
         checkoutUrl: 'https://store.lemonsqueezy.com/checkout/buy/123',
         destination: 'https://store.lemonsqueezy.com/checkout/buy/123',
         plan: 'pro',
-        variant: 'monthly',
+        variant: 'yearly',
         userState: 'local',
         hadPriorSuccessfulRun: undefined,
         flowId: undefined,

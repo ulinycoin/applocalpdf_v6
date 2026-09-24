@@ -108,7 +108,8 @@ if (billingDestination) {
   }
 }
 
-for (const key of ['VITE_LS_CHECKOUT_URL_PRO_MONTHLY', 'VITE_LS_CHECKOUT_URL_PRO_YEARLY']) {
+// Monthly was retired in Sep 2026; the paid ladder is lifetime + yearly.
+for (const key of ['VITE_LS_CHECKOUT_URL_PRO_YEARLY', 'VITE_LS_CHECKOUT_URL_PRO_LIFETIME']) {
   const value = requireEnv(key, 'hosted LemonSqueezy checkout URL');
   if (!value) continue;
   if (isHttpsUrl(value)) {
