@@ -36,7 +36,7 @@ Core PDF processing runs in your browser. Your PDF contents are not uploaded for
 Yes. Open two PDFs side by side in the canvas, select a page from one, and drag it into the other. The page is copied instantly — no extract-then-merge workflow required.
 
 ### Is LocalPDF really free? What's the catch?
-LocalPDF has a free tier for quick tasks, with limits such as up to 3 workspaces and 25 pages per document. Pro is available for recurring PDF work, with current pricing shown on the pricing page. Eligible users may also see a 3-day free trial.
+LocalPDF has a free tier for quick tasks, with limits such as up to 3 workspaces and 25 pages per document. Pro is available for recurring PDF work, with current pricing shown on the pricing page.
 
 ### How is this different from Smallpdf or Adobe Acrobat?
 Core PDF processing stays on your device instead of uploading document contents to a processing server. The broader website still uses normal hosting, analytics, billing, and license-validation infrastructure. LocalPDF also uses a visual canvas where you can work with multiple documents side by side and drag pages between them.
@@ -52,8 +52,7 @@ LocalPDF works in Chrome, Firefox, Safari, and Edge. All processing uses WebAsse
 ## Pricing
 
 - **Free:** quick tasks, up to 3 workspaces and 25 pages per document
-- **Pro ($3.99/mo):** recurring PDF work — current pricing shown on the pricing page
-- Eligible users may see a 3-day free trial
+- **Pro ($19 once, or $39.99/year):** recurring PDF work — current pricing shown on the pricing page
 
 ---
 

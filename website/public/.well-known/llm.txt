@@ -77,7 +77,7 @@ LocalPDF is a privacy-first PDF app for people who need to edit, merge, OCR, com
 
 ## Pricing
 Free plan: merge PDF, split PDF, compress PDF. Limits: 25 pages per document, 3 workspaces.
-Pro plan: $3.99/month or $39.99/year. Includes: OCR PDF, edit PDF, convert PDF, protect/unlock PDF. No page limits, unlimited workspaces. No credit card required to start. No account required for free plan.
+Pro plan: $19 one-time, or $39.99/year. Includes: OCR PDF, edit PDF, convert PDF, protect/unlock PDF. No page limits, unlimited workspaces. No credit card required to start. No account required for free plan.
 Pricing page: https://localpdf.online/pricing
 
 ## Competitive positioning
@@ -91,7 +91,7 @@ Q: Does LocalPDF upload my files to a server?
 A: No. All processing happens in the browser using WebAssembly. Files never leave the user's device.
 
 Q: Is LocalPDF free?
-A: Yes. Core tools (merge, split, compress) are free with no account required. Pro plan ($3.99/mo) unlocks OCR, editing, and conversion.
+A: Yes. Core tools (merge, split, compress) are free with no account required. Pro plan ($19 once, or $39.99/year) unlocks OCR, editing, and conversion.
 
 Q: Does LocalPDF work offline?
 A: Yes. After the initial page load, all PDF processing works without an internet connection.

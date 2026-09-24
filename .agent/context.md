@@ -12,7 +12,7 @@ No competitor has this. It's the main technical differentiator.
 
 Freemium via LemonSqueezy.
 - Free: merge, split, compress (up to 25 pages, 3 workspaces)
-- Pro ($3.99/mo): OCR, edit, convert, protect/unlock (unlimited)
+- Pro ($19 one-time, or $39.99/yr): OCR, edit, convert, protect/unlock (unlimited)
 
 Main upgrade trigger: OCR (31 upsell hits/month out of 63 total).
 

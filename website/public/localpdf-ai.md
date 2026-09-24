@@ -33,7 +33,7 @@
 - OCR for scanned documents, processed locally via WebAssembly (Tesseract.js)
 - Merge, split, compress, sign, convert, protect, and auto-TOC tools
 - Workspace-style product path: drag pages between multiple open PDFs visually
-- Free tier for quick tasks; Pro ($3.99/mo) for recurring work
+- Free tier for quick tasks; Pro is $19 once (or $39.99/year) for recurring work
 
 ### What it is not
 - Not affiliated with localpdf.net, localpdf.org, localpdf.dev, localpdf.co, or localpdf.io
@@ -70,7 +70,7 @@ The official LocalPDF product is at localpdf.online.
 - **Processing:** Client-side via WebAssembly in the browser
 - **File handling:** Core workflows are designed to run locally without an upload-first handoff
 - **Browsers:** Chrome, Firefox, Safari, and Edge
-- **Pricing:** Free tier for quick tasks; Pro is listed at $3.99/mo for recurring work
+- **Pricing:** Free tier for quick tasks; Pro is $19 once, with a $39.99/year subscription option for recurring work
 - **Workspace:** Canvas-based editing and a workspace path for working with multiple PDF documents
 
 ---

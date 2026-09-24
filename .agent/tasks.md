@@ -3,13 +3,15 @@
 Last updated: 2026-09-24
 
 ## Hot
+- [x] Offer model: месячная подписка $3.99 выведена из оффера, вместо неё годовая $39.99. `checkout-offers.ts` → `PRO_YEARLY_PRICE_USD` + `getYearlyCheckoutUrl()` (fallback `fe9368a5…?enabled=1442621`), `resolvePrimaryOffer` теперь lifetime→yearly, `getMonthlyCheckoutUrl` удалён. Обновлены `/pricing` (кнопка, Offer-схема, FAQ), terms, refund-policy, faq, ja, zh, обе compare-страницы, pdf-tools-without-upload, llms.txt, localpdf-ai.md, index-ai.md, CLAUDE.md, context.md, `.env.example`, `billing-preflight.mjs`
+- [ ] **LemonSqueezy: месячный вариант 1442622 всё ещё `published` и продаётся.** Отключается только в дашборде (в API LS нет метода обновления варианта). Пока он живой, старые ссылки `df6ab354…` продолжают работать
 - [x] Security: `/api/download-proxy` был открытым релеем (любой URL, CORS `*`, без авторизации) — теперь allowlist только `tmpfiles.org`, 403 на остальное, + `api/download-proxy.test.ts`
 - [x] Monetization: webhook не маппил `pro_lifetime` → `purchase_completed` не летел для $19-оффера. Добавлены lifetime product/variant (env + fallback 1371816/2143549), тест на атрибуцию
 - [x] Billing: `restore.ts` отдавал Pro-JWT без `pdf.redact.verify` → покупатель по license key упирался в paywall за оплаченную фичу. Entitlement добавлен, `refresh.ts` импортирует список из `restore.ts`, + parity-тест `src/app/platform/entitlement-parity.test.ts`
 - [x] Tests: `npm test` теперь включает `api/**/*.test.ts` (billing и proxy тесты раньше не запускались вообще)
 - [ ] Pricing claim: на /pricing и в FAQ-схеме заявлено «25 страниц/документ» для Free, но `plan-limits.ts` ставит `maxPagesPerDocument: Infinity`. Либо включить лимит, либо убрать цифру
 - [ ] Share: ciphertext уходит на `tmpfiles.org` (файл живёт ~1 час), а главная заявляет «0 bytes uploaded / files never leave your device». Уточнить формулировку + подумать про свой storage
-- [~] One-time Pro Lifetime offer ($19) — code shipped (3841fe7): trial CTAs removed, in-app CTAs use `getPrimaryPaidOffer()`, `pro_lifetime` tier + 10-year JWT, /pricing rewritten (yearly retired)
+- [~] One-time Pro Lifetime offer ($19) — code shipped (3841fe7): trial CTAs removed, in-app CTAs use `getPrimaryPaidOffer()`, `pro_lifetime` tier + 10-year JWT, /pricing rewritten (monthly retired, yearly is the subscription anchor)
 - [x] One-time Pro Lifetime offer ($19) — LIVE wiring done: LS product 1371816 / variant 2143549, checkout `.../buy/e42c57ec-d7a3-4bd9-9595-3f38f6f2a8f5`; code fallbacks mean no Vercel env change is required (commits 3841fe7 + a258156)
 - [ ] Deploy + first real purchase check: verify the licence key from a $19 order restores Pro (tier `pro_lifetime`)
 - [ ] Watch 14d after launch: `checkout_opened` by `variant=lifetime` vs purchases. ≥8 opens + 0 purchases → offer wrong; <5 opens → intent volume is the wall; ≥2 purchases → model validated

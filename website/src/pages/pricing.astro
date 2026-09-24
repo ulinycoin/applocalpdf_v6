@@ -2,17 +2,17 @@
 import MarketingLayout from '../layouts/MarketingLayout.astro';
 import {
   getLifetimeCheckoutUrl,
-  getMonthlyCheckoutUrl,
+  getYearlyCheckoutUrl,
   PRO_LIFETIME_PRICE_USD,
-  PRO_MONTHLY_PRICE_USD,
+  PRO_YEARLY_PRICE_USD,
 } from '../../../src/app/platform/checkout-offers';
 
 const title = 'LocalPDF Pricing — Free, or $19 once for Pro';
 const description = 'Transparent pricing: LocalPDF is free for quick PDF tasks, and Pro is a one-time $19 payment. No subscription, no renewal, no account.';
 const canonical = 'https://localpdf.online/pricing';
 
-const lifetimeCheckoutUrl = getLifetimeCheckoutUrl() ?? getMonthlyCheckoutUrl() ?? '';
-const monthlyCheckoutUrl = getMonthlyCheckoutUrl() ?? '';
+const lifetimeCheckoutUrl = getLifetimeCheckoutUrl() ?? getYearlyCheckoutUrl() ?? '';
+const yearlyCheckoutUrl = getYearlyCheckoutUrl() ?? '';
 
 const pricingSchema = {
   '@context': 'https://schema.org',
@@ -37,11 +37,11 @@ const pricingSchema = {
         },
         {
           '@type': 'Offer',
-          name: 'Pro Monthly',
-          price: '3.99',
+          name: 'Pro Yearly',
+          price: '39.99',
           priceCurrency: 'USD',
-          validFrom: '2026-09-18',
-          priceValidUntil: '2027-09-18',
+          validFrom: '2026-09-24',
+          priceValidUntil: '2027-09-24',
           availability: 'https://schema.org/InStock',
           url: 'https://localpdf.online/pricing',
           itemCondition: 'https://schema.org/NewCondition',
@@ -76,12 +76,12 @@ const pricingSchema = {
         {
           '@type': 'Question',
           name: 'How much does LocalPDF Pro cost?',
-          acceptedAnswer: { '@type': 'Answer', text: 'LocalPDF Pro is $19, paid once. It unlocks every Pro tool permanently and never renews. A $3.99 per month subscription is also available for anyone who prefers paying monthly.' },
+          acceptedAnswer: { '@type': 'Answer', text: 'LocalPDF Pro is $19, paid once. It unlocks every Pro tool permanently and never renews. A $39.99 per year subscription is also available for anyone who prefers paying yearly.' },
         },
         {
           '@type': 'Question',
           name: 'Is Pro a subscription?',
-          acceptedAnswer: { '@type': 'Answer', text: 'No. The main Pro option is a one-time $19 payment that does not renew, so there is nothing to cancel. The monthly $3.99 subscription is an alternative and renews until canceled through the payment provider.' },
+          acceptedAnswer: { '@type': 'Answer', text: 'No. The main Pro option is a one-time $19 payment that does not renew, so there is nothing to cancel. The yearly $39.99 subscription is an alternative and renews annually until canceled through the payment provider.' },
         },
       ],
     },
@@ -146,11 +146,11 @@ const pricingSchema = {
               Get Pro Lifetime — ${PRO_LIFETIME_PRICE_USD}
             </button>
             <button
-              id="buy-pro-monthly"
+              id="buy-pro-yearly"
               class="plan-link plan-link-secondary"
-              data-checkout-url={monthlyCheckoutUrl}
+              data-checkout-url={yearlyCheckoutUrl}
             >
-              Prefer monthly? ${PRO_MONTHLY_PRICE_USD}/mo
+              Prefer a subscription? ${PRO_YEARLY_PRICE_USD}/year
             </button>
           </div>
           <p class="annual-note">One-time payment charged today. No renewal, no account, no email required.</p>
@@ -160,7 +160,7 @@ const pricingSchema = {
       <section class="legal-note-panel" aria-label="Billing terms notice">
         <p>
           Pro Lifetime is a one-time payment. It does not renew and there is nothing to cancel.
-          The optional monthly plan is a subscription billed monthly and renews automatically until canceled through the payment provider.
+          The optional yearly plan is a subscription billed once a year and renews automatically until canceled through the payment provider.
           By purchasing or restoring a paid plan, you agree to the <a href="/terms">Terms of Use</a> and <a href="/privacy">Privacy Policy</a>.
           Billing, cancellations, and refund handling are described in the <a href="/refund-policy">Refund Policy</a>.
         </p>
@@ -198,7 +198,7 @@ const pricingSchema = {
 
   const billingService = new BillingService('v6_subscription_jwt', import.meta.env.VITE_PUBLIC_JWT_KEY);
 
-  function setupCheckout(buttonId: string, variant: 'lifetime' | 'monthly') {
+  function setupCheckout(buttonId: string, variant: 'lifetime' | 'yearly') {
     const btn = document.getElementById(buttonId);
     if (!btn) return;
 
@@ -222,7 +222,7 @@ const pricingSchema = {
   }
 
   setupCheckout('buy-pro-lifetime', 'lifetime');
-  setupCheckout('buy-pro-monthly', 'monthly');
+  setupCheckout('buy-pro-yearly', 'yearly');
 
   const restoreBtn = document.getElementById('restore-license-btn') as HTMLButtonElement | null;
   const licenseInput = document.getElementById('license-key-input') as HTMLInputElement | null;
