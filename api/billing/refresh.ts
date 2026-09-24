@@ -1,5 +1,5 @@
 import { createSign, createVerify, type KeyLike } from 'node:crypto';
-import { decryptString, encryptString, getMappedLicense } from './restore';
+import { PRO_ENTITLEMENTS, decryptString, encryptString, getMappedLicense } from './restore';
 
 function isNonEmptyString(value: unknown): value is string {
   return typeof value === 'string' && value.trim().length > 0;
@@ -56,21 +56,6 @@ function hitRateLimit(bucketKey: string): boolean {
   current.count += 1;
   return current.count > RATE_LIMIT_MAX_ATTEMPTS;
 }
-
-const PRO_ENTITLEMENTS = [
-  'pdf.merge',
-  'pdf.split',
-  'pdf.compress',
-  'pdf.ocr',
-  'pdf.rotate',
-  'pdf.delete_pages',
-  'pdf.edit',
-  'pdf.to_image',
-  'office.convert',
-  'pdf.protect.encrypt',
-  'pdf.protect.unlock',
-  'pdf.redact.verify',
-];
 
 /** One-time purchase tokens are long-lived and never blocked by the staleness window below. */
 const LIFETIME_JWT_SECONDS = 10 * 365 * 24 * 60 * 60;

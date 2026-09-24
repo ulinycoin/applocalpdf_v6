@@ -68,3 +68,64 @@ test('handleLemonSqueezyWebhook maps order_created to purchase_completed capture
     global.fetch = originalFetch;
   }
 });
+
+test('handleLemonSqueezyWebhook attributes one-time lifetime purchases', async () => {
+  const originalFetch = global.fetch;
+  const originalLifetimeProducts = process.env.LEMON_SQUEEZY_PRO_LIFETIME_PRODUCT_IDS;
+  const originalLifetimeVariants = process.env.LEMON_SQUEEZY_PRO_LIFETIME_VARIANT_IDS;
+  const captured: Array<{ properties: Record<string, unknown> }> = [];
+
+  process.env.LEMON_SQUEEZY_PRO_MONTHLY_PRODUCT_IDS = '917519';
+  process.env.LEMON_SQUEEZY_PRO_MONTHLY_VARIANT_IDS = '1442622';
+  process.env.PUBLIC_POSTHOG_KEY = 'phc_test_key';
+  delete process.env.LEMON_SQUEEZY_PRO_LIFETIME_PRODUCT_IDS;
+  delete process.env.LEMON_SQUEEZY_PRO_LIFETIME_VARIANT_IDS;
+
+  global.fetch = async (_url: string | URL, init?: RequestInit) => {
+    captured.push(JSON.parse(String(init?.body ?? '{}')) as { properties: Record<string, unknown> });
+    return new Response('{}', { status: 200 });
+  };
+
+  try {
+    const payload = JSON.stringify({
+      meta: {
+        event_name: 'order_created',
+        custom_data: { distinct_id: 'ph-user-lifetime' },
+      },
+      data: {
+        id: 'order-lifetime-1',
+        attributes: {
+          total: 1900,
+          currency: 'USD',
+          user_email: 'lifetime@example.com',
+          first_order_item: {
+            product_id: 1371816,
+            variant_id: 2143549,
+          },
+        },
+      },
+    });
+    const body = Buffer.from(payload);
+    const result = await handleLemonSqueezyWebhook(body, signBody(payload), WEBHOOK_SECRET);
+
+    assert.equal(result.status, 200);
+    assert.equal(result.body.ok, true);
+    assert.equal(result.body.tier, 'pro_lifetime');
+    assert.equal(captured.length, 1);
+    assert.equal(captured[0]?.properties.tier, 'pro_lifetime');
+    assert.equal(captured[0]?.properties.variant, 'lifetime');
+    assert.equal(captured[0]?.properties.amount, 19);
+  } finally {
+    global.fetch = originalFetch;
+    if (originalLifetimeProducts === undefined) {
+      delete process.env.LEMON_SQUEEZY_PRO_LIFETIME_PRODUCT_IDS;
+    } else {
+      process.env.LEMON_SQUEEZY_PRO_LIFETIME_PRODUCT_IDS = originalLifetimeProducts;
+    }
+    if (originalLifetimeVariants === undefined) {
+      delete process.env.LEMON_SQUEEZY_PRO_LIFETIME_VARIANT_IDS;
+    } else {
+      process.env.LEMON_SQUEEZY_PRO_LIFETIME_VARIANT_IDS = originalLifetimeVariants;
+    }
+  }
+});

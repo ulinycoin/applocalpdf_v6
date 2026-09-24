@@ -70,15 +70,16 @@ type BillingEntitlement =
   | 'pdf.to_image'
   | 'office.convert'
   | 'pdf.protect.encrypt'
-  | 'pdf.protect.unlock';
+  | 'pdf.protect.unlock'
+  | 'pdf.redact.verify';
 
-const BASIC_ENTITLEMENTS: BillingEntitlement[] = [
+export const BASIC_ENTITLEMENTS: BillingEntitlement[] = [
   'pdf.merge',
   'pdf.split',
   'pdf.compress',
 ];
 
-const PRO_ENTITLEMENTS: BillingEntitlement[] = [
+export const PRO_ENTITLEMENTS: BillingEntitlement[] = [
   ...BASIC_ENTITLEMENTS,
   'pdf.ocr',
   'pdf.rotate',
@@ -88,6 +89,7 @@ const PRO_ENTITLEMENTS: BillingEntitlement[] = [
   'office.convert',
   'pdf.protect.encrypt',
   'pdf.protect.unlock',
+  'pdf.redact.verify',
 ];
 
 function getDefaultEntitlementsForPlan(plan: BillingPlan): BillingEntitlement[] {

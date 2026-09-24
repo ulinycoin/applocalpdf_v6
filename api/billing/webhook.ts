@@ -1,8 +1,12 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
 
-type BillingTier = 'pro_monthly' | 'pro_yearly';
+type BillingTier = 'pro_monthly' | 'pro_yearly' | 'pro_lifetime';
 
 const DEFAULT_POSTHOG_HOST = 'https://eu.i.posthog.com';
+
+/** One-time "LocalPDF Pro" product (1371816) and its single variant (2143549); env vars still win. */
+const LIFETIME_PRODUCT_ID_FALLBACK = '1371816';
+const LIFETIME_VARIANT_ID_FALLBACK = '2143549';
 
 const PURCHASE_EVENTS = new Set([
   'order_created',
@@ -19,16 +23,26 @@ function mapProductVariantToTier(productId: string, variantId: string): BillingT
   const monthlyVariantIds = parseIdSet(process.env.LEMON_SQUEEZY_PRO_MONTHLY_VARIANT_IDS);
   const yearlyProductIds = parseIdSet(process.env.LEMON_SQUEEZY_PRO_YEARLY_PRODUCT_IDS);
   const yearlyVariantIds = parseIdSet(process.env.LEMON_SQUEEZY_PRO_YEARLY_VARIANT_IDS);
+  const lifetimeProductIds = parseIdSet(process.env.LEMON_SQUEEZY_PRO_LIFETIME_PRODUCT_IDS);
+  const lifetimeVariantIds = parseIdSet(process.env.LEMON_SQUEEZY_PRO_LIFETIME_VARIANT_IDS);
+  lifetimeProductIds.add(LIFETIME_PRODUCT_ID_FALLBACK);
+  lifetimeVariantIds.add(LIFETIME_VARIANT_ID_FALLBACK);
 
   const hasMonthlyVariant = variantId !== '' && monthlyVariantIds.has(variantId);
   const hasYearlyVariant = variantId !== '' && yearlyVariantIds.has(variantId);
+  const hasLifetimeVariant = variantId !== '' && lifetimeVariantIds.has(variantId);
   if (hasMonthlyVariant && hasYearlyVariant) return null;
   if (hasMonthlyVariant) return 'pro_monthly';
   if (hasYearlyVariant) return 'pro_yearly';
+  if (hasLifetimeVariant) return 'pro_lifetime';
 
   const hasMonthlyProduct = productId !== '' && monthlyProductIds.has(productId);
   const hasYearlyProduct = productId !== '' && yearlyProductIds.has(productId);
+  const hasLifetimeProduct = productId !== '' && lifetimeProductIds.has(productId);
   if (hasMonthlyProduct && hasYearlyProduct) return null;
+  // The one-time variant ships under its own product, but keep the variant-first precedence anyway so
+  // an order that only carries a product id can never be misread as a subscription.
+  if (hasLifetimeProduct && !hasMonthlyProduct && !hasYearlyProduct) return 'pro_lifetime';
   if (hasMonthlyProduct) return 'pro_monthly';
   if (hasYearlyProduct) return 'pro_yearly';
 
@@ -177,7 +191,7 @@ export async function handleLemonSqueezyWebhook(
 
   const distinctId = order.distinctId ?? (order.email ? `email:${order.email}` : `order:${order.orderId}`);
   const amount = order.totalCents > 0 ? order.totalCents / 100 : undefined;
-  const variant = tier === 'pro_yearly' ? 'yearly' : 'monthly';
+  const variant = tier === 'pro_lifetime' ? 'lifetime' : tier === 'pro_yearly' ? 'yearly' : 'monthly';
 
   const captured = await capturePostHogEvent({
     event: 'purchase_completed',
