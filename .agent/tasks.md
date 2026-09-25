@@ -44,6 +44,7 @@ Last updated: 2026-09-25
 - [ ] **Дашборд LemonSqueezy:** выключить месячный вариант `1442622` (P0-2, кода не требует)
 - [ ] **Deploy + первая покупка $19:** LS отдаёт 6 ордеров, последний `2026-06-29`, lifetime — 0. Проверить restore Pro по license key (tier `pro_lifetime`) не на чем
 - [ ] **Гейт A (+2 недели после P1):** merge ≥ 100/нед, ненулевые split/delete. Считать по `studio_merge_completed` / `studio_split_completed` / `studio_delete_pages` в PostHog. База до P1: событий не существовало
+- [ ] **Проверить первые события руками (1 минута):** автоматический браузер для этого не годится — PostHog JS отбрасывает трафик веб-драйвера (в прогоне Playwright SDK загружался, `__loaded=true`, но ни одного POST на `/ingest/e`; GA4 при этом отправлял). Нужно открыть `/app`, нажать «Upload PDF» или перетащить страницу в другое пространство и посмотреть Activity в PostHog: `studio_empty_state_cta`, `studio_merge_completed`
 - [ ] **Гейт B (+4 недели):** активация `app_tool_run_started` / `/app*` ≥ 25% (с 14.8%), checkout opens ≥ 15/мес (с 8). База 7 дней до P1: `paywall_shown` 116 → `paywall_cta_clicked` 1 → `checkout_opened` 2
 - [ ] LLM probe retest web-enabled (Q1/Q3/TECH) — после деплоя
 - [ ] OCR UX: оценки времени и чанки уже в коде (ebc40fa), но за 14 дней всё ещё 3 × `Worker timeout exceeded` + 1 × `Setting up fake worker failed`
