@@ -21,7 +21,6 @@ test('pipeline smoke: merge -> split -> ocr (deterministic fallback when PDF ras
     userId: 'smoke-user',
     plan: 'pro' as const,
     entitlements: ['pdf.merge', 'pdf.split', 'pdf.ocr'],
-    usageThisMonthByTool: {},
   };
 
   const mergeResult = await runTool(

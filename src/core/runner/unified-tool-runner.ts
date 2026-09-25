@@ -217,23 +217,6 @@ export class UnifiedToolRunner {
       return tierCheck;
     }
 
-    const monthlyQuotaCheck = this.checkMonthlyQuota(
-      toolId,
-      definition.limits?.monthlyQuota,
-      context.plan,
-      context.usageThisMonthByTool?.[toolId] ?? 0,
-    );
-    if (monthlyQuotaCheck) {
-      this.telemetry.track({
-        type: 'TOOL_RUN_DENIED',
-        runId,
-        toolId,
-        reason: monthlyQuotaCheck.reason,
-      });
-      this.publishUpsell(runId, toolId, monthlyQuotaCheck.details ?? monthlyQuotaCheck.reason);
-      return monthlyQuotaCheck;
-    }
-
     this.telemetry.track({
       type: 'ACCESS_CHECK_STAGE',
       runId,
@@ -288,26 +271,6 @@ export class UnifiedToolRunner {
         type: 'TOOL_ACCESS_DENIED',
         reason: 'LIMIT_EXCEEDED',
         details: 'This tool requires PRO tier',
-      };
-    }
-    return null;
-  }
-
-  private checkMonthlyQuota(
-    toolId: string,
-    monthlyQuota: { free: number; pro: number } | undefined,
-    plan: 'basic' | 'pro',
-    currentUsage: number,
-  ): AccessDeniedResult | null {
-    if (!monthlyQuota) {
-      return null;
-    }
-    const quota = plan === 'pro' ? monthlyQuota.pro : monthlyQuota.free;
-    if (currentUsage >= quota) {
-      return {
-        type: 'TOOL_ACCESS_DENIED',
-        reason: 'LIMIT_EXCEEDED',
-        details: `Monthly quota exceeded for ${toolId}`,
       };
     }
     return null;

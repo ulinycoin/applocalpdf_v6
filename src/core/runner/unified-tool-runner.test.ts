@@ -66,7 +66,6 @@ const tool: IToolDefinition = {
   limits: {
     featureTier: 'basic',
     maxFileSize: { free: 2, pro: 10 },
-    monthlyQuota: { free: 1, pro: 100 },
   },
   uiLoader: async () => ({ default: () => null }),
   logicLoader: async () => ({ run: async ({ inputIds }) => ({ outputIds: inputIds }) }),
@@ -168,7 +167,6 @@ test('UnifiedToolRunner routes OCR through the worker path', async () => {
     entitlements: ['pdf.ocr'],
     limits: {
       featureTier: 'basic',
-      monthlyQuota: { free: 1, pro: 100 },
     },
     logicLoader: async () => {
       logicLoaderCalled = true;

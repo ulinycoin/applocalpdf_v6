@@ -1,6 +1,5 @@
 import { Suspense, lazy, useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import type { ToolRunContext } from '../../core/public/contracts';
 import { usePlatform } from './platform-context';
 import { downloadOutputFiles } from '../platform/download-output-files';
 import type { StudioToolRouteState } from '../../v6/studio/navigation/studio-tool-context';
@@ -13,12 +12,6 @@ interface ParsedRunPreview {
   accuracy: number | null;
   language: string | null;
 }
-
-const demoContext: ToolRunContext = {
-  userId: 'ocr-test-user',
-  plan: 'pro',
-  entitlements: ['pdf.ocr'],
-};
 
 export function OcrPdfTestPage() {
   const navigate = useNavigate();
@@ -126,7 +119,7 @@ export function OcrPdfTestPage() {
     const result = await runtime.runner.execute(
       'ocr-pdf',
       { inputIds, options },
-      demoContext,
+      runtime.billing.getContext(),
       (event) => {
         setProgress(event.progress);
       },

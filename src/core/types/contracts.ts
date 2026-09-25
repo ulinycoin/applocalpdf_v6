@@ -10,7 +10,6 @@ export interface TieredNumberLimit {
 export interface ToolLimits {
   maxFileSize?: TieredNumberLimit;
   maxPagesPerFile?: TieredNumberLimit;
-  monthlyQuota?: TieredNumberLimit;
   featureTier?: FeatureTier;
 }
 
@@ -18,7 +17,6 @@ export interface ToolRunContext {
   userId: string;
   plan: FeatureTier;
   entitlements: string[];
-  usageThisMonthByTool?: Record<string, number>;
 }
 
 export interface ToolRunInput {
