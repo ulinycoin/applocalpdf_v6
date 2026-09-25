@@ -3,7 +3,6 @@ import {
   Suspense,
   useCallback,
   useEffect,
-  useSyncExternalStore,
   type KeyboardEvent,
   useMemo,
   useRef,
@@ -16,7 +15,6 @@ import {
 import { useLocation } from 'react-router-dom';
 import { useNavigate } from 'react-router-dom';
 import { usePlatform } from '../../../app/react/platform-context';
-import { useDownloadMomentUpsell } from '../../../app/react/download-moment-upsell';
 import { LinearIcon } from '../icons/linear-icon';
 import { useWizardFlow } from '../../hooks/useWizardFlow';
 import { useFilePreviews } from '../../hooks/use-file-previews';
@@ -261,11 +259,6 @@ export function WizardShell({ toolId, context, ioAdapter, limitService }: Wizard
   const [configBoundaryKey, setConfigBoundaryKey] = useState(0);
 
   const effectiveContext = context ?? runtime.billing.getContext();
-  const billingPlan = useSyncExternalStore(
-    (onChange) => runtime.billing.subscribe(onChange),
-    () => runtime.billing.getContext().plan,
-  );
-  const { requestDownload, overlay: downloadMomentOverlay } = useDownloadMomentUpsell(billingPlan);
 
   const {
     state,
@@ -288,6 +281,9 @@ export function WizardShell({ toolId, context, ioAdapter, limitService }: Wizard
   const isSplitLayout = (state.step === 'config' || state.step === 'result') && toolDef.layout === 'split';
   const uiRunId = useMemo(() => `wizard-ui-${crypto.randomUUID()}`, []);
   const io = useMemo(() => ioAdapter ?? createBrowserIOAdapter(runtime), [ioAdapter, runtime]);
+  const downloadOutputs = useCallback(async () => {
+    await Promise.all(state.outputIds.map(async (fileId) => io.save(fileId)));
+  }, [io, state.outputIds]);
   const uploadAccept = useMemo(() => {
     if (toolId === 'word-to-pdf') {
       return '.docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document';
@@ -523,7 +519,7 @@ export function WizardShell({ toolId, context, ioAdapter, limitService }: Wizard
                   onDownload={
                     isStudioFlow
                       ? undefined
-                      : () => requestDownload(toolId, async () => { await Promise.all(state.outputIds.map(async (fileId) => io.save(fileId))); })
+                      : () => { void downloadOutputs(); }
                   }
                 />
               </Suspense>
@@ -690,7 +686,7 @@ export function WizardShell({ toolId, context, ioAdapter, limitService }: Wizard
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                     {!isStudioFlow && (
                       <button className="wz-btn wz-btn-primary" style={{ width: '100%', justifyContent: 'center' }}
-                        onClick={() => requestDownload(toolId, async () => { await Promise.all(state.outputIds.map(async (fileId) => io.save(fileId))); })}>
+                        onClick={() => { void downloadOutputs(); }}>
                         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                           <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
                           <polyline points="7 10 12 15 17 10"/>
@@ -741,7 +737,7 @@ export function WizardShell({ toolId, context, ioAdapter, limitService }: Wizard
                     </div>
                     {!isStudioFlow && (
                       <button className="wz-btn-download"
-                        onClick={() => requestDownload(toolId, async () => { await Promise.all(state.outputIds.map(async (fileId) => io.save(fileId))); })}>
+                        onClick={() => { void downloadOutputs(); }}>
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                           <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
                           <polyline points="7 10 12 15 17 10"/>
@@ -797,7 +793,6 @@ export function WizardShell({ toolId, context, ioAdapter, limitService }: Wizard
         )}
 
       </AnimatePresence>
-      {downloadMomentOverlay}
     </div>
   );
 }

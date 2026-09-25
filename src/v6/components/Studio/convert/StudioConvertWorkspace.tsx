@@ -1,11 +1,10 @@
-import React, { useEffect, useMemo, useState, useCallback, useSyncExternalStore } from 'react';
+import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import { LinearIcon } from '../../icons/linear-icon';
 import { useStudioConvertController } from './use-studio-convert-controller';
 import { trackMonetizationEvent, trackPaywallShown } from '../../../../app/react/monetization-telemetry';
 import { openCheckout } from '../../../../app/react/billing';
 import { getPrimaryPaidOffer } from '../../../../app/platform/checkout-offers';
 import { usePlatform } from '../../../../app/react/platform-context';
-import { useDownloadMomentUpsell } from '../../../../app/react/download-moment-upsell';
 import { createZipBlob } from '../../../utils/zip';
 
 interface StudioConvertWorkspaceProps {
@@ -123,11 +122,6 @@ function OcrPaywallOverlay({
 export function StudioConvertWorkspace({ onClose, initialTool }: StudioConvertWorkspaceProps = {}) {
   const { runtime } = usePlatform();
   const ctrl = useStudioConvertController(initialTool as import('./use-studio-convert-controller').StudioConvertToolId | undefined);
-  const billingPlan = useSyncExternalStore(
-    (onChange) => runtime.billing.subscribe(onChange),
-    () => runtime.billing.getContext().plan,
-  );
-  const { requestDownload, overlay: downloadMomentOverlay } = useDownloadMomentUpsell(billingPlan);
 
   const meta = useMemo(() => (ctrl.activeTool ? (TOOL_META[ctrl.activeTool] ?? TOOL_META['ocr-pdf']) : TOOL_META['ocr-pdf']), [ctrl.activeTool]);
   const toolIconName = ctrl.activeTool ? (TOOL_ICONS[ctrl.activeTool] ?? 'file') : 'file';
@@ -752,11 +746,11 @@ export function StudioConvertWorkspace({ onClose, initialTool }: StudioConvertWo
                       <div className="cvt-output-name">{ctrl.compressResultSummary.outputFileName}</div>
                       <div className="cvt-output-meta">{ctrl.formatBytes(ctrl.compressResultSummary.outputBytes)}</div>
                     </div>
-                    <button type="button" className="cvt-btn-download" onClick={() => requestDownload(ctrl.activeTool ?? 'studio', () => ctrl.downloadResults())}>
+                    <button type="button" className="cvt-btn-download" onClick={() => { void ctrl.downloadResults(); }}>
                       <LinearIcon name="download" size={12} />
                       Download
                     </button>
-                    <button type="button" className="cvt-btn-download" onClick={() => requestDownload('compress-pdf', handleDownloadZip)} style={{ marginLeft: 6 }}>
+                    <button type="button" className="cvt-btn-download" onClick={() => { void handleDownloadZip(); }} style={{ marginLeft: 6 }}>
                       <LinearIcon name="download" size={12} />
                       ZIP
                     </button>
@@ -791,7 +785,7 @@ export function StudioConvertWorkspace({ onClose, initialTool }: StudioConvertWo
                         <div className="cvt-output-meta">searchable PDF</div>
                       </div>
                       {ctrl.allowOcrDownload ? (
-                        <button type="button" className="cvt-btn-download" onClick={() => requestDownload('ocr-pdf', () => ctrl.downloadResults())}>
+                        <button type="button" className="cvt-btn-download" onClick={() => { void ctrl.downloadResults(); }}>
                           <LinearIcon name="download" size={12} />
                           Download
                         </button>
@@ -811,7 +805,7 @@ export function StudioConvertWorkspace({ onClose, initialTool }: StudioConvertWo
                         spellCheck={false}
                         placeholder="No text content available."
                       />
-                      <button type="button" className="cvt-btn-download" style={{ marginTop: 10 }} onClick={() => requestDownload('ocr-pdf', () => ctrl.downloadResults())}>
+                      <button type="button" className="cvt-btn-download" style={{ marginTop: 10 }} onClick={() => { void ctrl.downloadResults(); }}>
                         <LinearIcon name="download" size={12} />
                         Download
                       </button>
@@ -861,7 +855,7 @@ export function StudioConvertWorkspace({ onClose, initialTool }: StudioConvertWo
                             <button
                               type="button"
                               className="cvt-btn-download"
-                              onClick={() => requestDownload(ctrl.activeTool ?? 'studio', () => ctrl.downloadSingleResult(item.outputId, item.name))}
+                              onClick={() => { void ctrl.downloadSingleResult(item.outputId, item.name); }}
                             >
                               <LinearIcon name="download" size={12} />
                               Download
@@ -902,7 +896,7 @@ export function StudioConvertWorkspace({ onClose, initialTool }: StudioConvertWo
                         Download all ({ctrl.jpgResults.length})
                       </button>
                     ) : (
-                      <button type="button" className="cvt-btn-download" onClick={() => requestDownload(ctrl.activeTool ?? 'studio', () => ctrl.downloadResults())} disabled={ctrl.outputIds.length === 0}>
+                      <button type="button" className="cvt-btn-download" onClick={() => { void ctrl.downloadResults(); }} disabled={ctrl.outputIds.length === 0}>
                         <LinearIcon name="download" size={12} />
                         Download all
                       </button>
@@ -950,8 +944,6 @@ export function StudioConvertWorkspace({ onClose, initialTool }: StudioConvertWo
           </button>
         </div>
       )}
-
-      {downloadMomentOverlay}
     </div>
   );
 }
