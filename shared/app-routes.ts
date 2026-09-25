@@ -40,6 +40,8 @@ const LEGACY_TARGET_ROUTE_MAP: Record<string, string> = {
   'ocr-pdf': '/ocr-pdf',
   tables: APP_STUDIO_CONVERT_ROUTE,
   'tables-pdf': APP_STUDIO_CONVERT_ROUTE,
+  'convert-pdf': APP_STUDIO_ROUTE,
+  'auto-toc-pdf': '/auto-toc',
   'pdf-to-word': APP_STUDIO_CONVERT_ROUTE,
   'word-to-pdf': '/word-to-pdf',
   'excel-to-pdf': '/excel-to-pdf',

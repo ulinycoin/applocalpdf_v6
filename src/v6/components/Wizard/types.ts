@@ -74,5 +74,7 @@ export interface SmartUploadZoneProps {
   disabled?: boolean;
   accept?: string;
   multiple?: boolean;
+  /** Open the native file picker on mount (used by ?upload=1 links from the marketing site). */
+  autoOpen?: boolean;
   onFilesAdded: (files: File[]) => Promise<void>;
 }

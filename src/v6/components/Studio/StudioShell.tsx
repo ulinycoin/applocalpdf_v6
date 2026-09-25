@@ -309,6 +309,7 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
     type OverlayMode = 'edit' | StudioConvertToolId;
     const [overlayMode, setOverlayMode] = useState<OverlayMode | null>(null);
     const [paywallReason, setPaywallReason] = useState<string | null>(null);
+    const [uploadAttention, setUploadAttention] = useState(false);
     const [isCoarsePointer, setIsCoarsePointer] = useState(() => (
         typeof window !== 'undefined'
         && typeof window.matchMedia === 'function'
@@ -732,6 +733,7 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
                 totalBytes: uploadedFiles.reduce((sum, file) => sum + file.size, 0),
                 source: 'studio',
             });
+            setUploadAttention(false);
             fitToDocuments([...documents, ...positionedDocs]);
             void createCheckpoint(runtime.vfs, 'upload', `Uploaded ${positionedDocs.length} ${positionedDocs.length === 1 ? 'file' : 'files'}`);
         }
@@ -750,6 +752,7 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
     }, [handleIncomingFiles]);
 
     const openUploadDialog = useCallback(() => {
+        setUploadAttention(false);
         uploadInputRef.current?.click();
     }, []);
 
@@ -1201,7 +1204,14 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
             const params = new URLSearchParams(window.location.search);
             if (params.get('upload') === '1') {
                 if (!hasTransferred) {
-                    uploadInputRef.current?.click();
+                    // A freshly loaded document has no transient activation, so the browser refuses
+                    // to open the file picker here. Point at the upload control instead of failing
+                    // silently behind the marketing CTA.
+                    if (navigator.userActivation?.isActive) {
+                        uploadInputRef.current?.click();
+                    } else {
+                        setUploadAttention(true);
+                    }
                 }
                 navigate('/studio', { replace: true, state: location.state });
             }
@@ -1228,6 +1238,7 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
                     onHistoryToggle={handleHistoryToggle}
                     isHistoryOpen={isHistoryOpen}
                     plan={billingContext.plan}
+                    attentionOnUpload={uploadAttention}
                     selectedPageCount={selection.length}
                     activeWorkspaceName={activeDocument?.name}
                     mergeTargets={mergeTargets}
@@ -1288,7 +1299,7 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
                             <div className="studio-empty-state-actions">
                                 <button
                                     type="button"
-                                    className="studio-upload-btn studio-empty-state-upload-btn"
+                                    className={`studio-upload-btn studio-empty-state-upload-btn${uploadAttention ? ' studio-upload-btn--attention' : ''}`}
                                     onClick={handleEmptyStateUpload}
                                 >
                                     <LinearIcon name="upload" size={18} />

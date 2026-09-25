@@ -22,6 +22,7 @@ import { PreviewPanel } from './PreviewPanel';
 import type { IOAdapter, SmartUploadZoneProps, WizardShellProps } from './types';
 import type { StudioReturnContext, StudioSelectedPageRef, StudioToolRouteState } from '../../studio/navigation/studio-tool-context';
 import { getPdfLib } from '../../services/pdf/pdf-loader';
+import { canRunStandalone } from '../../../../shared/standalone-tools';
 
 function classNames(...parts: Array<string | false | null | undefined>): string {
   return parts.filter(Boolean).join(' ');
@@ -63,9 +64,32 @@ class ConfigErrorBoundary extends Component<
   }
 }
 
-function SmartUploadZone({ disabled, accept = 'application/pdf', multiple = true, onFilesAdded }: SmartUploadZoneProps): JSX.Element {
+function SmartUploadZone({ disabled, accept = 'application/pdf', multiple = true, autoOpen = false, onFilesAdded }: SmartUploadZoneProps): JSX.Element {
   const inputRef = useRef<HTMLInputElement | null>(null);
+  const zoneRef = useRef<HTMLDivElement | null>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [needsManualPick, setNeedsManualPick] = useState(false);
+  const autoOpenHandledRef = useRef(false);
+
+  useEffect(() => {
+    if (!autoOpen || autoOpenHandledRef.current || disabled) {
+      return;
+    }
+    autoOpenHandledRef.current = true;
+
+    // A freshly loaded document has no transient activation and browsers refuse to open a file
+    // picker without it (Chrome: "File chooser dialog can only be shown with a user activation").
+    // Marketing links land here with ?upload=1, so when the picker cannot open we put the user one
+    // click away from it instead of leaving a silent screen behind the CTA.
+    if (navigator.userActivation?.isActive) {
+      inputRef.current?.click();
+      return;
+    }
+
+    setNeedsManualPick(true);
+    zoneRef.current?.focus();
+    zoneRef.current?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  }, [autoOpen, disabled]);
 
   const pushFiles = async (fileList: FileList | null): Promise<void> => {
     if (!fileList || fileList.length === 0 || disabled) {
@@ -87,7 +111,13 @@ function SmartUploadZone({ disabled, accept = 'application/pdf', multiple = true
 
   return (
     <div
-      className={classNames('wz-upload-zone', isDragging && 'wz-upload-zone--dragging', disabled && 'wz-upload-zone--disabled')}
+      ref={zoneRef}
+      className={classNames(
+        'wz-upload-zone',
+        isDragging && 'wz-upload-zone--dragging',
+        disabled && 'wz-upload-zone--disabled',
+        needsManualPick && 'wz-upload-zone--attention',
+      )}
       onClick={() => inputRef.current?.click()}
       onKeyDown={(event: KeyboardEvent<HTMLDivElement>) => {
         if (event.key === 'Enter' || event.key === ' ') {
@@ -109,8 +139,12 @@ function SmartUploadZone({ disabled, accept = 'application/pdf', multiple = true
       <div className="wz-upload-icon">
         <LinearIcon name="upload" className="linear-icon icon-md" />
       </div>
-      <p className="wz-upload-title">Drop files here or click to upload</p>
-      <p className="wz-upload-hint">Supports {accept.includes('image') ? 'PDF and images' : 'PDF files'}</p>
+      <p className="wz-upload-title">{needsManualPick ? 'Choose your PDF to continue' : 'Drop files here or click to upload'}</p>
+      <p className="wz-upload-hint">
+        {needsManualPick
+          ? 'Click here or press Enter — your file never leaves your device'
+          : `Supports ${accept.includes('image') ? 'PDF and images' : 'PDF files'}`}
+      </p>
       <input ref={inputRef} type="file" accept={accept} multiple={multiple} className="hidden" onChange={onInput} disabled={disabled} />
     </div>
   );
@@ -259,6 +293,10 @@ export function WizardShell({ toolId, context, ioAdapter, limitService }: Wizard
   const [configBoundaryKey, setConfigBoundaryKey] = useState(0);
 
   const effectiveContext = context ?? runtime.billing.getContext();
+  const autoOpenUpload = useMemo(
+    () => new URLSearchParams(location.search).get('upload') === '1',
+    [location.search],
+  );
 
   const {
     state,
@@ -303,7 +341,7 @@ export function WizardShell({ toolId, context, ioAdapter, limitService }: Wizard
   const routeReturnContext = routeState?.studioReturnContext;
   const isInlineUploadConfigFlow = toolId === 'word-to-pdf' || toolId === 'excel-to-pdf' || toolId === 'pdf-to-jpg' || toolId === 'pdf-editor';
   const isWordSinglePageFlow = toolId === 'word-to-pdf' || toolId === 'excel-to-pdf' || (toolId === 'pdf-to-jpg' && !isStudioFlow) || toolId === 'pdf-editor';
-  const allowStandaloneFlow = toolId === 'word-to-pdf' || toolId === 'excel-to-pdf';
+  const allowStandaloneFlow = canRunStandalone(toolId);
   const requiresStudioFlow = !allowStandaloneFlow;
 
   const buildReturnContext = (): StudioReturnContext | undefined => routeReturnContext;
@@ -556,6 +594,7 @@ export function WizardShell({ toolId, context, ioAdapter, limitService }: Wizard
                 disabled={state.isValidating}
                 multiple={allowMultiple}
                 accept={uploadAccept}
+                autoOpen={autoOpenUpload}
               />
               {state.isValidating && (
                 <p style={{ marginTop: 12, fontSize: 13, color: 'var(--text-muted)' }}>Validating access limits…</p>

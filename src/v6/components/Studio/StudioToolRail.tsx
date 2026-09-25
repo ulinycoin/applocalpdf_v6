@@ -27,6 +27,8 @@ export interface StudioToolRailProps {
     onHistoryToggle?: () => void;
     isHistoryOpen?: boolean;
     plan?: 'basic' | 'pro';
+    /** Pulse the upload control when a marketing link asked for a picker the browser blocked. */
+    attentionOnUpload?: boolean;
     selectedPageCount?: number;
     activeWorkspaceName?: string;
     mergeTargets?: Array<{ id: string; name: string }>;
@@ -103,6 +105,7 @@ export function StudioToolRail({
     onHistoryToggle,
     isHistoryOpen,
     plan,
+    attentionOnUpload = false,
     selectedPageCount = 0,
     activeWorkspaceName,
     mergeTargets = [],
@@ -138,7 +141,7 @@ export function StudioToolRail({
             <aside className="studio-tool-rail" aria-label="Studio tools">
             <button
                 type="button"
-                className="studio-tool-rail-btn studio-tool-rail-upload-btn"
+                className={`studio-tool-rail-btn studio-tool-rail-upload-btn${attentionOnUpload ? ' studio-tool-rail-btn--attention' : ''}`}
                 onClick={onUpload}
                 title="Upload files"
             >

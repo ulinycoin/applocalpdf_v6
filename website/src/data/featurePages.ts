@@ -1,5 +1,7 @@
+import { featurePageAppTarget, type FeaturePageSlug } from '../../../shared/seo-app-targets';
+
 export interface FeaturePageData {
-  slug: string;
+  slug: FeaturePageSlug;
   title: string;
   metaTitle: string;
   metaDescription: string;
@@ -48,7 +50,7 @@ export const featurePages: FeaturePageData[] = [
     metaTitle: 'Edit PDF Locally — Change Text Without Upload | LocalPDF',
     metaDescription: 'Edit PDF text and images locally — no upload needed. Fix typos, add notes, cover sensitive sections — all in your browser. No account, works offline.',
     intro: 'Use LocalPDF when you need to change a PDF directly without sending a sensitive file through an upload-first editor.',
-    appHash: 'studio',
+    appHash: featurePageAppTarget('edit-pdf'),
     eyebrow: 'Edit PDF',
     capabilities: [
       'Replace or cover existing text in a PDF',
@@ -125,7 +127,7 @@ export const featurePages: FeaturePageData[] = [
     metaTitle: 'Merge PDF Files Locally — Combine Documents Securely | LocalPDF',
     metaDescription: 'Merge PDF files locally with drag and drop. Combine in your browser — no upload, works offline. Reorder pages and export one clean PDF.',
     intro: 'Merge should feel visual. Grab pages, drag them into place, reorder the packet, and export one clean PDF without fighting menus or waiting on upload loops.',
-    appHash: 'studio',
+    appHash: featurePageAppTarget('merge-pdf'),
     eyebrow: 'Merge PDF',
     capabilities: [
       'Merge PDFs by dragging pages into one output',
@@ -202,7 +204,7 @@ export const featurePages: FeaturePageData[] = [
     metaTitle: 'OCR PDF Locally — Extract Text from Scans, No Upload | LocalPDF',
     metaDescription: 'Extract text from scanned PDFs locally — no upload, no server. Free OCR runs in your browser via WebAssembly. Make scans searchable in seconds, works offline.',
     intro: 'OCR is a trust-heavy workflow because scanned PDFs often contain legal, medical, or financial information. LocalPDF makes it private and fast.',
-    appHash: 'studio',
+    appHash: featurePageAppTarget('ocr-pdf'),
     eyebrow: 'OCR PDF',
     capabilities: [
       'Extract text from scanned PDFs',
@@ -279,7 +281,7 @@ export const featurePages: FeaturePageData[] = [
     metaTitle: 'Compress PDF Locally — Reduce File Size, No Upload | LocalPDF',
     metaDescription: 'Compress PDF locally — reduce file size by up to 75% without uploading. No server, works offline. Ideal for email and sensitive docs.',
     intro: 'Compression is a practical workflow. It should be fast, predictable, and not require an upload loop before you can send a file.',
-    appHash: 'studio',
+    appHash: featurePageAppTarget('compress-pdf'),
     eyebrow: 'Compress PDF',
     capabilities: [
       'Reduce PDF size before sharing',
@@ -356,7 +358,7 @@ export const featurePages: FeaturePageData[] = [
     metaTitle: 'Free PDF Splitter — Extract Pages Online | LocalPDF',
     metaDescription: 'Split PDF files and extract pages locally. No upload required — grab the pages you need, reorder visually, and export separate files in seconds.',
     intro: 'Use Split PDF when one document needs to become several smaller outputs and the easiest path is visual: grab the pages you need, pull them out, and export only what should leave the file.',
-    appHash: 'studio',
+    appHash: featurePageAppTarget('split-pdf'),
     eyebrow: 'Split PDF',
     capabilities: [
       'Pull pages out of a PDF into smaller outputs',
@@ -426,7 +428,7 @@ export const featurePages: FeaturePageData[] = [
     metaTitle: 'Free PDF Signer — Sign Documents Online | LocalPDF',
     metaDescription: 'Sign PDF documents locally. Add signatures without printing or scanning — your files never leave your browser. Quick approvals in seconds.',
     intro: 'Signing is a trust-sensitive workflow because signatures are personal, reusable, and easy to mishandle in weak tools.',
-    appHash: 'studio',
+    appHash: featurePageAppTarget('sign-pdf'),
     eyebrow: 'Sign PDF',
     capabilities: [
       'Place a signature into a PDF workflow',
@@ -496,7 +498,7 @@ export const featurePages: FeaturePageData[] = [
     metaTitle: 'Free PDF Converter — Word, Images & More | LocalPDF',
     metaDescription: 'Convert PDF to Word, Word to PDF, and PDF to images locally. Free format conversion runs in your browser — no upload required.',
     intro: 'Use Convert PDF when you need PDF to Word, Word to PDF, PDF to image, or image to PDF conversion without leaving the main workflow.',
-    appHash: 'studio',
+    appHash: featurePageAppTarget('convert-pdf'),
     eyebrow: 'Convert PDF',
     capabilities: [
       'Handle common PDF, Word, and image conversion workflows in one place',
@@ -567,7 +569,7 @@ export const featurePages: FeaturePageData[] = [
     metaTitle: 'Free PDF Table of Contents Generator | LocalPDF',
     metaDescription: 'Auto-generate PDF table of contents and bookmarks. Detect headings locally — no upload required. Create clickable TOC pages in seconds.',
     intro: 'Auto-TOC is a high-utility tool when working with large PDFs, manuals, reports, and books. It generates structured outlines and a physical TOC page without uploading files.',
-    appHash: 'studio',
+    appHash: featurePageAppTarget('auto-toc-pdf'),
     eyebrow: 'Auto-TOC',
     capabilities: [
       'Detect headings and levels automatically',
