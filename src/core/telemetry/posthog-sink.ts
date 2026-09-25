@@ -116,6 +116,38 @@ export class PostHogTelemetrySink implements TelemetrySink {
             pages_succeeded: event.pagesSucceeded,
           });
           break;
+        case 'STUDIO_EMPTY_STATE_CTA':
+          window.posthog.capture('studio_empty_state_cta', {
+            run_id: event.runId,
+            action: event.action,
+          });
+          break;
+        case 'STUDIO_MERGE_COMPLETED':
+          window.posthog.capture('studio_merge_completed', {
+            run_id: event.runId,
+            source_doc_id: event.sourceDocId,
+            target_doc_id: event.targetDocId,
+            page_count: event.pageCount,
+            method: event.method,
+          });
+          break;
+        case 'STUDIO_SPLIT_COMPLETED':
+          window.posthog.capture('studio_split_completed', {
+            run_id: event.runId,
+            source_doc_id: event.sourceDocId,
+            new_doc_id: event.newDocId,
+            page_count: event.pageCount,
+            method: event.method,
+          });
+          break;
+        case 'STUDIO_DELETE_PAGES':
+          window.posthog.capture('studio_delete_pages', {
+            run_id: event.runId,
+            page_count: event.pageCount,
+            workspace_count: event.workspaceCount,
+            method: event.method,
+          });
+          break;
       }
     }
   }

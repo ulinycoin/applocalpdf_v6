@@ -124,3 +124,95 @@ test('PostHogTelemetrySink forwards app analytics events to PostHog', () => {
     }
   }
 });
+
+test('PostHogTelemetrySink forwards studio page operations under their own event names', () => {
+  const calls: Array<{ event: string; properties?: Record<string, unknown> }> = [];
+  const globalWindow = globalThis as any;
+  const originalWindow = globalWindow.window;
+
+  globalWindow.window = {
+    posthog: {
+      capture: (event: string, properties?: Record<string, unknown>) => {
+        calls.push({ event, properties });
+      },
+    },
+  };
+
+  try {
+    const sink = new PostHogTelemetrySink();
+
+    sink.track({
+      type: 'STUDIO_MERGE_COMPLETED',
+      runId: 'run-merge',
+      sourceDocId: 'doc-a',
+      targetDocId: 'doc-b',
+      pageCount: 2,
+      method: 'button',
+    });
+    sink.track({
+      type: 'STUDIO_SPLIT_COMPLETED',
+      runId: 'run-split',
+      sourceDocId: 'doc-a',
+      newDocId: 'doc-c',
+      pageCount: 1,
+      method: 'button',
+    });
+    sink.track({
+      type: 'STUDIO_DELETE_PAGES',
+      runId: 'run-delete',
+      pageCount: 3,
+      workspaceCount: 2,
+      method: 'keyboard',
+    });
+    sink.track({
+      type: 'STUDIO_EMPTY_STATE_CTA',
+      runId: 'run-empty',
+      action: 'upload',
+    });
+
+    assert.deepEqual(calls, [
+      {
+        event: 'studio_merge_completed',
+        properties: {
+          run_id: 'run-merge',
+          source_doc_id: 'doc-a',
+          target_doc_id: 'doc-b',
+          page_count: 2,
+          method: 'button',
+        },
+      },
+      {
+        event: 'studio_split_completed',
+        properties: {
+          run_id: 'run-split',
+          source_doc_id: 'doc-a',
+          new_doc_id: 'doc-c',
+          page_count: 1,
+          method: 'button',
+        },
+      },
+      {
+        event: 'studio_delete_pages',
+        properties: {
+          run_id: 'run-delete',
+          page_count: 3,
+          workspace_count: 2,
+          method: 'keyboard',
+        },
+      },
+      {
+        event: 'studio_empty_state_cta',
+        properties: {
+          run_id: 'run-empty',
+          action: 'upload',
+        },
+      },
+    ]);
+  } finally {
+    if (originalWindow === undefined) {
+      delete globalWindow.window;
+    } else {
+      globalWindow.window = originalWindow;
+    }
+  }
+});

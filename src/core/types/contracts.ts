@@ -356,6 +356,9 @@ export type RunnerTelemetryEvent =
   | { type: 'TOOL_RUN_ABANDONED'; flowId: string; runId?: string; toolId: string; reason: 'pagehide' | 'visibility_hidden' | 'navigation' | 'cancel' }
   | { type: 'OUTPUT_DOWNLOADED'; flowId: string; runId?: string; toolId: string; outputCount?: number; surface: 'wizard' | 'studio' }
   | { type: 'STUDIO_EMPTY_STATE_CTA'; runId: string; action: 'upload' }
+  | { type: 'STUDIO_MERGE_COMPLETED'; runId: string; sourceDocId: string; targetDocId: string; pageCount: number; method: 'button' | 'drag' }
+  | { type: 'STUDIO_SPLIT_COMPLETED'; runId: string; sourceDocId: string; newDocId: string; pageCount: number; method: 'button' }
+  | { type: 'STUDIO_DELETE_PAGES'; runId: string; pageCount: number; workspaceCount: number; method: 'button' | 'keyboard' }
   | { type: 'REDACT_VERIFY_RUN'; runId: string; toolId: string; passed: boolean; checkCount: number; failCount: number }
   | { type: 'REDACT_VERIFY_FAIL'; runId: string; toolId: string; checkId: string; message: string }
   | { type: 'REDACT_CERT_DOWNLOAD'; runId: string; toolId: string }
