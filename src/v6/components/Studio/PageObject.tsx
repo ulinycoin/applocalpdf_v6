@@ -5,7 +5,7 @@ import type { KonvaEventObject } from 'konva/lib/Node';
 import useImage from 'use-image';
 import { PageItem, StudioState, useStudioStore } from './studio-store';
 import { usePlatform } from '../../../app/react/platform-context';
-import { canUseDocumentWithPageCount } from '../../../app/platform/plan-limits';
+import { canUseDocumentWithPageCount, freePageLimitMessage } from '../../../app/platform/plan-limits';
 import { showStudioPaywall } from '../../../app/react/studio-paywall';
 import { getPdfJs } from '../../services/pdf/pdf-loader';
 import { useHistoryStore } from './store/history-store';
@@ -255,7 +255,7 @@ export const PageObject: React.FC<PageObjectProps> = ({ page, docId, x, y, curre
                 if (!pageCheck.allowed) {
                     showStudioPaywall(
                         runtime.telemetry,
-                        'Free supports documents up to 25 pages. Upgrade to Pro to keep adding pages.',
+                        freePageLimitMessage('keep adding pages'),
                         import.meta.env.VITE_BILLING_URL,
                         { toolId: 'studio', trigger: 'page_limit_25' },
                     );

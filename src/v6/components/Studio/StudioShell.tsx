@@ -17,7 +17,7 @@ import type { StudioReturnContext, StudioToolRouteState } from '../../studio/nav
 import { getPdfJs, getPdfLib } from '../../services/pdf/pdf-loader';
 import { StudioInPlaceEditor } from './StudioInPlaceEditor';
 import { StudioDialog } from './StudioDialog';
-import { canAddDocumentToStudio, canCreateWorkspace, canUseDocumentWithPageCount } from '../../../app/platform/plan-limits';
+import { canAddDocumentToStudio, canCreateWorkspace, canUseDocumentWithPageCount, freePageLimitMessage } from '../../../app/platform/plan-limits';
 import { showStudioPaywall } from '../../../app/react/studio-paywall';
 import { PaywallModal } from '../../../app/react/PaywallModal';
 import { useHistoryStore } from './store/history-store';
@@ -451,7 +451,7 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
                 runtime.telemetry,
                 limitCheck.reason === 'workspace_limit'
                     ? 'Free includes up to 3 workspaces. Upgrade to Pro for unlimited workspaces.'
-                    : 'Free supports documents up to 25 pages. Upgrade to Pro to open larger PDFs.',
+                    : freePageLimitMessage('open larger PDFs'),
                 import.meta.env.VITE_BILLING_URL,
                 { toolId: 'studio', trigger: limitCheck.reason === 'workspace_limit' ? 'workspace_limit_3' : 'page_limit_25' },
             );
@@ -644,7 +644,7 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
                 if (!documentCheck.allowed) {
                     showStudioPaywall(
                         runtime.telemetry,
-                        `This document has ${numPages} pages. Free plan supports up to 25 — upgrade to Pro for unlimited.`,
+                        freePageLimitMessage('open larger PDFs'),
                         import.meta.env.VITE_BILLING_URL,
                         { toolId: 'studio', trigger: 'page_limit_25' },
                     );
@@ -776,7 +776,7 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
         if (!pageCheck.allowed) {
             showStudioPaywall(
                 runtime.telemetry,
-                'Free supports documents up to 25 pages. Upgrade to Pro to keep adding pages.',
+                freePageLimitMessage('keep adding pages'),
                 import.meta.env.VITE_BILLING_URL,
                 { toolId: 'studio', trigger: 'page_limit_25' },
             );
@@ -942,7 +942,7 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
                     if (!pageCheck.allowed) {
                         showStudioPaywall(
                             runtime.telemetry,
-                            'Free supports documents up to 25 pages. Upgrade to Pro to open larger PDFs.',
+                            freePageLimitMessage('open larger PDFs'),
                             import.meta.env.VITE_BILLING_URL,
                             { toolId: 'studio', trigger: 'page_limit_25' },
                         );

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { usePlatform } from '../../../app/react/platform-context';
-import { canUseDocumentWithPageCount } from '../../../app/platform/plan-limits';
+import { canUseDocumentWithPageCount, freePageLimitMessage } from '../../../app/platform/plan-limits';
 import { showStudioPaywall } from '../../../app/react/studio-paywall';
 
 import { PipelineRunner } from '../../studio/pipeline/PipelineRunner';
@@ -170,11 +170,11 @@ export function StudioFloatingMenu() {
                 if (!pageCheck.allowed) {
                     showStudioPaywall(
                         runtime.telemetry,
-                        'Free supports documents up to 25 pages. Upgrade to Pro to keep larger documents in Studio.',
+                        freePageLimitMessage('keep larger documents in Studio'),
                         import.meta.env.VITE_BILLING_URL,
                         { toolId: 'compress-pdf', trigger: 'page_limit_25' },
                     );
-                    setCompressError('Free supports documents up to 25 pages.');
+                    setCompressError(freePageLimitMessage());
                     await runtime.vfs.delete(compressedFileId).catch(() => undefined);
                     return;
                 }

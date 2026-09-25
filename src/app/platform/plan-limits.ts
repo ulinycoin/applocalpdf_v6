@@ -38,6 +38,18 @@ export function getPlanLimits(plan: BillingPlan): PlanLimits {
   return (plan === 'pro' || plan === 'trial') ? PRO_PLAN_LIMITS : BASIC_PLAN_LIMITS;
 }
 
+/**
+ * Page-limit paywall copy is derived from the configured limit so it can never promise a page cap
+ * that the Free plan does not actually enforce.
+ */
+export function freePageLimitMessage(action?: string): string {
+  const limit = BASIC_PLAN_LIMITS.maxPagesPerDocument;
+  const phrase = Number.isFinite(limit)
+    ? `Free supports documents up to ${limit} pages`
+    : 'This document exceeds the Free page limit';
+  return action ? `${phrase}. Upgrade to Pro to ${action}.` : `${phrase}.`;
+}
+
 export function canCreateWorkspace(context: PlanContext, currentWorkspaceCount: number): LimitCheckResult {
   const limits = getPlanLimits(context.plan);
   const current = normalizeCount(currentWorkspaceCount);
