@@ -180,7 +180,7 @@ export function StudioToolRail({
                     className="studio-tool-rail-btn"
                     onClick={onSplitPages}
                     disabled={!canSplit}
-                    title={`Split ${scopeLabel} into a new workspace`}
+                    title={hasSelection ? `Split ${scopeLabel} into a new workspace` : 'Select pages to split into a new workspace'}
                 >
                     <LinearIcon name="split" size={20} />
                     <span className="studio-tool-rail-collapsible-text">Split</span>
