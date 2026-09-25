@@ -61,3 +61,33 @@
 - Pages beyond 6 shown as "+N more" pill.
 - Kept existing text blur preview (first 500 chars) and Upgrade CTA with checkout integration.
 - Synced task status to `[x]` in `.agent/tasks.md` and `CLAUDE.md`.
+
+## 2026-09-25
+
+### P0-00: План зафиксирован в git
+- `.agent/sales-plan-2026-09-25.md` + `geo-baseline-2026-08-01.md` + raw/summary JSON закоммичены (aa2c0c6) — план жил вне истории и был невидим следующей сессии.
+
+### P0-01: Ложное обещание «25 pages» убрано
+- Решение: page-лимит **не** включаем до гейтов A/B — включение добавило бы трение в окно замера активации (гейт B). Убираем обещание, а не добавляем стену.
+- Сайт и AI-файлы: `pricing.astro` (schema description, FAQ-схема, список фич), `index.astro`, обе compare-страницы, `pdf-tools-without-upload.astro`, `website/public/llm.txt` + `.well-known/llm.txt`, `website/public/index-ai.md`.
+- Код: вместо 9 захардкоженных строк — `freePageLimitMessage()` в `src/app/platform/plan-limits.ts`, который собирает текст из `BASIC_PLAN_LIMITS.maxPagesPerDocument` (сейчас `Infinity` → «This document exceeds the Free page limit»). 9 вызовов в 5 файлах Studio. При включении лимита в P3 текст станет «up to 25 pages» автоматически.
+- Приёмка: `grep -r "25 pages" website/src src` пуст.
+
+### P0-03: `download-moment-upsell` удалён
+- Удалён `src/app/react/download-moment-upsell.tsx` (265 польз./30 дней, 0 покупок за всю жизнь, 78% всех пейвол-показов).
+- Скачивание разгейчено в 5 точках: `studio-top-nav.tsx`, `wizard/stages/result-stage.tsx`, `AutoTocStudioPanel.tsx`, `StudioConvertWorkspace.tsx` (6 кнопок), v6 `WizardShell.tsx` (3 кнопки, добавлен локальный `downloadOutputs`).
+
+### P0-04: `demoContext` заменён на реальный billing-контекст
+- `ocr-pdf-test-page.tsx` больше не запускает OCR с `plan: 'pro'` — берёт `runtime.billing.getContext()`, поэтому free-пользователь упирается в реальный пейвол, а телеметрия перестаёт врать.
+
+### P0-05: Мёртвый код удалён
+- `monthlyQuota` + `usageThisMonthByTool`: убраны из `contracts.ts`, `unified-tool-runner.ts` (проверка + метод), `split-pdf/definition.ts`, фикстур двух тестов.
+- Удалена вся папка `src/app/react/wizard/` (`wizard-shell.tsx` + 3 stage-файла): ноль импортов по всему репо, дубликат `v6/components/Wizard/`; вместе с ней ушёл мёртвый `DAILY_FREE_LIMIT` 3/день.
+
+### P0-06: Гигиена репо
+- `.gitignore`: `.cursor/`, `.cursorrules`, `.hermes/`, `.mimocode/`, `test/fixtures/pdfs/debug/`.
+- Проверка: `npm test` (313 pass / 0 fail), `npm run build`, `npm run audit:workerization:strict`, `npm run billing:preflight` — зелёные (preflight даёт 1 warning про совпадение product id monthly/yearly — это один и тот же LS-продукт 917519, ложное срабатывание).
+
+### Найдено при P0-2 (нужно решение фаундера)
+- LS-вариант месячной подписки `1442622` всё ещё `published`: API LemonSqueezy не имеет метода обновления варианта → выключается только в дашборде. За 30 дней 4 из 10 `checkout_opened` — `variant=monthly`.
+- Локальный `.env`: `LEMON_SQUEEZY_PRO_LIFETIME_PRODUCT_IDS=917519`, хотя lifetime-продукт — `1371816`. Атрибуция не ломается (вариант проверяется раньше продукта + fallback), но значение неверное — проверить в Vercel env.

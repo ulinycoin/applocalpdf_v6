@@ -18,6 +18,10 @@ test-output
 # AI tool data
 .gemini-home/
 .claude/
+.cursor/
+.cursorrules
+.hermes/
+.mimocode/
 
 # Internal AI-operational files (old Codex CLI format — no longer used)
 AGENTS.md
@@ -43,6 +47,9 @@ website/submit-batch.js
 # Temp PDF generators
 generate-large.js
 generate-large.mjs
+
+# Manual PDF scratch fixtures (not referenced by test/fixtures/pdfs/catalog.json)
+test/fixtures/pdfs/debug/
 
 # Developer scratch / mockups / logs
 scratch/

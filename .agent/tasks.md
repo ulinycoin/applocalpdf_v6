@@ -1,73 +1,60 @@
 # Active Tasks
 
-Last updated: 2026-09-24
+Last updated: 2026-09-25
 
-## Hot
-- [x] Offer model: месячная подписка $3.99 выведена из оффера, вместо неё годовая $39.99. `checkout-offers.ts` → `PRO_YEARLY_PRICE_USD` + `getYearlyCheckoutUrl()` (fallback `fe9368a5…?enabled=1442621`), `resolvePrimaryOffer` теперь lifetime→yearly, `getMonthlyCheckoutUrl` удалён. Обновлены `/pricing` (кнопка, Offer-схема, FAQ), terms, refund-policy, faq, ja, zh, обе compare-страницы, pdf-tools-without-upload, llms.txt, localpdf-ai.md, index-ai.md, CLAUDE.md, context.md, `.env.example`, `billing-preflight.mjs`
-- [ ] **LemonSqueezy: месячный вариант 1442622 всё ещё `published` и продаётся.** Отключается только в дашборде (в API LS нет метода обновления варианта). Пока он живой, старые ссылки `df6ab354…` продолжают работать
-- [x] Security: `/api/download-proxy` был открытым релеем (любой URL, CORS `*`, без авторизации) — теперь allowlist только `tmpfiles.org`, 403 на остальное, + `api/download-proxy.test.ts`
-- [x] Monetization: webhook не маппил `pro_lifetime` → `purchase_completed` не летел для $19-оффера. Добавлены lifetime product/variant (env + fallback 1371816/2143549), тест на атрибуцию
-- [x] Billing: `restore.ts` отдавал Pro-JWT без `pdf.redact.verify` → покупатель по license key упирался в paywall за оплаченную фичу. Entitlement добавлен, `refresh.ts` импортирует список из `restore.ts`, + parity-тест `src/app/platform/entitlement-parity.test.ts`
-- [x] Tests: `npm test` теперь включает `api/**/*.test.ts` (billing и proxy тесты раньше не запускались вообще)
-- [ ] Pricing claim: на /pricing и в FAQ-схеме заявлено «25 страниц/документ» для Free, но `plan-limits.ts` ставит `maxPagesPerDocument: Infinity`. Либо включить лимит, либо убрать цифру
-- [ ] Share: ciphertext уходит на `tmpfiles.org` (файл живёт ~1 час), а главная заявляет «0 bytes uploaded / files never leave your device». Уточнить формулировку + подумать про свой storage
-- [~] One-time Pro Lifetime offer ($19) — code shipped (3841fe7): trial CTAs removed, in-app CTAs use `getPrimaryPaidOffer()`, `pro_lifetime` tier + 10-year JWT, /pricing rewritten (monthly retired, yearly is the subscription anchor)
-- [x] One-time Pro Lifetime offer ($19) — LIVE wiring done: LS product 1371816 / variant 2143549, checkout `.../buy/e42c57ec-d7a3-4bd9-9595-3f38f6f2a8f5`; code fallbacks mean no Vercel env change is required (commits 3841fe7 + a258156)
-- [ ] Deploy + first real purchase check: verify the licence key from a $19 order restores Pro (tier `pro_lifetime`)
-- [ ] Watch 14d after launch: `checkout_opened` by `variant=lifetime` vs purchases. ≥8 opens + 0 purchases → offer wrong; <5 opens → intent volume is the wall; ≥2 purchases → model validated
-- [x] AI crawler markdown fork `/localpdf` (c1dedf6) — middleware + localpdf-ai.md; cache private/no-store + Vary UA; Googlebot/Bingbot → HTML
-- [x] Push c1dedf6 → origin/main (18808e4..c1dedf6); Vercel Ready `localpdf-v6-kgaomcf5i`
-- [x] Live curl matrix OK — Chrome/Googlebot HTML 24801; ClaudeBot/OAI/Perplexity markdown 4782 + private/no-store + Vary UA + noindex
-- [ ] LLM probe retest web-enabled 1–2d after deploy (Q1/Q3/TECH; parametric не ждать)
-- [x] Disambiguation page `/localpdf` live (16b10c1) — name+domain, parked .tech/.com, FAQ for LLM probe
-- [x] GEO baseline AI answers — `.agent/geo-baseline-2026-08-01.md` (2026-08-01)
-- [x] LLM brand probe baseline — 7 models × 4 questions (OpenRouter) → `/tmp/llm_probe_baseline.json`, Desktop report
-- [x] Disambiguation page `/localpdf` — official product + twin domains table + FAQ + schema (2026-08-01)
-- [x] Inline text edit regression — opaque whiteout for PDF spans; click opens editor, drag still moves overlay
-- [ ] OCR UX: time estimates + chunked processing — 3/5 errors = таймауты (WORKER_TIMEOUT / PAGE_COUNT_CHECK_TIMEOUT). Успешные OCR до 147s. Пользователи не дожидаются.
+## P0 — гигиена (sales-plan §3) — выполнено 2026-09-25
+
+| # | Задача | Статус | Что сделано |
+|---|--------|--------|-------------|
+| 0 | Зафиксировать план | [x] | `.agent/sales-plan-2026-09-25.md` + 3 файла geo-baseline теперь в git (aa2c0c6) — раньше жили вне истории |
+| 1 | «25 pages» vs `maxPagesPerDocument: Infinity` | [x] | Решение: лимит **не** включаем до гейтов A/B (он добавил бы трение в окно замера активации, гейт B). Убрано обещание: 9 строк на сайте и в AI-файлах; в коде текст пейвола считает `freePageLimitMessage()` в `plan-limits.ts` (9 вызовов, 5 файлов), поэтому при включении лимита текст пересчитается сам. Приёмка: `grep -r "25 pages" website/src src` пуст |
+| 2 | LS monthly variant `1442622` | [~] | Код чист — UI и ссылок нет. Вариант всё ещё `published`; у LemonSqueezy API нет метода обновления варианта (только object/retrieve/list) → только дашборд. Данные: 4 из 10 `checkout_opened` за 30 дней — `variant=monthly` |
+| 3 | `download-moment-upsell` | [x] | Модуль удалён, 5 точек подключения (studio-top-nav, result-stage, `AutoTocStudioPanel`, `StudioConvertWorkspace`, v6 `WizardShell`) скачивают напрямую. 78% всех пейвол-показов и 0 покупок за всю жизнь больше не искажают сигнал |
+| 4 | `demoContext {plan:'pro'}` | [x] | `ocr-pdf-test-page.tsx` использует `runtime.billing.getContext()` — free-пользователь видит реальный пейвол |
+| 5 | Мёртвый код | [x] | Удалены `monthlyQuota` и `usageThisMonthByTool` (contracts, `unified-tool-runner`, `split-pdf/definition.ts`), а также вся папка `src/app/react/wizard/` (шелл + 3 stage-файла — ноль импортов, продублированы в `v6/components/Wizard/`) |
+| — | Приёмка | [x] | `npm test`, `npm run build`, `npm run audit:workerization:strict`, `npm run billing:preflight` |
+| — | Гигиена репо | [x] | `.gitignore`: `.cursor/`, `.cursorrules`, `.hermes/`, `.mimocode/`, `test/fixtures/pdfs/debug/` |
+
+## Ждёт фаундера или данных
+
+- [ ] **Дашборд LemonSqueezy:** выключить месячный вариант `1442622` (P0-2, кода не требует)
+- [ ] **Deploy + первая покупка $19:** LS отдаёт 6 ордеров, последний `2026-06-29`, lifetime — 0. Проверить restore Pro по license key (tier `pro_lifetime`) не на чем
+- [ ] **Гейт по lifetime:** 7 дней после запуска — 2 открытия чекаута, 0 покупок; за 30 дней lifetime 2 / yearly 4 / monthly 4. Свежие 7 дней: `paywall_shown` 116 → `paywall_cta_clicked` 1 → `checkout_opened` 2. Узкое место — клик по CTA (0.86%), не чекаут → следующий шаг P1 (видимость ядра), а не правки пейвола
+- [ ] LLM probe retest web-enabled (Q1/Q3/TECH) — после деплоя
+- [ ] OCR UX: оценки времени и чанки уже в коде (ebc40fa), но за 14 дней всё ещё 3 × `Worker timeout exceeded` + 1 × `Setting up fake worker failed`
+- [ ] Share: ciphertext уходит на `tmpfiles.org` (~1 час жизни файла), а главная держит «0 bytes uploaded» — уточнить формулировку и решить про свой storage
+- [ ] Protect/Compress на зашифрованном PDF: сообщение уже человеческое (raw pdf-lib убран), но за 14 дней 3+3 события — нет пути «Unlock → Protect» в один клик
+
+## P1/P2 (sales-plan, ждут гейтов A/B)
+
+- [ ] P1: кнопка Merge в рейле (13 кнопок, ни одной merge/split/delete), drop-таргет «объединить», Split и Delete кнопками, события `studio_merge_completed` / `studio_split_completed` / `studio_delete_pages`
+- [ ] P2: per-page `appHash` в `website/src/data/featurePages.ts` (сейчас все 8 — `'studio'`), `?upload=1` в v6 `WizardShell`, мобильный прогон 390×844
+- [ ] P3 (только после гейтов): включить `maxPagesPerDocument: 25` в `plan-limits.ts` (текст пейвола пересчитается сам), убрать лимиты 3/день в Studio
+
+## Future candidates (не начато)
+
+| # | Задача | Приоритет | Заметка |
+|---|--------|-----------|---------|
+| 8 | SEO-статьи под OCR-запросы | Medium | Контент под органик-интент |
+| 9 | Show HN / Product Hunt | Low | Аудитория подходящая (20 визитов с одного упоминания) |
+| 11 | Email capture | Low | Нурчурить free-пользователей |
+| 14 | PDF/A конвертер (Pro) | [ ] | Ghostscript → PDF/A-1b → VeraPDF, server opt-in |
+| 15b | SEO `/features/verify-pdf-redaction` | [ ] | После появления `REDACT_CERT_*` в PostHog |
+
+## Закрыто ранее (2026-06…09)
+
+- [x] Security: `/api/download-proxy` — allowlist `tmpfiles.org` + тест (2c3afcd)
+- [x] Monetization: webhook маппит `pro_lifetime` → `purchase_completed` (ea22f53)
+- [x] Billing: `restore.ts` отдаёт полный entitlement-набор + parity-тест
+- [x] Tests: `npm test` включает `api/**/*.test.ts`
+- [x] Оффер: месячная подписка выведена, якорь — годовая $39.99; lifetime $19 живой (LS 1371816 / variant 2143549)
+- [x] AI crawler markdown fork `/localpdf`, live curl matrix, disambiguation page
+- [x] GEO baseline (`.agent/geo-baseline-2026-08-01.md`) + LLM brand probe baseline
+- [x] Level 1/2 (пустой стейт, upsell→checkout, OCR-превью, OCR-триал, JA/ZH лендинги, Auto-TOC) — детали в `CLAUDE.md` §8 и `done.md`
 
 ## Status legend
+
 - `[ ]` — not started
-- `[~]` — in progress
+- `[~]` — in progress / partially
 - `[x]` — done
 - `[!]` — blocked
-
----
-
-## Level 1 — Growth (all done)
-
-| # | Task | Status | Notes |
-|---|------|--------|-------|
-| 1 | Empty state CTA in Studio | [x] | Upload + Compress/OCR/Merge CTAs, telemetry `STUDIO_EMPTY_STATE_CTA` |
-| 2 | Upsell → direct checkout | [x] | `ux-feedback-overlay.tsx` opens LemonSqueezy checkout |
-| 3 | OCR paywall value preview | [x] | Text blur + page thumbnails blurred, Upgrade CTA |
-| 4 | OCR trial (3 pages per run) | [x] | 3 стр. OCR бесплатно за запуск. Paywall после 3 стр. |
-
-## Level 2 — Expansion (all done)
-
-| # | Task | Status | Notes |
-|---|------|--------|-------|
-| 5 | Japanese landing page | [x] | `website/src/pages/ja.astro` + hreflang |
-| 6 | Chinese landing page | [x] | `website/src/pages/zh.astro` + hreflang |
-| 7 | Auto-TOC refactoring | [x] | PDF outlines rendering, search filter, tool descriptions |
-
----
-
-## Future candidates (not started)
-
-| # | Task | Priority | Notes |
-|---|------|----------|-------|
-| 8 | SEO articles for OCR queries | Medium | Content marketing for organic traffic |
-| 8a | Noindex dead blog wave 2 | [x] | ocr-extract, how-to-merge, convert-word + /blog hub; sitemap + internal links → features |
-| 8b | Fix audit orphans + Offer validFrom | [x] | 2026-07-24: hub links /features /compare /auto-toc /three-way; trim long metas; pricing Offer.validFrom; drop fake AggregateRating |
-| 8c | Link 4 orphan blog posts | [x] | superseded by 8d — blog noindex wave 3 |
-| 8d | Noindex all blog cannibals | [x] | 2026-07-24: all 22 blog posts noindex+sitemap drop; internal links → features |
-| 9 | Show HN post | Low | Product Hunt / Hacker News launch |
-| 10 | LemonSqueezy webhook → PostHog | Medium | Revenue attribution in analytics |
-| 11 | Email capture | Low | Lead nurture for free users |
-| 12 | Fix protect-pdf encrypted error | Medium | 4/5 fail: `Input document to PDFDocument.load is encrypted` |
-| 13 | PDF Info tool | [x] | Local PDF inspector: pages, version, encryption, fonts, XMP self-declared claim |
-| 14 | PDF/A Converter (Pro) | [ ] | Ghostscript → PDF/A-1b → VeraPDF validate → download. Server opt-in |
-| 15 | Verified Redact + Certificate (engine) | [x] | Worker verify after text edits; `redact-verify/` 4 checks + cert v1; entitlement `pdf.redact.verify`; telemetry types. Non-blocking on fail. |
-| 15a | Redact verify UI + block download | [x] | Download modal 4/4 + fail blocks export/share; Pro cert JSON; Free paywall `REDACT_CERT_*`; store `lastRedactVerify` on doc |
-| 15b | SEO /features/verify-pdf-redaction | [ ] | After 15a ships and we see verify runs in PostHog |
