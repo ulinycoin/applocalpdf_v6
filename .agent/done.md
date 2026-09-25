@@ -91,3 +91,15 @@
 ### Найдено при P0-2 (нужно решение фаундера)
 - LS-вариант месячной подписки `1442622` всё ещё `published`: API LemonSqueezy не имеет метода обновления варианта → выключается только в дашборде. За 30 дней 4 из 10 `checkout_opened` — `variant=monthly`.
 - Локальный `.env`: `LEMON_SQUEEZY_PRO_LIFETIME_PRODUCT_IDS=917519`, хотя lifetime-продукт — `1371816`. Атрибуция не ломается (вариант проверяется раньше продукта + fallback), но значение неверное — проверить в Vercel env.
+
+### P1-01…06: Merge / Split / Delete стали видимыми действиями
+- Новая секция **PAGES** в `StudioToolRail.tsx`: Merge, Split, Delete + строка области действия («3 pages selected» / «whole Workspace 1»). Merge при двух пространствах срабатывает сразу, при большем числе — показывает список целей.
+- Логика операций вынесена в `src/v6/components/Studio/studio-page-ops.ts`: `mergePagesIntoWorkspace`, `splitPagesToNewWorkspace`, `deletePages`. Один путь для рейла, клавиатуры и drag: телеметрия + `createCheckpoint` в каждом. Merge без выделения переносит всё пространство (это и есть «Merge PDF» из лендинга).
+- Пространство, потерявшее последнюю страницу, удаляется, если не создано вручную (`allowEmpty`) — пустая карточка после полного merge больше не остаётся.
+- Drop-таргет: при перетаскивании страницы на другое пространство появляется подсказка «Release to merge into <имя>». Hit-test вынесен в `findDocumentUnderPointer()` и переиспользуется подсказкой и обработчиком drop — дублирования нет.
+- Клавиатура: `Delete` / `Backspace` удаляют выделенные страницы из canvas-шелла (раньше только drag-out).
+- Телеметрия: `STUDIO_MERGE_COMPLETED` (method `button` | `drag`), `STUDIO_SPLIT_COMPLETED`, `STUDIO_DELETE_PAGES` в `contracts.ts` + маппинг в `posthog-sink.ts` на `studio_merge_completed` / `studio_split_completed` / `studio_delete_pages`. Заодно починен пропущенный case для `STUDIO_EMPTY_STATE_CTA`: событие трекалось с Level 1, но в PostHog не уходило (маппинга не было).
+- Копирайт пустого состояния: на `pointer: coarse` (matchMedia) вместо «⌘O / drag & drop» — «Select pages, then use Merge, Split or Delete in the toolbar»; на десктопе добавлена подсказка про перенос страниц между пространствами.
+- Тесты: `studio-page-ops.test.ts` (5 кейсов — частичный и полный merge, split, delete, устаревшее выделение) и новый кейс в `posthog-sink.test.ts` на точные имена событий.
+- Приёмка: `npm test` 319 pass / 0 fail, `npm run build`, `npm run audit:workerization:strict`.
+- Найдено: `commitDocs()` в `store/document-store.ts` вычисляет отфильтрованный список пространств и сохраняет нефильтрованный (`documents: nextDocs`) — фильтр пустых пространств фактически мёртв. Кнопочные операции обходят это явно, жест перетаскивания — нет.

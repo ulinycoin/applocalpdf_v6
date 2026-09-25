@@ -25,11 +25,37 @@ Last updated: 2026-09-25
 - [ ] Share: ciphertext уходит на `tmpfiles.org` (~1 час жизни файла), а главная держит «0 bytes uploaded» — уточнить формулировку и решить про свой storage
 - [ ] Protect/Compress на зашифрованном PDF: сообщение уже человеческое (raw pdf-lib убран), но за 14 дней 3+3 события — нет пути «Unlock → Protect» в один клик
 
-## P1/P2 (sales-plan, ждут гейтов A/B)
+## P1 — видимость ядра (sales-plan §3) — выполнено 2026-09-25
 
-- [ ] P1: кнопка Merge в рейле (13 кнопок, ни одной merge/split/delete), drop-таргет «объединить», Split и Delete кнопками, события `studio_merge_completed` / `studio_split_completed` / `studio_delete_pages`
+| # | Задача | Статус | Что сделано |
+|---|--------|--------|-------------|
+| 1 | Кнопка Merge | [x] | Новая секция PAGES в рейле: Merge / Split / Delete. Merge переносит выбранные страницы (или всё активное пространство) в другое; при >1 соседе показывает список пространств |
+| 2 | Drop-таргет | [x] | При перетаскивании страницы на другое пространство появляется подсказка «Release to merge into <имя>» (`PageObject.tsx`), hit-test вынесен в `findDocumentUnderPointer()` |
+| 3 | Split | [x] | Выбранные страницы (или всё пространство) выносятся в новое пространство рядом с исходным, вьюпорт подстраивается |
+| 4 | Delete | [x] | `Delete`/`Backspace` в canvas-шелле + кнопка Delete в рейле |
+| 5 | События | [x] | `studio_merge_completed` (method `button`/`drag`), `studio_split_completed`, `studio_delete_pages` — контракт + `posthog-sink.ts` + тесты (`studio-page-ops.test.ts`, `posthog-sink.test.ts`). Попутно починен пропущенный маппинг `STUDIO_EMPTY_STATE_CTA` → `studio_empty_state_cta` (событие трекалось с Level 1, но в PostHog не уходило) |
+| 6 | Копирайт пустого состояния | [x] | На `pointer: coarse` вместо «⌘O / drag & drop» — «Select pages, then use Merge, Split or Delete in the toolbar»; на десктопе добавлена подсказка про перенос страниц между пространствами |
+| — | Приёмка | [x] | `npm test` 319 pass / 0 fail, `npm run build`, `npm run audit:workerization:strict` |
+
+Общая логика операций вынесена в `src/v6/components/Studio/studio-page-ops.ts` — один путь для рейла, клавиатуры и drag, с телеметрией и чекпоинтом истории в каждом. Пространство, у которого не осталось страниц, удаляется, если оно не создано вручную (`allowEmpty`).
+
+## Ждёт фаундера или данных
+
+- [ ] **Дашборд LemonSqueezy:** выключить месячный вариант `1442622` (P0-2, кода не требует)
+- [ ] **Deploy + первая покупка $19:** LS отдаёт 6 ордеров, последний `2026-06-29`, lifetime — 0. Проверить restore Pro по license key (tier `pro_lifetime`) не на чем
+- [ ] **Гейт A (+2 недели после P1):** merge ≥ 100/нед, ненулевые split/delete. Считать по `studio_merge_completed` / `studio_split_completed` / `studio_delete_pages` в PostHog. База до P1: событий не существовало
+- [ ] **Гейт B (+4 недели):** активация `app_tool_run_started` / `/app*` ≥ 25% (с 14.8%), checkout opens ≥ 15/мес (с 8). База 7 дней до P1: `paywall_shown` 116 → `paywall_cta_clicked` 1 → `checkout_opened` 2
+- [ ] LLM probe retest web-enabled (Q1/Q3/TECH) — после деплоя
+- [ ] OCR UX: оценки времени и чанки уже в коде (ebc40fa), но за 14 дней всё ещё 3 × `Worker timeout exceeded` + 1 × `Setting up fake worker failed`
+- [ ] Share: ciphertext уходит на `tmpfiles.org` (~1 час жизни файла), а главная держит «0 bytes uploaded» — уточнить формулировку и решить про свой storage
+- [ ] Protect/Compress на зашифрованном PDF: сообщение уже человеческое (raw pdf-lib убран), но за 14 дней 3+3 события — нет пути «Unlock → Protect» в один клик
+- [ ] Найдено в P1: `commitDocs()` в `store/document-store.ts` считает отфильтрованный список пространств и выбрасывает его (`documents: nextDocs` без фильтра) — пустые пространства, освобождённые перетаскиванием, остаются на канвасе. Кнопочные операции обходят это через `pruneEmptiedWorkspaces()`, но жест — нет
+
+## P2 (sales-plan, ждёт гейта A)
+
 - [ ] P2: per-page `appHash` в `website/src/data/featurePages.ts` (сейчас все 8 — `'studio'`), `?upload=1` в v6 `WizardShell`, мобильный прогон 390×844
 - [ ] P3 (только после гейтов): включить `maxPagesPerDocument: 25` в `plan-limits.ts` (текст пейвола пересчитается сам), убрать лимиты 3/день в Studio
+- [ ] P1-follow-up (не сделано намеренно): плавающее меню по-прежнему знает только CMP — Merge/Split/Delete живут в рейле и на клавиатуре
 
 ## Future candidates (не начато)
 
