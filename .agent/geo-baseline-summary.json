@@ -1,0 +1,407 @@
+{
+  "captured_at": "2026-08-01T10:39:03Z",
+  "captured_at_end": "2026-08-01T10:53:27Z",
+  "queries": [
+    "What is LocalPDF?",
+    "LocalPDF vs Smallpdf",
+    "best privacy-first PDF tools that work in the browser",
+    "PDF tools that don't upload files to a server",
+    "best free online PDF merge tool 2026",
+    "LocalPDF.online review",
+    "iLovePDF alternative that processes PDFs locally"
+  ],
+  "rows": [
+    {
+      "query": "What is LocalPDF?",
+      "perplexity": {
+        "status": "ok",
+        "mentions": {
+          "localpdf.online": false,
+          "localpdf": true,
+          "local-pdf.com": false,
+          "smallpdf": false,
+          "ilovepdf": false
+        },
+        "answer": "What is LocalPDF? Searching the web LocalPDF is a privacy-first PDF toolkit that runs directly in your browser or locally on your device, designed to edit, merge, split, annotate, and convert PDFs without uploading your files to the cloud. The key idea is that all processing happens locally, so your documents stay private. Key points: Local-first, privacy-centric: no server uploads, no accounts required. Features commonly include editing text, OCR (for scanned PDFs), merging/splitting, watermarking, converting to other formats, and sometimes PDF viewing with offline support. Availability: often offered as a browser-based editor (WebAssembly/Canvas), with mobile app versions and desktop/workflow integrations in some variants. Access model: many versions are free to use, sometimes with optional ads or premium features; no mandatory sign-in. If you’re deciding whether to use LocalPDF, consider: Do you need offline or privacy-preserving PDF work? LocalPDF is designed for that. Are you okay with a browser-based or local Sources 10 Ask a follow-up Search Computer Model",
+        "url": "https://www.perplexity.ai/search/558883a8-4a45-449a-acc4-35a0c685e916"
+      },
+      "google_ai_overview": {
+        "status": "ok",
+        "mentions": {
+          "localpdf.online": true,
+          "localpdf": true,
+          "local-pdf.com": true,
+          "smallpdf": true,
+          "ilovepdf": true,
+          "adobe": false,
+          "pdf24": false
+        },
+        "answer": "LocalPDF is a privacy-first, browser-based PDF toolkit that lets you edit, merge, compress, split, sign, and convert documents entirely on your device using WebAssembly. It requires no server uploads, accounts, or internet connection once loaded. Reddit +4 Core Features & Privacy Zero Uploads: <Quote>“All processing happens locally in your browser via WebAssembly. Your file is never uploaded, stored, or transmitted to any server.”</Quote>, as stated by LocalPDF. Available Utilities: Edit text, merge multiple files, run OCR, compress, split, crop, and sign documents. Offline & PWA Support: Functions completely offline and can be installed as a Progressive Web App (PWA) on your system. Reddit +2 If you'd like, I can: Detail how to use specific tools like merging or OCR inside the browser. Compare LocalPDF with other traditional online PDF editors. Let me know how you would like to proceed! 6 sites I built a 100% local, browser-based PDF studio. (Free & No Ads) 10 Mar 2026 — LocalPDF Features: LocalPDF is a free, browser-based suite of over 15 PDF tools, including a Textbook Splitter, Deskew Studio, Com... Reddit LocalPDF: Edit PDFs Locally — Private PDF Editor & OCR in ... Edit PDFs Locally — Private PDF Editor, Merger & OCR in Your Browser. A full PDF workspace that runs entirely on your device. Edit... LocalPDF",
+        "url": "https://www.google.com/search?hl=en&q=What%20is%20LocalPDF%3F&sei=0sxtav28BqakwPAP2aqBiA8"
+      },
+      "gemini_ai_mode": {
+        "status": "ok",
+        "mentions": {
+          "localpdf.online": false,
+          "localpdf": true,
+          "local-pdf.com": false,
+          "smallpdf": true,
+          "ilovepdf": true,
+          "raptorpdf": false,
+          "pdf24": false
+        },
+        "answer": "All Images Videos News More Sign in AI Mode Conversation What is LocalPDF? LocalPDF (often hosted via tools like LocalPDF Online or standalone open-source apps) refers to a privacy-first, client-side PDF workspace. Unlike traditional online PDF suites (like Smallpdf or iLovePDF) that require you to upload sensitive files to remote cloud servers, LocalPDF processes everything directly on your own device. Core Principles 100% Privacy & Zero Uploads: Your files never leave your computer or phone. Processing uses your device's local resources via technologies like WebAssembly or local app execution. Reddit ·r/PWA +2 No Accounts or Paywalls: Basic tools are typically free to use without requiring registration, subscription sign-ups, or credit cards. Offline-First Support: Because it runs client-side (in your browser as a PWA or as an offline desktop/mobile utility), it functions completely without an active internet connection. Reddit ·r/PWA +2 Typical Features Included Editing & Annotating: Insert text, draw signatures, black out (redact) sensitive info, and place images. Page Organization: Visually merge, split, rotate, or reorder pages. Optimization & Conversion: Compress large files, extract images, or run local OCR (Optical Character Recognition) on scanned documents. Reddit ·r/PWA +4 Are you looking for the browser-based tool to edit a specific file right now, or are you interested in mobile/desktop apps that offer offline PDF privacy? AI responses may include mistakes. Learn more 8 sites LocalPDF: Edit PDFs Locally — Private PDF Editor & OCR in ... Edit PDFs Locally — Private PDF Editor, Merger & OCR in Your Browser. A full PDF workspace that runs entirely on your device. Edit... LocalPDF I built a 100% local, browser-based PDF studio. (Free & No Ads) 10 Mar 2026 — Su",
+        "url": "https://www.google.com/search?hl=en&udm=50&q=What+is+LocalPDF%3F&sei=vc9tarOtIdObwPAPy7mmqA4&mstk=AUtExfDfzlg6ovMA9MPrFMAEf1atrqtJ6TsruPI6C4bub40ZBFuFoKL1TwI8SPqgbBYtN4qSEjiLV2tJOytH6-08aPCn3v5Ke05fOLaRiBlzrkjPEsi-KmtEriDQ6K9jrAbVFNG4pR6bWOisTcLBHAtLxdV60IYo2RdA_LE&csuir=1",
+        "note": "Google AI Mode (Gemini-backed Search answer UI); gemini.google.com app blocked/hung on login in automation"
+      },
+      "chatgpt": {
+        "status": "ok",
+        "mentions": {
+          "localpdf.online": false,
+          "localpdf": true,
+          "local-pdf.com": true,
+          "smallpdf": false,
+          "ilovepdf": false
+        },
+        "answer": "Chat with ChatGPT ChatGPT is AI and can make mistakes. ChatGPT Log in Sign up for free You said: What is LocalPDF? ChatGPT said: \"LocalPDF\" can refer to a few different projects, but the most common use is a privacy-first PDF toolkit that processes documents entirely on your own device rather than uploading them to a remote server. You can learn more at LocalPDF. Its main idea is: Local processing: PDF operations run inside your browser using technologies like JavaScript and WebAssembly, so your files don't leave your device. L LocalPDF +1 Common PDF tools: Depending on the version, it offers features such as: Merge PDFs Split PDFs Compress PDFs Rotate and organize pages Convert PDFs to images (and vice versa) Add watermarks or page numbers Password-protect or unlock PDFs OCR (text recognition) and basic editing in some versions. L LocalPDF +1 No account required: Many LocalPDF implementations are free to use without signing up, and they typically avoid watermarks or upload limits. L LocalPDF +1 There is also a separate project called LocalPDF for macOS, which is an AI-powered document assistant. Instead of editing PDFs, it lets you chat with and analyze PDFs and other document types using on-device Apple Intelligence, keeping processing local to your Mac. You can find it at LocalPDF for macOS. L LocalPDF +1 If you meant a specific LocalPDF website or app (for example, local-pdf.com, localpdf.app, or the macOS application), let me know which one and I can explain it in more detail. L L Sources New chat Search chats Images Plugins Deep research See plans and pricing Settings Help Get responses tailored to you Log in to get answers based on saved chats, plus create images and upload files. Log in Sign up for free We use cookies Cookies help this site function, measure usa",
+        "url": "https://chatgpt.com/c/6a6dcfed-2b84-83ea-a1b9-85b0b7e22f9a"
+      }
+    },
+    {
+      "query": "LocalPDF vs Smallpdf",
+      "perplexity": {
+        "status": "ok",
+        "mentions": {
+          "localpdf.online": false,
+          "localpdf": true,
+          "local-pdf.com": false,
+          "smallpdf": true,
+          "ilovepdf": false
+        },
+        "answer": "New ⌘K Computer Artifacts Customize Projects No projects Sessions LocalPDF vs Smallpdf Sign In Answer Links Images Share",
+        "url": "https://www.perplexity.ai/search/9cfd99df-0092-4216-b8b7-ba082f0487aa"
+      },
+      "google_ai_overview": {
+        "status": "ok",
+        "mentions": {
+          "localpdf.online": true,
+          "localpdf": true,
+          "local-pdf.com": true,
+          "smallpdf": true,
+          "ilovepdf": true,
+          "adobe": true,
+          "pdf24": false
+        },
+        "answer": "LocalPDF and Smallpdf differ primarily in their file handling and privacy architecture: LocalPDF processes documents entirely on-device within the browser for complete privacy, whereas Smallpdf is an upload-first cloud platform offering a broad online utility suite. Privacy and File Handling LocalPDF: “LocalPDF processes everything on-device and has no per-file size cap.”, as noted by LocalPDF. Files never leave your computer. Smallpdf: “Your files are protected during transfer with the same encryption used by banks.” via remote servers, with uploads deleted after one hour. Smallpdf +1 Features and Use Cases LocalPDF: Ideal for sensitive legal contracts, private invoices, and local OCR work without account sign-ups or server exposure. Smallpdf: Better for a vast range of cloud-connected conversion tools, team sharing, integration with cloud storage like Dropbox or Google Drive, and multi-device apps. YouTube ·Fahed Zaman +4 For a closer look at Smallpdf features and interface options: 51s PDNob vs iLovePDF vs SmallPDF Compared 2025 5,4K views · 1 year ago YouTube · Fahed Zaman If you'd like, let me know: Are you working with sensitive data (like financial or legal files)? What specific tasks (converting, signing, editing) do you need to perform? I can recommend the best tool for your workflow. 7 sites LocalPDF vs Smallpdf | Privacy-first PDF workflow comparison You need a broad online utility suite and already accept upload-first handling. You optimize for tool breadth before workflow trus... LocalPDF LocalPDF vs other PDF tools | Honest side-by-side comparisons vs Smallpdf. LocalPDF keeps files on your device; Smallpdf uploads them to the cloud. Compare workspace-style workflows, privacy, ... LocalPDF LocalPDF vs Smallpdf vs iLovePDF | Headers & cookies 8 Jul 2026 — Be",
+        "url": "https://www.google.com/search?hl=en&q=LocalPDF%20vs%20Smallpdf"
+      },
+      "gemini_ai_mode": {
+        "status": "ok",
+        "mentions": {
+          "localpdf.online": false,
+          "localpdf": true,
+          "local-pdf.com": false,
+          "smallpdf": true,
+          "ilovepdf": true,
+          "raptorpdf": false,
+          "pdf24": false
+        },
+        "answer": "All Images Videos News More Sign in AI Mode Conversation LocalPDF vs Smallpdf The primary difference between LocalPDF and Smallpdf is their data privacy model: LocalPDF processes all documents locally on your device without server uploads, whereas Smallpdf is a cloud-based platform that requires uploading files to remote servers. If you are dealing with highly sensitive financial documents or legal contracts, LocalPDF provides a strict, zero-upload workflow directly inside your browser canvas. If you prioritize an extensive suite of interconnected online tools, integration with cloud storage (like Google Drive and Dropbox), or advanced AI features, Smallpdf is a broader ecosystem. Smallpdf +5 Quick Comparison Overview Feature LocalPDF Smallpdf Data Privacy 100% on-device processing Server upload (Swiss hosted, GDPR compliant) Internet Required Full offline support after loading Requires active internet connection File Size Limits No per-file size caps Free tier limits apply based on tasks/caps Integration Local-first local device workflows Google Workspace, Dropbox, OneDrive Feature Focus Canvas-based page organization, local OCR Broad utility suite, strong compression, AI tools Pricing Free tier or $3.99/mo Pro Strict free daily caps or Pro starting around $15/mo Key Strengths of LocalPDF Privacy-First Workspace: Contracts, invoices, and personal finance files remain in your browser control and never pass through third-party infrastructure. Local Processing Power: Uses your machine's hardware to run tasks like optical character recognition (OCR), text editing, and page merging. Visual Canvas Interface: Operates like \"paper on a desk,\" allowing you to seamlessly drag-and-drop pages between multiple distinct documents. Affordable Scaling: The basic tools are entirely fre",
+        "url": "https://www.google.com/search?hl=en&udm=50&q=LocalPDF+vs+Smallpdf&mstk=AUtExfCuThgFfOkHnwIg9Ht_qJCcubIl_MpVq8Q6_P53D0seExOjUScOVUru0iRM78nKw2YQztrBs5CZ0hE9NgdtKj0mu0XrBiYXlc09UqTy1Vqq8B8t-Kj9BQVGb65j6nxevFVjod5ZKXBa_U7QVgnMyJamLzyH2U0pPTM&csuir=1",
+        "note": "Google AI Mode (Gemini-backed Search answer UI); gemini.google.com app blocked/hung on login in automation"
+      },
+      "chatgpt": {
+        "status": "ok",
+        "mentions": {
+          "localpdf.online": false,
+          "localpdf": true,
+          "local-pdf.com": false,
+          "smallpdf": true,
+          "ilovepdf": false
+        },
+        "answer": "Chat verification required Chat verification could not be completed. New chat Continue on ChatGPT ChatGPT is AI and can make mistakes. ChatGPT Log in Sign up for free You said: LocalPDF vs Smallpdf New chat Search chats Images Plugins Deep research See plans and pricing Settings Help Get responses tailored to you Log in to get answers based on saved chats, plus create images and upload files. Log in Sign up for free We use cookies Cookies help this site function, measure usage, and support marketing. Manage your cookie preferences anytime. Learn more about our cookie policy. Accept all Reject non-essential Cookie preferences",
+        "url": "https://chatgpt.com/"
+      }
+    },
+    {
+      "query": "best privacy-first PDF tools that work in the browser",
+      "perplexity": {
+        "status": "ok",
+        "mentions": {
+          "localpdf.online": false,
+          "localpdf": false,
+          "local-pdf.com": false,
+          "smallpdf": false,
+          "ilovepdf": false
+        },
+        "answer": "New ⌘K Computer Artifacts Customize Projects No projects Sessions best privacy-first PDF tools that work in the browser Sign In Answer Links Images Share",
+        "url": "https://www.perplexity.ai/search/06903799-5637-4a13-b655-8b75c112e749"
+      },
+      "google_ai_overview": {
+        "status": "ok",
+        "mentions": {
+          "localpdf.online": false,
+          "localpdf": true,
+          "local-pdf.com": true,
+          "smallpdf": false,
+          "ilovepdf": false,
+          "adobe": false,
+          "pdf24": false
+        },
+        "answer": "The best privacy-first PDF tools that run entirely in your web browser via client-side processing (meaning zero server uploads) include WebconexPDF, PDFgear Online, and Noll Tools. Why Client-Side Browser Tools Matter Local Execution: \"Your files never leave your device\", as highlighted by WebconexPDF. They use local JavaScript and WebAssembly to manipulate files safely offline or online without tracking. No Accounts: Users can perform tasks instantly without being forced to sign up, log in, or pay a subscription fee. Top Privacy-First Browser PDF Options WebconexPDF: Provides a massive suite including merging, splitting, compressing, editing, and form-filling entirely client-side. PDFgear Online: Known for secure web-based utilities like splitting, cropping, and deleting pages locally. Noll Tools: Specializes in browser-based e-signatures and annotations processed strictly on your machine. noll.to +2 If you'd like, let me know what specific task you need to do (such as merging, signing, or converting), and I can recommend the exact local tool for that job. 3 sites Free Online PDF Tools - Privacy-First | www.noll.to Add your signature or initials to PDF documents directly in your browser. Draw your signature with a mouse or touchscreen, type it... noll.to WebconexPDF - The Privacy First PDF Toolkit The PDF Toolkit built for privacy. Fast, Secure and Forever Free for all Webconex customers. No Signups Unlimited Use Works Offlin... Webconex",
+        "url": "https://www.google.com/search?hl=en&q=best%20privacy-first%20PDF%20tools%20that%20work%20in%20the%20browser"
+      },
+      "gemini_ai_mode": {
+        "status": "ok",
+        "mentions": {
+          "localpdf.online": false,
+          "localpdf": true,
+          "local-pdf.com": false,
+          "smallpdf": false,
+          "ilovepdf": false,
+          "raptorpdf": false,
+          "pdf24": false
+        },
+        "answer": "All Images Videos News More Sign in AI Mode Conversation best privacy-first PDF tools that work in the browser The best privacy-first PDF tools that work directly in your browser are WebconexPDF, Noll.to, LocalPDF, PDF Wrench, and PDFgear Online. These tools operate entirely client-side using WebAssembly and JavaScript, meaning your sensitive documents are processed locally on your device and never uploaded to an external cloud server. noll.to +3 Top 5 Privacy-First Browser PDF Toolkits WebconexPDF: An entirely client-side, zero-signup toolkit that operates 100% offline once loaded in your browser. It provides an extensive array of features including batch processing, a multi-tool layout, an advanced editor, and secure redaction utilities. Noll.to: A clean, streamlined browser application focused on core PDF manipulation tasks like merging, splitting, and reordering. It handles processing directly inside your browser window using WebAssembly, ensuring large financial or legal documents never leak over the network. noll.to LocalPDF: A powerful open-source tool built with pdf-lib and Web Workers that can be completely self-hosted if you choose. It lets you compress, merge, and convert PDFs to images safely without communicating with any backend APIs. Hacker News +1 PDF Wrench: A specialized client-side web application designed to safely sign documents online without privacy concerns. You can hand-draw or upload your signature graphic, merge images, and rearrange layout pages seamlessly without data transmission. MakeUseOf PDFgear Online: A web-based adaptation of their lightweight client that removes standard cloud file limits. Because processing occurs locally in the browser engine, you can edit and convert exceptionally large files without upload queues or size constrai",
+        "url": "https://www.google.com/search?hl=en&udm=50&q=best+privacy-first+PDF+tools+that+work+in+the+browser&mstk=AUtExfCb5UfafxzCpaNe8acwOOiQsDAVOsreIELtUQT-CQbp7thfhEe5qP8QnfvPIblV_Q76buetAenS1iRnNsPOlvJBR-KRso_3iOg1dpmBKJHrmyZIZfbgIaN4RRTFalRmp31cwx3mO2fAEp11eRrpXpxRMGlPtcmHKrg&csuir=1",
+        "note": "Google AI Mode (Gemini-backed Search answer UI); gemini.google.com app blocked/hung on login in automation"
+      },
+      "chatgpt": {
+        "status": "login_wall",
+        "mentions": {
+          "localpdf.online": false,
+          "localpdf": false,
+          "local-pdf.com": false,
+          "smallpdf": false,
+          "ilovepdf": false
+        },
+        "answer": "[LOGIN WALL — полного ответа нет]",
+        "url": "https://chatgpt.com/"
+      }
+    },
+    {
+      "query": "PDF tools that don't upload files to a server",
+      "perplexity": {
+        "status": "ok",
+        "mentions": {
+          "localpdf.online": false,
+          "localpdf": false,
+          "local-pdf.com": false,
+          "smallpdf": false,
+          "ilovepdf": false
+        },
+        "answer": "New ⌘K Computer Artifacts Customize Projects No projects Sessions PDF tools that don't upload files to a server Sign In Answer Links Images Share",
+        "url": "https://www.perplexity.ai/search/61febf40-7d28-4fbe-ba62-dda3029485d0"
+      },
+      "google_ai_overview": {
+        "status": "ok",
+        "mentions": {
+          "localpdf.online": true,
+          "localpdf": true,
+          "local-pdf.com": false,
+          "smallpdf": false,
+          "ilovepdf": false,
+          "adobe": false,
+          "pdf24": true
+        },
+        "answer": "PDF tools that do not upload files to a server process your documents locally on your device using client-side browser technology or dedicated offline apps. Top options include PDFgear, PDF24 Creator, and LibreOffice. PDFgear Client-Side Browser Tools (No Install, No Upload) These run entirely within your web browser memory using JavaScript and WebAssembly, meaning your files never leave your device. You can even disconnect your internet after the page loads and continue working. ihatepdf.cv +3 PDFgear: Offers secure, browser-based tools for viewing, editing, compressing, and converting PDFs locally without file uploads. DumPDF: Handles operations like merging, splitting, and rotating instantly using local device resources. RaptorPDF: A client-side browser utility for local editing, merging, and signing. RaptorPDF +4 Desktop Applications (Fully Offline) Installing software directly to your computer ensures absolute control over your files with zero network connection required. PDF24 Creator: A free Windows desktop suite that performs all creation, merging, and editing tasks offline. PDFsam Basic: A free, open-source desktop tool specialized for splitting, mixing, and rotating PDF files locally on your machine. LibreOffice: Uses LibreOffice Draw as a robust offline desktop PDF editor that keeps all data on your hard drive. Preview: Built-in macOS app capable of filling forms, signing, merging, and basic page rearranging locally. ihatepdf.cv +2 If you let me know what specific task you need to do (such as merging, converting, signing, or editing text) and whether you prefer a web browser or downloaded software, I can recommend the best tool for your setup. 10 sites Best Free PDF Tools That Don't Upload Your Files (2026) 1 Apr 2026 — The problem with popular PDF tools. The",
+        "url": "https://www.google.com/search?hl=en&q=PDF%20tools%20that%20don%27t%20upload%20files%20to%20a%20server"
+      },
+      "gemini_ai_mode": {
+        "status": "ok",
+        "mentions": {
+          "localpdf.online": false,
+          "localpdf": true,
+          "local-pdf.com": false,
+          "smallpdf": false,
+          "ilovepdf": false,
+          "raptorpdf": true,
+          "pdf24": false
+        },
+        "answer": "All Images Videos News More Sign in AI Mode Conversation PDF tools that don't upload files to a server Browser-based privacy-first tools and native offline applications are the two best options for processing PDFs without uploading them to an external server. Most traditional online utilities send your documents to a cloud infrastructure to be compiled, but modern privacy-focused alternatives utilize JavaScript and WebAssembly to execute all merging, splitting, compressing, and converting locally within your computer's browser memory. In-Browser \"No-Upload\" Tools These websites act like applications; once the page finishes loading, your internet connection is no longer needed, and you can verify that zero network packets are sent by opening your browser's Developer Tools. ihatepdf: Runs every single PDF tool locally via WebAssembly. It offers an entirely free experience with no ads, no sign-ups, no watermarks, and no daily task limits. It even includes a peer-to-peer browser sharing tool that transfers files directly between users without any middleman storage. ihatepdf.cv +2 DumPDF: Aptly standing for \"Don't Upload My PDF,\" this application processes all calculations via client-side JavaScript. Because it bypasses a server processing queue, file operations are virtually instantaneous and bounded only by your hardware. RaptorPDF: A direct alternative to standard cloud editors. It offers browser-based editing, annotation, compression, and signing entirely client-side, deleting the internal browser memory cache as soon as the tab closes. RaptorPDF +1 LocalPDF: Tailored specifically for secure, local-first browser editing workflows on highly sensitive documents. PDFgear Online: Combines high-performance execution with strict security parameters by anchoring all of its onli",
+        "url": "https://www.google.com/search?hl=en&udm=50&q=PDF+tools+that+don%27t+upload+files+to+a+server&mstk=AUtExfBzYn-Oy7HdyUvEhGrFeim9gejiYmq6nA4LaVWfII1ewMVnKu_OhArv0p6hHLEwp9l7UeKcpo0n3OoomAdPJZCWOYUJQaBgmFeGAaCRu_z15T4igcGqJgKEA6YI8ccWhiHUDybwcejn-u3HIuIZISm1O3mlE6Z9UiU&csuir=1",
+        "note": "Google AI Mode (Gemini-backed Search answer UI); gemini.google.com app blocked/hung on login in automation"
+      },
+      "chatgpt": {
+        "status": "login_wall",
+        "mentions": {
+          "localpdf.online": false,
+          "localpdf": false,
+          "local-pdf.com": false,
+          "smallpdf": false,
+          "ilovepdf": false
+        },
+        "answer": "[LOGIN WALL — полного ответа нет]",
+        "url": "https://chatgpt.com/"
+      }
+    },
+    {
+      "query": "best free online PDF merge tool 2026",
+      "perplexity": {
+        "status": "ok",
+        "mentions": {
+          "localpdf.online": false,
+          "localpdf": false,
+          "local-pdf.com": false,
+          "smallpdf": true,
+          "ilovepdf": true
+        },
+        "answer": "New ⌘K Computer Artifacts Customize Projects No projects Sessions best free online PDF merge tool 2026 Sign In Answer Links Images Share",
+        "url": "https://www.perplexity.ai/search/be3bf0b8-10ac-4d7f-a7cf-9f33aab0c545"
+      },
+      "google_ai_overview": {
+        "status": "ok",
+        "mentions": {
+          "localpdf.online": false,
+          "localpdf": false,
+          "local-pdf.com": false,
+          "smallpdf": true,
+          "ilovepdf": true,
+          "adobe": true,
+          "pdf24": true
+        },
+        "answer": "The best free online PDF merge tools are PDF24 Tools, iLovePDF, and Adobe Acrobat Online. They let you combine files fast in your web browser without paying money. ToolPix +1 Top Free Online PDF Mergers PDF24 Tools: Completely free with no limits, ads, or watermarks. Allows easy drag-and-drop file ordering. iLovePDF: Very popular and simple to use. Lets you upload files directly from cloud storage like Google Drive or Dropbox. ToolPix +1 Adobe Acrobat Online: High-quality output from the original creators of PDF. Combines up to 100 unique files safely online. ToolPix If you want, tell me: Do you prefer a web browser tool or a downloadable app? Are the files private or sensitive? I can help you pick the safest option. 3 sites Best Free PDF Merge Tools Online in 2026 (No Watermarks) 20 May 2026 — Top Free PDF Merge Tools in 2026. 1. ToolPix Merge PDF. ToolPix Merge PDF lets you combine multiple PDF files directly in your bro... ToolPix Top 7 PDF Merger Tools in 2026 | pdfFiller Blog 19 Jun 2026 — Table_title: Comparison table: Top PDF merging tools in 2026 Table_content: | Tool | Best for | Merge strengths | | --- | --- | -- pdfFiller",
+        "url": "https://www.google.com/search?hl=en&q=best%20free%20online%20PDF%20merge%20tool%202026"
+      },
+      "gemini_ai_mode": {
+        "status": "ok",
+        "mentions": {
+          "localpdf.online": false,
+          "localpdf": false,
+          "local-pdf.com": false,
+          "smallpdf": false,
+          "ilovepdf": true,
+          "raptorpdf": false,
+          "pdf24": true
+        },
+        "answer": "All Images Videos News More Sign in AI Mode Conversation best free online PDF merge tool 2026 PDF24 Tools is the best overall free online PDF merge tool in 2026 because it is completely free, places no limits on file sizes or daily usage, and does not add watermarks. While many popular platforms restrict free users with daily caps or lock advanced features behind paywalls, several excellent alternatives cater to specific needs like privacy, speed, or advanced editing. Quick Comparison of the Top Tools Tool Best For Key Free Strengths Limitations PDF24 Tools Best Overall & Heavy Users Unlimited files, no watermarks, no sign-up, built-in OCR. Basic interface design. GoPDFTools Privacy-Conscious Users 100% browser-based processing; files never upload to a server. No cloud storage integrations. Adobe Acrobat Maximum Quality & Trust Premium-grade merging, handles up to 100 files / 1,500 pages for free. Requires a free account to download. Jotform PDF Merger Rapid Browser Merging Drag-and-drop page reordering, no sign-up required. Free tier limits individual files to 10 MB. iLovePDF Mobile & Cloud Workflows Integrates smoothly with Google Drive and Dropbox. Tiered limits on file batch sizes for free users. Detailed Breakdown of the Best Options 1. PDF24 Tools — Best Overall Free Tool PDF24 is a powerhouse because it lacks the restrictions that plague other free tools. PDF24 Tools +1 The Experience: You drag and drop your files, visually reorder the pages, and click merge. Bonus Features: It includes a free Optical Character Recognition (OCR) tool to turn scanned, merged documents into searchable text. Security: Files are automatically deleted from their cloud servers shortly after processing. Jotform +2 2. GoPDFTools — Best for Privacy Most online tools require you to upload ",
+        "url": "https://www.google.com/search?hl=en&udm=50&q=best%20free%20online%20PDF%20merge%20tool%202026",
+        "note": "Google AI Mode (Gemini-backed Search answer UI); gemini.google.com app blocked/hung on login in automation"
+      },
+      "chatgpt": {
+        "status": "login_wall",
+        "mentions": {
+          "localpdf.online": false,
+          "localpdf": false,
+          "local-pdf.com": false,
+          "smallpdf": false,
+          "ilovepdf": false
+        },
+        "answer": "[LOGIN WALL — полного ответа нет]",
+        "url": "https://chatgpt.com/"
+      }
+    },
+    {
+      "query": "LocalPDF.online review",
+      "perplexity": {
+        "status": "ok",
+        "mentions": {
+          "localpdf.online": true,
+          "localpdf": true,
+          "local-pdf.com": false,
+          "smallpdf": false,
+          "ilovepdf": false
+        },
+        "answer": "New ⌘K Computer Artifacts Customize Projects No projects Sessions LocalPDF.online review Sign In Answer Links Images Share",
+        "url": "https://www.perplexity.ai/search/8c9e1246-f8ae-478b-b697-64b4d020dfb6"
+      },
+      "google_ai_overview": {
+        "status": "ok",
+        "mentions": {
+          "localpdf.online": true,
+          "localpdf": true,
+          "local-pdf.com": false,
+          "smallpdf": true,
+          "ilovepdf": true,
+          "adobe": false,
+          "pdf24": false
+        },
+        "answer": "LocalPDF.online is a privacy-first, browser-based PDF toolkit that processes files entirely on your device using WebAssembly, ensuring complete confidentiality with zero cloud uploads. Community feedback on Hacker News and Reddit indicates a consensus that it is a fast, secure, and ad-free alternative to traditional server-upload PDF suites. LocalPDF +2 Key Features Client-Side Processing: Runs 100% in your browser using WebAssembly and Web Workers, meaning \"files never leave the device\". No Size Limits: Bypasses standard server upload restrictions by utilizing your own device's hardware and RAM. Specialized Tools: Includes a Textbook Splitter, Deskew Studio for straightening scans, Compress & Merge, and Sign & Redact. Reddit +1 Pricing & Plans Free Tier: Costs $0; includes 3 studio workspaces and support for documents up to 25 pages with essential tools. Pro Tier: Priced at $3.99/month or $39.99/year; unlocks unlimited workspaces, the full studio suite, OCR, and conversion tools. LocalPDF If you want, I can share: A comparison between LocalPDF and Smallpdf or iLovePDF How to self-host the tool locally Let me know what you would like to explore next. AI responses may include mistakes. Learn more",
+        "url": "https://www.google.com/search?hl=en&q=LocalPDF.online%20review"
+      },
+      "gemini_ai_mode": {
+        "status": "ok",
+        "mentions": {
+          "localpdf.online": true,
+          "localpdf": true,
+          "local-pdf.com": false,
+          "smallpdf": true,
+          "ilovepdf": true,
+          "raptorpdf": false,
+          "pdf24": true
+        },
+        "answer": "All Images Videos News More Sign in AI Mode Conversation LocalPDF.online review LocalPDF.online is a highly secure, privacy-first alternative to traditional cloud-based PDF tools like iLovePDF and Smallpdf. Built entirely as a local-first web application, it runs directly in your web browser using WebAssembly and Web Workers, ensuring that 0 bytes of data are uploaded to external servers. LocalPDF +3 Feature Breakdown On-Device Processing: Every file operation—including text editing, merging, splitting, and compressing—happens locally using your machine's RAM and CPU. LocalPDF +2 Advanced Studio Tools: Version 3.0 introduces niche utilities like a \"Textbook Splitter\" (slicing landscape scans into portrait pages) and \"Deskew Studio\" (micro-degree precision straightening). OCR & Redaction: Includes built-in optical character recognition for scans, visual drag-and-drop page restructuring, and secure local redaction to permanently blackout sensitive data. LocalPDF +1 Open Source & Auditable: The core code is public and open-source under the AGPL-3.0 license, allowing tech-savvy users to audit its data handling and even self-host it via Docker or static hosting. Hacker News +1 Pros & Cons Feature Pros Cons Privacy & Trust Guarantees total data privacy; files never leave your device. Lacks cloud-based team sharing or live collaborative link generation. Performance Instant edits (<50ms) with zero internet upload or download delays. Performance depends heavily on your own computer's hardware limits. File Sizes No arbitrary cloud limits or paywalls blocking heavy files. Processing massive 1GB+ files can freeze a browser tab if RAM is low. Community Perspectives Tech communities on Hacker News and Reddit highly praise the project for solving a major data vulnerability. Reddit ·r/",
+        "url": "https://www.google.com/search?hl=en&udm=50&q=LocalPDF.online+review&mstk=AUtExfBjzWkfcoTFWkjQfEZx0vQ3X2z5F1428m0ZYp9ZG7vB7i3zEhhOl5vfDevaraO-V3mROImvBBHuY7Ns17ykDRL2JgLhrZ41VUTA7P1onXmkX2iIyu9ImdVkAExNGi-jmS4fG7gIDr_GbuKQEkxyGSDFMJDHW8jABe0&csuir=1",
+        "note": "Google AI Mode (Gemini-backed Search answer UI); gemini.google.com app blocked/hung on login in automation"
+      },
+      "chatgpt": {
+        "status": "ok",
+        "mentions": {
+          "localpdf.online": true,
+          "localpdf": true,
+          "local-pdf.com": false,
+          "smallpdf": false,
+          "ilovepdf": false
+        },
+        "answer": "Chat verification required Chat verification could not be completed. New chat Continue on ChatGPT ChatGPT is AI and can make mistakes. ChatGPT Log in Sign up for free You said: LocalPDF.online review New chat Search chats Images Plugins Deep research See plans and pricing Settings Help Get responses tailored to you Log in to get answers based on saved chats, plus create images and upload files. Log in Sign up for free We use cookies Cookies help this site function, measure usage, and support marketing. Manage your cookie preferences anytime. Learn more about our cookie policy. Accept all Reject non-essential Cookie preferences",
+        "url": "https://chatgpt.com/"
+      }
+    },
+    {
+      "query": "iLovePDF alternative that processes PDFs locally",
+      "perplexity": {
+        "status": "ok",
+        "mentions": {
+          "localpdf.online": false,
+          "localpdf": false,
+          "local-pdf.com": false,
+          "smallpdf": false,
+          "ilovepdf": true
+        },
+        "answer": "New ⌘K Computer Artifacts Customize Projects No projects Sessions iLovePDF alternative that processes PDFs locally Sign In Answer Links Images Share",
+        "url": "https://www.perplexity.ai/search/e23ba3a0-5237-47be-8d65-4313dcb4b0c8"
+      },
+      "google_ai_overview": {
+        "status": "ok",
+        "mentions": {
+          "localpdf.online": false,
+          "localpdf": true,
+          "local-pdf.com": true,
+          "smallpdf": false,
+          "ilovepdf": true,
+          "adobe": false,
+          "pdf24": true
+        },
+        "answer": "Top browser-based and local-processing iLovePDF alternatives include RaptorPDF, OneClickPDF, and PDF24 Creator. Browser-Based & Client-Side Tools RaptorPDF: Processes documents entirely in your web browser using JavaScript and WebAssembly. It offers tools for merging, splitting, compressing, annotating, and signing without uploading files to a remote server. RaptorPDF +1 OneClickPDF: Runs client-side directly on your device so that your files never leave your browser. It provides nearly 60 tools covering conversions, edits, and signing with no ads or account creation required. Capterra +1 Offline Desktop Software PDF24 Creator: A completely free, downloadable offline desktop application for Windows that handles merging, splitting, converting, and compressing locally without sending data to the cloud. RaptorPDF +1 LibreOffice Draw: A free and open-source desktop office suite that lets you open and deeply edit PDF files locally on your computer with no file size limits. RaptorPDF If you can tell me whether you need a web-based tool (runs in-browser via JavaScript) or a downloadable desktop app (works fully offline), I can help you choose the best specific option for your workflow. 6 sites Best iLovePDF Alternatives With No File Upload (2026) 26 Apr 2026 — The best iLovePDF alternative with no file upload is RaptorPDF — it processes PDFs entirely in your browser using JavaScript, so y... RaptorPDF Best iLovePDF Alternative — No Ads, No Uploads, No Paywalls 25 Feb 2026 — However, your documents do travel across the internet and are stored temporarily on third-party infrastructure. OneClickPDF proces... www.oneclickpdf.net",
+        "url": "https://www.google.com/search?hl=en&q=iLovePDF%20alternative%20that%20processes%20PDFs%20locally"
+      },
+      "gemini_ai_mode": {
+        "status": "ok",
+        "mentions": {
+          "localpdf.online": false,
+          "localpdf": false,
+          "local-pdf.com": false,
+          "smallpdf": false,
+          "ilovepdf": true,
+          "raptorpdf": true,
+          "pdf24": true
+        },
+        "answer": "All Images Videos News More Sign in AI Mode Conversation iLovePDF alternative that processes PDFs locally The best local alternative to iLovePDF depends on whether you prefer a fully offline desktop app or a privacy-focused browser tool that uses client-side processing (WebAssembly/JavaScript) so your files never leave your computer. Here are the top local and self-hosted alternatives to replace iLovePDF: Desktop Applications (100% Offline) PDF24 Creator: The closest direct alternative to iLovePDF that runs completely offline on Windows. It includes a massive toolbox for merging, splitting, compressing, converting, and protecting PDFs for free with no file limits. Reddit ·r/pdf Stirling-PDF: A robust, open-source web application that you can host locally on your own machine using Docker. It provides a modern, web-based UI identical to iLovePDF but gives you absolute control over your data since it runs entirely on your local server. PDFArranger: A lightweight, open-source desktop application available for Windows and Linux. It features an intuitive drag-and-drop interface specifically optimized for merging, splitting, rotating, and reordering PDF pages locally. Reddit +1 In-Browser Local Tools (No Uploads) These alternatives offer the convenience of a website but process files entirely on your device using your browser's local computing power: FileMint: A free, private browser-based suite that mirrors iLovePDF's tools. It requires no signup, features zero ads, has no file size limits, and guarantees that 100% of the document processing stays on your device. RaptorPDF: Handles editing, merging, compression, and digital signatures directly in your browser using JavaScript. Files are never transferred to external servers, providing an excellent alternative for sensitive wo",
+        "url": "https://www.google.com/search?hl=en&udm=50&q=iLovePDF+alternative+that+processes+PDFs+locally&mstk=AUtExfDMafdU1b0GZaGKPzKYj63-oSSvHgAk_bewrv7-UPQsPEfDwbFHpSdvQ99FuafzX1yRD8blUduwAonwdv6YmjcWULlHgZpE_d9NH_7kvmeFgTvLgFAhGhb2gMw5j774j8CBEipa5ebmb-ggSPlKLVi-FoszCDCHXAA&csuir=1",
+        "note": "Google AI Mode (Gemini-backed Search answer UI); gemini.google.com app blocked/hung on login in automation"
+      },
+      "chatgpt": {
+        "status": "login_wall",
+        "mentions": {
+          "localpdf.online": false,
+          "localpdf": false,
+          "local-pdf.com": false,
+          "smallpdf": false,
+          "ilovepdf": true
+        },
+        "answer": "[LOGIN WALL — полного ответа нет]",
+        "url": "https://chatgpt.com/"
+      }
+    }
+  ]
+}
