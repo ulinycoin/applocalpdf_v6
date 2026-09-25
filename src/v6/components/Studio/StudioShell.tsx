@@ -21,7 +21,7 @@ import { canAddDocumentToStudio, canCreateWorkspace, canUseDocumentWithPageCount
 import { showStudioPaywall } from '../../../app/react/studio-paywall';
 import { PaywallModal } from '../../../app/react/PaywallModal';
 import { useHistoryStore } from './store/history-store';
-import { getDailyUsage, incrementDailyUsage, FREE_TOOL_DAILY_LIMITS } from '../../../app/platform/daily-usage';
+import { canAcceptDailyFiles, recordAcceptedFiles } from '../../../app/react/studio-paywall';
 import { getOrCreateFlowId } from '../../../app/platform/browser-context';
 import { LinearIcon } from '../icons/linear-icon';
 import { mergePagesIntoWorkspace, splitPagesToNewWorkspace, deletePages as deletePagesOp } from './studio-page-ops';
@@ -452,31 +452,10 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
         const billingContext = runtime.billing.getContext();
         const editToolIds: string[] = CANVAS_EDIT_TOOLS;
 
-        // Daily limit for free-tier tools (OCR uses page-based trial, not daily limit)
-        const dailyLimit = FREE_TOOL_DAILY_LIMITS[tool];
-        if (dailyLimit !== undefined && billingContext.plan === 'basic' && tool !== 'ocr-pdf') {
-            const usage = getDailyUsage(tool);
-            if (usage >= dailyLimit) {
-                showStudioPaywall(
-                    runtime.telemetry,
-                    `You've used all ${dailyLimit} free ${tool} runs today. Upgrade to Pro for unlimited use.`,
-                    import.meta.env.VITE_BILLING_URL,
-                    { toolId: tool, trigger: 'daily_limit' },
-                );
-                setPaywallReason(`You've used all ${dailyLimit} free uses today. Upgrade to Pro for unlimited use.`);
-                return;
-            }
-        }
-
         if (editToolIds.includes(tool)) {
             startEditFromCanvas(tool as StudioEditToolId);
         } else {
             startConvertFromCanvas(tool as StudioConvertToolId);
-        }
-
-        // Track successful tool start for daily-limited tools
-        if (FREE_TOOL_DAILY_LIMITS[tool] !== undefined && billingContext.plan === 'basic') {
-            incrementDailyUsage(tool);
         }
     }, [startEditFromCanvas, startConvertFromCanvas, runtime.billing, runtime.telemetry]);
 
@@ -644,6 +623,10 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
 
         const billingContext = runtime.billing.getContext();
 
+        if (!canAcceptDailyFiles(runtime.telemetry, billingContext.plan, files.length)) {
+            return;
+        }
+
         for (let file of files) {
             let writtenFileId: string | null = null;
             try {
@@ -754,6 +737,10 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
         for (const doc of positionedDocs) {
             addDocument(doc);
         }
+        if (uploadedFiles.length > 0 && billingContext.plan === 'basic') {
+            recordAcceptedFiles(uploadedFiles.length);
+        }
+
         if (positionedDocs.length > 0) {
             runtime.telemetry.track({
                 type: 'APP_FILE_UPLOADED',

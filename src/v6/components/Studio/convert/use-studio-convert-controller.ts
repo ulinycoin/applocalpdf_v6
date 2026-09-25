@@ -10,7 +10,7 @@ import type { WorkerPdfImageCandidate } from '../../../../core/public/contracts'
 import { createZipBlob } from '../../../utils/zip';
 import { type PageItem, type StudioDocument, type StudioState, useStudioStore } from '../studio-store';
 import { showStudioPaywall } from '../../../../app/react/studio-paywall';
-import { getDailyUsage } from '../../../../app/platform/daily-usage';
+import { requestDailyFileAllowance } from '../../../../app/react/studio-paywall';
 import { useHistoryStore } from '../store/history-store';
 import type { StudioToolRouteState } from '../../../studio/navigation/studio-tool-context';
 
@@ -812,11 +812,18 @@ export function useStudioConvertController(initialToolOverride?: StudioConvertTo
   ]);
 
   const downloadSingleResult = useCallback(async (outputId: string, name: string) => {
+    if (!requestDailyFileAllowance(runtime.telemetry, billingPlan, 'downloaded', 1)) {
+      return;
+    }
     await downloadFileById(runtime, outputId, name);
-  }, [runtime]);
+  }, [billingPlan, runtime]);
 
   const downloadResults = useCallback(async () => {
     const baseDocName = activeDocument?.name || 'converted';
+
+    if (!requestDailyFileAllowance(runtime.telemetry, billingPlan, 'downloaded', Math.max(1, outputIds.length))) {
+      return;
+    }
 
     if (activeTool === 'ocr-pdf' && ocrResult && (ocrResult.kind === 'text' || ocrResult.kind === 'json')) {
       const extension = ocrResult.kind === 'json' ? '.json' : '.txt';

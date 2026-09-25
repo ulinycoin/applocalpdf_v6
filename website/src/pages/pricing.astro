@@ -6,6 +6,7 @@ import {
   PRO_LIFETIME_PRICE_USD,
   PRO_YEARLY_PRICE_USD,
 } from '../../../src/app/platform/checkout-offers';
+import { FREE_DAILY_FILE_LIMIT } from '../../../src/app/platform/daily-file-quota';
 
 const title = 'LocalPDF Pricing — Free, or $19 once for Pro';
 const description = 'Transparent pricing: LocalPDF is free for quick PDF tasks, and Pro is a one-time $19 payment. No subscription, no renewal, no account.';
@@ -51,7 +52,7 @@ const pricingSchema = {
     {
       '@type': 'Product',
       name: 'LocalPDF Free',
-      description: 'Free plan — up to 3 Studio workspaces, essential PDF tools. No credit card needed.',
+      description: `Free plan — up to 3 Studio workspaces, ${FREE_DAILY_FILE_LIMIT} files per day, essential PDF tools. No credit card needed.`,
       url: 'https://localpdf.online/pricing',
       brand: { '@type': 'Brand', name: 'LocalPDF' },
       offers: {
@@ -71,7 +72,7 @@ const pricingSchema = {
         {
           '@type': 'Question',
           name: 'Is LocalPDF really free?',
-          acceptedAnswer: { '@type': 'Answer', text: 'Yes. LocalPDF has a free tier for quick, occasional PDF tasks — up to 3 Studio workspaces. There is no signup and no credit card needed. Pro is a one-time $19 upgrade, not a subscription.' },
+          acceptedAnswer: { '@type': 'Answer', text: `Yes. LocalPDF has a free tier for quick, occasional PDF tasks — up to 3 Studio workspaces and ${FREE_DAILY_FILE_LIMIT} files per day (upload and download). There is no signup and no credit card needed. Pro is a one-time $19 upgrade, not a subscription.` },
         },
         {
           '@type': 'Question',
@@ -115,6 +116,7 @@ const pricingSchema = {
           </div>
           <ul class="feature-list">
             <li>Up to 3 Studio workspaces</li>
+            <li>Up to {FREE_DAILY_FILE_LIMIT} files per day (upload and download)</li>
             <li>Essential PDF tools</li>
             <li>Local-first processing</li>
           </ul>

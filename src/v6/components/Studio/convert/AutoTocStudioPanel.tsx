@@ -4,6 +4,7 @@ import type { PlatformRuntime } from '../../../../app/platform/create-platform';
 import { TocReviewPanel, type ApplyOptions } from '../../../../plugins/auto-toc/ui/TocReviewPanel';
 import { requestTocParse, type TocParseResult } from '../../../../plugins/auto-toc/ui/toc-parser-client';
 import type { HeaderNode } from '../../../../plugins/auto-toc/logic/index';
+import { requestDailyFileAllowance } from '../../../../app/react/studio-paywall';
 
 import latinUrl from '@fontsource/noto-sans/files/noto-sans-latin-400-normal.woff?url';
 import latinExtUrl from '@fontsource/noto-sans/files/noto-sans-latin-ext-400-normal.woff?url';
@@ -273,6 +274,9 @@ export function AutoTocStudioPanel({ onClose, inputFileId, fileName, runtime }: 
                                         type="button"
                                         className="cvt-btn-primary"
                                         onClick={() => {
+                                            if (!requestDailyFileAllowance(runtime.telemetry, runtime.billing.getContext().plan, 'downloaded', 1)) {
+                                                return;
+                                            }
                                             const anchor = document.createElement('a');
                                             anchor.href = outputUrl;
                                             anchor.download = `${fileName.replace(/\.pdf$/i, '')}-with-toc.pdf`;

@@ -76,7 +76,7 @@ LocalPDF is a privacy-first PDF app for people who need to edit, merge, OCR, com
 - No public server-side PDF processing API is described in this marketing layer
 
 ## Pricing
-Free plan: merge PDF, split PDF, compress PDF. Limits: 3 workspaces.
+Free plan: merge PDF, split PDF, compress PDF. Limits: 3 workspaces, 3 files per day (upload and download).
 Pro plan: $19 one-time, or $39.99/year. Includes: OCR PDF, edit PDF, convert PDF, protect/unlock PDF. No page limits, unlimited workspaces. No credit card required to start. No account required for free plan.
 Pricing page: https://localpdf.online/pricing
 

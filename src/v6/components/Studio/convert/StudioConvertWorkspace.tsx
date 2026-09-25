@@ -5,6 +5,7 @@ import { trackMonetizationEvent, trackPaywallShown } from '../../../../app/react
 import { openCheckout } from '../../../../app/react/billing';
 import { getPrimaryPaidOffer } from '../../../../app/platform/checkout-offers';
 import { usePlatform } from '../../../../app/react/platform-context';
+import { requestDailyFileAllowance } from '../../../../app/react/studio-paywall';
 import { createZipBlob } from '../../../utils/zip';
 
 interface StudioConvertWorkspaceProps {
@@ -200,6 +201,7 @@ export function StudioConvertWorkspace({ onClose, initialTool }: StudioConvertWo
 
   const handleDownloadZip = useCallback(async () => {
     if (ctrl.outputIds.length === 0 || !ctrl.compressResultSummary) return;
+    if (!requestDailyFileAllowance(runtime.telemetry, ctrl.isPro ? 'pro' : 'basic', 'downloaded', ctrl.outputIds.length)) return;
     const entry = await runtime.vfs.read(ctrl.outputIds[0]);
     const zipBlob = await createZipBlob([{
       name: entry.getName(),

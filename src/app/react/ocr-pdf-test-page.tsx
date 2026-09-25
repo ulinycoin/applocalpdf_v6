@@ -2,6 +2,7 @@ import { Suspense, lazy, useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { usePlatform } from './platform-context';
 import { downloadOutputFiles } from '../platform/download-output-files';
+import { canAcceptDailyFiles, recordAcceptedFiles } from './studio-paywall';
 import type { StudioToolRouteState } from '../../v6/studio/navigation/studio-tool-context';
 
 const OcrPdfConfig = lazy(() => import('../../plugins/ocr-pdf/ui'));
@@ -71,11 +72,19 @@ export function OcrPdfTestPage() {
   }, [location.key, location.state]);
 
   const handlePickFiles = async (files: File[]): Promise<void> => {
+    if (!canAcceptDailyFiles(runtime.telemetry, runtime.billing.getContext().plan, files.length)) {
+      return;
+    }
+
     const nextIds: string[] = [];
     for (const file of files) {
       const entry = await runtime.vfs.write(file);
       nextIds.push(entry.id);
     }
+    if (nextIds.length > 0 && runtime.billing.getContext().plan === 'basic') {
+      recordAcceptedFiles(nextIds.length);
+    }
+
     setInputIds(nextIds);
     setOutputIds([]);
     if (resultPdfUrl) {

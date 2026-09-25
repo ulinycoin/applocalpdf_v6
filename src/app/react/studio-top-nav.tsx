@@ -13,6 +13,7 @@ import QRCode from 'qrcode';
 import { APP_BASE_PATH } from '../../../shared/app-routes';
 import { downloadCertificateJson } from '../../v6/utils/redact-verify-ui';
 import { trackMonetizationEvent, trackPaywallShown } from './monetization-telemetry';
+import { requestDailyFileAllowance } from './studio-paywall';
 
 function truncateFileName(name: string, maxLen = 22): string {
   if (name.length <= maxLen) return name;
@@ -330,6 +331,10 @@ export function StudioTopNav({ telemetryEnabled, onToggleTelemetry, telemetryOpe
 
     const fileName = filename.trim() || targetDocument.name;
     const safeName = fileName.replace(/[<>:"/\\|?*]/g, '_').slice(0, 64) || 'Workspace';
+
+    if (!requestDailyFileAllowance(runtime.telemetry, billingContext.plan, 'downloaded', 1)) {
+      return;
+    }
 
     try {
       await exportDocument(targetDocument, `${safeName}.pdf`);
