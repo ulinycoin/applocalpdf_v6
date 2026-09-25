@@ -2882,6 +2882,41 @@ textarea:focus-visible {
   color: inherit;
 }
 
+.studio-tool-rail-merge-targets {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 2px 0 4px 12px;
+  padding-left: 8px;
+  border-left: 2px solid var(--accent-dim);
+}
+
+.studio-tool-rail-target-btn {
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 12.5px;
+  text-align: left;
+  padding: 4px 8px;
+  border-radius: 5px;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.studio-tool-rail-target-btn:hover {
+  background: var(--hover);
+  color: var(--text);
+}
+
+.studio-tool-rail-scope {
+  font-size: 11px;
+  color: var(--text-dim);
+  padding: 4px 12px 2px;
+  white-space: nowrap;
+}
+
 .studio-tool-rail-ext-link:hover {
   background: var(--hover);
 }

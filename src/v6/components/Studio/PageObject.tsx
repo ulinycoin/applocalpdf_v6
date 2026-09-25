@@ -3,7 +3,7 @@ import { Group, Image, Rect, Text } from 'react-konva';
 import Konva from 'konva';
 import type { KonvaEventObject } from 'konva/lib/Node';
 import useImage from 'use-image';
-import { PageItem, StudioState, useStudioStore } from './studio-store';
+import { PageItem, StudioDocument, StudioState, useStudioStore } from './studio-store';
 import { usePlatform } from '../../../app/react/platform-context';
 import { canUseDocumentWithPageCount, freePageLimitMessage } from '../../../app/platform/plan-limits';
 import { showStudioPaywall } from '../../../app/react/studio-paywall';
@@ -128,6 +128,47 @@ interface PageObjectProps {
     shouldPrefetchOnly?: boolean;
 }
 
+/** Which workspace sits under the dragged page (shared by the drag hint and the drop handler). */
+function findDocumentUnderPointer(
+    stage: Konva.Stage,
+    node: Konva.Node,
+    documents: StudioDocument[],
+    gridColumns: number,
+): { targetDocId: string | null; targetDocNode: Konva.Group | null } {
+    const CARD_WIDTH = 200;
+    const CARD_HEIGHT = 280;
+    const GAP_X = 20;
+    const GAP_Y = 30;
+    const STEP_X = CARD_WIDTH + GAP_X;
+    const STEP_Y = CARD_HEIGHT + GAP_Y;
+
+    const stageScale = stage.scaleX() || 1;
+    const absPos = node.absolutePosition();
+    const centerPos = {
+        x: absPos.x + 100 * stageScale,
+        y: absPos.y + 140 * stageScale,
+    };
+
+    for (const candidate of stage.find('.document')) {
+        const dId = candidate.id();
+        const docItem = documents.find((doc) => doc.id === dId);
+        if (!docItem) continue;
+
+        const transform = candidate.getAbsoluteTransform().copy().invert();
+        const localPos = transform.point(centerPos);
+        const cols = Math.min(docItem.pages.length || 1, gridColumns);
+        const rows = Math.ceil(docItem.pages.length / cols) || 1;
+        const width = Math.max(STEP_X, cols * STEP_X);
+        const height = Math.max(STEP_Y, rows * STEP_Y);
+
+        if (localPos.x >= -30 && localPos.x <= width + 30 && localPos.y >= -50 && localPos.y <= height + 50) {
+            return { targetDocId: dId, targetDocNode: candidate as Konva.Group };
+        }
+    }
+
+    return { targetDocId: null, targetDocNode: null };
+}
+
 // Define the type for a selection item
 interface SelectionItem {
     docId: string;
@@ -145,6 +186,7 @@ export const PageObject: React.FC<PageObjectProps> = ({ page, docId, x, y, curre
     // Tier 1: High-res
     const [highResCanvas, setHighResCanvas] = React.useState<HTMLCanvasElement | null>(null);
     const [isRenderingHighRes, setIsRenderingHighRes] = React.useState(false);
+    const [mergeHint, setMergeHint] = React.useState<{ docId: string; name: string } | null>(null);
 
     const documents = useStudioStore((s: StudioState) => s.documents);
     const gridColumns = useStudioStore((s: StudioState) => s.gridColumns);
@@ -176,8 +218,27 @@ export const PageObject: React.FC<PageObjectProps> = ({ page, docId, x, y, curre
         node.moveToTop(); // Bring to front
     };
 
+    const handleDragMove = (e: KonvaEventObject<DragEvent>) => {
+        e.cancelBubble = true;
+        const node = e.target;
+        const stage = node.getStage();
+        if (!stage) return;
+
+        const { targetDocId } = findDocumentUnderPointer(stage, node, documents, gridColumns);
+        if (!targetDocId || targetDocId === docId) {
+            if (mergeHint) setMergeHint(null);
+            return;
+        }
+        if (mergeHint?.docId === targetDocId) {
+            return;
+        }
+        const targetDoc = documents.find((doc) => doc.id === targetDocId);
+        setMergeHint({ docId: targetDocId, name: targetDoc?.name ?? 'workspace' });
+    };
+
     const handleDragEnd = (e: KonvaEventObject<DragEvent>) => {
         e.cancelBubble = true; // Prevent document from dragging when page is dragged
+        setMergeHint(null);
         const node = e.target;
         const stage = node.getStage();
         if (!stage) return;
@@ -187,9 +248,6 @@ export const PageObject: React.FC<PageObjectProps> = ({ page, docId, x, y, curre
         const inverseTransform = stage.getAbsoluteTransform().copy().invert();
         const worldPos = inverseTransform.point(pos);
 
-        let targetDocId: string | null = null;
-        let targetDocNode: Konva.Group | null = null;
-
         const CARD_WIDTH = 200;
         const CARD_HEIGHT = 280;
         const GAP_X = 20;
@@ -197,33 +255,14 @@ export const PageObject: React.FC<PageObjectProps> = ({ page, docId, x, y, curre
         const STEP_X = CARD_WIDTH + GAP_X;
         const STEP_Y = CARD_HEIGHT + GAP_Y;
 
+        const { targetDocId, targetDocNode } = findDocumentUnderPointer(stage, node, documents, gridColumns);
+
         const stageScale = stage.scaleX() || 1;
-        const absPos = node.absolutePosition();
+        const nodeAbsPos = node.absolutePosition();
         const centerPos = {
-            x: absPos.x + 100 * stageScale,
-            y: absPos.y + 140 * stageScale
+            x: nodeAbsPos.x + 100 * stageScale,
+            y: nodeAbsPos.y + 140 * stageScale,
         };
-
-        const documentNodes = stage.find('.document');
-        for (const node of documentNodes) {
-            const dId = node.id();
-            const docItem = documents.find(d => d.id === dId);
-            if (!docItem) continue;
-
-            const transform = node.getAbsoluteTransform().copy().invert();
-            const localPos = transform.point(centerPos);
-
-            const cols = Math.min(docItem.pages.length || 1, gridColumns);
-            const rows = Math.ceil(docItem.pages.length / cols) || 1;
-            const width = Math.max(STEP_X, cols * STEP_X);
-            const height = Math.max(STEP_Y, rows * STEP_Y);
-
-            if (localPos.x >= -30 && localPos.x <= width + 30 && localPos.y >= -50 && localPos.y <= height + 50) {
-                targetDocId = dId;
-                targetDocNode = node as Konva.Group;
-                break;
-            }
-        }
 
         const sourceDoc = documents.find((doc) => doc.id === docId);
 
@@ -275,6 +314,16 @@ export const PageObject: React.FC<PageObjectProps> = ({ page, docId, x, y, curre
             const targetIndex = targetRow * gridColumns + targetCol;
 
             movePage(docId, page.id, targetDocId, targetIndex);
+            if (targetDocId !== docId) {
+                runtime.telemetry.track({
+                    type: 'STUDIO_MERGE_COMPLETED',
+                    runId: crypto.randomUUID(),
+                    sourceDocId: docId,
+                    targetDocId,
+                    pageCount: 1,
+                    method: 'drag',
+                });
+            }
             void createCheckpoint(runtime.vfs, 'move_page', targetDocId === docId
                 ? 'Moved page within workspace'
                 : 'Moved page to another workspace');
@@ -378,6 +427,7 @@ export const PageObject: React.FC<PageObjectProps> = ({ page, docId, x, y, curre
             onMouseDown={handleMouseDown}
             onTouchStart={handleMouseDown}
             onDragStart={handleDragStart}
+            onDragMove={handleDragMove}
             onDragEnd={handleDragEnd}
             onClick={handleClick}
             rotation={page.rotation}
@@ -460,6 +510,23 @@ export const PageObject: React.FC<PageObjectProps> = ({ page, docId, x, y, curre
                 shadowOpacity={0.3}
                 listening={false}
             />
+
+            {/* Merge drop target hint */}
+            {mergeHint && (
+                <Group y={-46} listening={false}>
+                    <Rect width={PAGE_WIDTH} height={38} fill="#142028" opacity={0.92} cornerRadius={5} />
+                    <Text
+                        text={`Release to merge\ninto ${mergeHint.name}`}
+                        fill="#f9f5ee"
+                        fontSize={11}
+                        lineHeight={1.35}
+                        width={PAGE_WIDTH}
+                        height={38}
+                        align="center"
+                        verticalAlign="middle"
+                    />
+                </Group>
+            )}
         </Group>
     );
 };

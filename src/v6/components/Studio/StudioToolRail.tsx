@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { LinearIcon, type LinearIconName } from '../icons/linear-icon';
 import type { StudioEditToolId } from './studio-store';
 import type { StudioConvertToolId } from './convert/use-studio-convert-controller';
@@ -26,6 +27,12 @@ export interface StudioToolRailProps {
     onHistoryToggle?: () => void;
     isHistoryOpen?: boolean;
     plan?: 'basic' | 'pro';
+    selectedPageCount?: number;
+    activeWorkspaceName?: string;
+    mergeTargets?: Array<{ id: string; name: string }>;
+    onMergePages?: (targetDocId: string) => void;
+    onSplitPages?: () => void;
+    onDeletePages?: () => void;
 }
 
 const EDIT_TOOLS: RailToolItem[] = [
@@ -96,7 +103,36 @@ export function StudioToolRail({
     onHistoryToggle,
     isHistoryOpen,
     plan,
+    selectedPageCount = 0,
+    activeWorkspaceName,
+    mergeTargets = [],
+    onMergePages,
+    onSplitPages,
+    onDeletePages,
 }: StudioToolRailProps): JSX.Element {
+    const [mergePickerOpen, setMergePickerOpen] = useState(false);
+    const hasSelection = selectedPageCount > 0;
+    const canMerge = hasFiles && Boolean(onMergePages) && mergeTargets.length > 0;
+    const canSplit = hasFiles && hasSelection && Boolean(onSplitPages);
+    const canDelete = hasFiles && hasSelection && Boolean(onDeletePages);
+    const scopeLabel = hasSelection
+        ? `${selectedPageCount} page${selectedPageCount === 1 ? '' : 's'} selected`
+        : activeWorkspaceName
+            ? `whole ${activeWorkspaceName}`
+            : 'select pages first';
+
+    const handleMergeClick = () => {
+        if (!canMerge || !onMergePages) {
+            return;
+        }
+        if (mergeTargets.length === 1) {
+            setMergePickerOpen(false);
+            onMergePages(mergeTargets[0].id);
+            return;
+        }
+        setMergePickerOpen((open) => !open);
+    };
+
     return (
         <div className="studio-tool-rail-anchor">
             <aside className="studio-tool-rail" aria-label="Studio tools">
@@ -109,6 +145,58 @@ export function StudioToolRail({
                 <LinearIcon name="upload" size={20} />
                 <span className="studio-tool-rail-collapsible-text">Upload</span>
             </button>
+            <div className="studio-tool-rail-section">
+                <div className="studio-tool-rail-section-label studio-tool-rail-collapsible-text">PAGES</div>
+                <button
+                    type="button"
+                    className="studio-tool-rail-btn"
+                    onClick={handleMergeClick}
+                    disabled={!canMerge}
+                    aria-expanded={mergePickerOpen}
+                    title={`Merge ${scopeLabel} into another workspace`}
+                >
+                    <LinearIcon name="merge" size={20} />
+                    <span className="studio-tool-rail-collapsible-text">Merge</span>
+                </button>
+                {mergePickerOpen && mergeTargets.length > 1 && (
+                    <div className="studio-tool-rail-merge-targets">
+                        {mergeTargets.map((target) => (
+                            <button
+                                key={target.id}
+                                type="button"
+                                className="studio-tool-rail-target-btn"
+                                onClick={() => {
+                                    setMergePickerOpen(false);
+                                    onMergePages?.(target.id);
+                                }}
+                            >
+                                {target.name}
+                            </button>
+                        ))}
+                    </div>
+                )}
+                <button
+                    type="button"
+                    className="studio-tool-rail-btn"
+                    onClick={onSplitPages}
+                    disabled={!canSplit}
+                    title={`Split ${scopeLabel} into a new workspace`}
+                >
+                    <LinearIcon name="split" size={20} />
+                    <span className="studio-tool-rail-collapsible-text">Split</span>
+                </button>
+                <button
+                    type="button"
+                    className="studio-tool-rail-btn"
+                    onClick={onDeletePages}
+                    disabled={!canDelete}
+                    title="Delete selected pages (Delete)"
+                >
+                    <LinearIcon name="delete-pages" size={20} />
+                    <span className="studio-tool-rail-collapsible-text">Delete</span>
+                </button>
+                <div className="studio-tool-rail-scope studio-tool-rail-collapsible-text">{scopeLabel}</div>
+            </div>
             <div className="studio-tool-rail-section">
                 <div className="studio-tool-rail-section-label studio-tool-rail-collapsible-text">EDIT</div>
                 {EDIT_TOOLS.map((item) => (

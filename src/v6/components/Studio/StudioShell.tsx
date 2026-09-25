@@ -24,6 +24,7 @@ import { useHistoryStore } from './store/history-store';
 import { getDailyUsage, incrementDailyUsage, FREE_TOOL_DAILY_LIMITS } from '../../../app/platform/daily-usage';
 import { getOrCreateFlowId } from '../../../app/platform/browser-context';
 import { LinearIcon } from '../icons/linear-icon';
+import { mergePagesIntoWorkspace, splitPagesToNewWorkspace, deletePages as deletePagesOp } from './studio-page-ops';
 
 const StudioEditWorkspace = lazy(async () => {
     const m = await import('./StudioEditWorkspace');
@@ -271,6 +272,12 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
         [activeDocumentId, documents],
     );
     const hasFiles = documents.length > 0 || detachedPages.length > 0;
+    const mergeTargets = useMemo(
+        () => documents
+            .filter((doc) => doc.id !== activeDocumentId)
+            .map((doc) => ({ id: doc.id, name: doc.name })),
+        [activeDocumentId, documents],
+    );
     const pageClipboardRef = useRef<PageItem[]>([]);
     const [hasClipboardPages, setHasClipboardPages] = useState(false);
     const canvasDimensions = useMemo(
@@ -302,6 +309,21 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
     type OverlayMode = 'edit' | StudioConvertToolId;
     const [overlayMode, setOverlayMode] = useState<OverlayMode | null>(null);
     const [paywallReason, setPaywallReason] = useState<string | null>(null);
+    const [isCoarsePointer, setIsCoarsePointer] = useState(() => (
+        typeof window !== 'undefined'
+        && typeof window.matchMedia === 'function'
+        && window.matchMedia('(pointer: coarse)').matches
+    ));
+
+    useEffect(() => {
+        if (typeof window.matchMedia !== 'function') {
+            return;
+        }
+        const query = window.matchMedia('(pointer: coarse)');
+        const handleChange = () => setIsCoarsePointer(query.matches);
+        query.addEventListener?.('change', handleChange);
+        return () => query.removeEventListener?.('change', handleChange);
+    }, []);
 
     useEffect(() => {
         setStudioViewport(viewScale, viewPosition, canvasDimensions);
@@ -802,6 +824,45 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
         return true;
     }, [activeDocumentId, documents, runtime.telemetry, runtime.billing, setDocuments, setSelection]);
 
+    const handleMergePages = useCallback((targetDocId: string) => {
+        const selectionOutsideTarget = selection.filter((item) => item.docId !== targetDocId);
+        if (selection.length > 0 && selectionOutsideTarget.length === 0) {
+            return;
+        }
+        const sourceDocId = selectionOutsideTarget[0]?.docId
+            ?? activeDocumentId
+            ?? documents.find((doc) => doc.id !== targetDocId)?.id;
+        if (!sourceDocId || sourceDocId === targetDocId) {
+            return;
+        }
+        mergePagesIntoWorkspace(runtime, { sourceDocId, targetDocId, selection, method: 'button' });
+    }, [activeDocumentId, documents, runtime, selection]);
+
+    const handleSplitPages = useCallback(() => {
+        const sourceDocId = activeDocumentId;
+        if (!sourceDocId) {
+            return;
+        }
+        const sourceDoc = documents.find((doc) => doc.id === sourceDocId);
+        if (!sourceDoc) {
+            return;
+        }
+        const target = {
+            id: crypto.randomUUID(),
+            name: `${sourceDoc.name} (split)`,
+            x: sourceDoc.x + estimateDocumentWidth(sourceDoc.pages.length, gridColumns) + DOC_WRAP_GAP_X,
+            y: sourceDoc.y,
+        };
+        const moved = splitPagesToNewWorkspace(runtime, { sourceDocId, selection, target });
+        if (moved > 0) {
+            fitToDocuments(useStudioStore.getState().documents);
+        }
+    }, [activeDocumentId, documents, fitToDocuments, gridColumns, runtime, selection]);
+
+    const handleDeleteSelectedPages = useCallback((method: 'button' | 'keyboard') => (
+        deletePagesOp(runtime, { selection, method }) > 0
+    ), [runtime, selection]);
+
     useEffect(() => {
         const onKeyDown = (event: KeyboardEvent) => {
             const target = event.target as HTMLElement | null;
@@ -816,6 +877,16 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
             const isQuickUploadShortcut = !event.ctrlKey && !event.metaKey && !event.altKey && key === 'u';
             const isCopyShortcut = isModifierPressed && !event.shiftKey && !event.altKey && key === 'c';
             const isPasteShortcut = isModifierPressed && !event.shiftKey && !event.altKey && key === 'v';
+            const isDeleteShortcut = !isModifierPressed
+                && (event.key === 'Delete' || event.key === 'Backspace')
+                && selection.length > 0;
+
+            if (isDeleteShortcut) {
+                if (handleDeleteSelectedPages('keyboard')) {
+                    event.preventDefault();
+                }
+                return;
+            }
 
             if (isCopyShortcut) {
                 if (copySelectedPages()) {
@@ -841,7 +912,7 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
 
         window.addEventListener('keydown', onKeyDown);
         return () => window.removeEventListener('keydown', onKeyDown);
-    }, [copySelectedPages, openUploadDialog, pasteSelectedPages]);
+    }, [copySelectedPages, handleDeleteSelectedPages, openUploadDialog, pasteSelectedPages, selection.length]);
 
     const handleStageWheel = useCallback((event: KonvaEventObject<WheelEvent>) => {
         const targetNode = event.target;
@@ -1157,6 +1228,12 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
                     onHistoryToggle={handleHistoryToggle}
                     isHistoryOpen={isHistoryOpen}
                     plan={billingContext.plan}
+                    selectedPageCount={selection.length}
+                    activeWorkspaceName={activeDocument?.name}
+                    mergeTargets={mergeTargets}
+                    onMergePages={handleMergePages}
+                    onSplitPages={handleSplitPages}
+                    onDeletePages={() => { handleDeleteSelectedPages('button'); }}
                 />
                 <div className="studio-shell-canvas">
                     <Stage
@@ -1206,7 +1283,7 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
                             <div className="studio-empty-state-icon" aria-hidden="true">
                                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
                             </div>
-                            <h2 className="studio-empty-state-title">Drop a PDF to get started</h2>
+                            <h2 className="studio-empty-state-title">{isCoarsePointer ? 'Upload a PDF to get started' : 'Drop a PDF to get started'}</h2>
                             <p className="studio-empty-state-copy">All processing happens locally.<br/>Your files never leave your device.</p>
                             <div className="studio-empty-state-actions">
                                 <button
@@ -1218,15 +1295,26 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
                                     Upload PDF
                                 </button>
                             </div>
-                            <div className="studio-empty-state-hints" aria-label="Studio shortcuts">
-                                <span className="studio-empty-state-hint">U</span>
-                                <span className="studio-empty-state-hint-sep">upload</span>
-                                <span className="studio-empty-state-hint-sep">·</span>
-                                <span className="studio-empty-state-hint">⌘O</span>
-                                <span className="studio-empty-state-hint-sep">open</span>
-                                <span className="studio-empty-state-hint-sep">·</span>
-                                <span className="studio-empty-state-hint">drag &amp; drop</span>
-                            </div>
+                            {isCoarsePointer ? (
+                                <div className="studio-empty-state-hints" aria-label="Studio tips">
+                                    <span className="studio-empty-state-hint-sep">Select pages, then use Merge, Split or Delete in the toolbar</span>
+                                </div>
+                            ) : (
+                                <>
+                                    <div className="studio-empty-state-hints" aria-label="Studio shortcuts">
+                                        <span className="studio-empty-state-hint">U</span>
+                                        <span className="studio-empty-state-hint-sep">upload</span>
+                                        <span className="studio-empty-state-hint-sep">·</span>
+                                        <span className="studio-empty-state-hint">⌘O</span>
+                                        <span className="studio-empty-state-hint-sep">open</span>
+                                        <span className="studio-empty-state-hint-sep">·</span>
+                                        <span className="studio-empty-state-hint">drag &amp; drop</span>
+                                    </div>
+                                    <div className="studio-empty-state-hints" aria-label="Studio tips">
+                                        <span className="studio-empty-state-hint-sep">Drag a page onto another workspace to merge them</span>
+                                    </div>
+                                </>
+                            )}
                         </div>
                     )}
                     <div className="studio-viewport-controls animate-fade-in">
