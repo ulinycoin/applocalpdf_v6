@@ -126,20 +126,44 @@ try {
   }
 
   // STEP 4: Add physical SPA fallbacks for nested app routes so direct refreshes
-  // can resolve even if edge rewrites are not applied.
+  // can resolve even if edge rewrites are not applied. Vercel does not apply the
+  // /app/:path* rewrite in vercel.json (verified in production: /app/merge-pdf returned
+  // 404 while the routes with a physical file returned 200), so every tool route the SPA
+  // serves needs its own copy of index.html — including the deep links the marketing site
+  // sends search traffic to.
   const appIndexHtml = path.join(appDistPath, 'app', 'index.html');
-  const spaFallbackRoutes = [
+  const studioFallbackRoutes = [
     path.join('app', 'studio'),
     path.join('app', 'studio', 'edit'),
     path.join('app', 'studio', 'convert'),
     path.join('app', 'ocr-pdf'),
     path.join('app', 'share'),
   ];
+
+  const visibilitySource = fs.readFileSync(path.join(__dirname, 'src', 'app', 'tool-visibility.ts'), 'utf8');
+  const hiddenBlock = visibilitySource.slice(
+    visibilitySource.indexOf('new Set(['),
+    visibilitySource.indexOf('])', visibilitySource.indexOf('new Set([')),
+  );
+  const hiddenToolIds = new Set([...hiddenBlock.matchAll(/'([^']+)'/g)].map((match) => match[1]));
+
+  const pluginsPath = path.join(__dirname, 'src', 'plugins');
+  const toolRouteIds = fs.readdirSync(pluginsPath, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory() && fs.existsSync(path.join(pluginsPath, entry.name, 'definition.ts')))
+    .map((entry) => entry.name)
+    .filter((toolId) => !hiddenToolIds.has(toolId));
+
+  const spaFallbackRoutes = [...new Set([
+    ...studioFallbackRoutes,
+    ...toolRouteIds.map((toolId) => path.join('app', toolId)),
+  ])];
+
   for (const route of spaFallbackRoutes) {
     const routeIndex = path.join(appDistPath, route, 'index.html');
     fs.mkdirSync(path.dirname(routeIndex), { recursive: true });
     fs.copyFileSync(appIndexHtml, routeIndex);
   }
+  console.log(`✓ ${spaFallbackRoutes.length} SPA deep-link fallbacks (studio + ${toolRouteIds.length} tool routes)`);
 
   console.log('✅ Builds merged successfully');
   console.log('');
@@ -173,12 +197,7 @@ try {
     console.error('✗ React app MISSING!');
   }
 
-  const appNestedRoutes = [
-    path.join('app', 'studio', 'index.html'),
-    path.join('app', 'studio', 'edit', 'index.html'),
-    path.join('app', 'studio', 'convert', 'index.html'),
-    path.join('app', 'share', 'index.html'),
-  ];
+  const appNestedRoutes = spaFallbackRoutes.map((route) => path.join(route, 'index.html'));
   for (const nestedRoute of appNestedRoutes) {
     const nestedRoutePath = path.join(appDistPath, nestedRoute);
     if (fs.existsSync(nestedRoutePath)) {

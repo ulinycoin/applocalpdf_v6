@@ -1,8 +1,13 @@
 import assert from 'node:assert/strict';
+import { existsSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import path from 'node:path';
 import test from 'node:test';
 import { resolveAppRoute } from '../../../shared/app-routes';
 import { FEATURE_PAGE_APP_TARGETS } from '../../../shared/seo-app-targets';
 import { canRunStandalone } from '../../../shared/standalone-tools';
+
+const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
 
 /**
  * Routes the SPA actually serves: the studio surfaces plus the tool ids that get a standalone
@@ -83,6 +88,26 @@ test('feature pages that point at a tool route land on a tool that runs standalo
     assert.ok(
       canRunStandalone(toolId),
       `feature page "${slug}" promises tool "${toolId}", which only renders a "Studio-first" notice`,
+    );
+  }
+});
+
+/**
+ * Vercel does not apply the /app/:path* rewrite from vercel.json (production returned 404 for
+ * /app/merge-pdf while /app/studio answered 200), so build-vercel.mjs writes a physical
+ * index.html for every plugin directory that has a definition.ts. A tool target that is not such
+ * a plugin would 404 in production, so keep this assertion next to the target map.
+ */
+test('every tool target has a plugin definition, so the deploy generates its deep link', () => {
+  for (const [slug, target] of Object.entries(FEATURE_PAGE_APP_TARGETS)) {
+    const route = resolveAppRoute(target);
+    if (route.startsWith('/studio')) {
+      continue;
+    }
+    const toolId = route.slice(1);
+    assert.ok(
+      existsSync(path.join(repoRoot, 'src', 'plugins', toolId, 'definition.ts')),
+      `feature page "${slug}" targets /${toolId}, which has no plugin definition and would 404 on deploy`,
     );
   }
 });
