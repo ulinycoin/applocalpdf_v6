@@ -25,6 +25,7 @@ import { getDailyUsage, incrementDailyUsage, FREE_TOOL_DAILY_LIMITS } from '../.
 import { getOrCreateFlowId } from '../../../app/platform/browser-context';
 import { LinearIcon } from '../icons/linear-icon';
 import { mergePagesIntoWorkspace, splitPagesToNewWorkspace, deletePages as deletePagesOp } from './studio-page-ops';
+import { CANVAS_EDIT_TOOL_IDS, isCanvasTool } from '../../../../shared/canvas-tools';
 
 const StudioEditWorkspace = lazy(async () => {
     const m = await import('./StudioEditWorkspace');
@@ -63,6 +64,8 @@ const DOC_BLOCK_HEIGHT = CARD_HEIGHT + CARD_GAP + 40;
 const ZOOM_MIN = 0.35;
 const ZOOM_MAX = 6;
 const ZOOM_STEP = 1.2;
+
+const CANVAS_EDIT_TOOLS: StudioEditToolId[] = [...CANVAS_EDIT_TOOL_IDS];
 
 interface NewDocumentDraft {
     id: string;
@@ -310,6 +313,21 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
     const [overlayMode, setOverlayMode] = useState<OverlayMode | null>(null);
     const [paywallReason, setPaywallReason] = useState<string | null>(null);
     const [uploadAttention, setUploadAttention] = useState(false);
+    // The armed tool lives in a ref: it must be cleared synchronously, otherwise a store-driven
+    // re-render can re-enter the effect and run the tool several times (which burned three free
+    // daily runs at once before this guard).
+    const pendingCanvasToolRef = useRef<string | null>(null);
+    const [hasPendingCanvasTool] = useState(() => {
+        if (typeof window === 'undefined') {
+            return false;
+        }
+        const requested = new URLSearchParams(window.location.search).get('tool');
+        if (!requested || !isCanvasTool(requested)) {
+            return false;
+        }
+        pendingCanvasToolRef.current = requested;
+        return true;
+    });
     const [isCoarsePointer, setIsCoarsePointer] = useState(() => (
         typeof window !== 'undefined'
         && typeof window.matchMedia === 'function'
@@ -432,7 +450,7 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
 
     const handleToolClick = useCallback((tool: string) => {
         const billingContext = runtime.billing.getContext();
-        const editToolIds: string[] = ['text', 'annotate', 'sign', 'whiteout', 'watermark', 'forms', 'protect'];
+        const editToolIds: string[] = CANVAS_EDIT_TOOLS;
 
         // Daily limit for free-tier tools (OCR uses page-based trial, not daily limit)
         const dailyLimit = FREE_TOOL_DAILY_LIMITS[tool];
@@ -465,6 +483,23 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
     const handleHistoryToggle = useCallback(() => {
         setHistoryOpen(!isHistoryOpen);
     }, [isHistoryOpen, setHistoryOpen]);
+
+    /**
+     * Marketing pages link to /studio?tool=<id> so a visitor from search lands in the canvas with
+     * the tool of that page armed. The tool can only run on a document, so it opens as soon as the
+     * upload lands, and the canvas stays behind it ("Back to Canvas").
+     */
+    useEffect(() => {
+        const tool = pendingCanvasToolRef.current;
+        if (!tool || !hasPendingCanvasTool || !hasFiles) {
+            return;
+        }
+        if (!documents.some((doc) => doc.pages.length > 0)) {
+            return;
+        }
+        pendingCanvasToolRef.current = null;
+        handleToolClick(tool);
+    }, [documents, handleToolClick, hasFiles, hasPendingCanvasTool]);
 
     const handleNewSpace = useCallback(() => {
         const billingContext = runtime.billing.getContext();

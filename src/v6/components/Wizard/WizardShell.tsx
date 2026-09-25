@@ -23,6 +23,7 @@ import type { IOAdapter, SmartUploadZoneProps, WizardShellProps } from './types'
 import type { StudioReturnContext, StudioSelectedPageRef, StudioToolRouteState } from '../../studio/navigation/studio-tool-context';
 import { getPdfLib } from '../../services/pdf/pdf-loader';
 import { canRunStandalone } from '../../../../shared/standalone-tools';
+import { hasCanvasSurface, isCanvasTool } from '../../../../shared/canvas-tools';
 
 function classNames(...parts: Array<string | false | null | undefined>): string {
   return parts.filter(Boolean).join(' ');
@@ -449,6 +450,27 @@ export function WizardShell({ toolId, context, ioAdapter, limitService }: Wizard
     dismissUpsell();
   }, [dismissUpsell, state.upsellReason]);
 
+  /**
+   * A cold deep link to a canvas tool (/app/compress-pdf and friends) used to dead-end on a
+   * "Studio-first" notice. The tool lives in the canvas, so send the visitor there with the tool
+   * armed and the upload intent preserved.
+   */
+  const canvasToolRedirect = requiresStudioFlow && !isStudioFlow && hasCanvasSurface(toolId);
+  useEffect(() => {
+    if (!canvasToolRedirect) {
+      return;
+    }
+    const params = new URLSearchParams();
+    if (isCanvasTool(toolId)) {
+      params.set('tool', toolId);
+    }
+    if (new URLSearchParams(location.search).get('upload') === '1') {
+      params.set('upload', '1');
+    }
+    const query = params.toString();
+    navigate(query ? `/studio?${query}` : '/studio', { replace: true, state: location.state });
+  }, [canvasToolRedirect, location.search, location.state, navigate, toolId]);
+
   if (requiresStudioFlow && !isStudioFlow) {
     return (
       <div className="wz-page">
@@ -466,7 +488,9 @@ export function WizardShell({ toolId, context, ioAdapter, limitService }: Wizard
         </div>
         <div className="wz-card wz-card-body">
           <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 16 }}>
-            This workflow is Studio-first. Select a document in Studio and launch the tool from there.
+            {canvasToolRedirect
+              ? 'Opening this tool in the Studio canvas…'
+              : 'This workflow is Studio-first. Select a document in Studio and launch the tool from there.'}
           </p>
           <button className="wz-btn wz-btn-primary" onClick={() => navigate('/studio')}>
             Go to Studio

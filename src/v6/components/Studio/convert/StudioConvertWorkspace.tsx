@@ -653,7 +653,7 @@ export function StudioConvertWorkspace({ onClose, initialTool }: StudioConvertWo
                   className="cvt-btn-ghost"
                   onClick={onClose ?? ctrl.navigateBack}
                 >
-                  ← Back to Studio
+                  ← Back to Canvas
                 </button>
               </div>
             </div>
@@ -761,7 +761,7 @@ export function StudioConvertWorkspace({ onClose, initialTool }: StudioConvertWo
                       Run again
                     </button>
                     <button type="button" className="cvt-btn-ghost" style={{ marginLeft: 'auto' }} onClick={onClose ?? ctrl.navigateBack}>
-                      ← Back to Studio
+                      ← Back to Canvas
                     </button>
                   </div>
                 </div>
@@ -821,7 +821,7 @@ export function StudioConvertWorkspace({ onClose, initialTool }: StudioConvertWo
                       Run again
                     </button>
                     <button type="button" className="cvt-btn-ghost" style={{ marginLeft: 'auto' }} onClick={onClose ?? ctrl.navigateBack}>
-                      ← Back to Studio
+                      ← Back to Canvas
                     </button>
                   </div>
                 </div>
@@ -906,7 +906,7 @@ export function StudioConvertWorkspace({ onClose, initialTool }: StudioConvertWo
                       Run again
                     </button>
                     <button type="button" className="cvt-btn-ghost" style={{ marginLeft: 'auto' }} onClick={onClose ?? ctrl.navigateBack}>
-                      ← Back to Studio
+                      ← Back to Canvas
                     </button>
                   </div>
                 </div>

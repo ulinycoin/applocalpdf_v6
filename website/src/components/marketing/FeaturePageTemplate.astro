@@ -9,7 +9,9 @@ interface Props {
 
 const { page } = Astro.props;
 const canonical = `https://localpdf.online/features/${page.slug}`;
-const appUrl = getAppUrl(page.appHash, { upload: '1' });
+// Every feature page opens the Studio canvas (where the tools live) and arms the tool for that
+// page; merge/split/convert have no separate tool, so the canvas itself is the destination.
+const appUrl = getAppUrl('studio', page.canvasTool ? { upload: '1', tool: page.canvasTool } : { upload: '1' });
 const relatedPages = featurePages.filter((item) => item.slug !== page.slug).slice(0, 3);
 const howItWorksSchema = page.howItWorks.length > 0 ? {
   '@context': 'https://schema.org',
