@@ -61,6 +61,7 @@ Last updated: 2026-09-25
 | 3 | Мастер без canvas | [x] | `requiresStudioFlow` показывал «This workflow is Studio-first» на **всех** маршрутах кроме word/excel — прямые ссылки на merge/compress/auto-toc вели в тупик. Список standalone-инструментов вынесен в `shared/standalone-tools.ts`: + merge-pdf, compress-pdf, auto-toc |
 | 4 | Тест-страж | [x] | `src/app/routing/seo-app-targets.test.ts`: каждая цель обязана существовать в SPA, каждая тул-цель — уметь standalone, карта сайта не должна расходиться с `shared/` |
 | 5 | Мобильный прогон | [ ] | `manifest` + `share_target`, e2e 390×844 — не сделано |
+| 6 | Деплой deep links | [x] | **Найдено на проде:** Vercel не применяет rewrite `/app/:path*` — `/app/merge-pdf`, `/app/compress-pdf`, `/app/auto-toc`, `/app/word-to-pdf` и даже `/app/foo-bar` отдавали 404 (`x-vercel-error: NOT_FOUND`), а 200 отвечали только 5 путей, для которых `build-vercel.mjs` клал физический `index.html`. Теперь fallback-файлы генерируются для всех инструментов-плагинов (минус скрытые), список берётся из каталогов `src/plugins/` |
 
 ### Найдено и исправлено в P2: `?upload=1` никогда не открывал файловый пикер
 - Chrome: «File chooser dialog can only be shown with a user activation». После загрузки нового документа transient activation нет (`navigator.userActivation.isActive === false`), поэтому программный `input.click()` блокируется — и в мастере, и в canvas (там это было с самого появления параметра). CTA «Upload PDF — it stays on your device» вёл на экран, где ничего не открывалось.
