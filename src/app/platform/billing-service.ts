@@ -14,12 +14,32 @@ import {
   syncTrialStateWithIndexedDB,
 } from './trial-manager';
 import { trackMonetizationEvent } from '../react/monetization-telemetry';
+import { readLocalProOverride, writeLocalProOverride } from './local-pro';
 
 export const BASIC_CONTEXT: ToolRunContext = {
   userId: 'local-user',
   plan: 'basic',
   entitlements: getDefaultEntitlementsForPlan('basic'),
 };
+
+/**
+ * Context handed out while the developer override is on — the full Pro
+ * entitlement set, exactly what `plan: 'pro'` unlocks everywhere else
+ * (plan-limits, the daily file quota, every tool's entitlement check).
+ */
+export const LOCAL_PRO_CONTEXT: ToolRunContext = {
+  userId: 'local-user',
+  plan: 'pro',
+  entitlements: getDefaultEntitlementsForPlan('pro'),
+};
+
+function trialContext(): ToolRunContext {
+  return {
+    userId: 'local-user',
+    plan: 'pro',
+    entitlements: getDefaultEntitlementsForPlan('trial'),
+  };
+}
 
 export type BillingListener = (context: ToolRunContext) => void;
 
@@ -44,15 +64,53 @@ function decodeBase64UrlUTF8(str: string): string {
 
 export class BillingService {
   private currentContext: ToolRunContext = BASIC_CONTEXT;
+  /** The context derived from the real licence/trial, kept so the developer
+   *  override can be switched off without re-running `initialize()`. */
+  private realContext: ToolRunContext = BASIC_CONTEXT;
   private listeners = new Set<BillingListener>();
 
   constructor(
     private readonly storageKey: string,
     private readonly jwtPublicKeyPem?: string,
+    private readonly options: { allowLocalPro?: boolean } = {},
   ) {}
 
   public getContext(): ToolRunContext {
     return this.currentContext;
+  }
+
+  /**
+   * True only when the bundle was built with `import.meta.env.DEV`, which Vite
+   * replaces with a literal `false` for production. A shipped build therefore
+   * reports `false` here and the override below can never be armed.
+   */
+  public isLocalProAvailable(): boolean {
+    return this.options.allowLocalPro === true;
+  }
+
+  public isLocalProEnabled(): boolean {
+    return this.isLocalProAvailable() && readLocalProOverride();
+  }
+
+  /** Returns the state actually applied (always `false` when unavailable). */
+  public setLocalPro(enabled: boolean): boolean {
+    if (!this.isLocalProAvailable()) {
+      return false;
+    }
+    writeLocalProOverride(enabled);
+    this.currentContext = this.isLocalProEnabled() ? LOCAL_PRO_CONTEXT : this.realContext;
+    this.notify();
+    return this.isLocalProEnabled();
+  }
+
+  /**
+   * The single writer of `currentContext`, so the developer override cannot be
+   * bypassed by a stray assignment added later.
+   */
+  private setContext(context: ToolRunContext): void {
+    this.realContext = context;
+    this.currentContext = this.isLocalProEnabled() ? LOCAL_PRO_CONTEXT : context;
+    this.notify();
   }
 
   public subscribe(listener: BillingListener): () => void {
@@ -79,8 +137,7 @@ export class BillingService {
       trackMonetizationEvent('trial_expired', { source: 'trial_watch' });
       markTrialTracked();
       if (typeof localStorage !== 'undefined' && !localStorage.getItem(this.storageKey)) {
-        this.currentContext = BASIC_CONTEXT;
-        this.notify();
+        this.setContext(BASIC_CONTEXT);
       }
     });
     rescheduleTrialExpiryWatch();
@@ -94,16 +151,7 @@ export class BillingService {
 
     const rawToken = typeof localStorage !== 'undefined' ? localStorage.getItem(this.storageKey) : null;
     if (!rawToken) {
-      if (trialState.isActive) {
-        this.currentContext = {
-          userId: 'local-user',
-          plan: 'pro',
-          entitlements: getDefaultEntitlementsForPlan('trial'),
-        };
-      } else {
-        this.currentContext = BASIC_CONTEXT;
-      }
-      this.notify();
+      this.setContext(trialState.isActive ? trialContext() : BASIC_CONTEXT);
       return;
     }
 
@@ -126,20 +174,11 @@ export class BillingService {
       if (typeof localStorage !== 'undefined') {
         localStorage.removeItem(this.storageKey);
       }
-      if (trialState.isActive) {
-        this.currentContext = {
-          userId: 'local-user',
-          plan: 'pro',
-          entitlements: getDefaultEntitlementsForPlan('trial'),
-        };
-      } else {
-        this.currentContext = BASIC_CONTEXT;
-      }
-      this.notify();
+      this.setContext(trialState.isActive ? trialContext() : BASIC_CONTEXT);
       return;
     }
 
-    this.currentContext = {
+    const verifiedContext: ToolRunContext = {
       userId: 'local-user',
       plan: verified.plan,
       entitlements: verified.entitlements,
@@ -154,7 +193,7 @@ export class BillingService {
       markTrialTracked();
     }
 
-    this.notify();
+    this.setContext(verifiedContext);
 
     // Запускаем фоновое обновление токена, если до его истечения осталось менее 5 дней
     try {
@@ -191,23 +230,17 @@ export class BillingService {
       }
     }
 
-    this.currentContext = {
+    this.setContext({
       userId: 'local-user',
       plan: verified.plan,
       entitlements: verified.entitlements,
-    };
-    this.notify();
+    });
     return true;
   }
 
   public startTrial(): void {
     startTrial();
-    this.currentContext = {
-      userId: 'local-user',
-      plan: 'pro',
-      entitlements: getDefaultEntitlementsForPlan('trial'),
-    };
-    this.notify();
+    this.setContext(trialContext());
   }
 
   private async refreshBillingToken(token: string): Promise<string | null> {

@@ -1,6 +1,6 @@
 import { test, describe, mock, beforeEach, before } from 'node:test';
 import * as assert from 'node:assert';
-import { BillingService, BASIC_CONTEXT } from './billing-service';
+import { BillingService, BASIC_CONTEXT, LOCAL_PRO_CONTEXT } from './billing-service';
 
 function encodeBase64Url(buffer: ArrayBuffer | Uint8Array): string {
   let binary = '';
@@ -222,6 +222,61 @@ describe('BillingService', () => {
     assert.strictEqual(localStorage.setItem.mock.calls.length, 0);
     assert.deepStrictEqual(service.getContext(), BASIC_CONTEXT);
     assert.strictEqual(listener.mock.calls.length, 0);
+  });
+
+  describe('developer Pro override', () => {
+    test('a production build cannot arm the override', async () => {
+      const service = new BillingService('test_storage', publicKeyPem);
+      await service.initialize();
+
+      assert.strictEqual(service.isLocalProAvailable(), false);
+      assert.strictEqual(service.setLocalPro(true), false);
+      assert.strictEqual(service.isLocalProEnabled(), false);
+      assert.deepStrictEqual(service.getContext(), BASIC_CONTEXT);
+    });
+
+    test('a pre-seeded localStorage flag does not unlock Pro when unavailable', async () => {
+      localStorage.setItem('localpdf_dev_pro_override', '1');
+      const service = new BillingService('test_storage', publicKeyPem);
+      await service.initialize();
+
+      assert.strictEqual(service.isLocalProEnabled(), false);
+      assert.deepStrictEqual(service.getContext(), BASIC_CONTEXT);
+    });
+
+    test('a dev build grants full Pro and restores the real context when switched off', async () => {
+      const service = new BillingService('test_storage', publicKeyPem, { allowLocalPro: true });
+      await service.initialize();
+      const listener = mock.fn();
+      service.subscribe(listener);
+
+      assert.strictEqual(service.isLocalProAvailable(), true);
+      assert.strictEqual(service.setLocalPro(true), true);
+      assert.strictEqual(service.getContext().plan, 'pro');
+      assert.ok(service.getContext().entitlements.includes('pdf.ocr'));
+      assert.ok(service.getContext().entitlements.includes('pdf.edit'));
+      assert.strictEqual(listener.mock.calls.length, 1);
+
+      assert.strictEqual(service.setLocalPro(false), false);
+      assert.deepStrictEqual(service.getContext(), BASIC_CONTEXT);
+      assert.strictEqual(listener.mock.calls.length, 2);
+    });
+
+    test('the override outranks a real free licence but a real Pro licence survives it', async () => {
+      const token = await createValidToken({ plan: 'pro', entitlements: ['pdf.ocr'] });
+      localStorage.setItem('test_storage', token);
+
+      const service = new BillingService('test_storage', publicKeyPem, { allowLocalPro: true });
+      await service.initialize();
+      assert.strictEqual(service.getContext().plan, 'pro');
+
+      service.setLocalPro(true);
+      assert.deepStrictEqual(service.getContext().entitlements, LOCAL_PRO_CONTEXT.entitlements);
+
+      // Switching the override off must fall back to the verified licence, not to Free.
+      service.setLocalPro(false);
+      assert.deepStrictEqual(service.getContext().entitlements, ['pdf.ocr']);
+    });
   });
 }
 );

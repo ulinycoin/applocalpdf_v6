@@ -76,7 +76,16 @@ export function createPlatformRuntime(
 
   const billing = new BillingService(
     'v6_subscription_jwt',
-    (import.meta as any).env?.VITE_PUBLIC_JWT_KEY
+    (import.meta as any).env?.VITE_PUBLIC_JWT_KEY,
+    {
+      /**
+       * Developer Pro override. Vite replaces `import.meta.env.DEV` with a literal
+       * `false` in production builds, so `allowLocalPro` is a compile-time `false`
+       * in the shipped bundle and the override cannot be armed there — neither
+       * through the UI nor by writing the localStorage flag by hand.
+       */
+      allowLocalPro: typeof import.meta.env !== 'undefined' && import.meta.env.DEV === true,
+    },
   );
 
   return {

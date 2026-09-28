@@ -4129,6 +4129,34 @@ textarea:focus-visible {
 .studio-nav-btn:hover:not(:disabled) { background: var(--surface-hover); color: var(--text); }
 .studio-nav-btn:disabled { opacity: 0.45; cursor: not-allowed; }
 
+/* Developer Pro override toggle — dev builds only (see `billing-service`).
+   Amber on purpose: it must never be mistaken for a purchased plan badge. */
+.studio-dev-pro-btn {
+  font-size: 10px;
+  font-weight: 700;
+  color: #8a5a00;
+  background: rgba(223, 171, 1, 0.14);
+  border: 1px dashed rgba(223, 171, 1, 0.7);
+  padding: 3px 8px;
+  border-radius: 999px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+
+.studio-dev-pro-btn:hover {
+  background: rgba(223, 171, 1, 0.24);
+}
+
+.studio-dev-pro-btn--on {
+  color: #4a3000;
+  background: var(--warn);
+  border-style: solid;
+  border-color: var(--warn);
+}
+
 .studio-badge-pro {
   font-size: 10px;
   font-weight: 700;
@@ -5825,7 +5853,8 @@ textarea:focus-visible {
   .wz-btn,
   .btn-ghost,
   .btn-primary,
-  .studio-upload-btn {
+  .studio-upload-btn,
+  .studio-dev-pro-btn {
     min-height: 44px;
   }
 

@@ -62,9 +62,13 @@ export function StudioTopNav({ telemetryEnabled, onToggleTelemetry, telemetryOpe
   const [activateStatus, setActivateStatus] = useState<'idle' | 'loading' | 'error'>('idle');
 
   const [billingContext, setBillingContext] = useState(() => runtime.billing.getContext());
+  const [localProEnabled, setLocalProEnabled] = useState(() => runtime.billing.isLocalProEnabled());
+  const localProAvailable = runtime.billing.isLocalProAvailable();
+
   useEffect(() => {
     return runtime.billing.subscribe((ctx) => {
       setBillingContext(ctx);
+      setLocalProEnabled(runtime.billing.isLocalProEnabled());
     });
   }, [runtime.billing]);
 
@@ -453,6 +457,19 @@ export function StudioTopNav({ telemetryEnabled, onToggleTelemetry, telemetryOpe
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
           <span className="studio-nav-btn-label">Download</span>
         </button>
+        {localProAvailable && (
+          <button
+            type="button"
+            className={`studio-dev-pro-btn${localProEnabled ? ' studio-dev-pro-btn--on' : ''}`}
+            aria-pressed={localProEnabled}
+            title={localProEnabled
+              ? 'Developer Pro is ON — this is not a purchase. Click to switch back to Free.'
+              : 'Enable Developer Pro (dev builds only) to test Pro features'}
+            onClick={() => { setLocalProEnabled(runtime.billing.setLocalPro(!localProEnabled)); }}
+          >
+            {localProEnabled ? 'DEV PRO' : 'DEV'}
+          </button>
+        )}
         {billingContext.plan === 'pro' && !getTrialState().isActive ? (
           <div className="studio-badge-pro">PRO</div>
         ) : getTrialState().isActive ? (
