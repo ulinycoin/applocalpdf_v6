@@ -4609,6 +4609,17 @@ textarea:focus-visible {
   background: var(--bg);
 }
 
+/* The collapse handle and the sheet wrapper only exist for the mobile layout.
+   `display: contents` keeps the desktop rail's box model byte-identical: the
+   tool panel stays a direct child. */
+.studio-edit-settings-handle {
+  display: none;
+}
+
+.studio-edit-settings-body {
+  display: contents;
+}
+
 /* Edit panel — vertical sidebar variant */
 .edit-panel {
   display: flex;
@@ -5742,19 +5753,32 @@ textarea:focus-visible {
 }
 
 @media (max-width: 900px) {
+  /* Flex column, not a 2-row grid: the tool rail, the settings rail and the
+     canvas are three children and the template declared only two rows. The third
+     child landed in an implicit `auto` row measuring ~287px, so the settings rail
+     — assigned to the `minmax(0, 1fr)` row — collapsed to 0px height and the tool
+     panel was reduced to a 24px sliver of its own content. */
   .studio-edit-workspace-body {
-    grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: auto minmax(0, 1fr);
+    display: flex;
+    flex-direction: column;
   }
 
   .studio-edit-tool-rail {
     position: static;
+    flex: 0 0 auto;
   }
 
   .studio-edit-settings-rail {
     position: static;
-    max-height: none;
-    padding-right: 0;
+    /* The canvas gets a floor of its own (below); the panel yields space to it
+       instead of starving it on short viewports. */
+    flex: 0 1 auto;
+    min-height: 0;
+    max-height: 38vh;
+    max-height: 38dvh;
+    padding-right: 10px;
+    border-right: none;
+    border-bottom: 1px solid var(--border);
   }
 
   .studio-editor-left-toolbar {
@@ -5774,12 +5798,132 @@ textarea:focus-visible {
     height: 42px;
   }
 
+  /* `height: 100%` on a flex item measures against the whole container, so the
+     rails above would push the canvas past the bottom edge. */
   .studio-edit-canvas-stage {
-    min-height: 0;
+    flex: 1 1 auto;
+    height: auto;
+    min-height: 180px;
   }
 
   .studio-annotate-quickbar {
     justify-content: center;
+  }
+}
+
+/* Touch-sized controls: phone portrait and tablets in portrait.
+   Deliberately split from the 760px shell breakpoint — a 768px iPad takes the
+   single-column editor layout from the block above but would otherwise keep
+   26px segmented tabs and 30px inputs. */
+@media (max-width: 900px), (pointer: coarse) {
+  /* Wizard / convert surfaces were already single-column, but their controls
+     measured 25-39px tall. */
+  .cvt-nav-btn,
+  .cvt-select,
+  .cvt-seg-btn,
+  .tool-config-select,
+  .wz-btn,
+  .btn-ghost,
+  .btn-primary,
+  .studio-upload-btn {
+    min-height: 44px;
+  }
+
+  .studio-empty-state-upload-btn,
+  .studio-upload-btn {
+    min-height: 48px;
+    font-size: 15px;
+  }
+
+  /* Editor tool settings (shared .ep-* controls): the segmented tabs were 26px
+     and the inputs 30px. */
+  .studio-edit-settings-rail .ep-seg-btn,
+  .studio-edit-settings-rail .ep-action-btn,
+  .studio-edit-settings-rail .ep-input,
+  .studio-edit-settings-rail .ep-color-row {
+    min-height: 44px;
+  }
+
+  .studio-edit-settings-rail .ep-seg-btn,
+  .studio-edit-settings-rail .ep-action-btn {
+    font-size: 14px;
+  }
+
+  .studio-edit-settings-rail .ep-input {
+    font-size: 15px;
+  }
+
+  .studio-edit-settings-rail .ep-field-label {
+    font-size: 12px;
+  }
+
+  /* Checkbox rows: the box itself was 13px and the label row ~20px tall. */
+  .ocr-concept-check,
+  .tool-config-check-row {
+    min-height: 44px;
+  }
+
+  input[type="checkbox"] {
+    width: 20px;
+    height: 20px;
+  }
+
+  .ocr-concept-check {
+    font-size: 0.95rem;
+  }
+
+  /* Remaining editor controls: selects and B/I toggles were 30px, colour chips
+     22-36px, toggle/checkbox rows 20px. */
+  .studio-edit-settings-rail .ep-select,
+  .studio-edit-settings-rail .ep-fmt-btn,
+  .studio-edit-settings-rail .ep-toggle-row,
+  .studio-edit-settings-rail .ep-color-row,
+  .studio-edit-settings-rail .ep-range {
+    min-height: 44px;
+  }
+
+  .studio-edit-settings-rail .ep-select {
+    height: 44px;
+    font-size: 15px;
+  }
+
+  .studio-edit-settings-rail .ep-fmt-btn {
+    width: 44px;
+    height: 44px;
+    font-size: 16px;
+  }
+
+  .studio-edit-settings-rail .ep-toggle-row {
+    font-size: 14px;
+  }
+
+  .studio-edit-settings-rail .ep-toggle-row input[type="checkbox"] {
+    width: 20px;
+    height: 20px;
+  }
+
+  .studio-edit-settings-rail .ep-color-preview {
+    width: 36px;
+    height: 36px;
+  }
+
+  .ep-swatch {
+    width: 44px;
+    height: 44px;
+  }
+
+  .ep-swatches {
+    gap: 8px;
+  }
+
+  .studio-annotate-swatch {
+    width: 44px;
+    height: 44px;
+  }
+
+  .edit-panel-color-swatch {
+    width: 36px;
+    height: 36px;
   }
 }
 
@@ -8145,3 +8289,544 @@ textarea:focus-visible {
   color: var(--text-muted);
 }
 
+
+/* ==========================================================================
+   Mobile shell (<= 760px)
+   Breakpoint is duplicated in StudioShell.tsx (`STUDIO_MOBILE_BREAKPOINT`) —
+   change both together. Measured before this block existed, on a 390x664
+   viewport: the tool rail took 52px (13%) of the canvas and its 19 buttons were
+   51x32 with labels revealed only on :hover/:focus-within, which never fires for
+   a touch pointer; after any tap the rail stayed expanded at 220px and covered
+   56% of the screen. Nav buttons were 25-27px tall, the viewport bar 40px with
+   28px buttons, and `height: 100%` put the bar under the iOS Safari toolbar.
+   ========================================================================== */
+
+.studio-mobile-tools-fab {
+  position: absolute;
+  left: 12px;
+  bottom: calc(64px + env(safe-area-inset-bottom, 0px));
+  z-index: 103;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 48px;
+  padding: 0 18px;
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 15px;
+  font-weight: 600;
+  box-shadow: var(--shadow);
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, transform 0.15s ease;
+}
+
+.studio-mobile-tools-fab:active {
+  transform: scale(0.97);
+}
+
+.studio-mobile-tools-fab.active {
+  background: var(--accent);
+  border-color: transparent;
+  color: #fff;
+}
+
+.studio-tool-sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 300;
+  display: flex;
+  align-items: flex-end;
+  background: rgba(15, 23, 42, 0.42);
+  animation: studioSheetFade 160ms ease;
+}
+
+.studio-tool-sheet {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-height: 84vh;
+  max-height: 84dvh;
+  background: var(--bg);
+  border-radius: 18px 18px 0 0;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  box-shadow: 0 -12px 40px rgba(15, 23, 42, 0.28);
+  animation: studioSheetRise 200ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.studio-tool-sheet-handle {
+  width: 40px;
+  height: 4px;
+  margin: 8px auto 0;
+  border-radius: 999px;
+  background: var(--border-strong);
+  flex-shrink: 0;
+}
+
+.studio-tool-sheet-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 16px 8px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.studio-tool-sheet-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.studio-tool-sheet-close {
+  width: 44px;
+  height: 44px;
+  margin-right: -10px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 16px;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+}
+
+.studio-tool-sheet-body {
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 0 8px 16px;
+}
+
+/* Rows reuse the rail markup; only the collapsed-label behaviour is undone. */
+.studio-tool-sheet-body .studio-tool-rail-collapsible-text {
+  opacity: 1;
+  max-width: none;
+}
+
+.studio-tool-sheet-body .studio-tool-rail-btn {
+  justify-content: flex-start;
+  gap: 12px;
+  min-height: 52px;
+  padding: 0 14px;
+  font-size: 15px;
+  border-radius: 10px;
+  white-space: normal;
+}
+
+.studio-tool-sheet-body .studio-tool-rail-btn svg {
+  width: 22px;
+  height: 22px;
+}
+
+.studio-tool-sheet-body .studio-tool-rail-section-label {
+  height: auto;
+  padding: 16px 14px 6px;
+  font-size: 11px;
+  letter-spacing: 0.5px;
+}
+
+.studio-tool-sheet-body .studio-tool-rail-upload-btn {
+  margin: 8px 0 0;
+  padding-bottom: 0;
+  border-bottom: none;
+  border-radius: 10px;
+}
+
+.studio-tool-sheet-body .studio-tool-rail-scope {
+  padding: 6px 14px 0;
+  white-space: normal;
+  font-size: 12px;
+}
+
+.studio-tool-sheet-body .studio-tool-rail-target-btn {
+  min-height: 44px;
+  font-size: 15px;
+  padding: 0 14px;
+}
+
+.studio-tool-sheet-body .studio-tool-rail-merge-targets {
+  margin-left: 14px;
+}
+
+.studio-tool-sheet-body .studio-tool-rail-divider {
+  margin: 10px 6px;
+}
+
+.studio-tool-sheet-body .studio-tool-rail-bottom {
+  margin-top: 4px;
+  padding-bottom: 0;
+  border-top: 1px solid var(--border);
+  padding-top: 8px;
+}
+
+.studio-tool-sheet-body .studio-rail-plan-badge {
+  margin: 8px auto 0;
+}
+
+@keyframes studioSheetFade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes studioSheetRise {
+  from { transform: translateY(12%); }
+  to { transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .studio-tool-sheet,
+  .studio-tool-sheet-backdrop {
+    animation: none;
+  }
+}
+
+@media (max-width: 760px) {
+  /* `height: 100%` resolves against the pre-toolbar viewport on iOS Safari, so
+     the bottom bar slid under the browser chrome. */
+  .studio-app-layout,
+  .studio-main-shell {
+    height: 100dvh;
+  }
+
+  .studio-top-nav-container {
+    padding-top: env(safe-area-inset-top, 0px);
+  }
+
+  /* --- top nav --- */
+  .studio-top-nav {
+    height: 52px;
+    gap: 4px;
+    padding: 0 8px;
+  }
+
+  .studio-logo {
+    min-width: 44px;
+    padding: 4px;
+  }
+
+  .studio-logo-title,
+  .studio-nav-sep {
+    display: none;
+  }
+
+  .studio-nav-tabs {
+    gap: 4px;
+  }
+
+  .studio-nav-tab {
+    min-height: 44px;
+    max-width: 148px;
+    padding: 0 10px;
+  }
+
+  .studio-nav-tab-name {
+    max-width: none;
+  }
+
+  /* The close affordance was `opacity: 0` until :hover — unreachable on touch,
+     so a workspace could not be closed from a phone at all. */
+  .studio-nav-tab-close {
+    opacity: 0.55;
+    font-size: 13px;
+    padding: 10px 8px;
+    margin-right: -8px;
+  }
+
+  .studio-nav-tab-add {
+    width: 40px;
+    height: 40px;
+  }
+
+  .studio-nav-actions {
+    gap: 2px;
+    margin-left: 2px;
+  }
+
+  .studio-logo,
+  .studio-nav-btn,
+  .studio-activate-btn,
+  .studio-upgrade-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+  }
+
+  .studio-nav-btn {
+    min-width: 44px;
+    padding: 0 11px;
+  }
+
+  .studio-activate-btn,
+  .studio-upgrade-btn {
+    padding: 0 12px;
+  }
+
+  /* Download collapses to its icon; Activate keeps its label and Upgrade stays
+     a first-class, one-tap target — mobile paywall CTR was 0 of 52 impressions
+     and hiding the money path behind a menu would not help. */
+  .studio-nav-btn .studio-nav-btn-label {
+    display: none;
+  }
+
+  /* --- canvas chrome --- */
+  .studio-tool-rail-anchor {
+    display: none;
+  }
+
+  .studio-shell-canvas,
+  .studio-shell-canvas .konvajs-content {
+    touch-action: none;
+  }
+
+  .studio-viewport-controls {
+    height: calc(52px + env(safe-area-inset-bottom, 0px));
+    padding: 0 8px env(safe-area-inset-bottom, 0px) 8px;
+    gap: 2px;
+  }
+
+  .studio-viewport-btn {
+    height: 44px;
+    min-width: 44px;
+    padding: 4px 8px;
+    font-size: 15px;
+  }
+
+  .studio-viewport-btn-fit {
+    min-width: 56px;
+  }
+
+  .studio-viewport-scale {
+    min-width: 44px;
+    font-size: 14px;
+  }
+
+  .studio-viewport-bar-divider {
+    height: 24px;
+    margin: 0 2px;
+  }
+
+  .studio-viewport-desktop-only {
+    display: none;
+  }
+
+  .studio-viewport-selection-count {
+    font-size: 13px;
+  }
+
+  /* Room for the tools FAB and the bottom bar. */
+  .studio-empty-state {
+    padding: 24px 20px calc(72px + env(safe-area-inset-bottom, 0px));
+    gap: 12px;
+  }
+
+  .studio-empty-state-title {
+    font-size: 19px;
+    text-align: center;
+  }
+
+  .studio-empty-state-copy {
+    font-size: 14px;
+  }
+
+  /* var(--text-dim) is #b3b3af — legible on a laptop, not on a phone in daylight. */
+  .studio-empty-state-hint-sep {
+    font-size: 13px;
+    line-height: 1.5;
+    color: var(--text-muted);
+    text-align: center;
+  }
+
+  .studio-timeline-container {
+    top: 60px;
+    left: 8px;
+    right: 8px;
+    width: auto;
+    max-height: calc(100dvh - 150px);
+  }
+
+  /* --- edit workspace overlay ---
+     Measured at 390px: the meta row did not wrap, so the page badge pushed the
+     zoom controls ("+", 1:1, fit) off the right edge; the tool rail wrapped onto
+     three rows and ate 144px (23%) of the workspace; and the stage kept the
+     unscaled page height (882px) while the page rendered at 47%, so the editor
+     opened on ~250px of blank space above the document. */
+  .studio-edit-meta {
+    height: auto;
+    min-height: 48px;
+    flex-wrap: wrap;
+    row-gap: 4px;
+    padding: 4px 8px;
+    padding-top: calc(4px + env(safe-area-inset-top, 0px));
+  }
+
+  .studio-edit-meta > .studio-viewport-bar-divider {
+    display: none;
+  }
+
+  .studio-edit-meta-spacer {
+    display: none;
+  }
+
+  .studio-edit-back-btn > span {
+    display: none;
+  }
+
+  .studio-edit-meta .studio-edit-btn-cancel,
+  .studio-edit-meta .studio-edit-back-btn {
+    min-height: 44px;
+  }
+
+  .studio-edit-page-badge {
+    flex: 1 1 60px;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    text-align: center;
+  }
+
+  .studio-edit-zoom-cluster {
+    flex: 1 1 100%;
+    justify-content: space-between;
+  }
+
+  .studio-edit-zoom-cluster .studio-floating-btn {
+    width: 44px;
+    height: 44px;
+    font-size: 14px;
+  }
+
+  /* One scrollable row instead of a wrapped block. */
+  .studio-editor-left-toolbar {
+    flex-direction: row;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    gap: 4px;
+    padding: 8px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .studio-editor-toolbar-label {
+    display: none;
+  }
+
+  .studio-editor-left-toolbar .studio-edit-tool-btn {
+    flex: 0 0 auto;
+    width: auto;
+    min-width: 52px;
+    height: 48px;
+    flex-direction: column;
+    gap: 2px;
+    font-size: 10.5px;
+    padding: 4px 8px;
+  }
+
+  .studio-edit-tool-rail {
+    align-items: stretch;
+    padding: 0;
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+  }
+
+  /* Tool settings are a bottom *panel*, not an overlay over the canvas.
+     An overlay looks better in a screenshot but swallows work: measured at
+     390x664 it left only 50px of the page reachable, so every drag and every
+     stroke aimed "at the document" actually hit the panel, and the reported
+     symptoms (text would not drag, free drawing did nothing) followed from that.
+     In flow, the canvas keeps whatever height is left and 100% of that area is
+     interactive; the handle collapses the panel to a 54px bar when the document
+     matters more than the settings.
+     The 64px reserved at the bottom is the fixed Save pill's strip, so the panel
+     and the primary action can never overlap either. */
+  .studio-edit-workspace-body {
+    padding-bottom: calc(64px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .studio-edit-settings-rail {
+    order: 2;
+    flex: 0 1 auto;
+    min-height: 0;
+    max-height: 45vh;
+    max-height: 45dvh;
+    padding: 0 0 8px;
+    border: none;
+    border-top: 1px solid var(--border);
+    border-radius: 0;
+    background: var(--bg);
+    box-shadow: none;
+  }
+
+  .studio-edit-canvas-stage {
+    order: 1;
+    min-height: 160px;
+  }
+
+  .studio-edit-tool-rail {
+    order: 0;
+  }
+
+  .studio-edit-settings-handle {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    width: 100%;
+    min-height: 52px;
+    padding: 6px 14px 4px;
+    border: none;
+    background: var(--bg);
+    cursor: pointer;
+  }
+
+  .studio-edit-settings-handle-grip {
+    width: 36px;
+    height: 4px;
+    margin: 0 auto;
+    border-radius: 999px;
+    background: var(--border-strong);
+  }
+
+  .studio-edit-settings-handle-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text);
+  }
+
+  .studio-edit-settings-handle-label {
+    flex: 1;
+    text-align: left;
+  }
+
+  .studio-edit-settings-handle-row svg {
+    color: var(--text-muted);
+  }
+
+  .studio-edit-settings-body {
+    display: block;
+    padding: 0 14px 2px;
+  }
+
+  .studio-edit-settings-rail--collapsed {
+    flex: 0 0 auto;
+    max-height: none;
+    padding-bottom: 0;
+    overflow: hidden;
+  }
+
+  .studio-edit-settings-rail--collapsed .studio-edit-settings-body {
+    display: none;
+  }
+
+  .studio-edit-settings-rail--collapsed .studio-edit-settings-handle {
+    padding-bottom: 10px;
+  }
+
+  .studio-edit-fixed-save-btn {
+    bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+  }
+
+}

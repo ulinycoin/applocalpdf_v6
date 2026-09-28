@@ -1,0 +1,46 @@
+{
+  "id": "/app/studio",
+  "name": "LocalPDF Studio",
+  "short_name": "LocalPDF",
+  "description": "Local-first PDF workspace: merge, split, edit, OCR and convert without uploading your files.",
+  "start_url": "/app/studio",
+  "scope": "/app/",
+  "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
+  "background_color": "#faf9f7",
+  "theme_color": "#0f172a",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "/logos/localpdf-pwa-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/logos/localpdf-pwa-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/logos/localpdf-pwa-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "categories": ["utilities", "productivity"],
+  "shortcuts": [
+    {
+      "name": "Open Studio",
+      "url": "/app/studio",
+      "icons": [{ "src": "/logos/localpdf-pwa-192x192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Upload a PDF",
+      "url": "/app/studio?upload=1",
+      "icons": [{ "src": "/logos/localpdf-pwa-192x192.png", "sizes": "192x192" }]
+    }
+  ]
+}

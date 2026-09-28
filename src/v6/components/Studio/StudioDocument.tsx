@@ -6,9 +6,11 @@ import { StudioDocument as IStudioDocument, StudioState, useStudioStore } from '
 
 interface StudioDocumentProps {
     doc: IStudioDocument;
+    /** Forced column count (the canvas shell pins this to 1 on narrow screens). */
+    gridColumnsOverride?: number;
 }
 
-export const StudioDocument: React.FC<StudioDocumentProps> = ({ doc }) => {
+export const StudioDocument: React.FC<StudioDocumentProps> = ({ doc, gridColumnsOverride }) => {
     const [isDropTarget, setIsDropTarget] = React.useState(false);
     const updateDocument = useStudioStore((s: StudioState) => s.updateDocument);
     const setRenamingDocId = useStudioStore((s: StudioState) => s.setRenamingDocId);
@@ -16,7 +18,8 @@ export const StudioDocument: React.FC<StudioDocumentProps> = ({ doc }) => {
     const setActiveDocument = useStudioStore((s: StudioState) => s.setActiveDocument);
     const selection = useStudioStore((s: StudioState) => s.selection);
     const setSelection = useStudioStore((s: StudioState) => s.setSelection);
-    const gridColumns = useStudioStore((s: StudioState) => s.gridColumns);
+    const storeGridColumns = useStudioStore((s: StudioState) => s.gridColumns);
+    const gridColumns = gridColumnsOverride ?? storeGridColumns;
     const viewportSize = useStudioStore((s: StudioState) => s.viewportSize);
     const studioViewPosition = useStudioStore((s: StudioState) => s.studioViewPosition);
     const studioViewScale = useStudioStore((s: StudioState) => s.studioViewScale);

@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { LinearIcon, type LinearIconName } from '../icons/linear-icon';
 import type { StudioEditToolId } from './studio-store';
 import type { StudioConvertToolId } from './convert/use-studio-convert-controller';
@@ -96,12 +97,16 @@ function RailButton({
     );
 }
 
-export function StudioToolRail({
+/**
+ * Tool list shared by the desktop rail and the mobile sheet.
+ * Markup is identical on purpose: `variant` only picks a className, so the
+ * mobile sheet cannot drift away from the desktop tool set.
+ */
+function StudioToolList({
     activeTool,
     onToolClick,
     onUpload,
     hasFiles,
-    onNewSpace: _onNewSpace,
     onHistoryToggle,
     isHistoryOpen,
     plan,
@@ -112,7 +117,8 @@ export function StudioToolRail({
     onMergePages,
     onSplitPages,
     onDeletePages,
-}: StudioToolRailProps): JSX.Element {
+    onAfterSelect,
+}: StudioToolRailProps & { onAfterSelect?: () => void }): JSX.Element {
     const [mergePickerOpen, setMergePickerOpen] = useState(false);
     const hasSelection = selectedPageCount > 0;
     const canMerge = hasFiles && Boolean(onMergePages) && mergeTargets.length > 0;
@@ -131,18 +137,23 @@ export function StudioToolRail({
         if (mergeTargets.length === 1) {
             setMergePickerOpen(false);
             onMergePages(mergeTargets[0].id);
+            onAfterSelect?.();
             return;
         }
         setMergePickerOpen((open) => !open);
     };
 
+    const selectTool = (tool: string) => {
+        onToolClick(tool);
+        onAfterSelect?.();
+    };
+
     return (
-        <div className="studio-tool-rail-anchor">
-            <aside className="studio-tool-rail" aria-label="Studio tools">
+        <>
             <button
                 type="button"
                 className={`studio-tool-rail-btn studio-tool-rail-upload-btn${attentionOnUpload ? ' studio-tool-rail-btn--attention' : ''}`}
-                onClick={onUpload}
+                onClick={() => { onUpload(); onAfterSelect?.(); }}
                 title="Upload files"
             >
                 <LinearIcon name="upload" size={20} />
@@ -171,6 +182,7 @@ export function StudioToolRail({
                                 onClick={() => {
                                     setMergePickerOpen(false);
                                     onMergePages?.(target.id);
+                                    onAfterSelect?.();
                                 }}
                             >
                                 {target.name}
@@ -181,7 +193,7 @@ export function StudioToolRail({
                 <button
                     type="button"
                     className="studio-tool-rail-btn"
-                    onClick={onSplitPages}
+                    onClick={() => { onSplitPages?.(); onAfterSelect?.(); }}
                     disabled={!canSplit}
                     title={hasSelection ? `Split ${scopeLabel} into a new workspace` : 'Select pages to split into a new workspace'}
                 >
@@ -191,7 +203,7 @@ export function StudioToolRail({
                 <button
                     type="button"
                     className="studio-tool-rail-btn"
-                    onClick={onDeletePages}
+                    onClick={() => { onDeletePages?.(); onAfterSelect?.(); }}
                     disabled={!canDelete}
                     title="Delete selected pages (Delete)"
                 >
@@ -211,7 +223,7 @@ export function StudioToolRail({
                         description={item.description}
                         activeTool={activeTool}
                         disabled={!hasFiles}
-                        onClick={() => { onToolClick(item.tool); }}
+                        onClick={() => { selectTool(item.tool); }}
                     />
                 ))}
             </div>
@@ -227,7 +239,7 @@ export function StudioToolRail({
                         description={item.description}
                         activeTool={activeTool}
                         disabled={!hasFiles}
-                        onClick={() => { onToolClick(item.tool); }}
+                        onClick={() => { selectTool(item.tool); }}
                     />
                 ))}
             </div>
@@ -243,7 +255,7 @@ export function StudioToolRail({
                         description={item.description}
                         activeTool={activeTool}
                         disabled={!hasFiles}
-                        onClick={() => { onToolClick(item.tool); }}
+                        onClick={() => { selectTool(item.tool); }}
                     />
                 ))}
             </div>
@@ -269,7 +281,7 @@ export function StudioToolRail({
                 <button
                     type="button"
                     className={`studio-tool-rail-btn${isHistoryOpen ? ' active' : ''}`}
-                    onClick={onHistoryToggle}
+                    onClick={() => { onHistoryToggle?.(); onAfterSelect?.(); }}
                     disabled={!onHistoryToggle}
                     aria-pressed={Boolean(isHistoryOpen)}
                     title={isHistoryOpen ? 'Hide history' : 'Show history'}
@@ -283,7 +295,69 @@ export function StudioToolRail({
                     <div className="studio-rail-plan-badge studio-rail-plan-badge--free studio-tool-rail-collapsible-text">Free</div>
                 )}
             </div>
+        </>
+    );
+}
+
+export function StudioToolRail(props: StudioToolRailProps): JSX.Element {
+    return (
+        <div className="studio-tool-rail-anchor">
+            <aside className="studio-tool-rail" aria-label="Studio tools">
+                <StudioToolList {...props} />
             </aside>
         </div>
+    );
+}
+
+export interface StudioToolSheetProps extends StudioToolRailProps {
+    open: boolean;
+    onClose: () => void;
+}
+
+/**
+ * Mobile replacement for the tool rail: a bottom sheet with labelled rows.
+ * The rail only reveals its labels on :hover/:focus-within, which never fires
+ * on a touch pointer — on a phone the toolset was 19 unlabelled icons.
+ */
+export function StudioToolSheet({ open, onClose, ...listProps }: StudioToolSheetProps): JSX.Element | null {
+    useEffect(() => {
+        if (!open) {
+            return;
+        }
+        const onKeyDown = (event: KeyboardEvent) => {
+            if (event.key === 'Escape') {
+                onClose();
+            }
+        };
+        window.addEventListener('keydown', onKeyDown);
+        return () => window.removeEventListener('keydown', onKeyDown);
+    }, [onClose, open]);
+
+    if (!open) {
+        return null;
+    }
+
+    return createPortal(
+        <div className="studio-tool-sheet-backdrop" onClick={onClose} role="presentation">
+            <div
+                className="studio-tool-sheet"
+                role="dialog"
+                aria-modal="true"
+                aria-label="Studio tools"
+                onClick={(event) => event.stopPropagation()}
+            >
+                <div className="studio-tool-sheet-handle" aria-hidden="true" />
+                <div className="studio-tool-sheet-head">
+                    <span className="studio-tool-sheet-title">Tools</span>
+                    <button type="button" className="studio-tool-sheet-close" onClick={onClose} aria-label="Close tools">
+                        ✕
+                    </button>
+                </div>
+                <div className="studio-tool-sheet-body">
+                    <StudioToolList {...listProps} onAfterSelect={onClose} />
+                </div>
+            </div>
+        </div>,
+        document.body,
     );
 }

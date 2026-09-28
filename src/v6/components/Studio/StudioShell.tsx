@@ -9,7 +9,7 @@ import { usePlatform } from '../../../app/react/platform-context';
 import { useStudioStore, PageItem, StudioDocument as IStudioDocument, StudioState, StudioEditToolId } from './studio-store';
 import { StudioDocument } from './StudioDocument';
 import { DetachedPageObject } from './DetachedPageObject';
-import { StudioToolRail } from './StudioToolRail';
+import { StudioToolRail, StudioToolSheet } from './StudioToolRail';
 import type { StudioConvertToolId } from './convert/use-studio-convert-controller';
 import { ThumbnailService } from '../../studio/thumbnail/thumbnail-service';
 import { StudioTimeline } from './branching/StudioTimeline';
@@ -52,6 +52,14 @@ export interface StudioShellProps {
 }
 
 const STUDIO_TOOL_RAIL_WIDTH = 52;
+/**
+ * Must stay in sync with the `@media (max-width: 760px)` block in styles.css:
+ * below it the rail is replaced by the tools sheet, so the canvas owns the
+ * full window width and pages are laid out one per row.
+ */
+const STUDIO_MOBILE_BREAKPOINT = 760;
+const STUDIO_MOBILE_GRID_COLUMNS = 1;
+const STUDIO_MOBILE_SIDE_PADDING = 10;
 
 const CARD_WIDTH = 200;
 const CARD_HEIGHT = 280;
@@ -237,6 +245,10 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
     const uploadInputRef = useRef<HTMLInputElement | null>(null);
     const stageRef = useRef<Konva.Stage | null>(null);
     const stagePixelRatio = Math.max(1, Math.ceil(window.devicePixelRatio || 1));
+    // Read through a ref so the mobile fit can focus the active workspace without
+    // making `fitToDocuments` change identity on every workspace switch (which
+    // would re-fit the desktop viewport each time).
+    const activeDocumentIdRef = useRef<string | null>(null);
 
     const location = useLocation();
     const navigate = useNavigate();
@@ -283,13 +295,22 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
     );
     const pageClipboardRef = useRef<PageItem[]>([]);
     const [hasClipboardPages, setHasClipboardPages] = useState(false);
+    const isMobileLayout = dimensions.width <= STUDIO_MOBILE_BREAKPOINT;
+    const [isToolSheetOpen, setIsToolSheetOpen] = useState(false);
+    // Pages are one-per-row on a phone: a 2-up grid inside a 390px canvas fits
+    // at ~45%, which is unreadable, and it is the first thing a mobile visitor sees.
+    const layoutGridColumns = isMobileLayout ? STUDIO_MOBILE_GRID_COLUMNS : gridColumns;
     const canvasDimensions = useMemo(
         () => ({
-            width: Math.max(0, dimensions.width - STUDIO_TOOL_RAIL_WIDTH),
+            width: Math.max(0, dimensions.width - (isMobileLayout ? 0 : STUDIO_TOOL_RAIL_WIDTH)),
             height: dimensions.height,
         }),
-        [dimensions.height, dimensions.width],
+        [dimensions.height, dimensions.width, isMobileLayout],
     );
+
+    useEffect(() => {
+        activeDocumentIdRef.current = activeDocumentId;
+    }, [activeDocumentId]);
 
     const dotPatternCanvas = useMemo(() => {
         const size = 20;
@@ -365,7 +386,28 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
             return;
         }
 
-        const bounds = computeDocumentsBounds(targetDocs, gridColumns);
+        if (isMobileLayout) {
+            // Fitting every workspace into a 390px canvas lands near 45% and the page
+            // text disappears. Width is the constraint that matters on a phone;
+            // scrolling down through the pages is the expected gesture.
+            const focusDoc = targetDocs.find((doc) => doc.id === activeDocumentIdRef.current) ?? targetDocs[0];
+            const focusWidth = estimateDocumentWidth(focusDoc.pages.length, STUDIO_MOBILE_GRID_COLUMNS);
+            const mobileScale = clampScale(
+                (canvasDimensions.width - STUDIO_MOBILE_SIDE_PADDING * 2) / focusWidth,
+            );
+            const focusHeight = estimateDocumentHeight(focusDoc.pages.length, STUDIO_MOBILE_GRID_COLUMNS);
+            setViewScale(mobileScale);
+            setViewPosition({
+                x: (canvasDimensions.width - focusWidth * mobileScale) / 2 - focusDoc.x * mobileScale,
+                y: Math.max(
+                    STUDIO_MOBILE_SIDE_PADDING,
+                    (canvasDimensions.height - focusHeight * mobileScale) / 2,
+                ) - focusDoc.y * mobileScale,
+            });
+            return;
+        }
+
+        const bounds = computeDocumentsBounds(targetDocs, layoutGridColumns);
         const boundsWidth = Math.max(1, bounds.maxX - bounds.minX);
         const boundsHeight = Math.max(1, bounds.maxY - bounds.minY);
         const padding = 56;
@@ -380,7 +422,7 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
 
         setViewScale(fitScale);
         setViewPosition({ x: nextX, y: nextY });
-    }, [canvasDimensions.height, canvasDimensions.width, gridColumns]);
+    }, [canvasDimensions.height, canvasDimensions.width, isMobileLayout, layoutGridColumns]);
 
     const resolveEditTarget = useCallback(() => {
         const selectedPage = selection.length >= 1
@@ -403,8 +445,8 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
         const MIN_READABLE_SCALE = 1.4;
         if (viewScale >= MIN_READABLE_SCALE) return;
 
-        const docWidth = estimateDocumentWidth(doc.pages.length, gridColumns);
-        const docHeight = estimateDocumentHeight(doc.pages.length, gridColumns);
+        const docWidth = estimateDocumentWidth(doc.pages.length, layoutGridColumns);
+        const docHeight = estimateDocumentHeight(doc.pages.length, layoutGridColumns);
         const padding = 56;
         const fitScale = clampScale(Math.min(
             (canvasDimensions.width - padding * 2) / docWidth,
@@ -418,7 +460,7 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
 
         setViewScale(targetScale);
         setViewPosition({ x: nextX, y: nextY });
-    }, [canvasDimensions.height, canvasDimensions.width, gridColumns, viewScale]);
+    }, [canvasDimensions.height, canvasDimensions.width, layoutGridColumns, viewScale]);
 
     const handleOverlayClose = useCallback(() => {
         setOverlayMode(null);
@@ -531,6 +573,112 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
         setViewScale(nextScale);
         setViewPosition({ x: nextX, y: nextY });
     }, [viewPosition.x, viewPosition.y, viewScale]);
+
+    /**
+     * Pinch-to-zoom. Konva has no multi-touch gesture support, and the stage had
+     * only `onWheel` (desktop) plus the +/- buttons, so a phone could not zoom at
+     * all. The gesture is driven imperatively on the Konva stage — a React state
+     * update per touchmove would re-render every page object at 60fps — and only
+     * committed to state when the fingers lift.
+     */
+    useEffect(() => {
+        if (!isMobileLayout) {
+            return;
+        }
+        const container = stageRef.current?.container();
+        if (!container) {
+            return;
+        }
+
+        let startDistance = 0;
+        let startScale = 1;
+        let anchorWorld: { x: number; y: number } | null = null;
+
+        const touchCenter = (touches: TouchList): { x: number; y: number } => {
+            const rect = container.getBoundingClientRect();
+            return {
+                x: (touches[0].clientX + touches[1].clientX) / 2 - rect.left,
+                y: (touches[0].clientY + touches[1].clientY) / 2 - rect.top,
+            };
+        };
+
+        const handleTouchStart = (event: TouchEvent) => {
+            if (event.touches.length !== 2) {
+                return;
+            }
+            const stage = stageRef.current;
+            if (!stage) {
+                return;
+            }
+            // The first finger may already have started a stage pan; a pinch must
+            // own the gesture from here.
+            stage.stopDrag();
+            event.preventDefault();
+            startDistance = Math.max(
+                1,
+                Math.hypot(
+                    event.touches[0].clientX - event.touches[1].clientX,
+                    event.touches[0].clientY - event.touches[1].clientY,
+                ),
+            );
+            startScale = stage.scaleX();
+            const center = touchCenter(event.touches);
+            anchorWorld = {
+                x: (center.x - stage.x()) / startScale,
+                y: (center.y - stage.y()) / startScale,
+            };
+        };
+
+        const handleTouchMove = (event: TouchEvent) => {
+            if (event.touches.length !== 2 || !anchorWorld) {
+                return;
+            }
+            const stage = stageRef.current;
+            if (!stage) {
+                return;
+            }
+            event.preventDefault();
+            const distance = Math.max(
+                1,
+                Math.hypot(
+                    event.touches[0].clientX - event.touches[1].clientX,
+                    event.touches[0].clientY - event.touches[1].clientY,
+                ),
+            );
+            const nextScale = clampScale(startScale * (distance / startDistance));
+            const center = touchCenter(event.touches);
+            stage.scale({ x: nextScale, y: nextScale });
+            stage.position({
+                x: center.x - anchorWorld.x * nextScale,
+                y: center.y - anchorWorld.y * nextScale,
+            });
+            stage.batchDraw();
+        };
+
+        const handleTouchEnd = (event: TouchEvent) => {
+            if (event.touches.length >= 2 || !anchorWorld) {
+                return;
+            }
+            anchorWorld = null;
+            const stage = stageRef.current;
+            if (!stage) {
+                return;
+            }
+            setViewScale(clampScale(stage.scaleX()));
+            setViewPosition({ x: stage.x(), y: stage.y() });
+        };
+
+        container.addEventListener('touchstart', handleTouchStart, { passive: false });
+        container.addEventListener('touchmove', handleTouchMove, { passive: false });
+        container.addEventListener('touchend', handleTouchEnd);
+        container.addEventListener('touchcancel', handleTouchEnd);
+        return () => {
+            container.removeEventListener('touchstart', handleTouchStart);
+            container.removeEventListener('touchmove', handleTouchMove);
+            container.removeEventListener('touchend', handleTouchEnd);
+            container.removeEventListener('touchcancel', handleTouchEnd);
+        };
+    }, [isMobileLayout]);
 
     const buildPagesFromFileId = useCallback(async (fileId: string): Promise<{ name: string; pages: PageItem[] }> => {
         const pdfjs = await getPdfJs();
@@ -733,7 +881,7 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
             }
         }
 
-        const positionedDocs = placeNewDocumentsInRows(documents, drafts, canvasDimensions.width, gridColumns);
+        const positionedDocs = placeNewDocumentsInRows(documents, drafts, canvasDimensions.width, layoutGridColumns);
         for (const doc of positionedDocs) {
             addDocument(doc);
         }
@@ -759,7 +907,7 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
             fitToDocuments([...documents, ...positionedDocs]);
             void createCheckpoint(runtime.vfs, 'upload', `Uploaded ${positionedDocs.length} ${positionedDocs.length === 1 ? 'file' : 'files'}`);
         }
-    }, [addDocument, canvasDimensions.width, createCheckpoint, documents, fitToDocuments, notifyStudioError, onFilesDropped, runtime.telemetry, runtime.vfs, gridColumns]);
+    }, [addDocument, canvasDimensions.width, createCheckpoint, documents, fitToDocuments, layoutGridColumns, notifyStudioError, onFilesDropped, runtime.telemetry, runtime.vfs]);
 
     const handleDrop = useCallback(async (e: React.DragEvent) => {
         e.preventDefault();
@@ -875,14 +1023,14 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
         const target = {
             id: crypto.randomUUID(),
             name: `${sourceDoc.name} (split)`,
-            x: sourceDoc.x + estimateDocumentWidth(sourceDoc.pages.length, gridColumns) + DOC_WRAP_GAP_X,
+            x: sourceDoc.x + estimateDocumentWidth(sourceDoc.pages.length, layoutGridColumns) + DOC_WRAP_GAP_X,
             y: sourceDoc.y,
         };
         const moved = splitPagesToNewWorkspace(runtime, { sourceDocId, selection, target });
         if (moved > 0) {
             fitToDocuments(useStudioStore.getState().documents);
         }
-    }, [activeDocumentId, documents, fitToDocuments, gridColumns, runtime, selection]);
+    }, [activeDocumentId, documents, fitToDocuments, layoutGridColumns, runtime, selection]);
 
     const handleDeleteSelectedPages = useCallback((method: 'button' | 'keyboard') => (
         deletePagesOp(runtime, { selection, method }) > 0
@@ -1047,9 +1195,9 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
                     }
 
                     const x = sourceDoc
-                        ? sourceDoc.x + estimateDocumentWidth(sourceDoc.pages.length, gridColumns) + DOC_WRAP_GAP_X + index * (CARD_WIDTH + DOC_WRAP_GAP_X)
+                        ? sourceDoc.x + estimateDocumentWidth(sourceDoc.pages.length, layoutGridColumns) + DOC_WRAP_GAP_X + index * (CARD_WIDTH + DOC_WRAP_GAP_X)
                         : 100;
-                    const y = sourceDoc ? sourceDoc.y : (100 + index * (estimateDocumentHeight(rebuilt.pages.length, gridColumns) + 50));
+                    const y = sourceDoc ? sourceDoc.y : (100 + index * (estimateDocumentHeight(rebuilt.pages.length, layoutGridColumns) + 50));
                     newDocs.push({
                         id: crypto.randomUUID(),
                         name: rebuilt.name,
@@ -1133,7 +1281,7 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
         setActiveDocument,
         setInteractionMode,
         setSelection,
-        gridColumns,
+        layoutGridColumns,
         notifyStudioError,
         runtime.billing,
         runtime.telemetry,
@@ -1242,6 +1390,24 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
         void initWorkspace();
     }, [handleIncomingFiles, navigate, location.state]);
 
+    const toolRailProps = {
+        activeTool: railActiveTool,
+        onToolClick: handleToolClick,
+        onUpload: openUploadDialog,
+        hasFiles,
+        onNewSpace: handleNewSpace,
+        onHistoryToggle: handleHistoryToggle,
+        isHistoryOpen,
+        plan: billingContext.plan,
+        attentionOnUpload: uploadAttention,
+        selectedPageCount: selection.length,
+        activeWorkspaceName: activeDocument?.name,
+        mergeTargets,
+        onMergePages: handleMergePages,
+        onSplitPages: handleSplitPages,
+        onDeletePages: () => { handleDeleteSelectedPages('button'); },
+    };
+
     return (
         <div
             ref={containerRef}
@@ -1251,23 +1417,21 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
             onDrop={handleDrop}
         >
             <div className="studio-shell-workspace">
-                <StudioToolRail
-                    activeTool={railActiveTool}
-                    onToolClick={handleToolClick}
-                    onUpload={openUploadDialog}
-                    hasFiles={hasFiles}
-                    onNewSpace={handleNewSpace}
-                    onHistoryToggle={handleHistoryToggle}
-                    isHistoryOpen={isHistoryOpen}
-                    plan={billingContext.plan}
-                    attentionOnUpload={uploadAttention}
-                    selectedPageCount={selection.length}
-                    activeWorkspaceName={activeDocument?.name}
-                    mergeTargets={mergeTargets}
-                    onMergePages={handleMergePages}
-                    onSplitPages={handleSplitPages}
-                    onDeletePages={() => { handleDeleteSelectedPages('button'); }}
-                />
+                <StudioToolRail {...toolRailProps} />
+                {/* Only once there is something to act on: before upload the empty
+                    state owns the screen and every tool would be disabled. */}
+                {isMobileLayout && hasFiles && (
+                    <button
+                        type="button"
+                        className={`studio-mobile-tools-fab${isToolSheetOpen ? ' active' : ''}`}
+                        onClick={() => { setIsToolSheetOpen((open) => !open); }}
+                        aria-expanded={isToolSheetOpen}
+                        aria-label="Open tools"
+                    >
+                        <LinearIcon name="tool" size={18} />
+                        <span>Tools</span>
+                    </button>
+                )}
                 <div className="studio-shell-canvas">
                     <Stage
                         ref={stageRef}
@@ -1302,7 +1466,11 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
                             {hasFiles && (
                                 <>
                                     {documents.map((doc: IStudioDocument) => (
-                                        <StudioDocument key={doc.id} doc={doc} />
+                                        <StudioDocument
+                                            key={doc.id}
+                                            doc={doc}
+                                            gridColumnsOverride={isMobileLayout ? layoutGridColumns : undefined}
+                                        />
                                     ))}
                                     {detachedPages.map((page) => (
                                         <DetachedPageObject key={page.id} page={page} />
@@ -1330,7 +1498,7 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
                             </div>
                             {isCoarsePointer ? (
                                 <div className="studio-empty-state-hints" aria-label="Studio tips">
-                                    <span className="studio-empty-state-hint-sep">Select pages, then use Merge, Split or Delete in the toolbar</span>
+                                    <span className="studio-empty-state-hint-sep">Tap Tools to merge, split, delete or convert pages</span>
                                 </div>
                             ) : (
                                 <>
@@ -1358,29 +1526,34 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
                             Fit
                         </button>
 
-                        <span className="studio-viewport-bar-divider" />
+                        {/* Grid density and the copy/paste keyboard affordances are
+                            desktop-only: on a phone the canvas is always one column
+                            and the bar has no room for them. */}
+                        <span className="studio-viewport-bar-divider studio-viewport-desktop-only" />
+
+                        <span className="studio-viewport-desktop-only studio-viewport-grid-group">
+                            <button
+                                className={`studio-viewport-btn ${gridColumns === 3 ? 'active' : ''}`}
+                                onClick={() => setGridColumns(3)}
+                                title="Grid: 3 columns"
+                                disabled={!hasFiles}
+                            >
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect></svg>
+                            </button>
+                            <button
+                                className={`studio-viewport-btn ${gridColumns === 5 ? 'active' : ''}`}
+                                onClick={() => setGridColumns(5)}
+                                title="Grid: 5 columns overview"
+                                disabled={!hasFiles}
+                            >
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="3" y1="15" x2="21" y2="15"></line><line x1="9" y1="3" x2="9" y2="21"></line><line x1="15" y1="3" x2="15" y2="21"></line></svg>
+                            </button>
+                        </span>
+
+                        <span className="studio-viewport-bar-divider studio-viewport-desktop-only" />
 
                         <button
-                            className={`studio-viewport-btn ${gridColumns === 3 ? 'active' : ''}`}
-                            onClick={() => setGridColumns(3)}
-                            title="Grid: 3 columns"
-                            disabled={!hasFiles}
-                        >
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect></svg>
-                        </button>
-                        <button
-                            className={`studio-viewport-btn ${gridColumns === 5 ? 'active' : ''}`}
-                            onClick={() => setGridColumns(5)}
-                            title="Grid: 5 columns overview"
-                            disabled={!hasFiles}
-                        >
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="3" y1="15" x2="21" y2="15"></line><line x1="9" y1="3" x2="9" y2="21"></line><line x1="15" y1="3" x2="15" y2="21"></line></svg>
-                        </button>
-
-                        <span className="studio-viewport-bar-divider" />
-
-                        <button
-                            className="studio-viewport-btn"
+                            className="studio-viewport-btn studio-viewport-desktop-only"
                             onClick={() => { copySelectedPages(); }}
                             title="Copy selected pages (Ctrl/Cmd+C)"
                             disabled={selection.length === 0}
@@ -1389,7 +1562,7 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
                             Copy
                         </button>
                         <button
-                            className="studio-viewport-btn"
+                            className="studio-viewport-btn studio-viewport-desktop-only"
                             onClick={() => { pasteSelectedPages(); }}
                             title="Paste copied pages (Ctrl/Cmd+V)"
                             disabled={selection.length === 0 || !activeDocumentId || !hasClipboardPages}
@@ -1425,6 +1598,13 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
             />
             {isHistoryOpen && <StudioTimeline />}
             <StudioInPlaceEditor stageRef={stageRef} />
+            {isMobileLayout && (
+                <StudioToolSheet
+                    open={isToolSheetOpen}
+                    onClose={() => { setIsToolSheetOpen(false); }}
+                    {...toolRailProps}
+                />
+            )}
             {overlayMode && createPortal(
                 <div className="studio-tool-overlay">
                     <Suspense fallback={null}>

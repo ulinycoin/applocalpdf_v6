@@ -62,7 +62,6 @@ export function StudioTopNav({ telemetryEnabled, onToggleTelemetry, telemetryOpe
   const [activateStatus, setActivateStatus] = useState<'idle' | 'loading' | 'error'>('idle');
 
   const [billingContext, setBillingContext] = useState(() => runtime.billing.getContext());
-
   useEffect(() => {
     return runtime.billing.subscribe((ctx) => {
       setBillingContext(ctx);
@@ -452,7 +451,7 @@ export function StudioTopNav({ telemetryEnabled, onToggleTelemetry, telemetryOpe
           title={!hasActivePages ? 'No pages in active workspace' : 'Download active workspace'}
         >
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-          Download
+          <span className="studio-nav-btn-label">Download</span>
         </button>
         {billingContext.plan === 'pro' && !getTrialState().isActive ? (
           <div className="studio-badge-pro">PRO</div>
@@ -465,14 +464,14 @@ export function StudioTopNav({ telemetryEnabled, onToggleTelemetry, telemetryOpe
               onClick={() => { setIsActivateOpen(true); }}
               title="Enter license key after purchase"
             >
-              Activate
+              <span className="studio-nav-btn-label">Activate</span>
             </button>
             <button
               type="button"
               className="studio-upgrade-btn"
               onClick={() => { openBillingPlans(import.meta.env.VITE_BILLING_URL); }}
             >
-              Upgrade
+              <span className="studio-nav-btn-label">Upgrade</span>
             </button>
           </>
         ) : (
@@ -483,14 +482,14 @@ export function StudioTopNav({ telemetryEnabled, onToggleTelemetry, telemetryOpe
               onClick={() => { setIsActivateOpen(true); }}
               title="Enter license key after purchase"
             >
-              Activate
+              <span className="studio-nav-btn-label">Activate</span>
             </button>
             <button
               type="button"
               className="studio-upgrade-btn"
               onClick={() => { openBillingPlans(import.meta.env.VITE_BILLING_URL); }}
             >
-              Upgrade
+              <span className="studio-nav-btn-label">Upgrade</span>
             </button>
           </>
         )}

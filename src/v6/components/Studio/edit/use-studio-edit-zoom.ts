@@ -71,20 +71,26 @@ export function useStudioEditZoom(runId: string, initialZoom = 1) {
         }
     }, [zoomAtScreenPoint]);
 
-    const fitToPage = useCallback((pageWidth: number, pageHeight: number, padding = 48) => {
+    // 48px of breathing room reads well on a desktop viewport and wastes 25% of a
+    // 390px phone screen, so the default shrinks with the container.
+    const defaultPadding = (width: number): number => (width < 520 ? 16 : 48);
+
+    const fitToPage = useCallback((pageWidth: number, pageHeight: number, padding?: number) => {
         if (!containerRef.current) return;
         const rect = containerRef.current.getBoundingClientRect();
-        const availableW = Math.max(1, rect.width - padding * 2);
-        const availableH = Math.max(1, rect.height - padding * 2);
+        const inset = padding ?? defaultPadding(rect.width);
+        const availableW = Math.max(1, rect.width - inset * 2);
+        const availableH = Math.max(1, rect.height - inset * 2);
         const scale = clampScale(Math.min(availableW / pageWidth, availableH / pageHeight));
         setZoomLevel(scale);
         runtime.telemetry.track({ type: 'STUDIO_EDIT_ZOOM_CHANGED', runId, toolId: 'studio.edit', source: 'preset', preset: 'fitPage', scaleLevel: scale });
     }, [runtime.telemetry, runId]);
 
-    const fitToWidth = useCallback((pageWidth: number, padding = 48) => {
+    const fitToWidth = useCallback((pageWidth: number, padding?: number) => {
         if (!containerRef.current) return;
         const rect = containerRef.current.getBoundingClientRect();
-        const availableW = Math.max(1, rect.width - padding * 2);
+        const inset = padding ?? defaultPadding(rect.width);
+        const availableW = Math.max(1, rect.width - inset * 2);
         const scale = clampScale(availableW / pageWidth);
         setZoomLevel(scale);
         runtime.telemetry.track({ type: 'STUDIO_EDIT_ZOOM_CHANGED', runId, toolId: 'studio.edit', source: 'preset', preset: 'fitWidth', scaleLevel: scale });

@@ -25,6 +25,17 @@ interface StudioEditWorkspaceProps {
 export function StudioEditWorkspace({ onClose }: StudioEditWorkspaceProps = {}) {
     const ui = useMemo(() => getStudioEditMessages(), []);
 
+    /** Sheet/rail title: the tool the settings belong to. */
+    const settingsToolLabel = useMemo<Record<string, string>>(() => ({
+        text: ui.text,
+        annotate: ui.annotate,
+        sign: ui.sign,
+        whiteout: ui.whiteout,
+        watermark: ui.watermark,
+        forms: ui.forms,
+        protect: ui.protect,
+    }), [ui]);
+
     const ctrl = useStudioEditController(ui);
     const zoom = useStudioEditZoom(ctrl.runId || 'unknown', 1);
     const imageRef = useRef<HTMLImageElement | null>(null);
@@ -32,11 +43,19 @@ export function StudioEditWorkspace({ onClose }: StudioEditWorkspaceProps = {}) 
     const editorRef = useRef<StudioPageEditorHandle | null>(null);
     const autoFitPreviewKeyRef = useRef<string | null>(null);
     const [canvasSize, setCanvasSize] = useState<{ width: number; height: number }>({ width: 620, height: 840 });
+    const [viewportSize, setViewportSize] = useState<{ width: number; height: number }>({ width: 0, height: 0 });
     const [hasPendingDrawnSignature, setHasPendingDrawnSignature] = useState(false);
     const [hasPendingAnnotatePenDraft, setHasPendingAnnotatePenDraft] = useState(false);
     const [pendingDiscard, setPendingDiscard] = useState<(() => void) | null>(null);
+    const [isSettingsCollapsed, setIsSettingsCollapsed] = useState(false);
     const hasSidebarSettingsPanel = ctrl.tool !== null
         && ['text', 'forms', 'sign', 'protect', 'watermark', 'whiteout', 'annotate'].includes(ctrl.tool);
+
+    // Switching tools must reveal that tool's settings, even if the previous one
+    // was collapsed.
+    useEffect(() => {
+        setIsSettingsCollapsed(false);
+    }, [ctrl.tool]);
 
     useEffect(() => {
         if (!ctrl.message) {
@@ -83,6 +102,23 @@ export function StudioEditWorkspace({ onClose }: StudioEditWorkspaceProps = {}) 
         };
         img.src = url;
     }, [ctrl.preview?.page.thumbnailUrl]);
+
+    useEffect(() => {
+        const element = zoom.containerRef.current;
+        if (!element) {
+            return;
+        }
+        const update = () => {
+            setViewportSize({ width: element.clientWidth, height: element.clientHeight });
+        };
+        update();
+        if (typeof ResizeObserver === 'undefined') {
+            return;
+        }
+        const observer = new ResizeObserver(update);
+        observer.observe(element);
+        return () => { observer.disconnect(); };
+    }, [zoom.containerRef]);
 
     useEffect(() => {
         const previewId = ctrl.preview?.page.id;
@@ -227,8 +263,16 @@ export function StudioEditWorkspace({ onClose }: StudioEditWorkspaceProps = {}) 
     const scaledWidth = canvasSize.width * zoom.zoomLevel;
     const scaledHeight = canvasSize.height * zoom.zoomLevel;
     const canvasPadding = 40;
-    const stageWidth = Math.max(canvasSize.width, scaledWidth) + canvasPadding * 2;
-    const stageHeight = Math.max(canvasSize.height, scaledHeight) + canvasPadding * 2;
+    /**
+     * The stage must fill the visible area, not the unscaled page: using
+     * `max(page, scaled)` kept an 840px-tall stage while the page rendered at
+     * 47%, so the page was vertically centred inside it and a phone opened the
+     * editor on ~250px of blank space above the document. Padding belongs to the
+     * content size, so a page smaller than the viewport yields a stage exactly
+     * the size of the viewport and no dead scroll range.
+     */
+    const stageWidth = Math.max(scaledWidth + canvasPadding * 2, viewportSize.width);
+    const stageHeight = Math.max(scaledHeight + canvasPadding * 2, viewportSize.height);
     const selectedTextElement = ctrl.selectedElementId
         ? ctrl.elements.find(e => e.id === ctrl.selectedElementId && e.type === 'text') as import('./editor-types').TextElement | undefined
         : undefined;
@@ -528,9 +572,9 @@ export function StudioEditWorkspace({ onClose }: StudioEditWorkspaceProps = {}) 
                 <span className="studio-viewport-bar-divider" />
                 <span className="studio-edit-page-badge">{ctrl.preview.docName}</span>
 
-                <div style={{ flex: 1 }} />
+                <div className="studio-edit-meta-spacer" style={{ flex: 1 }} />
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                <div className="studio-edit-zoom-cluster" style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                     <button type="button" className="studio-floating-btn" onClick={() => zoom.zoomOut()} title="Zoom Out"><LinearIcon name="minus" size={13} /></button>
                     <span style={{ fontSize: 12, minWidth: 40, textAlign: 'center', color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>{Math.round(zoom.zoomLevel * 100)}%</span>
                     <button type="button" className="studio-floating-btn" onClick={() => zoom.zoomIn()} title="Zoom In"><LinearIcon name="plus" size={13} /></button>
@@ -576,8 +620,27 @@ export function StudioEditWorkspace({ onClose }: StudioEditWorkspaceProps = {}) 
                 </div>
 
                 {topSettingsPanel && (
-                    <div className="studio-edit-settings-rail">
-                        {topSettingsPanel}
+                    <div className={`studio-edit-settings-rail${isSettingsCollapsed ? ' studio-edit-settings-rail--collapsed' : ''}`}>
+                        {/* On phones the rail is a floating sheet over the canvas; this
+                            handle collapses it so the document can be seen in full.
+                            Hidden above the mobile breakpoint. */}
+                        <button
+                            type="button"
+                            className="studio-edit-settings-handle"
+                            aria-expanded={!isSettingsCollapsed}
+                            onClick={() => { setIsSettingsCollapsed((value) => !value); }}
+                        >
+                            <span className="studio-edit-settings-handle-grip" aria-hidden="true" />
+                            <span className="studio-edit-settings-handle-row">
+                                <span className="studio-edit-settings-handle-label">
+                                    {settingsToolLabel[ctrl.tool ?? ''] ?? ui.text}
+                                </span>
+                                <LinearIcon name={isSettingsCollapsed ? 'chevron-up' : 'chevron-down'} size={16} />
+                            </span>
+                        </button>
+                        <div className="studio-edit-settings-body">
+                            {topSettingsPanel}
+                        </div>
                     </div>
                 )}
 
