@@ -1,8 +1,8 @@
 import { after, describe, test } from 'node:test';
 import * as assert from 'node:assert';
 import { generateKeyPairSync } from 'node:crypto';
-import restoreHandler, { encryptString, signJwt } from './restore';
-import handler from './deactivate';
+import restoreHandler, { encryptString, signJwt } from '../../api/billing/restore';
+import handler from '../../api/billing/deactivate';
 
 function decodeTestPayload(token: string): any {
   const parts = token.split('.');

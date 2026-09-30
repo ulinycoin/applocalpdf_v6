@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { createHmac } from 'node:crypto';
-import { handleLemonSqueezyWebhook } from './webhook';
+import { handleLemonSqueezyWebhook } from '../../api/billing/webhook';
 
 const WEBHOOK_SECRET = 'test-webhook-secret';
 

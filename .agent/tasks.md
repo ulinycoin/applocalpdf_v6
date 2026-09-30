@@ -14,6 +14,8 @@ Last updated: 2026-09-30
 | — | Приёмка | [x] | `npm test` 346 pass / 0 fail, `npm run build` (tsc + vite), `npm run audit:workerization:strict` exit 0, `npm run billing:preflight` (1 warning про overlap product ids 917519 — ожидаемый) |
 | 4 | Диагностические события в PostHog | [x] | PostHog **не удаляет отдельные события** (открытый feature request с 2023). Удалены person-профили `diag:webhook-mapping-test` и два `diag:probe-*` через `DELETE /persons/{id}/?delete_events=true` (202; persons уже нет, строки событий ClickHouse дочищает асинхронно). Навсегда закрыто в коде: вебхук распознаёт диагностический payload (`custom_data.diagnostic` или id `diag-*`), по-прежнему маппит tier для смоук-теста, но в PostHog не пишет (тест есть). Создан сохранённый инсайт «Revenue — monthly (excl. diagnostics)» с фильтром `order_id NOT LIKE 'diag%'`; текущая сумма по нему — **$63.02** |
 
+| 5 | Деплой не проходил: Vercel Hobby — лимит 12 функций | [x] | Ошибка: «No more than 12 Serverless Functions can be added to a Deployment on the Hobby plan». В `api/` было ровно 12 файлов (впритык), мои 4 новых дали 16. Разгрузка: тесты API переехали из `api/**` в `test/api/**` (−4; заодно тестовый код больше не деплоится публичными эндпоинтами), общий серверный хелпер убран в `api/_lib/device-auth.ts` (подчёркивание Vercel игнорирует, худший случай — 1 функция), удалён мёртвый `api/hello.ts` (ссылок в коде нет, только в сгенерированных `graphify-out`). Стало 10 функций + `_lib`: `api/billing/{restore,refresh,webhook,devices,deactivate}.ts`, `api/download-proxy.ts`, `api/keys/{create,list,validate}.ts`, `api/process.ts`. Тестовый глоб в `package.json` теперь `test/**/*.test.ts` |
+
 Не сделано и риски:
 - **Деплой не выполнялся** — изменения в рабочем дереве. Пока не задеплоено, активации в LS не появятся, а `billing_device_*` события не полетят.
 - Уже выданные JWT не несут `ins`: устройство подписчика и покупателя lifetime в LS не зарегистрировано, пока они не нажмут Activate заново (слот при этом не сгорит — сработает матч по имени устройства).
@@ -164,7 +166,7 @@ Last updated: 2026-09-30
 - [x] Security: `/api/download-proxy` — allowlist `tmpfiles.org` + тест (2c3afcd)
 - [x] Monetization: webhook маппит `pro_lifetime` → `purchase_completed` (ea22f53)
 - [x] Billing: `restore.ts` отдаёт полный entitlement-набор + parity-тест
-- [x] Tests: `npm test` включает `api/**/*.test.ts`
+- [x] Tests: `npm test` включает тесты API — с 30.09 они лежат в `test/api/**` (в `api/` больше нельзя: Vercel Hobby считает каждый файл в `api/` функцией и разрешает максимум 12)
 - [x] Оффер: месячная подписка выведена, якорь — годовая $39.99; lifetime $19 живой (LS 1371816 / variant 2143549)
 - [x] AI crawler markdown fork `/localpdf`, live curl matrix, disambiguation page
 - [x] GEO baseline (`.agent/geo-baseline-2026-08-01.md`) + LLM brand probe baseline

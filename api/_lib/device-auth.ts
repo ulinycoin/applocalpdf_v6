@@ -1,5 +1,5 @@
-import { decryptString } from './restore';
-import { decodePayload, verifyJwtSignature } from './refresh';
+import { decryptString } from '../billing/restore';
+import { decodePayload, verifyJwtSignature } from '../billing/refresh';
 
 export type LicenseTokenContext = {
   licenseKey: string;

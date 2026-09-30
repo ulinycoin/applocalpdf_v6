@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import handler from './download-proxy';
+import handler from '../../api/download-proxy';
 
 function makeRequest(url: string): Request {
   return new Request(`https://localpdf.online/api/download-proxy?url=${encodeURIComponent(url)}`);
