@@ -94,7 +94,7 @@ export function StudioTopNav({ telemetryEnabled, onToggleTelemetry, telemetryOpe
       const res = await fetch(billingApiPath('/api/billing/devices'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token: token || undefined, licenseKey: licenseKey || undefined }),
+        body: JSON.stringify({ token: token || undefined, licenseKey: licenseKey || undefined, action: 'list' }),
       });
       const data = await res.json();
       if (data?.success) {
@@ -113,10 +113,15 @@ export function StudioTopNav({ telemetryEnabled, onToggleTelemetry, telemetryOpe
     if ((!token && !licenseKey) || !instanceId) return;
     setBusyDeviceId(instanceId);
     try {
-      const res = await fetch(billingApiPath('/api/billing/deactivate'), {
+      const res = await fetch(billingApiPath('/api/billing/devices'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token: token || undefined, licenseKey: licenseKey || undefined, instanceId }),
+        body: JSON.stringify({
+          token: token || undefined,
+          licenseKey: licenseKey || undefined,
+          action: 'deactivate',
+          instanceId,
+        }),
       });
       const data = await res.json();
       if (data?.success) {

@@ -2,7 +2,7 @@ import { after, describe, test } from 'node:test';
 import * as assert from 'node:assert';
 import { generateKeyPairSync } from 'node:crypto';
 import restoreHandler, { encryptString, signJwt } from '../../api/billing/restore';
-import handler from '../../api/billing/deactivate';
+import devicesHandler from '../../api/billing/devices';
 
 function decodeTestPayload(token: string): any {
   const parts = token.split('.');
@@ -295,7 +295,7 @@ describe('billing restore device activation', () => {
   });
 });
 
-describe('billing deactivate', () => {
+describe('billing devices route', () => {
   test('frees the slot of the device that owns the token', async () => {
     const originalFetch = global.fetch;
     const deactivateBodies: string[] = [];
@@ -333,7 +333,7 @@ describe('billing deactivate', () => {
 
     try {
       const res = fakeResponse();
-      await handler({ method: 'POST', headers: {}, body: { token } }, res);
+      await devicesHandler({ method: 'POST', headers: {}, body: { token, action: 'deactivate' } }, res);
 
       assert.strictEqual(res.statusCode, 200);
       assert.strictEqual(res.body.success, true);
@@ -346,11 +346,69 @@ describe('billing deactivate', () => {
     }
   });
 
+  test('lists the devices that hold a slot', async () => {
+    const originalFetch = global.fetch;
+    const originalApiKey = process.env.LEMON_SQUEEZY_API_KEY;
+    process.env.JWT_PRIVATE_KEY = privateKey;
+    process.env.VITE_PUBLIC_JWT_KEY = publicKey;
+    process.env.LEMON_SQUEEZY_API_KEY = 'ls_test_key';
+
+    const token = await signJwt(
+      {
+        iss: 'localpdf-billing',
+        aud: 'localpdf-v6',
+        lk: encryptString('KEY-123', privateKey),
+        ins: 'inst-1',
+        lki: '1291436',
+        exp: Math.floor(Date.now() / 1000) + 3600,
+      },
+      privateKey,
+    );
+
+    global.fetch = async (url: any) => {
+      const href = String(url);
+      if (href.includes('/license-key-instances')) {
+        return new Response(
+          JSON.stringify({
+            data: [
+              { id: 'row-1', attributes: { identifier: 'inst-1', name: 'LocalPDF on Chrome', created_at: '2026-09-30T17:00:00Z' } },
+            ],
+          }),
+          { status: 200 },
+        );
+      }
+      if (href.includes('/license-keys/')) {
+        return new Response(
+          JSON.stringify({ data: { attributes: { activation_limit: 3, instances_count: 1 } } }),
+          { status: 200 },
+        );
+      }
+      throw new Error(`unexpected fetch ${href}`);
+    };
+
+    try {
+      const res = fakeResponse();
+      await devicesHandler({ method: 'POST', headers: {}, body: { token, action: 'list' } }, res);
+
+      assert.strictEqual(res.statusCode, 200);
+      assert.strictEqual(res.body.action, 'list');
+      assert.strictEqual(res.body.limit, 3);
+      assert.strictEqual(res.body.usage, 1);
+      assert.deepStrictEqual(res.body.devices, [
+        { id: 'inst-1', name: 'LocalPDF on Chrome', createdAt: '2026-09-30T17:00:00Z' },
+      ]);
+    } finally {
+      global.fetch = originalFetch;
+      if (originalApiKey === undefined) delete process.env.LEMON_SQUEEZY_API_KEY;
+      else process.env.LEMON_SQUEEZY_API_KEY = originalApiKey;
+    }
+  });
+
   test('rejects a token that was not signed by this service', async () => {
     process.env.JWT_PRIVATE_KEY = privateKey;
     process.env.VITE_PUBLIC_JWT_KEY = publicKey;
     const res = fakeResponse();
-    await handler({ method: 'POST', headers: {}, body: { token: 'not.a.token' } }, res);
+    await devicesHandler({ method: 'POST', headers: {}, body: { token: 'not.a.token', action: 'deactivate' } }, res);
     assert.strictEqual(res.statusCode, 401);
   });
 });
