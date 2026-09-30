@@ -413,6 +413,72 @@ describe('billing devices route', () => {
   });
 });
 
+
+describe('billing refresh branch of the restore route', () => {
+  test('reissues a token and carries the device instance forward', async () => {
+    const originalFetch = global.fetch;
+    process.env.JWT_PRIVATE_KEY = privateKey;
+    process.env.VITE_PUBLIC_JWT_KEY = publicKey;
+    process.env.LEMON_SQUEEZY_API_KEY = 'ls_test_key';
+    process.env.LEMON_SQUEEZY_PRO_MONTHLY_PRODUCT_IDS = '917519';
+    process.env.LEMON_SQUEEZY_PRO_MONTHLY_VARIANT_IDS = '1442622';
+
+    global.fetch = async (url: any) => {
+      const href = String(url);
+      assert.match(href, /licenses\/validate/);
+      return new Response(
+        JSON.stringify({
+          valid: true,
+          license_key: { id: 1291436, activation_limit: 3, activation_usage: 1 },
+          meta: { product_id: 917519, variant_id: 1442622 },
+        }),
+        { status: 200 },
+      );
+    };
+
+    try {
+      const token = await signJwt(
+        {
+          iss: 'localpdf-billing',
+          aud: 'localpdf-v6',
+          sub: '1291436',
+          plan: 'pro',
+          tier: 'pro_monthly',
+          lk: encryptString('KEY-123', privateKey),
+          ins: 'inst-1',
+          lki: '1291436',
+          exp: Math.floor(Date.now() / 1000) + 60,
+        },
+        privateKey,
+      );
+
+      const res = fakeResponse();
+      await restoreHandler({ method: 'POST', headers: {}, body: { token } }, res);
+
+      assert.strictEqual(res.statusCode, 200);
+      assert.strictEqual(res.body.success, true);
+      assert.strictEqual(res.body.tier, 'pro_monthly');
+      const refreshed = decodeTestPayload(res.body.token);
+      assert.strictEqual(refreshed.ins, 'inst-1');
+      assert.strictEqual(refreshed.lki, '1291436');
+      assert.strictEqual(refreshed.plan, 'pro');
+      assert.deepStrictEqual(refreshed.entitlements, refreshed.entitlements);
+    } finally {
+      global.fetch = originalFetch;
+    }
+  });
+
+  test('refuses a ticket that was not signed by this service', async () => {
+    process.env.JWT_PRIVATE_KEY = privateKey;
+    process.env.VITE_PUBLIC_JWT_KEY = publicKey;
+    process.env.LEMON_SQUEEZY_API_KEY = 'ls_test_key';
+
+    const res = fakeResponse();
+    await restoreHandler({ method: 'POST', headers: {}, body: { token: 'not.a.token' } }, res);
+    assert.strictEqual(res.statusCode, 401);
+  });
+});
+
 after(() => {
   const restore = (key: keyof typeof originalEnv, envName: string) => {
     const value = originalEnv[key];

@@ -3,7 +3,6 @@
   "buildCommand": "npm run build:all",
   "outputDirectory": "dist",
   "installCommand": "npm install",
-
   "devCommand": "npm run dev:all",
   "redirects": [
     {
@@ -215,6 +214,10 @@
   ],
   "rewrites": [
     {
+      "source": "/api/billing/refresh",
+      "destination": "/api/billing/restore"
+    },
+    {
       "source": "/\\.well-known/llm.txt",
       "destination": "/llm.txt"
     },
@@ -254,8 +257,6 @@
       "source": "/app/:path*",
       "destination": "/app/index.html"
     },
-
-
     {
       "source": "/(about|privacy|terms|faq|security)",
       "destination": "/$1.html"

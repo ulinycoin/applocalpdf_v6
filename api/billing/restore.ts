@@ -1,4 +1,4 @@
-import { createSign, createCipheriv, createDecipheriv, createHash, randomBytes, type KeyLike } from 'node:crypto';
+import { createSign, createVerify, createCipheriv, createDecipheriv, createHash, randomBytes, type KeyLike } from 'node:crypto';
 
 type BillingPlan = 'basic' | 'pro';
 type BillingTier = 'free' | 'pro_monthly' | 'pro_yearly' | 'pro_lifetime';
@@ -255,6 +255,30 @@ function getClientIp(req: any): string {
   return 'unknown';
 }
 
+function decodePayload(token: string): any {
+  try {
+    const parts = token.split('.');
+    const base64Payload = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+    return JSON.parse(Buffer.from(base64Payload, 'base64').toString('utf8'));
+  } catch {
+    return null;
+  }
+}
+
+function verifyJwtSignature(token: string, publicKeyPem: string): boolean {
+  try {
+    const parts = token.split('.');
+    if (parts.length !== 3) return false;
+    const signedData = `${parts[0]}.${parts[1]}`;
+    const base64Signature = parts[2].replace(/-/g, '+').replace(/_/g, '/');
+    const verifier = createVerify('RSA-SHA256');
+    verifier.update(signedData);
+    return verifier.verify(publicKeyPem, Buffer.from(base64Signature, 'base64'));
+  } catch {
+    return false;
+  }
+}
+
 function hitRateLimit(bucketKey: string): boolean {
   const now = Date.now();
   const current = keyAttempts.get(bucketKey);
@@ -266,9 +290,125 @@ function hitRateLimit(bucketKey: string): boolean {
   return current.count > RATE_LIMIT_MAX_ATTEMPTS;
 }
 
+
+/**
+ * Token renewal used to live in its own route that imported this file. Vercel's frameworkless builder
+ * ships only the entry file of a function (Node ESM then fails with ERR_MODULE_NOT_FOUND), so the route
+ * never worked in production and the flow lives here instead; `/api/billing/refresh` is rewritten to
+ * this function for clients that still call it.
+ */
+async function handleRefreshTicket(req: any, res: any) {
+  const token = typeof req.body?.token === 'string' ? req.body.token.trim() : '';
+  if (!token) {
+    return res.status(400).json({ error: 'Token is required' });
+  }
+
+  const apiKey = process.env.LEMON_SQUEEZY_API_KEY;
+  const privateKeyRaw = process.env.JWT_PRIVATE_KEY;
+  const publicKeyRaw = process.env.VITE_PUBLIC_JWT_KEY;
+  if (!isNonEmptyString(apiKey) || !isNonEmptyString(privateKeyRaw) || !isNonEmptyString(publicKeyRaw)) {
+    console.error('Missing server-side configuration for token refresh');
+    return res.status(500).json({ error: 'Server configuration error' });
+  }
+
+  const privateKey = privateKeyRaw.replace(/\\n/g, '\n');
+  const publicKey = publicKeyRaw.replace(/\\n/g, '\n');
+
+  if (!verifyJwtSignature(token, publicKey)) {
+    return res.status(401).json({ error: 'Invalid token signature' });
+  }
+
+  const payload = decodePayload(token);
+  if (!payload) {
+    return res.status(400).json({ error: 'Malformed token payload' });
+  }
+
+  if (payload.iss !== 'localpdf-billing' || payload.aud !== 'localpdf-v6' || !isNonEmptyString(payload.lk)) {
+    return res.status(403).json({ error: 'Token is not authorized for renewal' });
+  }
+
+  const now = Math.floor(Date.now() / 1000);
+  const isLifetimeTier = payload.tier === 'pro_lifetime';
+  if (!isLifetimeTier && (typeof payload.exp !== 'number' || payload.exp < now - (30 * 24 * 60 * 60))) {
+    return res.status(403).json({ error: 'Token has been expired for too long' });
+  }
+
+  const clientIp = getClientIp(req);
+  if (hitRateLimit(`${clientIp}:${String(payload.sub).slice(0, 10)}`)) {
+    return res.status(429).json({ error: 'Too many refresh attempts. Please try again later.' });
+  }
+
+  let licenseKey = '';
+  try {
+    licenseKey = decryptString(payload.lk, privateKeyRaw);
+  } catch (err) {
+    console.error('Failed to decrypt license key in refresh handler:', err);
+    return res.status(403).json({ error: 'Failed to decrypt license key' });
+  }
+  if (!isNonEmptyString(licenseKey)) {
+    return res.status(403).json({ error: 'Decrypted license key is empty' });
+  }
+
+  try {
+    const lsResponse = await fetch('https://api.lemonsqueezy.com/v1/licenses/validate', {
+      method: 'POST',
+      headers: {
+        Accept: 'application/json',
+        'Content-Type': 'application/x-www-form-urlencoded',
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: new URLSearchParams({ license_key: licenseKey }).toString(),
+    });
+
+    const lsData = await lsResponse.json();
+    if (!lsResponse.ok || !lsData.valid) {
+      return res.status(402).json({ error: 'License key is no longer valid or expired', details: lsData.error || 'Validation failed' });
+    }
+
+    const mapped = getMappedLicense(lsData);
+    if (!mapped) {
+      return res.status(403).json({ error: 'License is valid but not allowed for this app configuration.' });
+    }
+
+    const newExp = now + (mapped.tier === 'pro_lifetime' ? LIFETIME_JWT_SECONDS : 60 * 60 * 24 * 30);
+    const newClaims = {
+      iss: 'localpdf-billing',
+      aud: 'localpdf-v6',
+      sub: String(lsData.license_key?.id ?? lsData.instance?.id ?? 'unknown'),
+      plan: mapped.plan,
+      tier: mapped.tier,
+      entitlements: PRO_ENTITLEMENTS,
+      lk: encryptString(licenseKey, privateKeyRaw),
+      // The registered device travels with the token; refreshing must not spend a new activation slot.
+      ins: typeof payload.ins === 'string' && payload.ins ? payload.ins : undefined,
+      lki: typeof payload.lki === 'string' && payload.lki ? payload.lki : undefined,
+      iat: now,
+      nbf: now,
+      exp: newExp,
+    };
+
+    const newToken = await signJwt(newClaims, privateKey);
+    return res.status(200).json({
+      success: true,
+      plan: mapped.plan,
+      tier: mapped.tier,
+      token: newToken,
+      expiresAt: new Date(newExp * 1000).toISOString(),
+    });
+  } catch (err: any) {
+    console.error('Billing refresh error:', err);
+    return res.status(500).json({ error: 'Internal server error', message: err?.message ?? 'Unknown error' });
+  }
+}
+
 export default async function handler(req: any, res: any) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  // A token without a license key means "renew my ticket", which is what /api/billing/refresh rewrites to.
+  if (typeof req.body?.token === 'string' && !req.body?.licenseKey) {
+    return handleRefreshTicket(req, res);
   }
 
   const licenseKey = typeof req.body?.licenseKey === 'string' ? req.body.licenseKey.trim() : '';

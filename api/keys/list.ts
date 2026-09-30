@@ -1,4 +1,51 @@
-import { listApiKeys } from '../../src/core/api/api-key-manager';
+/**
+ * Lists the API keys of the caller.
+ *
+ * The Upstash access is inlined on purpose: Vercel's frameworkless builder ships only the entry file of
+ * a function, so `import { listApiKeys } from '../../src/core/api/api-key-manager'` compiled fine and
+ * then failed at runtime with ERR_MODULE_NOT_FOUND (this route never worked in production).
+ */
+
+const UPSTASH_URL = process.env.UPSTASH_REDIS_REST_URL;
+const UPSTASH_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN;
+
+type ApiKeyRecord = {
+  id: string;
+  keyPrefix: string;
+  name: string;
+  tier: string;
+  createdAt: string;
+  lastUsedAt: string | null;
+  requestsToday: number;
+};
+
+async function redis(command: string[]): Promise<any> {
+  if (!UPSTASH_URL || !UPSTASH_TOKEN) {
+    throw new Error('Redis not configured');
+  }
+  const res = await fetch(UPSTASH_URL, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${UPSTASH_TOKEN}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(command),
+  });
+  const body = await res.json();
+  if (!res.ok) {
+    throw new Error(`Upstash ${res.status}: ${body?.error || JSON.stringify(body)}`);
+  }
+  if (body?.error) {
+    throw new Error(`Upstash error: ${body.error}`);
+  }
+  return body;
+}
+
+async function listApiKeys(userId: string): Promise<ApiKeyRecord[]> {
+  const all = (await redis(['HGETALL', `apikeys:${userId}`]))?.result;
+  if (!all || typeof all !== 'object') return [];
+  return Object.values(all).map((json) => JSON.parse(json as string) as ApiKeyRecord);
+}
 
 export default async function handler(req: any, res: any) {
   if (req.method !== 'GET') {
@@ -22,7 +69,7 @@ export default async function handler(req: any, res: any) {
   try {
     const keys = await listApiKeys(userId);
     return res.status(200).json({
-      keys: keys.map(k => ({
+      keys: keys.map((k) => ({
         id: k.id,
         prefix: k.keyPrefix,
         name: k.name,

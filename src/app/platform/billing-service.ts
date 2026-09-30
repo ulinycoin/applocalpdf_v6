@@ -259,7 +259,9 @@ export class BillingService {
 
   private async refreshBillingToken(token: string): Promise<string | null> {
     try {
-      const response = await fetch('/api/billing/refresh', {
+      // The refresh flow lives inside the restore function: a function may not import a sibling api
+      // module (Vercel ships only the entry file), so one route serves both shapes.
+      const response = await fetch('/api/billing/restore', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

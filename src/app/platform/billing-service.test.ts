@@ -203,7 +203,7 @@ describe('BillingService', () => {
     // @ts-expect-error Mock type
     assert.strictEqual(fetch.mock.calls.length, 1);
     // @ts-expect-error Mock type
-    assert.strictEqual(fetch.mock.calls[0].arguments[0], '/api/billing/refresh');
+    assert.strictEqual(fetch.mock.calls[0].arguments[0], '/api/billing/restore');
 
     // Проверяем, что токен обновился в localStorage
     assert.strictEqual(localStorage.getItem('test_storage'), 'mocked.new.token');
