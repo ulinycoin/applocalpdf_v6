@@ -38,7 +38,7 @@ test('download-proxy refuses arbitrary hosts (open-relay guard)', async () => {
 test('download-proxy forwards allowed tmpfiles.org downloads', async () => {
   const originalFetch = global.fetch;
   const seen: string[] = [];
-  global.fetch = async (input: string | URL) => {
+  global.fetch = async (input: any) => {
     seen.push(String(input));
     return new Response(new Uint8Array([1, 2, 3]), {
       status: 200,

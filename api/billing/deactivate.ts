@@ -3,7 +3,7 @@ import {
   getClientIp,
   hitDeviceRateLimit,
   resolveLicenseKeyFromRequest,
-} from '../_lib/device-auth';
+} from '../../server/billing/device-auth';
 
 /**
  * Frees one activation slot. Without this a customer who reinstalled a browser (and therefore lost the
