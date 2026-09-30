@@ -4253,6 +4253,59 @@ textarea:focus-visible {
   margin-top: 4px;
 }
 
+.studio-device-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  border-top: 1px solid var(--border);
+  padding-top: 10px;
+}
+
+.studio-device-title {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.studio-device-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.studio-device-name {
+  font-size: 12px;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.studio-device-deactivate {
+  flex: none;
+  min-height: 28px;
+  padding: 0 10px;
+  border-radius: 6px;
+  border: 1px solid var(--border-strong);
+  background: transparent;
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.studio-device-deactivate:hover:not(:disabled) {
+  border-color: #dc2626;
+  color: #dc2626;
+}
+
+.studio-device-deactivate:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
 .studio-activate-btn-ghost {
   min-height: 32px;
   padding: 0 12px;

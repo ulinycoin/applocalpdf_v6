@@ -45,6 +45,101 @@ function mapProductVariantToTier(productId: string, variantId: string): BillingT
   return null;
 }
 
+/**
+ * LemonSqueezy only counts a device when a licence is activated through the License API, which also
+ * enforces the key's activation limit. `validate` (used below) never registers a device, so before this
+ * existed every key stayed at "0 of 3 devices" in the dashboard no matter how many machines used it.
+ */
+type ActivationOutcome =
+  | { ok: true; instanceId: string; licenseKeyId: string }
+  | { ok: false; reason: 'activation_limit_reached'; limit: number | null; usage: number | null }
+  | { ok: false; reason: 'unavailable' };
+
+/**
+ * Device names embed a stable per-device id, so a returning device can be matched to its existing
+ * instance instead of burning another of the three slots.
+ */
+export async function findExistingInstanceId(licenseKeyId: string, instanceName: string): Promise<string> {
+  const apiKey = process.env.LEMON_SQUEEZY_API_KEY?.trim();
+  if (!licenseKeyId || !instanceName || !apiKey) {
+    return '';
+  }
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 2500);
+  try {
+    const response = await fetch(
+      `https://api.lemonsqueezy.com/v1/license-key-instances?filter%5Blicense_key_id%5D=${encodeURIComponent(licenseKeyId)}&page%5Bsize%5D=25`,
+      {
+        headers: { Accept: 'application/vnd.api+json', Authorization: `Bearer ${apiKey}` },
+        signal: controller.signal,
+      },
+    );
+    if (!response.ok) {
+      return '';
+    }
+    const data: any = await response.json();
+    const match = (Array.isArray(data?.data) ? data.data : []).find(
+      (row: any) => String(row?.attributes?.name ?? '') === instanceName,
+    );
+    return match ? toIdString(match?.attributes?.identifier ?? match?.id) : '';
+  } catch (error) {
+    console.warn('[billing/restore] instance lookup failed', error);
+    return '';
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+export async function activateDeviceInstance(input: {
+  licenseKey: string;
+  instanceName: string;
+}): Promise<ActivationOutcome> {
+  try {
+    const response = await fetch('https://api.lemonsqueezy.com/v1/licenses/activate', {
+      method: 'POST',
+      headers: {
+        Accept: 'application/json',
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: new URLSearchParams({
+        license_key: input.licenseKey,
+        instance_name: input.instanceName,
+      }).toString(),
+    });
+
+    const data: any = await response.json().catch(() => null);
+    const instanceId = toIdString(data?.instance?.id);
+    if (data?.activated && instanceId) {
+      return {
+        ok: true,
+        instanceId,
+        licenseKeyId: toIdString(data?.license_key?.id),
+      };
+    }
+
+    const errorCode = String(data?.error ?? '').toLowerCase();
+    if (errorCode.includes('activation_limit')) {
+      return {
+        ok: false,
+        reason: 'activation_limit_reached',
+        limit: Number.isFinite(data?.license_key?.activation_limit)
+          ? Number(data.license_key.activation_limit)
+          : null,
+        usage: Number.isFinite(data?.license_key?.activation_usage)
+          ? Number(data.license_key.activation_usage)
+          : null,
+      };
+    }
+
+    console.warn('[billing/restore] activation rejected', response.status, data?.error ?? '');
+    return { ok: false, reason: 'unavailable' };
+  } catch (error) {
+    console.warn('[billing/restore] activation request failed', error);
+    return { ok: false, reason: 'unavailable' };
+  }
+}
+
 export function getMappedLicense(lsData: any): { plan: BillingPlan; tier: BillingTier } | null {
   const meta = lsData?.meta ?? {};
   const orderItem = lsData?.license_key?.order_item ?? {};
@@ -100,6 +195,14 @@ function isNonEmptyString(value: unknown): value is string {
   return typeof value === 'string' && value.trim().length > 0;
 }
 
+/** LemonSqueezy returns ids as numbers in some payloads and strings in others. */
+function toIdString(value: unknown): string {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return String(value);
+  }
+  return isNonEmptyString(value) ? value.trim() : '';
+}
+
 export function encryptString(text: string, secret: string): string {
   const key = createHash('sha256').update(secret).digest();
   const iv = randomBytes(16);
@@ -132,7 +235,7 @@ function encodeUtf8Base64Url(str: string): string {
   return encodeBase64Url(Buffer.from(str, 'utf8'));
 }
 
-async function signJwt(payload: Record<string, unknown>, privateKeyPem: string): Promise<string> {
+export async function signJwt(payload: Record<string, unknown>, privateKeyPem: string): Promise<string> {
   const headerStr = encodeUtf8Base64Url(JSON.stringify({ alg: 'RS256', typ: 'JWT' }));
   const payloadStr = encodeUtf8Base64Url(JSON.stringify(payload));
   const dataToSign = `${headerStr}.${payloadStr}`;
@@ -208,6 +311,47 @@ export default async function handler(req: any, res: any) {
       return res.status(403).json({ error: 'License is valid but not allowed for this app configuration.' });
     }
 
+    const requestedInstanceId = typeof req.body?.instanceId === 'string' ? req.body.instanceId.trim() : '';
+    const requestedInstanceName = typeof req.body?.instanceName === 'string' ? req.body.instanceName.trim() : '';
+    const instanceName = (requestedInstanceName || `device-${clientIp}`).slice(0, 120);
+
+    let instanceId = requestedInstanceId;
+    let licenseKeyId = toIdString(lsData.license_key?.id);
+    let activatedNow = false;
+
+    // A device that already holds an instance id must not spend another activation slot.
+    if (!instanceId && licenseKeyId && requestedInstanceName) {
+      instanceId = await findExistingInstanceId(licenseKeyId, instanceName);
+    }
+    if (!instanceId) {
+      const activation = await activateDeviceInstance({ licenseKey, instanceName });
+      if (!activation.ok && activation.reason === 'activation_limit_reached') {
+        return res.status(409).json({
+          error: 'activation_limit_reached',
+          message: `This license is already active on ${activation.usage ?? activation.limit ?? 3} device(s).`,
+          limit: activation.limit,
+          usage: activation.usage,
+        });
+      }
+      if (activation.ok) {
+        instanceId = activation.instanceId;
+        activatedNow = true;
+        if (activation.licenseKeyId) {
+          licenseKeyId = activation.licenseKeyId;
+        }
+      } else {
+        // The license itself already validated, so a LemonSqueezy hiccup must not lock out a paying
+        // customer — issue the token, just without a registered device.
+        console.warn('[billing/restore] issuing token without a registered device instance');
+      }
+    }
+
+    const usageBefore = Number(lsData.license_key?.activation_usage);
+    const devicesUsed = (Number.isFinite(usageBefore) ? usageBefore : 0) + (activatedNow ? 1 : 0);
+    const deviceLimit = Number.isFinite(Number(lsData.license_key?.activation_limit))
+      ? Number(lsData.license_key?.activation_limit)
+      : null;
+
     const now = Math.floor(Date.now() / 1000);
     const exp = now + (mapped.tier === 'pro_lifetime' ? LIFETIME_JWT_SECONDS : 60 * 60 * 24 * 30);
     const claims = {
@@ -218,6 +362,8 @@ export default async function handler(req: any, res: any) {
       tier: mapped.tier,
       entitlements: getDefaultEntitlementsForPlan(mapped.plan),
       lk: encryptString(licenseKey, privateKeyRaw),
+      ins: instanceId || undefined,
+      lki: licenseKeyId || undefined,
       iat: now,
       nbf: now,
       exp,
@@ -229,6 +375,9 @@ export default async function handler(req: any, res: any) {
       plan: mapped.plan,
       tier: mapped.tier,
       token,
+      instanceId: instanceId || null,
+      devicesUsed,
+      deviceLimit,
       expiresAt: new Date(exp * 1000).toISOString(),
     });
   } catch (err: any) {

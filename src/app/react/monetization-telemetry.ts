@@ -14,7 +14,10 @@ export type MonetizationEventName =
   | 'trial_started'
   | 'trial_expired'
   | 'trial_convert'
-  | 'purchase_completed';
+  | 'purchase_completed'
+  | 'billing_device_activated'
+  | 'billing_device_deactivated'
+  | 'billing_device_limit_reached';
 
 export interface MonetizationEventProps {
   source?: string;

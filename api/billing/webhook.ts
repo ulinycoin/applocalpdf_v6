@@ -1,6 +1,11 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
 
-type BillingTier = 'pro_monthly' | 'pro_yearly' | 'pro_lifetime';
+/**
+ * `pro_subscription` is the attribution for a renewal whose monthly/yearly variant could not be read
+ * from the payload or the subscriptions API. It exists so a real payment is never dropped just
+ * because its variant is unknown.
+ */
+type BillingTier = 'pro_monthly' | 'pro_yearly' | 'pro_lifetime' | 'pro_subscription';
 
 const DEFAULT_POSTHOG_HOST = 'https://eu.i.posthog.com';
 
@@ -47,6 +52,51 @@ function mapProductVariantToTier(productId: string, variantId: string): BillingT
   if (hasYearlyProduct) return 'pro_yearly';
 
   return null;
+}
+
+/**
+ * Subscription renewals arrive as a subscription-invoice object: it carries `subscription_id` but no
+ * `product_id` / `variant_id` / `first_order_item`, so `mapProductVariantToTier('', '')` returned null
+ * and every renewal was answered with `ignored:true` — LemonSqueezy treats that 200 as a successful
+ * delivery and never retries, so the money was invisible in analytics. Read the variant from the
+ * subscription when possible, and otherwise attribute the payment to the generic renewal tier.
+ */
+async function resolveRenewalTier(
+  subscriptionId: string,
+): Promise<{ tier: BillingTier; variantResolved: boolean }> {
+  const apiKey = process.env.LEMON_SQUEEZY_API_KEY?.trim();
+  if (!subscriptionId || !apiKey) {
+    return { tier: 'pro_subscription', variantResolved: false };
+  }
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 2500);
+  try {
+    const response = await fetch(
+      `https://api.lemonsqueezy.com/v1/subscriptions/${encodeURIComponent(subscriptionId)}`,
+      {
+        headers: { Accept: 'application/vnd.api+json', Authorization: `Bearer ${apiKey}` },
+        signal: controller.signal,
+      },
+    );
+    if (!response.ok) {
+      return { tier: 'pro_subscription', variantResolved: false };
+    }
+    const payload: any = await response.json();
+    const attributes = payload?.data?.attributes ?? {};
+    const mapped = mapProductVariantToTier(
+      String(attributes.product_id ?? ''),
+      String(attributes.variant_id ?? ''),
+    );
+    return mapped
+      ? { tier: mapped, variantResolved: true }
+      : { tier: 'pro_subscription', variantResolved: false };
+  } catch (error) {
+    console.warn('[billing/webhook] subscription lookup failed', subscriptionId, error);
+    return { tier: 'pro_subscription', variantResolved: false };
+  } finally {
+    clearTimeout(timeout);
+  }
 }
 
 async function capturePostHogEvent(input: {
@@ -128,6 +178,8 @@ function extractOrderContext(payload: any): {
   email: string;
   distinctId: string | null;
   eventName: string;
+  subscriptionId: string;
+  billingReason: string;
 } | null {
   const eventName = String(payload?.meta?.event_name ?? '');
   if (!PURCHASE_EVENTS.has(eventName)) {
@@ -149,6 +201,9 @@ function extractOrderContext(payload: any): {
   const customData = readCustomData(payload);
   const distinctIdRaw = customData.distinct_id ?? customData.distinctId;
   const distinctId = typeof distinctIdRaw === 'string' && distinctIdRaw.trim() ? distinctIdRaw.trim() : null;
+  // Present on subscription-invoice payloads (renewals) and on subscription payloads; absent on orders.
+  const subscriptionId = String(attributes.subscription_id ?? firstOrderItem.subscription_id ?? '');
+  const billingReason = String(attributes.billing_reason ?? '');
 
   return {
     orderId,
@@ -159,6 +214,8 @@ function extractOrderContext(payload: any): {
     email,
     distinctId,
     eventName,
+    subscriptionId,
+    billingReason,
   };
 }
 
@@ -183,7 +240,13 @@ export async function handleLemonSqueezyWebhook(
     return { status: 200, body: { ok: true, ignored: true } };
   }
 
-  const tier = mapProductVariantToTier(order.productId, order.variantId);
+  let tier = mapProductVariantToTier(order.productId, order.variantId);
+  let variantResolved = true;
+  if (!tier && order.subscriptionId) {
+    const renewal = await resolveRenewalTier(order.subscriptionId);
+    tier = renewal.tier;
+    variantResolved = renewal.variantResolved;
+  }
   if (!tier) {
     console.warn('[billing/webhook] Unmapped product', order.productId, order.variantId);
     return { status: 200, body: { ok: true, ignored: true, reason: 'unmapped_product' } };
@@ -191,7 +254,13 @@ export async function handleLemonSqueezyWebhook(
 
   const distinctId = order.distinctId ?? (order.email ? `email:${order.email}` : `order:${order.orderId}`);
   const amount = order.totalCents > 0 ? order.totalCents / 100 : undefined;
-  const variant = tier === 'pro_lifetime' ? 'lifetime' : tier === 'pro_yearly' ? 'yearly' : 'monthly';
+  const variant = tier === 'pro_lifetime'
+    ? 'lifetime'
+    : tier === 'pro_yearly'
+      ? 'yearly'
+      : tier === 'pro_monthly'
+        ? 'monthly'
+        : 'subscription';
 
   const captured = await capturePostHogEvent({
     event: 'purchase_completed',
@@ -208,6 +277,9 @@ export async function handleLemonSqueezyWebhook(
       amount,
       currency: order.currency,
       email: order.email || undefined,
+      subscription_id: order.subscriptionId || undefined,
+      billing_reason: order.billingReason || undefined,
+      variant_resolved: order.subscriptionId ? variantResolved : undefined,
     },
   });
 

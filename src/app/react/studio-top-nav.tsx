@@ -14,6 +14,14 @@ import { APP_BASE_PATH } from '../../../shared/app-routes';
 import { downloadCertificateJson } from '../../v6/utils/redact-verify-ui';
 import { trackMonetizationEvent, trackPaywallShown } from './monetization-telemetry';
 import { requestDailyFileAllowance } from './studio-paywall';
+import { getDeviceInstanceName } from '../platform/device-identity';
+
+type LicenseDevice = { id: string; name: string; createdAt: string };
+
+/** Dev serves the SPA from the Vite server, so billing endpoints have to be called on production. */
+function billingApiPath(path: string): string {
+  return import.meta.env.DEV ? `https://localpdf.online${path}` : path;
+}
 
 function truncateFileName(name: string, maxLen = 22): string {
   if (name.length <= maxLen) return name;
@@ -59,7 +67,11 @@ export function StudioTopNav({ telemetryEnabled, onToggleTelemetry, telemetryOpe
   const [downloadTargetDocumentId, setDownloadTargetDocumentId] = useState<string | null>(null);
   const [isActivateOpen, setIsActivateOpen] = useState(false);
   const [licenseToken, setLicenseToken] = useState('');
-  const [activateStatus, setActivateStatus] = useState<'idle' | 'loading' | 'error'>('idle');
+  const [activateStatus, setActivateStatus] = useState<'idle' | 'loading' | 'error' | 'limit'>('idle');
+  const [licenseDevices, setLicenseDevices] = useState<LicenseDevice[]>([]);
+  const [deviceUsage, setDeviceUsage] = useState<{ usage: number | null; limit: number | null }>({ usage: null, limit: null });
+  const [busyDeviceId, setBusyDeviceId] = useState<string>('');
+  const [pendingLicenseKey, setPendingLicenseKey] = useState('');
 
   const [billingContext, setBillingContext] = useState(() => runtime.billing.getContext());
   const [localProEnabled, setLocalProEnabled] = useState(() => runtime.billing.isLocalProEnabled());
@@ -72,6 +84,63 @@ export function StudioTopNav({ telemetryEnabled, onToggleTelemetry, telemetryOpe
     });
   }, [runtime.billing]);
 
+  const loadLicenseDevices = async (
+    options: { token?: string | null; licenseKey?: string } = {},
+  ): Promise<void> => {
+    const token = options.token ?? runtime.billing.getStoredToken();
+    const licenseKey = options.licenseKey ?? '';
+    if (!token && !licenseKey) return;
+    try {
+      const res = await fetch(billingApiPath('/api/billing/devices'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: token || undefined, licenseKey: licenseKey || undefined }),
+      });
+      const data = await res.json();
+      if (data?.success) {
+        setLicenseDevices(Array.isArray(data.devices) ? data.devices : []);
+        setDeviceUsage({ usage: data.usage ?? null, limit: data.limit ?? null });
+      }
+    } catch {
+      // The device list is a convenience; activation itself never depends on it.
+    }
+  };
+
+  const handleDeactivateDevice = async (instanceId: string): Promise<void> => {
+    const token = runtime.billing.getStoredToken();
+    // A customer who is over the limit has no token yet, so their pasted key is the credential.
+    const licenseKey = token ? '' : pendingLicenseKey;
+    if ((!token && !licenseKey) || !instanceId) return;
+    setBusyDeviceId(instanceId);
+    try {
+      const res = await fetch(billingApiPath('/api/billing/deactivate'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: token || undefined, licenseKey: licenseKey || undefined, instanceId }),
+      });
+      const data = await res.json();
+      if (data?.success) {
+        trackMonetizationEvent('billing_device_deactivated', {
+          source: 'activate_modal',
+          status: data.wasCurrentDevice ? 'current_device' : 'other_device',
+        });
+        if (data.wasCurrentDevice) {
+          runtime.billing.clearToken();
+          setLicenseDevices([]);
+          setIsActivateOpen(false);
+          setActivateStatus('idle');
+          return;
+        }
+        await loadLicenseDevices({ token, licenseKey: licenseKey || undefined });
+        setActivateStatus('idle');
+      }
+    } catch {
+      setActivateStatus('error');
+    } finally {
+      setBusyDeviceId('');
+    }
+  };
+
   const handleActivate = async (): Promise<void> => {
     const rawInput = licenseToken.trim();
     if (!rawInput) return;
@@ -83,16 +152,31 @@ export function StudioTopNav({ telemetryEnabled, onToggleTelemetry, telemetryOpe
 
     if (isLicenseKey) {
       try {
-        const restoreUrl = import.meta.env.DEV
-          ? 'https://localpdf.online/api/billing/restore'
-          : '/api/billing/restore';
-        const res = await fetch(restoreUrl, {
+        const res = await fetch(billingApiPath('/api/billing/restore'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ licenseKey: rawInput }),
+          body: JSON.stringify({
+            licenseKey: rawInput,
+            // The server matches this device to its existing instance by name, so re-activating the
+            // same browser never spends a second of the three slots.
+            instanceName: getDeviceInstanceName(),
+          }),
         });
         const data = await res.json();
         if (!data.success) {
+          if (data?.error === 'activation_limit_reached') {
+            setDeviceUsage({ usage: data.usage ?? null, limit: data.limit ?? null });
+            setPendingLicenseKey(rawInput);
+            setActivateStatus('limit');
+            trackMonetizationEvent('billing_device_limit_reached', {
+              source: 'activate_modal',
+              reason: 'activation_limit_reached',
+            });
+            void loadLicenseDevices({ licenseKey: rawInput });
+            if (!import.meta.env.DEV) {
+              return;
+            }
+          }
           if (import.meta.env.DEV) {
             // В режиме разработки подставляем моковый JWT при ошибке валидации
             jwt = 'eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJsb2NhbHBkZi1iaWxsaW5nIiwiYXVkIjoibG9jYWxwZGYtdjYiLCJzdWIiOiJtYW51YWwtdGVzdC1hY3RpdmF0aW9uIiwicGxhbiI6InBybyIsInRpZXIiOiJwcm9fbW9udGhseSIsImVudGl0bGVtZW50cyI6eyJtYXhXb3Jrc3BhY2VzIjoxMDAwLCJtYXhQYWdlc1BlckRvY3VtZW50IjoxMDAwLCJvY3JFbmFibGVkIjp0cnVlLCJlZGl0RW5hYmxlZCI6dHJ1ZSwiZXhwb3J0RW5hYmxlZCI6dHJ1ZX0sImlhdCI6MTc4MDc2NDYxMywibmJmIjoxNzgwNzY0NjEzLCJleHAiOjE3ODMzNTY2MTN9.0dCr02UPqyzobTFOpmJY5AXe4eUVu_VIcn7nMlDcrWEmQth2UDAreK24xTf5PzWZrIcbZ-RNTNDBe6cYW2yeCozkj4pmYnwzPNAFwLejuA0if2IUBFYfkfl8fI4NtcmM5XUYKk568WK03Xx4_bgWa_GCiCSsOdJO_2dXdwOaBTBYIt38usI32xJbUZsq_LroKMr3R8pw0QLh1rowiQe-cOyribMKV5x0LK1AC-tyaF-UOVdN2OC2aQnjY-UnIAemXrKIxXX1ypABHw295lwvK27ySkGuxK0PzPEjEsf82_w3xvqqNLV1oj_k-Do6EZB1w1VYZdZWCjy4av63VdkFvg';
@@ -121,6 +205,12 @@ export function StudioTopNav({ telemetryEnabled, onToggleTelemetry, telemetryOpe
       setIsActivateOpen(false);
       setLicenseToken('');
       setActivateStatus('idle');
+      trackMonetizationEvent('billing_device_activated', {
+        source: 'activate_modal',
+        plan: 'pro',
+        status: 'registered',
+      });
+      void loadLicenseDevices();
     } else {
       setActivateStatus('error');
     }
@@ -471,7 +561,17 @@ export function StudioTopNav({ telemetryEnabled, onToggleTelemetry, telemetryOpe
           </button>
         )}
         {billingContext.plan === 'pro' && !getTrialState().isActive ? (
-          <div className="studio-badge-pro">PRO</div>
+          <>
+            <div className="studio-badge-pro">PRO</div>
+            <button
+              type="button"
+              className="studio-activate-btn"
+              onClick={() => { setIsActivateOpen(true); void loadLicenseDevices(); }}
+              title="Devices activated with this license"
+            >
+              <span className="studio-nav-btn-label">Devices</span>
+            </button>
+          </>
         ) : getTrialState().isActive ? (
           <>
             <div className="studio-badge-trial">TRIAL</div>
@@ -528,6 +628,33 @@ export function StudioTopNav({ telemetryEnabled, onToggleTelemetry, telemetryOpe
               />
               {activateStatus === 'error' && (
                 <p className="studio-activate-error">Invalid or expired license key. Check your email and try again.</p>
+              )}
+              {activateStatus === 'limit' && (
+                <p className="studio-activate-error">
+                  All {deviceUsage.limit ?? 3} device slots for this license are in use. Deactivate one below to free a slot.
+                </p>
+              )}
+              {licenseDevices.length > 0 && (
+                <div className="studio-device-list">
+                  <p className="studio-device-title">
+                    Devices{deviceUsage.usage != null && deviceUsage.limit != null
+                      ? ` (${deviceUsage.usage} of ${deviceUsage.limit})`
+                      : ''}
+                  </p>
+                  {licenseDevices.map((device) => (
+                    <div key={device.id} className="studio-device-row">
+                      <span className="studio-device-name">{device.name}</span>
+                      <button
+                        type="button"
+                        className="studio-device-deactivate"
+                        disabled={busyDeviceId === device.id}
+                        onClick={() => { void handleDeactivateDevice(device.id); }}
+                      >
+                        {busyDeviceId === device.id ? '…' : 'Deactivate'}
+                      </button>
+                    </div>
+                  ))}
+                </div>
               )}
               <div className="studio-activate-actions">
                 <button type="button" className="studio-activate-btn-ghost" onClick={() => { setIsActivateOpen(false); setActivateStatus('idle'); }}>

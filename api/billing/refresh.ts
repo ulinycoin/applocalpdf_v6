@@ -5,7 +5,7 @@ function isNonEmptyString(value: unknown): value is string {
   return typeof value === 'string' && value.trim().length > 0;
 }
 
-function verifyJwtSignature(token: string, publicKeyPem: string): boolean {
+export function verifyJwtSignature(token: string, publicKeyPem: string): boolean {
   try {
     const parts = token.split('.');
     if (parts.length !== 3) return false;
@@ -22,7 +22,7 @@ function verifyJwtSignature(token: string, publicKeyPem: string): boolean {
   }
 }
 
-function decodePayload(token: string): any {
+export function decodePayload(token: string): any {
   try {
     const parts = token.split('.');
     const base64Payload = parts[1].replace(/-/g, '+').replace(/_/g, '/');
@@ -175,6 +175,9 @@ export default async function handler(req: any, res: any) {
       tier: mapped.tier,
       entitlements: PRO_ENTITLEMENTS, // Продлеваем Pro entitlements
       lk: encryptString(licenseKey, privateKeyRaw),
+      // The registered device travels with the token; refreshing must not spend a new activation slot.
+      ins: typeof payload.ins === 'string' && payload.ins ? payload.ins : undefined,
+      lki: typeof payload.lki === 'string' && payload.lki ? payload.lki : undefined,
       iat: now,
       nbf: now,
       exp: newExp,

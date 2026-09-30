@@ -238,6 +238,20 @@ export class BillingService {
     return true;
   }
 
+  /** Raw stored token, so the UI can read which activation instance this device already owns. */
+  public getStoredToken(): string | null {
+    return typeof localStorage !== 'undefined' ? localStorage.getItem(this.storageKey) : null;
+  }
+
+  /** Drops the local license; used after this device's activation slot is released in LemonSqueezy. */
+  public clearToken(): void {
+    if (typeof localStorage !== 'undefined') {
+      localStorage.removeItem(this.storageKey);
+    }
+    const trialState = getTrialState();
+    this.setContext(trialState.isActive ? trialContext() : BASIC_CONTEXT);
+  }
+
   public startTrial(): void {
     startTrial();
     this.setContext(trialContext());

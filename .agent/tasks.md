@@ -1,6 +1,23 @@
 # Active Tasks
 
-Last updated: 2026-09-26
+Last updated: 2026-09-30
+
+## Деньги: первая lifetime-продажа и три невидимых потока (2026-09-30)
+
+Факт продажи (LS API): order 9614552 / №2850867, 30.09 14:46:43 UTC, product 1371816 «LocalPDF Pro», variant 2143549, **$19.00 + $2.47 HST = $21.47**, покупатель Tarana Steinke `tarana@bbtherapy.ca` (CA), live mode. Комиссия LS `app_fee` $1.91 → net **$17.09**. Лицензия `850B857C-…` выдана 14:46:45, activation_limit 3. Путь: /pricing 14:44 → чекаут 14:44:18 → оплата 14:46:43 → /app 14:47:38 (инструменты, save 14:50). Ключ прогнан через прод `POST /api/billing/restore` → `{success:true, tier:'pro_lifetime'}`, 12 entitlements.
+
+| # | Задача | Статус | Что сделано |
+|---|--------|--------|-------------|
+| 1 | Продажа не попала в PostHog | [x] | Причина: прод до 16:09:48 UTC 30.09 крутил сборку без маппинга lifetime (фикс `ea22f53` от 24.09 19:30); вебхук отвечал `200 {ignored:true, reason:'unmapped_product'}`, LS считал доставку успешной и не ретраил. Проверено живым подписанным вебхуком: сейчас отдаёт `tier: pro_lifetime`. Событие дозалито бэкфиллом (`source: backfill_manual`, `backfilled: true`, реальный timestamp 14:46:45, distinct_id сессии покупателя) |
+| 2 | Продления подписки не попадали в аналитику | [x] | `subscription_payment_success` приходит как объект инвойса: нет `product_id`/`variant_id`/`first_order_item`, только `subscription_id` → `mapProductVariantToTier('','')` → null → `ignored:true`. Добавлена ветка `resolveRenewalTier()` (LS `/v1/subscriptions/{id}`, фолбэк-тир `pro_subscription`) + 2 теста на инвойс-фикстуру. Дозалито 5 продлений ($23.67). Выручка за всё время: $17.88 (первые monthly) + $23.67 (продления) + $21.47 (lifetime) = **$63.02 gross** против $36.88, которые считались в плане |
+| 3 | Активация лицензий в LS не работала by design | [x] | Приложение никогда не вызывало `/v1/licenses/activate` (только `validate`), поэтому у всех ключей было `inactive` и 0 из 3 девайсов — включая живого подписчика с июня. Теперь `restore` активирует устройство (`instance_name` = «LocalPDF · Chrome on macOS · <device id>»), матчит существующий инстанс по имени (повторная активация не тратит слот), отдаёт 409 `activation_limit_reached` при 3/3, кладёт `ins`/`lki` в JWT; `refresh` их переносит; новые `api/billing/devices.ts` (список) и `api/billing/deactivate.ts` (освобождение слота) + кнопка Devices у Pro в навбаре |
+| — | Приёмка | [x] | `npm test` 345 pass / 0 fail, `npm run build` (tsc + vite), `npm run audit:workerization:strict` exit 0, `npm run billing:preflight` (1 warning про overlap product ids 917519 — ожидаемый) |
+
+Не сделано и риски:
+- **Деплой не выполнялся** — изменения в рабочем дереве. Пока не задеплоено, активации в LS не появятся, а `billing_device_*` события не полетят.
+- Уже выданные JWT не несут `ins`: устройство подписчика и покупателя lifetime в LS не зарегистрировано, пока они не нажмут Activate заново (слот при этом не сгорит — сработает матч по имени устройства).
+- Настоящего отзыва доступа при деактивации нет: lifetime-JWT живёт 10 лет, поэтому освобождение слота не выбивает устройство из Pro до истечения токена.
+- `featureTier: 'pro'` стоит только у `pdf-editor`; protect/unlock/convert/ocr помечены `basic` — за $19 гейтится почти ничего.
 
 ## P0 — гигиена (sales-plan §3) — выполнено 2026-09-25
 
@@ -18,7 +35,7 @@ Last updated: 2026-09-26
 ## Ждёт фаундера или данных
 
 - [ ] **Дашборд LemonSqueezy:** выключить месячный вариант `1442622` (P0-2, кода не требует)
-- [ ] **Deploy + первая покупка $19:** LS отдаёт 6 ордеров, последний `2026-06-29`, lifetime — 0. Проверить restore Pro по license key (tier `pro_lifetime`) не на чем
+- [x] **Deploy + первая покупка $19:** состоялась 30.09 — order 9614552, lifetime, $21.47 gross / $17.09 net; restore по реальному ключу покупателя проверен в проде (`tier: pro_lifetime`). Раньше здесь стояло «lifetime — 0»
 - [ ] **Гейт по lifetime:** 7 дней после запуска — 2 открытия чекаута, 0 покупок; за 30 дней lifetime 2 / yearly 4 / monthly 4. Свежие 7 дней: `paywall_shown` 116 → `paywall_cta_clicked` 1 → `checkout_opened` 2. Узкое место — клик по CTA (0.86%), не чекаут → следующий шаг P1 (видимость ядра), а не правки пейвола
 - [ ] LLM probe retest web-enabled (Q1/Q3/TECH) — после деплоя
 - [ ] OCR UX: оценки времени и чанки уже в коде (ebc40fa), но за 14 дней всё ещё 3 × `Worker timeout exceeded` + 1 × `Setting up fake worker failed`
@@ -42,7 +59,7 @@ Last updated: 2026-09-26
 ## Ждёт фаундера или данных
 
 - [ ] **Дашборд LemonSqueezy:** выключить месячный вариант `1442622` (P0-2, кода не требует)
-- [ ] **Deploy + первая покупка $19:** LS отдаёт 6 ордеров, последний `2026-06-29`, lifetime — 0. Проверить restore Pro по license key (tier `pro_lifetime`) не на чем
+- [x] **Deploy + первая покупка $19:** состоялась 30.09 — order 9614552, lifetime, $21.47 gross / $17.09 net; restore по реальному ключу покупателя проверен в проде (`tier: pro_lifetime`). Раньше здесь стояло «lifetime — 0»
 - [ ] **Гейт A (+2 недели после P1):** merge ≥ 100/нед, ненулевые split/delete. Считать по `studio_merge_completed` / `studio_split_completed` / `studio_delete_pages` в PostHog. База до P1: событий не существовало
 - [ ] **Проверить первые события руками (1 минута):** автоматический браузер для этого не годится — PostHog JS отбрасывает трафик веб-драйвера (в прогоне Playwright SDK загружался, `__loaded=true`, но ни одного POST на `/ingest/e`; GA4 при этом отправлял). Нужно открыть `/app`, нажать «Upload PDF» или перетащить страницу в другое пространство и посмотреть Activity в PostHog: `studio_empty_state_cta`, `studio_merge_completed`
 - [ ] **Гейт B (+4 недели):** активация `app_tool_run_started` / `/app*` ≥ 25% (с 14.8%), checkout opens ≥ 15/мес (с 8). База 7 дней до P1: `paywall_shown` 116 → `paywall_cta_clicked` 1 → `checkout_opened` 2
