@@ -157,7 +157,7 @@ function hitDeviceRateLimit(bucketKey: string): boolean {
 async function listDevices(
   licenseKeyId: string,
   headers: Record<string, string>,
-): Promise<{ devices: DeviceRow[]; limit: number | null; usage: number | null }> {
+): Promise<{ devices: DeviceRow[]; limit: number | null; usage: number | null; upstream: Record<string, number> }> {
   const [instancesResponse, keyResponse] = await Promise.all([
     fetch(
       `${LS_JSON_API}/license-key-instances?filter%5Blicense_key_id%5D=${encodeURIComponent(licenseKeyId)}&page%5Bsize%5D=25`,
@@ -188,6 +188,7 @@ async function listDevices(
     devices,
     limit: Number.isFinite(limitRaw) ? limitRaw : null,
     usage: Number.isFinite(usageRaw) ? usageRaw : devices.length,
+    upstream: { instances: instancesResponse.status, key: keyResponse.status },
   };
 }
 
@@ -290,6 +291,18 @@ export default async function handler(req: any, res: any) {
 
     const headers = { ...LS_HEADERS, Authorization: `Bearer ${apiKey}` };
     const listed = await listDevices(licenseKeyId, headers);
+
+    // Never answer "no devices" when the truth is "LemonSqueezy refused the read": a stale API key would
+    // otherwise look exactly like a license nobody activated.
+    if (listed.upstream.instances !== 200 || listed.upstream.key !== 200) {
+      console.error('[billing/devices] LemonSqueezy refused the device read', listed.upstream);
+      return res.status(502).json({
+        error: 'device_list_unavailable',
+        details: 'LemonSqueezy did not accept the device lookup; the server API key is missing or expired.',
+        upstream: listed.upstream,
+      });
+    }
+
     return res.status(200).json({
       success: true,
       action: 'list',

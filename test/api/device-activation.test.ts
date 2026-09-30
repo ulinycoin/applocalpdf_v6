@@ -404,6 +404,40 @@ describe('billing devices route', () => {
     }
   });
 
+  test('refuses to report an empty device list when LemonSqueezy rejects the read', async () => {
+    const originalFetch = global.fetch;
+    const originalApiKey = process.env.LEMON_SQUEEZY_API_KEY;
+    process.env.JWT_PRIVATE_KEY = privateKey;
+    process.env.VITE_PUBLIC_JWT_KEY = publicKey;
+    process.env.LEMON_SQUEEZY_API_KEY = 'expired_key';
+
+    const token = await signJwt(
+      {
+        iss: 'localpdf-billing',
+        aud: 'localpdf-v6',
+        lk: encryptString('KEY-123', privateKey),
+        lki: '1291436',
+        exp: Math.floor(Date.now() / 1000) + 3600,
+      },
+      privateKey,
+    );
+
+    global.fetch = async () => new Response('{"errors":[]}', { status: 401 });
+
+    try {
+      const res = fakeResponse();
+      await devicesHandler({ method: 'POST', headers: {}, body: { token, action: 'list' } }, res);
+
+      assert.strictEqual(res.statusCode, 502);
+      assert.strictEqual(res.body.error, 'device_list_unavailable');
+      assert.deepStrictEqual(res.body.upstream, { instances: 401, key: 401 });
+    } finally {
+      global.fetch = originalFetch;
+      if (originalApiKey === undefined) delete process.env.LEMON_SQUEEZY_API_KEY;
+      else process.env.LEMON_SQUEEZY_API_KEY = originalApiKey;
+    }
+  });
+
   test('rejects a token that was not signed by this service', async () => {
     process.env.JWT_PRIVATE_KEY = privateKey;
     process.env.VITE_PUBLIC_JWT_KEY = publicKey;
