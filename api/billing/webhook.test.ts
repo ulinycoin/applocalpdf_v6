@@ -130,6 +130,44 @@ test('handleLemonSqueezyWebhook attributes one-time lifetime purchases', async (
   }
 });
 
+test('handleLemonSqueezyWebhook maps a diagnostic order without writing it to the revenue numbers', async () => {
+  const originalFetch = global.fetch;
+  const seen: string[] = [];
+  process.env.LEMON_SQUEEZY_PRO_LIFETIME_PRODUCT_IDS = '1371816';
+  process.env.LEMON_SQUEEZY_PRO_LIFETIME_VARIANT_IDS = '2143549';
+  process.env.PUBLIC_POSTHOG_KEY = 'phc_test_key';
+
+  global.fetch = async (url: any) => {
+    seen.push(String(url));
+    return new Response('{}', { status: 200 });
+  };
+
+  try {
+    const payload = JSON.stringify({
+      meta: { event_name: 'order_created', custom_data: { distinct_id: 'diag:smoke', diagnostic: true } },
+      data: {
+        id: 'diag-0002',
+        attributes: {
+          total: 1900,
+          currency: 'USD',
+          user_email: 'diag@localpdf.online',
+          first_order_item: { product_id: 1371816, variant_id: 2143549 },
+        },
+      },
+    });
+    const body = Buffer.from(payload);
+    const result = await handleLemonSqueezyWebhook(body, signBody(payload), WEBHOOK_SECRET);
+
+    assert.equal(result.status, 200);
+    assert.equal(result.body.diagnostic, true);
+    // The mapping itself must still be proven by a smoke test.
+    assert.equal(result.body.tier, 'pro_lifetime');
+    assert.equal(seen.length, 0, 'diagnostic orders must not reach PostHog');
+  } finally {
+    global.fetch = originalFetch;
+  }
+});
+
 /**
  * Regression: renewals arrive as subscription-invoice objects with no product/variant ids. They used to
  * fall through `mapProductVariantToTier('', '')` and be answered with `ignored:true`, which LemonSqueezy

@@ -180,6 +180,7 @@ function extractOrderContext(payload: any): {
   eventName: string;
   subscriptionId: string;
   billingReason: string;
+  diagnostic: boolean;
 } | null {
   const eventName = String(payload?.meta?.event_name ?? '');
   if (!PURCHASE_EVENTS.has(eventName)) {
@@ -204,6 +205,11 @@ function extractOrderContext(payload: any): {
   // Present on subscription-invoice payloads (renewals) and on subscription payloads; absent on orders.
   const subscriptionId = String(attributes.subscription_id ?? firstOrderItem.subscription_id ?? '');
   const billingReason = String(attributes.billing_reason ?? '');
+  // Synthetic post-deploy checks set this flag; PostHog cannot delete a stray event afterwards, so the
+  // only safe place to keep test traffic out of the revenue numbers is here.
+  const diagnostic = customData.diagnostic === true
+    || customData.diagnostic === 'true'
+    || /^diag[-:]/i.test(orderId);
 
   return {
     orderId,
@@ -216,6 +222,7 @@ function extractOrderContext(payload: any): {
     eventName,
     subscriptionId,
     billingReason,
+    diagnostic,
   };
 }
 
@@ -261,6 +268,13 @@ export async function handleLemonSqueezyWebhook(
       : tier === 'pro_monthly'
         ? 'monthly'
         : 'subscription';
+
+  // Mapping is still exercised (that is what a post-deploy smoke test needs to prove), but a synthetic
+  // order must never enter the revenue numbers.
+  if (order.diagnostic) {
+    console.warn('[billing/webhook] diagnostic order mapped without capture', order.orderId, tier);
+    return { status: 200, body: { ok: true, diagnostic: true, orderId: order.orderId, tier } };
+  }
 
   const captured = await capturePostHogEvent({
     event: 'purchase_completed',
