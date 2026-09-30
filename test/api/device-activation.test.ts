@@ -428,7 +428,7 @@ describe('billing devices route', () => {
       const res = fakeResponse();
       await devicesHandler({ method: 'POST', headers: {}, body: { token, action: 'list' } }, res);
 
-      assert.strictEqual(res.statusCode, 502);
+      assert.strictEqual(res.statusCode, 409);
       assert.strictEqual(res.body.error, 'device_list_unavailable');
       assert.deepStrictEqual(res.body.upstream, { instances: 401, key: 401 });
     } finally {

@@ -264,7 +264,9 @@ export default async function handler(req: any, res: any) {
       const result = await deactivateInstance(licenseKey, instanceId);
       if (!result.ok) {
         console.warn('[billing/devices] deactivation rejected', result.details);
-        return res.status(502).json({ error: 'deactivation_failed', details: result.details });
+        // 409, not 502: the site sits behind Cloudflare, which replaces the body of any 5xx with its own
+        // error page, so a business-level refusal has to travel as a 4xx to stay readable.
+        return res.status(409).json({ error: 'deactivation_failed', details: result.details });
       }
 
       return res.status(200).json({
@@ -296,7 +298,7 @@ export default async function handler(req: any, res: any) {
     // otherwise look exactly like a license nobody activated.
     if (listed.upstream.instances !== 200 || listed.upstream.key !== 200) {
       console.error('[billing/devices] LemonSqueezy refused the device read', listed.upstream);
-      return res.status(502).json({
+      return res.status(409).json({
         error: 'device_list_unavailable',
         details: 'LemonSqueezy did not accept the device lookup; the server API key is missing or expired.',
         upstream: listed.upstream,
@@ -314,6 +316,6 @@ export default async function handler(req: any, res: any) {
     });
   } catch (error: any) {
     console.error('[billing/devices] failed', error);
-    return res.status(502).json({ error: 'Device request failed', message: error?.message ?? 'Unknown error' });
+    return res.status(409).json({ error: 'device_request_failed', message: error?.message ?? 'Unknown error' });
   }
 }
