@@ -1,5 +1,5 @@
-import { decryptString } from '../../api/billing/restore';
-import { decodePayload, verifyJwtSignature } from '../../api/billing/refresh';
+import { decryptString } from './restore';
+import { decodePayload, verifyJwtSignature } from './refresh';
 
 export type LicenseTokenContext = {
   licenseKey: string;
@@ -107,4 +107,13 @@ export function hitDeviceRateLimit(bucketKey: string): boolean {
  */
 export function resolveLicenseKeyFromRequest(body: any): string {
   return isNonEmptyString(body?.licenseKey) ? body.licenseKey.trim() : '';
+}
+
+/**
+ * Vercel only bundles a file from `api/` into a function when that file is itself a function, so this
+ * shared helper has to keep a default export even though nothing should ever call the route (Hobby plan
+ * also caps a deployment at 12 functions, and `api/` sits at 11).
+ */
+export default async function handler(_req: any, res: any) {
+  return res.status(405).json({ error: 'Method not allowed' });
 }

@@ -4,7 +4,7 @@ import {
   getClientIp,
   hitDeviceRateLimit,
   resolveLicenseKeyFromRequest,
-} from '../../server/billing/device-auth';
+} from './device-auth';
 
 const LS_HEADERS = { Accept: 'application/vnd.api+json' };
 
