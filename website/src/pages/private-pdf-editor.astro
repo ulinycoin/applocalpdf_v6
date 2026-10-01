@@ -2,7 +2,7 @@
 import MarketingLayout from '../layouts/MarketingLayout.astro';
 import { getAppUrl } from '../utils/app-url';
 
-const title = 'Private PDF Editor — Edit PDFs Locally, No Upload';
+const title = 'Private PDF Editor — Edit PDFs Locally | LocalPDF';
 const description = 'Edit, merge, OCR, and sign PDFs privately — all processing stays on your device. No upload, no server. Open and start working locally.';
 const canonical = 'https://localpdf.online/private-pdf-editor';
 const image = 'https://localpdf.online/logos/localpdf-social-1200x630.png';
@@ -16,22 +16,6 @@ const schema = [
     description,
     url: canonical,
     about: { '@type': 'Thing', name: 'Private PDF editor' },
-  },
-  {
-    '@context': 'https://schema.org',
-    '@type': 'FAQPage',
-    mainEntity: [
-      {
-        '@type': 'Question',
-        name: 'What makes LocalPDF a private PDF editor?',
-        acceptedAnswer: { '@type': 'Answer', text: 'LocalPDF is a private PDF editor because it is built around local-first browser workflows for editing, merging, OCR, compression, signing, splitting, and conversion.' },
-      },
-      {
-        '@type': 'Question',
-        name: 'Who is a private PDF editor for?',
-        acceptedAnswer: { '@type': 'Answer', text: 'A private PDF editor is especially useful for lawyers, accountants, operations teams, and privacy-conscious users handling contracts, invoices, records, and internal documents.' },
-      },
-    ],
   },
 ];
 ---
@@ -59,12 +43,33 @@ const schema = [
     </section>
 
     <section class="section">
+      <h2 class="section-title">Erase sensitive content before the file leaves your desk</h2>
+      <p class="section-intro">Whiteout paints over account numbers, names, or clauses and bakes the change into the page. Because the edit happens in your browser, the unredacted version is never sent anywhere.</p>
+      <figure class="demo-figure">
+        <video
+          class="demo-video"
+          src="/demo/localpdf-redact-pdf-whiteout.mp4"
+          poster="/demo/localpdf-redact-pdf-whiteout-poster.webp"
+          width="1200"
+          height="750"
+          muted
+          loop
+          playsinline
+          preload="none"
+          aria-label="Dragging a whiteout box over a confidential account line in the LocalPDF canvas editor, then saving the redacted page"
+        ></video>
+        <figcaption>Redacting an account line on the page. Recorded from the running app.</figcaption>
+      </figure>
+    </section>
+
+    <section class="section">
       <h2 class="section-title">Related workflows</h2>
       <div class="cta-row">
         <a class="btn-secondary" href="/features/edit-pdf">Edit PDF locally</a>
         <a class="btn-secondary" href="/features/merge-pdf">Merge PDF locally</a>
         <a class="btn-secondary" href="/features/ocr-pdf">OCR PDF locally</a>
         <a class="btn-secondary" href="/features/convert-pdf">Convert PDF locally</a>
+        <a class="btn-secondary" href="/features/protect-pdf">Password-protect a PDF locally</a>
       </div>
     </section>
   </div>

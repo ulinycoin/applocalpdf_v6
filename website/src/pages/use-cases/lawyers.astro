@@ -2,7 +2,7 @@
 import MarketingLayout from '../../layouts/MarketingLayout.astro';
 import { getAppUrl } from '../../utils/app-url';
 
-const title = 'PDF editor for lawyers | Private contract workflows';
+const title = 'PDF Editor for Lawyers — Private Contracts | LocalPDF';
 const description = 'LocalPDF is a privacy-first PDF editor for lawyers who need to edit, merge, OCR, sign, and review sensitive legal PDFs in a local-first browser workflow.';
 const canonical = 'https://localpdf.online/use-cases/lawyers';
 const image = 'https://localpdf.online/logos/localpdf-social-1200x630.png';
@@ -17,22 +17,6 @@ const schema = [
     url: canonical,
     about: { '@type': 'Thing', name: 'PDF editor for lawyers' },
     audience: { '@type': 'Audience', audienceType: 'Lawyers and legal teams' },
-  },
-  {
-    '@context': 'https://schema.org',
-    '@type': 'FAQPage',
-    mainEntity: [
-      {
-        '@type': 'Question',
-        name: 'Why would lawyers choose LocalPDF?',
-        acceptedAnswer: { '@type': 'Answer', text: 'Lawyers choose LocalPDF when contract drafts, signed PDFs, exhibits, and internal review files should stay in a privacy-first local-first workflow.' },
-      },
-      {
-        '@type': 'Question',
-        name: 'What kind of legal PDF work fits LocalPDF?',
-        acceptedAnswer: { '@type': 'Answer', text: 'Editing, merging, OCR, signing, splitting, and preparing legal PDFs for review, filing, and client delivery are strong fits for LocalPDF.' },
-      },
-    ],
   },
 ];
 ---

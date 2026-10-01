@@ -6,6 +6,17 @@ export interface FeaturePageData {
   metaTitle: string;
   metaDescription: string;
   socialImage?: string;
+  /**
+   * Canvas demos captured from the running app by `npm run demo:studio-clips`.
+   * Only list tools that were actually recorded — no mockups or staged stills.
+   */
+  demoVideos?: Array<{
+    /** Silent H.264 clip; the poster is what reduced-motion visitors see. */
+    src: string;
+    poster: string;
+    alt: string;
+    caption: string;
+  }>;
   intro: string;
   /** Studio tool this page opens; null means the canvas itself (merge, split, convert). */
   canvasTool: CanvasToolId | null;
@@ -51,6 +62,20 @@ export const featurePages: FeaturePageData[] = [
     metaTitle: 'Edit PDF Locally — Change Text Without Upload | LocalPDF',
     metaDescription: 'Edit PDF text and images locally — no upload needed. Fix typos, add notes, cover sensitive sections — all in your browser. No account, works offline.',
     intro: 'Use LocalPDF when you need to change a PDF directly without sending a sensitive file through an upload-first editor.',
+    demoVideos: [
+      {
+        src: '/demo/localpdf-highlight-pdf-text.mp4',
+        poster: '/demo/localpdf-highlight-pdf-text-poster.webp',
+        alt: 'Highlighting two lines of a contract with the highlighter tool in the LocalPDF canvas editor',
+        caption: 'Highlighting a clause with the highlighter. Recorded from the running app.',
+      },
+      {
+        src: '/demo/localpdf-add-text-to-pdf.mp4',
+        poster: '/demo/localpdf-add-text-to-pdf-poster.webp',
+        alt: 'Typing a text box onto the signature area of a PDF page in the LocalPDF canvas editor',
+        caption: 'Adding a text box to the page. Recorded from the running app.',
+      },
+    ],
     canvasTool: FEATURE_PAGE_CANVAS_TOOLS['edit-pdf'],
     eyebrow: 'Edit PDF',
     capabilities: [
@@ -125,9 +150,17 @@ export const featurePages: FeaturePageData[] = [
   {
     slug: 'merge-pdf',
     title: 'Merge PDF Files Locally — Drag, Drop, and Combine Instantly',
-    metaTitle: 'Merge PDF Files Locally — Combine Documents Securely | LocalPDF',
+    metaTitle: 'Merge PDF Files Locally — No Upload Needed | LocalPDF',
     metaDescription: 'Merge PDF files locally with drag and drop. Combine in your browser — no upload, works offline. Reorder pages and export one clean PDF.',
     intro: 'Merge should feel visual. Grab pages, drag them into place, reorder the packet, and export one clean PDF without fighting menus or waiting on upload loops.',
+    demoVideos: [
+      {
+        src: '/demo/localpdf-merge-pdf-pages.mp4',
+        poster: '/demo/localpdf-merge-pdf-pages-poster.webp',
+        alt: 'Selecting two pages in one PDF workspace and merging them into a second workspace in the LocalPDF canvas',
+        caption: 'Select pages, click Merge, pick the workspace. Recorded from the running app.',
+      },
+    ],
     canvasTool: FEATURE_PAGE_CANVAS_TOOLS['merge-pdf'],
     eyebrow: 'Merge PDF',
     capabilities: [
@@ -202,7 +235,7 @@ export const featurePages: FeaturePageData[] = [
   {
     slug: 'ocr-pdf',
     title: 'OCR PDF Locally — Extract Text from Scans Without Upload',
-    metaTitle: 'OCR PDF Locally — Extract Text from Scans, No Upload | LocalPDF',
+    metaTitle: 'OCR PDF Locally — Extract Text, No Upload | LocalPDF',
     metaDescription: 'Extract text from scanned PDFs locally — no upload, no server. Free OCR runs in your browser via WebAssembly. Make scans searchable in seconds, works offline.',
     intro: 'OCR is a trust-heavy workflow because scanned PDFs often contain legal, medical, or financial information. LocalPDF makes it private and fast.',
     canvasTool: FEATURE_PAGE_CANVAS_TOOLS['ocr-pdf'],
@@ -279,7 +312,7 @@ export const featurePages: FeaturePageData[] = [
   {
     slug: 'compress-pdf',
     title: 'Compress PDF Locally — Reduce File Size Without Upload',
-    metaTitle: 'Compress PDF Locally — Reduce File Size, No Upload | LocalPDF',
+    metaTitle: 'Compress PDF Locally — Reduce Size, No Upload | LocalPDF',
     metaDescription: 'Compress PDF locally — reduce file size by up to 75% without uploading. No server, works offline. Ideal for email and sensitive docs.',
     intro: 'Compression is a practical workflow. It should be fast, predictable, and not require an upload loop before you can send a file.',
     canvasTool: FEATURE_PAGE_CANVAS_TOOLS['compress-pdf'],
@@ -429,6 +462,14 @@ export const featurePages: FeaturePageData[] = [
     metaTitle: 'Free PDF Signer — Sign Documents Online | LocalPDF',
     metaDescription: 'Sign PDF documents locally. Add signatures without printing or scanning — your files never leave your browser. Quick approvals in seconds.',
     intro: 'Signing is a trust-sensitive workflow because signatures are personal, reusable, and easy to mishandle in weak tools.',
+    demoVideos: [
+      {
+        src: '/demo/localpdf-sign-pdf-signature.mp4',
+        poster: '/demo/localpdf-sign-pdf-signature-poster.webp',
+        alt: 'Drawing a signature with the mouse and inserting it onto a PDF page in the LocalPDF canvas editor',
+        caption: 'Drawing a signature, then inserting it onto the page. Recorded from the running app.',
+      },
+    ],
     canvasTool: FEATURE_PAGE_CANVAS_TOOLS['sign-pdf'],
     eyebrow: 'Sign PDF',
     capabilities: [
@@ -639,6 +680,98 @@ export const featurePages: FeaturePageData[] = [
       body: 'Use Auto-TOC to organize documents up to 5 pages for free. Upgrade when working with larger books, reports, or legal bundles to access unlimited TOC parsing across Studio.',
       primaryCtaLabel: 'See Pro plans',
       secondaryCtaLabel: 'Open Auto-TOC',
+    },
+  },
+  {
+    slug: 'protect-pdf',
+    title: 'Protect PDF — Add a password without uploading',
+    metaTitle: 'Protect PDF Locally — Add a Password, No Upload | LocalPDF',
+    metaDescription: 'Add an open password, an owner password, or permission restrictions to a PDF in your browser. The file and the password never leave your device.',
+    intro: 'Password protection is the one PDF job where sending the file to a server defeats the point. LocalPDF encrypts the document in your browser instead.',
+    demoVideos: [
+      {
+        src: '/demo/localpdf-protect-pdf-password.mp4',
+        poster: '/demo/localpdf-protect-pdf-password-poster.webp',
+        alt: 'Setting an open password with the Protect tool in the LocalPDF canvas editor and applying AES-256 encryption',
+        caption: 'Choosing a preset, setting an open password, and encrypting the document. Recorded from the running app.',
+      },
+    ],
+    canvasTool: FEATURE_PAGE_CANVAS_TOOLS['protect-pdf'],
+    eyebrow: 'Protect PDF',
+    capabilities: [
+      'Require a password to open the document',
+      'Restrict printing, copying, modifying, annotating, and form filling',
+      'Choose AES-256 or AES-128 encryption',
+      'Apply it from the canvas without leaving the workspace',
+    ],
+    whyLocal: [
+      'A password-protected document is only as private as the service that processed it. Uploading a file to add a password hands that file to someone else first.',
+      'The password you type stays in the browser tab. There is no server-side job holding the plaintext document and its password at the same time.',
+      'Encryption happens locally, so the protected file is written on your device and nowhere else.',
+    ],
+    howItWorks: [
+      'Open the document in the Studio and pick Protect from the tool rail.',
+      'Choose a preset (Basic, Business, Confidential) or set permissions manually.',
+      'Add an open password, an owner password, or restrict permissions only.',
+      'Apply protection and download the encrypted PDF.',
+    ],
+    useCases: [
+      'Send a contract or invoice that only the recipient should open',
+      'Block copying and editing in a document that still needs to be readable',
+      'Set an owner password so recipients cannot lift your restrictions',
+      'Protect HR, finance, or client files without a third-party service seeing them',
+    ],
+    proofTitle: 'Encryption that never leaves the browser',
+    proofBody: 'The Studio applies AES-256 or AES-128 encryption to the document and writes the protected file locally. The demo above is a recording of that flow on a contract page.',
+    objectionTitle: 'What local protection does not do',
+    objectionBody: 'LocalPDF protects the file itself. It does not manage passwords for you, and it cannot recover an open password you forget — there is no server-side copy to reset. Keep the password somewhere safe.',
+    ctaNote: 'Open Protect PDF when a document needs a password or permission restrictions before it leaves your device.',
+    quickAnswers: [
+      {
+        question: 'Can I password-protect a PDF without uploading it?',
+        answer: 'Yes. The Protect tool runs in your browser: the document is encrypted locally with AES-256 or AES-128, and the plaintext file and password are never sent to a server.',
+      },
+      {
+        question: 'What is the difference between an open password and an owner password?',
+        answer: 'An open password is required to open the document at all. An owner password is required to change the restrictions — someone can read the file but cannot lift limits such as blocked copying or printing.',
+      },
+      {
+        question: 'Can I restrict printing or copying without a password?',
+        answer: 'Yes. Restrictions-only mode sets permissions without asking for a password to open the file. Anyone can read the document, but the restrictions you chose still apply.',
+      },
+      {
+        question: 'What happens if I forget the password?',
+        answer: 'There is no recovery. The file is encrypted on your device and LocalPDF keeps no copy, so a forgotten open password means the document cannot be opened.',
+      },
+    ],
+    intentSection: {
+      title: 'Protect PDF intents covered here',
+      intro: 'This page is the destination for adding protection to a document, including password, permission, and encryption-level jobs.',
+      items: [
+        {
+          title: 'Add a password to a PDF before sharing it',
+          body: 'Use this workflow when a contract, invoice, or internal record has to be opened only by the intended recipient.',
+        },
+        {
+          title: 'Restrict copying, printing, or editing in a PDF',
+          body: 'Restrictions-only mode limits what a recipient can do with the document without adding a password prompt to every open.',
+        },
+        {
+          title: 'Choose an encryption level for a sensitive document',
+          body: 'Pick AES-256 for client, HR, and finance files, or AES-128 when the receiving system is older and needs the lower level.',
+        },
+      ],
+    },
+    blogLinks: [
+      { href: '/features/edit-pdf', title: 'Edit PDF locally' },
+      { href: '/security', title: 'Security & privacy model' },
+    ],
+    monetizationBlock: {
+      eyebrow: 'Free vs Pro',
+      title: 'Protection runs on Pro',
+      body: 'Merging, splitting, and compressing are free. Password protection and permission restrictions are part of Pro, a one-time $19 upgrade that unlocks every Pro tool permanently.',
+      primaryCtaLabel: 'See Pro plans',
+      secondaryCtaLabel: 'Open Protect PDF',
     },
   },
 ];

@@ -8,21 +8,6 @@ const canonical = 'https://localpdf.online/security';
 const image = 'https://localpdf.online/logos/localpdf-social-1200x630.png';
 const appUrl = getAppUrl();
 
-const trustFaqs = [
-  {
-    question: 'What does LocalPDF mean by local-first PDF workflow?',
-    answer: 'The marketing site explains PDF tasks in practical terms and points users into workflows designed to start on the user device.',
-  },
-  {
-    question: 'What should users verify before opening LocalPDF?',
-    answer: 'Users should confirm the workflow fits the job, read the trust boundaries, and decide whether the document should stay in a local-first flow.',
-  },
-  {
-    question: 'Which LocalPDF workflows are most trust-sensitive?',
-    answer: 'Editing, signing, OCR, conversion, and selective page handling are common trust-sensitive PDF jobs because they often involve internal or sensitive documents.',
-  },
-];
-
 const trustWorkflows = [
   { href: '/features/edit-pdf', label: 'Edit PDF' },
   { href: '/features/sign-pdf', label: 'Sign PDF' },
@@ -43,18 +28,6 @@ const securitySchema = [
       name: 'LocalPDF',
       url: 'https://localpdf.online/',
     },
-  },
-  {
-    '@context': 'https://schema.org',
-    '@type': 'FAQPage',
-    mainEntity: trustFaqs.map((faq) => ({
-      '@type': 'Question',
-      name: faq.question,
-      acceptedAnswer: {
-        '@type': 'Answer',
-        text: faq.answer,
-      },
-    })),
   },
   {
     '@context': 'https://schema.org',

@@ -20,37 +20,6 @@ const comparisonRows = [
   ['Tool breadth', 'Focused PDF workspace (edit, merge, OCR, sign, convert)', '30+ utility tools across a large online catalog'],
 ];
 
-const faqSchema = {
-  '@context': 'https://schema.org',
-  '@type': 'FAQPage',
-  mainEntity: [
-    {
-      '@type': 'Question',
-      name: 'When is LocalPDF a better fit than Smallpdf?',
-      acceptedAnswer: {
-        '@type': 'Answer',
-        text: 'LocalPDF is a better fit when the file is sensitive and the user wants a privacy-first workflow that can start locally in the browser instead of with an upload-first handoff.',
-      },
-    },
-    {
-      '@type': 'Question',
-      name: 'What is the biggest difference between LocalPDF and Smallpdf?',
-      acceptedAnswer: {
-        '@type': 'Answer',
-        text: 'The biggest difference is workflow philosophy: LocalPDF emphasizes local-first processing for practical PDF jobs, while Smallpdf is built around a broad online utility suite with upload-first expectations.',
-      },
-    },
-    {
-      '@type': 'Question',
-      name: 'How does LocalPDF pricing compare to Smallpdf?',
-      acceptedAnswer: {
-        '@type': 'Answer',
-        text: 'LocalPDF offers a free tier for quick tasks and a one-time Pro licence at $19 (or $39.99 per year) for unlimited workspaces and full Studio access. Smallpdf uses a free-trial model with individual and team paid plans. Compare current details on the LocalPDF pricing page before checkout.',
-      },
-    },
-  ],
-};
-
 const schema = [
   {
     '@context': 'https://schema.org',
@@ -71,7 +40,6 @@ const schema = [
       { '@type': 'ListItem', position: 3, name: 'LocalPDF vs Smallpdf', item: canonical },
     ],
   },
-  faqSchema,
 ];
 ---
 

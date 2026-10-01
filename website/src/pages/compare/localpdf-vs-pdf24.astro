@@ -13,9 +13,22 @@ const comparisonRows = [
   ['Primary strengths', 'Privacy-first positioning', 'Utility breadth and free-tool coverage'],
   ['Best for', 'Contracts, invoices, internal records', 'General everyday PDF tasks'],
 ];
+
+/* Only markup that is visible on the page: no FAQPage without a rendered FAQ block. */
+const schema = [
+  {
+    '@context': 'https://schema.org',
+    '@type': 'Article',
+    headline: title,
+    description,
+    url: canonical,
+    author: { '@type': 'Organization', name: 'LocalPDF' },
+    publisher: { '@type': 'Organization', name: 'LocalPDF' },
+  },
+];
 ---
 
-<MarketingLayout title={title} description={description} canonical={canonical} image={image}>
+<MarketingLayout title={title} description={description} canonical={canonical} image={image} schema={schema}>
   <div class="page-shell compare-shell">
     <section class="section hero">
       <span class="eyebrow">Comparison</span>

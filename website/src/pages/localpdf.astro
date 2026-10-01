@@ -53,53 +53,6 @@ const domainFacts = [
   },
 ];
 
-const faqSchema = {
-  '@context': 'https://schema.org',
-  '@type': 'FAQPage',
-  mainEntity: [
-    {
-      '@type': 'Question',
-      name: 'Is localpdf.net the same as localpdf.online?',
-      acceptedAnswer: {
-        '@type': 'Answer',
-        text: 'No. localpdf.net is a separate PDF tool website with no stated affiliation to LocalPDF (localpdf.online). LocalPDF is the product at localpdf.online.',
-      },
-    },
-    {
-      '@type': 'Question',
-      name: 'Is localpdf.tech a real PDF tool?',
-      acceptedAnswer: {
-        '@type': 'Answer',
-        text: 'No PDF tool service was detected at localpdf.tech. On the scan date the domain resolved to a parked page marked as potentially for sale.',
-      },
-    },
-    {
-      '@type': 'Question',
-      name: 'Which LocalPDF has in-browser OCR?',
-      acceptedAnswer: {
-        '@type': 'Answer',
-        text: 'LocalPDF at localpdf.online offers OCR that runs in the browser with local processing, plus canvas-based PDF editing, merge, split, compress, sign, convert, and protect.',
-      },
-    },
-    {
-      '@type': 'Question',
-      name: 'Does LocalPDF upload my files to a server?',
-      acceptedAnswer: {
-        '@type': 'Answer',
-        text: 'No. LocalPDF is designed to process PDFs locally in the browser. Core workflows (edit, merge, OCR, compress, split, sign, convert) run without an upload-first handoff.',
-      },
-    },
-    {
-      '@type': 'Question',
-      name: 'What is the official LocalPDF website?',
-      acceptedAnswer: {
-        '@type': 'Answer',
-        text: 'The official LocalPDF product is at localpdf.online.',
-      },
-    },
-  ],
-};
-
 const schema = [
   {
     '@context': 'https://schema.org',
@@ -128,7 +81,6 @@ const schema = [
       { '@type': 'ListItem', position: 2, name: 'LocalPDF (official)', item: canonical },
     ],
   },
-  faqSchema,
 ];
 ---
 

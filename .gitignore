@@ -52,6 +52,7 @@ generate-large.mjs
 test/fixtures/pdfs/debug/
 
 # Developer scratch / mockups / logs
+.tmp/
 scratch/
 mockup-*.html
 mockup.html

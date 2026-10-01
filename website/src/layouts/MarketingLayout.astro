@@ -158,6 +158,65 @@ const { title, description, canonical, image, imageAlt, schema, noindex = false,
         font-size: 1.02rem;
       }
 
+      /* Canvas demo blocks — shared by the landing page, feature pages, and category pages.
+         Assets come from `npm run demo:studio-clips`; they are captured app recordings. */
+      .demo-grid {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 20px;
+      }
+
+      .demo-grid--pair {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .demo-figure {
+        margin: 0;
+        padding: 14px;
+        border: 1px solid var(--line);
+        border-radius: 20px;
+        background: var(--surface);
+      }
+
+      .demo-figure picture {
+        display: block;
+      }
+
+      .demo-figure video {
+        display: block;
+        width: 100%;
+        height: auto;
+        border-radius: 12px;
+        border: 1px solid rgba(20, 32, 40, 0.06);
+        background: #f1ede6;
+      }
+
+      .demo-figure img {
+        display: block;
+        width: 100%;
+        height: auto;
+        border-radius: 12px;
+        border: 1px solid rgba(20, 32, 40, 0.06);
+      }
+
+      .demo-figure figcaption {
+        margin-top: 12px;
+        font-size: 0.9rem;
+        color: #536674;
+        line-height: 1.5;
+      }
+
+      .demo-figure figcaption a {
+        color: var(--accent);
+        font-weight: 700;
+      }
+
+      @media (max-width: 900px) {
+        .demo-grid--pair {
+          grid-template-columns: 1fr;
+        }
+      }
+
       .card-grid {
         display: grid;
         grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -250,5 +309,45 @@ const { title, description, canonical, image, imageAlt, schema, noindex = false,
       <slot />
     </main>
     <SiteFooter />
+    <script>
+      /**
+       * Canvas demo clips. They ship with `preload="none"` and no `autoplay`, so nothing is
+       * fetched until a clip is near the viewport. Visitors who ask for reduced motion keep
+       * the poster and get controls instead of an animation starting on its own.
+       */
+      const demos = Array.from(document.querySelectorAll('video.demo-video'));
+      const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+
+      for (const video of demos) {
+        if (reducedMotion.matches) {
+          video.controls = true;
+          continue;
+        }
+
+        const observer = new IntersectionObserver((entries) => {
+          for (const entry of entries) {
+            if (!entry.isIntersecting) continue;
+            observer.disconnect();
+            video.autoplay = true;
+            void video.play().catch(() => {});
+          }
+        }, { rootMargin: '250px' });
+
+        observer.observe(video);
+      }
+
+      // Someone toggling the OS setting mid-session should not keep an animation running.
+      reducedMotion.addEventListener('change', (event) => {
+        for (const video of demos) {
+          if (event.matches) {
+            video.pause();
+            video.controls = true;
+          } else {
+            video.controls = false;
+            void video.play().catch(() => {});
+          }
+        }
+      });
+    </script>
   </body>
 </html>

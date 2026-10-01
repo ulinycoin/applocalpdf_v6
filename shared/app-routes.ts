@@ -17,7 +17,8 @@ const LEGACY_TARGET_ROUTE_MAP: Record<string, string> = {
   watermark: APP_STUDIO_EDIT_ROUTE,
   'watermark-pdf': APP_STUDIO_EDIT_ROUTE,
   protect: APP_STUDIO_EDIT_ROUTE,
-  'protect-pdf': APP_STUDIO_EDIT_ROUTE,
+  /* Feature-page slug: the canvas opens the Protect tool via ?tool=, not a standalone screen. */
+  'protect-pdf': APP_STUDIO_ROUTE,
   'add-form-fields': APP_STUDIO_EDIT_ROUTE,
   'add-form-fields-pdf': APP_STUDIO_EDIT_ROUTE,
   flatten: APP_STUDIO_EDIT_ROUTE,

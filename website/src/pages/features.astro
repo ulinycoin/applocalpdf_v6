@@ -17,6 +17,7 @@ const tools = [
   { slug: 'sign-pdf', title: 'Sign PDF', desc: 'Add signatures, initials, and complete signing workflows on your device.', icon: '✍️' },
   { slug: 'convert-pdf', title: 'Convert PDF', desc: 'Convert PDF to Word, images, and other formats — or convert files to PDF.', icon: '🔄' },
   { slug: 'auto-toc-pdf', title: 'Auto Table of Contents', desc: 'Generate a table of contents from your PDF headings automatically.', icon: '📋' },
+  { slug: 'protect-pdf', title: 'Protect PDF', desc: 'Add an open password, an owner password, or permission restrictions with local encryption.', icon: '🔒' },
 ];
 
 const schema = [
@@ -33,22 +34,6 @@ const schema = [
       name: t.title,
       url: `https://localpdf.online/features/${t.slug}`,
     })),
-  },
-  {
-    '@context': 'https://schema.org',
-    '@type': 'FAQPage',
-    mainEntity: [
-      {
-        '@type': 'Question',
-        name: 'Are these PDF tools really free?',
-        acceptedAnswer: { '@type': 'Answer', text: 'Yes. All core PDF tools — edit, merge, split, compress, sign, convert, and auto TOC — are free. Pro adds unlimited workspaces and larger documents for recurring work.' },
-      },
-      {
-        '@type': 'Question',
-        name: 'Do I need to upload my PDF to use these tools?',
-        acceptedAnswer: { '@type': 'Answer', text: 'No. Every tool runs locally in your browser via WebAssembly. You open a file from your device, work on it, and download the result — no uploads or server storage.' },
-      },
-    ],
   },
 ];
 ---

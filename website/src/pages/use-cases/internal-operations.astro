@@ -7,9 +7,22 @@ const description = 'Local-first PDF workflows for internal packets, admin recor
 const canonical = 'https://localpdf.online/use-cases/internal-operations';
 const image = 'https://localpdf.online/logos/localpdf-social-1200x630.png';
 const appUrl = getAppUrl();
+
+/* Only markup that is visible on the page: no FAQPage without a rendered FAQ block. */
+const schema = [
+  {
+    '@context': 'https://schema.org',
+    '@type': 'WebPage',
+    name: title,
+    description,
+    url: canonical,
+    about: { '@type': 'Thing', name: 'PDF workflows for internal operations' },
+    audience: { '@type': 'Audience', audienceType: 'Operations and admin teams' },
+  },
+];
 ---
 
-<MarketingLayout title={title} description={description} canonical={canonical} image={image}>
+<MarketingLayout title={title} description={description} canonical={canonical} image={image} schema={schema}>
   <div class="page-shell usecase-shell">
     <section class="section hero">
       <span class="eyebrow">Use case</span>

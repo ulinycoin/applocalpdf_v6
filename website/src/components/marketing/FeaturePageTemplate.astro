@@ -413,6 +413,35 @@ const schema = [
       </div>
     </section>
 
+    {page.demoVideos && page.demoVideos.length > 0 && (
+      <section class="section demo-section">
+        <span class="eyebrow">Canvas demo</span>
+        <h2 class="section-title">Watch the tool work on the canvas</h2>
+        <p class="section-intro">
+          Recorded from the running app — the same build you get in the browser, no mockups and no upload.
+        </p>
+        <div class={`demo-grid${page.demoVideos.length > 1 ? ' demo-grid--pair' : ''}`}>
+          {page.demoVideos.map((demo) => (
+            <figure class="demo-figure">
+              <video
+                class="demo-video"
+                src={demo.src}
+                poster={demo.poster}
+                width="1200"
+                height="750"
+                muted
+                loop
+                playsinline
+                preload="none"
+                aria-label={demo.alt}
+              ></video>
+              <figcaption>{demo.caption}</figcaption>
+            </figure>
+          ))}
+        </div>
+      </section>
+    )}
+
     <section class="section">
       <h2 class="section-title">What you can do here</h2>
       <p class="section-intro">

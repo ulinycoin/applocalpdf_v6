@@ -2,7 +2,7 @@
 import MarketingLayout from '../layouts/MarketingLayout.astro';
 import { getAppUrl } from '../utils/app-url';
 
-const title = 'PDF tools without upload | Local-first browser workflows';
+const title = 'PDF Tools Without Upload — Local-First Workflows | LocalPDF';
 const description = 'Edit, merge, OCR, compress, split, and convert PDFs without uploading. Local workflows in your browser — free to start, Pro for recurring work.';
 const canonical = 'https://localpdf.online/pdf-tools-without-upload';
 const image = 'https://localpdf.online/logos/localpdf-social-1200x630.png';
@@ -18,45 +18,6 @@ const toolRows = [
   ['Convert PDF', 'PDF ↔ Word, images, and other practical formats', '/features/convert-pdf'],
 ];
 
-const faqSchema = {
-  '@context': 'https://schema.org',
-  '@type': 'FAQPage',
-  mainEntity: [
-    {
-      '@type': 'Question',
-      name: 'Can I use PDF tools without uploading my file?',
-      acceptedAnswer: {
-        '@type': 'Answer',
-        text: 'LocalPDF is designed so core PDF workflows can start locally in the browser. That is different from upload-first tools where the default step is sending your file to a remote server before any work begins.',
-      },
-    },
-    {
-      '@type': 'Question',
-      name: 'What PDF tools does LocalPDF include without an upload-first workflow?',
-      acceptedAnswer: {
-        '@type': 'Answer',
-        text: 'LocalPDF covers edit, merge, OCR, compress, split, sign, and convert workflows in one workspace-style product path instead of a maze of separate utility pages.',
-      },
-    },
-    {
-      '@type': 'Question',
-      name: 'Is LocalPDF free for PDF tools without upload?',
-      acceptedAnswer: {
-        '@type': 'Answer',
-        text: 'Yes. LocalPDF has a free tier for quick tasks on your device. Pro unlocks unlimited workspaces, larger documents, and full Studio access for recurring PDF work.',
-      },
-    },
-    {
-      '@type': 'Question',
-      name: 'Who should look for PDF tools without upload?',
-      acceptedAnswer: {
-        '@type': 'Answer',
-        text: 'Teams handling contracts, invoices, HR records, legal drafts, and internal operations PDFs often search for this category when upload-first handling feels like the wrong default.',
-      },
-    },
-  ],
-};
-
 const schema = [
   {
     '@context': 'https://schema.org',
@@ -66,7 +27,6 @@ const schema = [
     url: canonical,
     about: { '@type': 'Thing', name: 'PDF tools without upload' },
   },
-  faqSchema,
 ];
 ---
 

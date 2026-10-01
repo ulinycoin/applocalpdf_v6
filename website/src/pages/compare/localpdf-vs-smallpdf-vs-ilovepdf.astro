@@ -110,36 +110,6 @@ const schema = [
       { '@type': 'ListItem', position: 3, name: 'LocalPDF vs Smallpdf vs iLovePDF', item: canonical },
     ],
   },
-  {
-    '@context': 'https://schema.org',
-    '@type': 'FAQPage',
-    mainEntity: [
-      {
-        '@type': 'Question',
-        name: 'How does LocalPDF compare to Smallpdf and iLovePDF on privacy?',
-        acceptedAnswer: {
-          '@type': 'Answer',
-          text: 'LocalPDF is the only tool among the three that processes PDFs locally in the browser. Smallpdf and iLovePDF upload files to cloud servers. This makes LocalPDF the stronger choice for sensitive documents like contracts, invoices, and internal records.',
-        },
-      },
-      {
-        '@type': 'Question',
-        name: 'Does LocalPDF have better security headers than Smallpdf and iLovePDF?',
-        acceptedAnswer: {
-          '@type': 'Answer',
-          text: 'Based on a public automated surface scan conducted on 2026-07-08, LocalPDF.com served Content-Security-Policy, X-Frame-Options: DENY, X-Content-Type-Options: nosniff, Referrer-Policy, and Permissions-Policy headers. Neither Smallpdf.com nor iLovePDF.com served these headers during the same scan. These are factual header observations only and not a full security assessment.',
-        },
-      },
-      {
-        '@type': 'Question',
-        name: 'Which service has fewer third-party cookies?',
-        acceptedAnswer: {
-          '@type': 'Answer',
-          text: 'Smallpdf set 1 cookie on its homepage during testing, and iLovePDF also set 1. LocalPDF set 4 across its homepage. Cookie counts vary by consent state and may change over time.',
-        },
-      },
-    ],
-  },
 ];
 ---
 
