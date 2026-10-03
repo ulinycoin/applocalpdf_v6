@@ -64,7 +64,6 @@ export interface IWorkspaceSnapshot {
     documents: StudioDocument[];
     detachedPages: DetachedPageItem[];
     activeDocumentId: string | null;
-    activeEditPageId: string | null;
     requestedInlineTool: 'compress-pdf' | null;
     operationScope: StudioOperationScope;
     viewScale: number;

@@ -15,6 +15,14 @@ import {
     type SaveCheckpointEntry,
 } from '../studio-store';
 import { useHistoryStore } from '../store/history-store';
+import { buildTextEditCommitMetrics, resolveTextEditMode } from '../../../utils/studio-text-edit-metrics';
+import {
+    createEditHistory,
+    currentEditHistoryEntry,
+    pushEditHistory,
+    redoEditHistory,
+    undoEditHistory,
+} from '../store/edit-history-stack';
 import { requestTextLayerSpans, requestTextLayerSpansFallback } from '../../../pdf/text-layer-client';
 import { CommandExecutor } from '../store/command-manager';
 import type { StudioToolRouteState } from '../../../studio/navigation/studio-tool-context';
@@ -42,24 +50,6 @@ import {
   trackRedactVerifyTelemetry,
   type StudioRedactVerifyState,
 } from '../../../utils/redact-verify-ui';
-
-const STUDIO_TOOL_CONTEXT = {
-    userId: 'studio-user',
-    plan: 'pro' as const,
-    entitlements: [
-        'pdf.merge',
-        'pdf.split',
-        'pdf.compress',
-        'pdf.ocr',
-        'pdf.rotate',
-        'pdf.delete_pages',
-        'pdf.edit',
-        'pdf.to_image',
-        'office.convert',
-        'pdf.protect.encrypt',
-        'pdf.protect.unlock',
-    ],
-};
 
 export interface SelectedPage {
     docId: string;
@@ -200,8 +190,13 @@ export function useStudioEditController(ui: any) {
     const [textAddMode, setTextAddMode] = useState(false);
     const [elements, setElements] = useState<EditElement[]>([]);
     const elementsRef = useRef<EditElement[]>([]);
-    const [history, setHistory] = useState<EditElement[][]>([[]]);
-    const [historyIndex, setHistoryIndex] = useState(0);
+    // Entries and cursor live in one state object: two separate useState values drifted apart when
+    // a commit and a tool action pushed in the same tick (the second slice dropped the first entry
+    // while the cursor advanced twice), which made the committed text unreachable by undo.
+    const [historyState, setHistoryState] = useState(() => createEditHistory<EditElement[]>([]));
+    const history = historyState.entries;
+    const historyIndex = historyState.index;
+    const resetHistory = useCallback(() => setHistoryState(createEditHistory<EditElement[]>([])), []);
     const [selectedElementId, setSelectedElementId] = useState<string | null>(null);
     const [message, setMessage] = useState<string | null>(null);
     const [isApplying, setIsApplying] = useState(false);
@@ -370,13 +365,12 @@ export function useStudioEditController(ui: any) {
 
     useEffect(() => {
         setElementsSafe([]);
-        setHistory([[]]);
-        setHistoryIndex(0);
+        resetHistory();
         setSelectedElementId(null);
         setTextEditor(null);
         setInlineUiState('idle');
         clearSaveStacks();
-    }, [preview?.page.id, preview?.page.pageIndex, clearSaveStacks, setElementsSafe]);
+    }, [preview?.page.id, preview?.page.pageIndex, clearSaveStacks, resetHistory, setElementsSafe]);
 
     useEffect(() => {
         if (!preview) return;
@@ -412,12 +406,9 @@ export function useStudioEditController(ui: any) {
     }, [preview?.page.id, preview?.page.fileId, preview?.page.pageIndex, runtime, ui.noTextLayer]);
 
     const pushHistory = useCallback((next: EditElement[]) => {
-        setHistory((prev) => {
-            const trimmed = prev.slice(0, historyIndex + 1);
-            return [...trimmed, next];
-        });
-        setHistoryIndex((prev) => prev + 1);
-    }, [historyIndex]);
+        // Atomic on purpose: see edit-history-stack for the double-push regression it prevents.
+        setHistoryState((prev) => pushEditHistory(prev, next));
+    }, []);
 
     const addElement = useCallback((element: EditElement) => {
         const next = [...elementsRef.current, element];
@@ -492,22 +483,22 @@ export function useStudioEditController(ui: any) {
     }, [addElement]);
 
     const undo = useCallback(() => {
-        if (historyIndex <= 0) return;
-        const nextIndex = historyIndex - 1;
-        setHistoryIndex(nextIndex);
-        setElementsSafe(history[nextIndex] ?? []);
+        const next = undoEditHistory(historyState);
+        if (next === historyState) return;
+        setElementsSafe(currentEditHistoryEntry(next) ?? []);
+        setHistoryState(next);
         setSelectedElementId(null);
         setTextEditor(null);
-    }, [history, historyIndex, setElementsSafe]);
+    }, [historyState, setElementsSafe]);
 
     const redo = useCallback(() => {
-        if (historyIndex >= history.length - 1) return;
-        const nextIndex = historyIndex + 1;
-        setHistoryIndex(nextIndex);
-        setElementsSafe(history[nextIndex] ?? []);
+        const next = redoEditHistory(historyState);
+        if (next === historyState) return;
+        setElementsSafe(currentEditHistoryEntry(next) ?? []);
+        setHistoryState(next);
         setSelectedElementId(null);
         setTextEditor(null);
-    }, [history, historyIndex, setElementsSafe]);
+    }, [historyState, setElementsSafe]);
 
     const deleteSelected = useCallback(() => {
         if (!selectedElementId) return;
@@ -542,6 +533,81 @@ export function useStudioEditController(ui: any) {
         }
         runtime.telemetry.track({ type: 'STUDIO_EDIT_FLOATING_MENU_ACTION', runId: sessionRunId, toolId: 'studio.edit', action, changeType });
     }, [elements, pushHistory, runtime.telemetry, sessionRunId, setElementsSafe]);
+
+    // Text-edit sessions are observed from state transitions instead of threading a telemetry prop
+    // through every tool: `textEditor` goes from null to a value when the in-place editor opens and
+    // back to null when it is committed.
+    const textEditSessionRef = useRef<{
+        id: string;
+        runId: string;
+        initialValue: string;
+        mode: 'existing-line' | 'new-box';
+    } | null>(null);
+    const textEditLatestValueRef = useRef('');
+
+    useEffect(() => {
+        const session = textEditSessionRef.current;
+        const fileId = preview?.page.fileId ?? '';
+        const pageIndex = preview?.page.pageIndex ?? 0;
+
+        if (!textEditor) {
+            if (session) {
+                const metrics = buildTextEditCommitMetrics({
+                    initialValue: session.initialValue,
+                    value: textEditLatestValueRef.current,
+                });
+                runtime.telemetry.track({
+                    type: 'STUDIO_TEXT_EDIT_COMMITTED',
+                    runId: session.runId,
+                    toolId: 'studio.edit.text',
+                    fileId,
+                    pageIndex,
+                    mode: session.mode,
+                    ...metrics,
+                });
+                textEditSessionRef.current = null;
+            }
+            return;
+        }
+
+        if (session && session.id !== textEditor.id) {
+            // Jumping straight from one line to another: close the previous session first so it is
+            // not silently dropped from the metrics.
+            runtime.telemetry.track({
+                type: 'STUDIO_TEXT_EDIT_COMMITTED',
+                runId: session.runId,
+                toolId: 'studio.edit.text',
+                fileId,
+                pageIndex,
+                mode: session.mode,
+                ...buildTextEditCommitMetrics({
+                    initialValue: session.initialValue,
+                    value: textEditLatestValueRef.current,
+                }),
+            });
+            textEditSessionRef.current = null;
+        }
+
+        textEditLatestValueRef.current = textEditor.value;
+        if (textEditSessionRef.current && textEditSessionRef.current.id === textEditor.id) {
+            return;
+        }
+
+        const element = elementsRef.current.find((item) => item.id === textEditor.id) as
+            | { originalRect?: unknown; sourceFontName?: string }
+            | undefined;
+        const mode = resolveTextEditMode(element);
+        const runId = crypto.randomUUID();
+        textEditSessionRef.current = { id: textEditor.id, runId, initialValue: textEditor.initialValue, mode };
+        runtime.telemetry.track({
+            type: 'STUDIO_TEXT_EDIT_STARTED',
+            runId,
+            toolId: 'studio.edit.text',
+            fileId,
+            pageIndex,
+            mode,
+        });
+    }, [textEditor, preview?.page.fileId, preview?.page.pageIndex, runtime.telemetry]);
 
     const commitTextEditor = useCallback(() => {
         if (!textEditor) return;
@@ -652,8 +718,7 @@ export function useStudioEditController(ui: any) {
             setTextEditor(null);
             setSelectedElementId(null);
             setElementsSafe([]);
-            setHistory([[]]);
-            setHistoryIndex(0);
+            resetHistory();
             if (checkpointEntries.length > 0) {
                 if (USE_COMMAND_PATTERN_FOR_SAVES) {
                     pushCommandUndo({
@@ -730,7 +795,7 @@ export function useStudioEditController(ui: any) {
                         },
                     },
                 },
-                STUDIO_TOOL_CONTEXT,
+                runtime.billing.getContext(),
             );
 
             if (result.type === 'TOOL_ERROR') {
@@ -742,7 +807,8 @@ export function useStudioEditController(ui: any) {
                 return;
             }
             if (result.type === 'TOOL_ACCESS_DENIED') {
-                setMessage(result.details ?? result.reason);
+                // The runner has already published the upsell overlay; keep the canvas message human.
+                setMessage(ui.proRequired);
                 return;
             }
 

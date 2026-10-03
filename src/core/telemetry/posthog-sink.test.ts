@@ -216,3 +216,67 @@ test('PostHogTelemetrySink forwards studio page operations under their own event
     }
   }
 });
+
+test('PostHogTelemetrySink sends text editing telemetry without any document text', () => {
+  const calls: Array<{ event: string; properties?: Record<string, unknown> }> = [];
+  const globalWindow = globalThis as any;
+  const originalWindow = globalWindow.window;
+  globalWindow.window = {
+    posthog: {
+      capture: (event: string, properties?: Record<string, unknown>) => {
+        calls.push({ event, properties });
+      },
+    },
+  };
+
+  try {
+    const sink = new PostHogTelemetrySink();
+
+    sink.track({
+      type: 'STUDIO_TEXT_EDIT_STARTED',
+      runId: 'run-1',
+      toolId: 'studio.edit.text',
+      fileId: 'file-1',
+      pageIndex: 2,
+      mode: 'existing-line',
+    });
+    sink.track({
+      type: 'STUDIO_TEXT_EDIT_COMMITTED',
+      runId: 'run-1',
+      toolId: 'studio.edit.text',
+      fileId: 'file-1',
+      pageIndex: 2,
+      mode: 'existing-line',
+      changed: true,
+      charsBefore: 10,
+      charsAfter: 14,
+      charsDelta: 4,
+      lines: 1,
+      multiline: false,
+    });
+    sink.track({
+      type: 'STUDIO_EDIT_FLOATING_MENU_ACTION',
+      runId: 'run-1',
+      toolId: 'studio.edit',
+      action: 'update',
+      changeType: 'fontSize',
+    });
+
+    assert.equal(calls[0]?.event, 'studio_text_edit_started');
+    assert.equal(calls[0]?.properties?.mode, 'existing-line');
+    assert.equal(calls[0]?.properties?.page_index, 2);
+
+    assert.equal(calls[1]?.event, 'studio_text_edit_committed');
+    assert.equal(calls[1]?.properties?.chars_delta, 4);
+    assert.equal(calls[1]?.properties?.changed, true);
+
+    assert.equal(calls[2]?.event, 'studio_edit_element_action');
+    assert.equal(calls[2]?.properties?.change_type, 'fontSize');
+
+    // Nothing that could carry user content may leave the browser.
+    const serialized = JSON.stringify(calls);
+    assert.equal(/text"\s*:/.test(serialized), false, `unexpected text field: ${serialized}`);
+  } finally {
+    globalWindow.window = originalWindow;
+  }
+});

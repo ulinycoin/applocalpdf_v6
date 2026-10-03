@@ -49,6 +49,7 @@ export interface StudioEditMessages {
   changesAppliedSelection: string;
   partialSaveFailed: string;
   saveFailed: string;
+  proRequired: string;
   unsavedConfirm: string;
   overflowWarning: string;
   statusIdle: string;
@@ -115,6 +116,7 @@ const EN_MESSAGES: StudioEditMessages = {
   changesAppliedSelection: 'Changes applied to selected pages:',
   partialSaveFailed: 'Some selected pages failed to save.',
   saveFailed: 'Failed to save changes.',
+  proRequired: 'This tool is part of LocalPDF Pro. Upgrade to continue.',
   unsavedConfirm: 'You have unsaved changes. Leave without saving?',
   overflowWarning: 'Text overflowed available width. Font size was reduced to fit.',
   statusIdle: 'idle',

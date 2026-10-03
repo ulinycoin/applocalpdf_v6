@@ -95,7 +95,6 @@ function seedWorkspaceSnapshot(params: {
   documents: StudioDocument[];
   detachedPages?: DetachedPageItem[];
   activeDocumentId: string | null;
-  activeEditPageId: string | null;
   requestedInlineTool: 'compress-pdf' | null;
   operationScope: 'selection' | 'document';
   viewScale: number;
@@ -116,7 +115,6 @@ function seedWorkspaceSnapshot(params: {
 
   useUIStore.setState({
     activeDocumentId: params.activeDocumentId,
-    activeEditPageId: params.activeEditPageId,
     requestedInlineTool: params.requestedInlineTool,
     operationScope: params.operationScope,
     studioViewScale: params.viewScale,
@@ -156,7 +154,6 @@ test('createCheckpoint clears redo history and unpins truncated future snapshots
       },
     ],
     activeDocumentId: 'doc-1',
-    activeEditPageId: 'page-a',
     requestedInlineTool: null,
     operationScope: 'selection',
     viewScale: 1,
@@ -178,7 +175,6 @@ test('createCheckpoint clears redo history and unpins truncated future snapshots
       },
     ],
     activeDocumentId: 'doc-1',
-    activeEditPageId: 'page-b',
     requestedInlineTool: null,
     operationScope: 'selection',
     viewScale: 1,
@@ -205,7 +201,6 @@ test('createCheckpoint clears redo history and unpins truncated future snapshots
       },
     ],
     activeDocumentId: 'doc-1',
-    activeEditPageId: 'page-a',
     requestedInlineTool: null,
     operationScope: 'selection',
     viewScale: 1,
@@ -250,7 +245,6 @@ test('restoreCheckpoint restores workspace and UI state atomically enough for St
       },
     ],
     activeDocumentId: 'doc-1',
-    activeEditPageId: 'page-a',
     requestedInlineTool: 'compress-pdf',
     operationScope: 'document',
     viewScale: 1.75,
@@ -281,7 +275,6 @@ test('restoreCheckpoint restores workspace and UI state atomically enough for St
     ],
     detachedPages: [],
     activeDocumentId: 'doc-2',
-    activeEditPageId: 'page-b',
     requestedInlineTool: null,
     operationScope: 'selection',
     viewScale: 0.5,
@@ -311,7 +304,6 @@ test('restoreCheckpoint restores workspace and UI state atomically enough for St
   assert.equal(documents[0].name, 'Original');
   assert.equal(useDocumentStore.getState().detachedPages.length, 1);
   assert.equal(ui.activeDocumentId, 'doc-1');
-  assert.equal(ui.activeEditPageId, 'page-a');
   assert.equal(ui.requestedInlineTool, 'compress-pdf');
   assert.equal(ui.operationScope, 'document');
   assert.equal(ui.interactionMode, 'convert');

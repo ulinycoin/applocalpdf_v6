@@ -35,7 +35,6 @@ function cloneSnapshot(snapshot: IWorkspaceSnapshot): IWorkspaceSnapshot {
         documents: JSON.parse(JSON.stringify(snapshot.documents)),
         detachedPages: JSON.parse(JSON.stringify(snapshot.detachedPages)),
         activeDocumentId: snapshot.activeDocumentId,
-        activeEditPageId: snapshot.activeEditPageId,
         requestedInlineTool: snapshot.requestedInlineTool,
         operationScope: snapshot.operationScope,
         viewScale: snapshot.viewScale,
@@ -64,7 +63,6 @@ function captureSnapshot(): IWorkspaceSnapshot {
         documents: docState.documents,
         detachedPages: docState.detachedPages,
         activeDocumentId: uiState.activeDocumentId,
-        activeEditPageId: uiState.activeEditPageId,
         requestedInlineTool: uiState.requestedInlineTool,
         operationScope: uiState.operationScope,
         viewScale: uiState.studioViewScale,
@@ -146,7 +144,6 @@ export const useHistoryStore = create<HistoryState>((set, get) => ({
 
         useUIStore.setState({
             activeDocumentId: snap.activeDocumentId,
-            activeEditPageId: snap.activeEditPageId,
             requestedInlineTool: snap.requestedInlineTool,
             operationScope: snap.operationScope,
             studioViewScale: snap.viewScale,

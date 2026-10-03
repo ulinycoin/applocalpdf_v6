@@ -311,7 +311,11 @@ export function StudioEditWorkspace({ onClose }: StudioEditWorkspaceProps = {}) 
                 })()}
                 onStyleChange={(patch) => {
                     if (ctrl.selectedElementId) {
-                        ctrl.handleElementAction(ctrl.selectedElementId, 'update', patch);
+                        // Mark a colour the user actually picked: source runs keep their own colour
+                        // until then, instead of being repainted with the panel's default swatch.
+                        ctrl.handleElementAction(ctrl.selectedElementId, 'update', (
+                            patch.color !== undefined ? { ...patch, colorUserSet: true } : patch
+                        ));
                         if (patch.backgroundColor !== undefined) {
                             const newFill = String(patch.backgroundColor);
                             const textId = ctrl.selectedElementId;

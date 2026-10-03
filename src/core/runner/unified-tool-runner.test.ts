@@ -71,6 +71,20 @@ const tool: IToolDefinition = {
   logicLoader: async () => ({ run: async ({ inputIds }) => ({ outputIds: inputIds }) }),
 };
 
+const protectTool: IToolDefinition = {
+  id: 'protect-pdf',
+  name: 'Protect PDF',
+  description: 'Encrypt a PDF',
+  entitlements: ['pdf.protect.encrypt'],
+  limits: {
+    featureTier: 'basic',
+    maxFileSize: { free: 10 * 1024 * 1024, pro: 100 * 1024 * 1024 },
+    maxPagesPerFile: { free: 100, pro: 1000 },
+  },
+  uiLoader: async () => ({ default: () => null }),
+  logicLoader: async () => ({ run: async () => ({ outputIds: [] }) }),
+};
+
 test('UnifiedToolRunner returns TOOL_ACCESS_DENIED when entitlement is missing', async () => {
   const registry = new GlobalRegistry();
   registry.register(tool);
@@ -657,4 +671,33 @@ test('UnifiedToolRunner returns deterministic timeout error for page-count prech
     assert.match(result.message, /timed out/i);
   }
   assert.ok(events.some((event) => event.type === 'PAGE_COUNT_CHECK_ERROR' && event.code === 'PAGE_COUNT_CHECK_TIMEOUT'));
+});
+
+test('the real plan gates Protect: a basic context cannot encrypt', async () => {
+  // The canvas used to hand Protect a hardcoded `plan: 'pro'` context, so the entitlement check
+  // always passed and a Pro feature shipped free to every visitor.
+  const registry = new GlobalRegistry();
+  registry.register(protectTool);
+
+  const fs = new InMemoryFileSystem();
+  fs.seed('f1', new Blob([new Uint8Array([1, 2, 3])]));
+
+  const runner = new UnifiedToolRunner(registry, {} as never, fs);
+
+  const denied = await runner.execute(
+    'protect-pdf',
+    { inputIds: ['f1'] },
+    { userId: 'u1', plan: 'basic', entitlements: ['pdf.merge', 'pdf.split', 'pdf.compress'] },
+  );
+  assert.equal(denied.type, 'TOOL_ACCESS_DENIED');
+  assert.equal(denied.reason, 'ENTITLEMENT_REQUIRED');
+  assert.match(denied.details ?? '', /pdf\.protect\.encrypt/u);
+
+  // Pro-less than the entitlement does not help either.
+  const partial = await runner.execute(
+    'protect-pdf',
+    { inputIds: ['f1'] },
+    { userId: 'u1', plan: 'pro', entitlements: ['pdf.edit'] },
+  );
+  assert.equal(partial.type, 'TOOL_ACCESS_DENIED');
 });

@@ -14,7 +14,6 @@ export interface UIState {
     isDraggingFile: boolean;
     activeDocumentId: string | null;
     interactionMode: StudioInteractionMode;
-    activeEditPageId: string | null;
     operationScope: StudioOperationScope;
     studioViewScale: number;
     studioViewPosition: { x: number; y: number };
@@ -29,7 +28,6 @@ export interface UIState {
     setDraggingFile: (isDragging: boolean) => void;
     setActiveDocument: (id: string | null) => void;
     setInteractionMode: (mode: StudioInteractionMode) => void;
-    setActiveEditPageId: (id: string | null) => void;
     setOperationScope: (scope: StudioOperationScope) => void;
     setStudioViewport: (scale: number, position: { x: number; y: number }, size?: { width: number; height: number }) => void;
     setGridColumns: (columns: 3 | 5) => void;
@@ -45,7 +43,6 @@ export const useUIStore = create<UIState>((set) => ({
     isDraggingFile: false,
     activeDocumentId: null,
     interactionMode: null,
-    activeEditPageId: null,
     operationScope: 'selection',
     studioViewScale: 1,
     studioViewPosition: { x: 0, y: 0 },
@@ -63,7 +60,6 @@ export const useUIStore = create<UIState>((set) => ({
     setDraggingFile: (isDragging) => set({ isDraggingFile: isDragging }),
     setActiveDocument: (id) => set({ activeDocumentId: id }),
     setInteractionMode: (mode) => set({ interactionMode: mode }),
-    setActiveEditPageId: (id) => set({ activeEditPageId: id }),
     setOperationScope: (scope) => set({ operationScope: scope }),
     setStudioViewport: (scale, position, size) => set((state) => ({
         studioViewScale: scale,
@@ -79,7 +75,6 @@ export const useUIStore = create<UIState>((set) => ({
         requestedInlineTool: null,
         activeDocumentId: null,
         interactionMode: null,
-        activeEditPageId: null,
         operationScope: 'selection',
         studioViewScale: 1,
         studioViewPosition: { x: 0, y: 0 },

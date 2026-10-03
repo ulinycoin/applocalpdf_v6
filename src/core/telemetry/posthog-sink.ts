@@ -108,6 +108,63 @@ export class PostHogTelemetrySink implements TelemetrySink {
             reason: event.reason,
           });
           break;
+        case 'STUDIO_EDIT_TOOL_SELECTED':
+          window.posthog.capture('studio_edit_tool_selected', {
+            run_id: event.runId,
+            tool_id: event.toolId,
+            tool: event.tool,
+            method: event.method,
+          });
+          break;
+        case 'STUDIO_EDIT_FLOATING_MENU_ACTION':
+          window.posthog.capture('studio_edit_element_action', {
+            run_id: event.runId,
+            tool_id: event.toolId,
+            action: event.action,
+            change_type: event.changeType,
+          });
+          break;
+        case 'STUDIO_EDIT_ZOOM_CHANGED':
+          window.posthog.capture('studio_edit_zoom_changed', {
+            run_id: event.runId,
+            tool_id: event.toolId,
+            source: event.source,
+            preset: event.preset,
+            scale_level: event.scaleLevel,
+          });
+          break;
+        case 'STUDIO_EDIT_GUARDRAIL':
+          window.posthog.capture('studio_edit_guardrail', {
+            run_id: event.runId,
+            tool_id: event.toolId,
+            code: event.code,
+            message: event.message,
+          });
+          break;
+        case 'STUDIO_TEXT_EDIT_STARTED':
+          window.posthog.capture('studio_text_edit_started', {
+            run_id: event.runId,
+            tool_id: event.toolId,
+            file_id: event.fileId,
+            page_index: event.pageIndex,
+            mode: event.mode,
+          });
+          break;
+        case 'STUDIO_TEXT_EDIT_COMMITTED':
+          window.posthog.capture('studio_text_edit_committed', {
+            run_id: event.runId,
+            tool_id: event.toolId,
+            file_id: event.fileId,
+            page_index: event.pageIndex,
+            mode: event.mode,
+            changed: event.changed,
+            chars_before: event.charsBefore,
+            chars_after: event.charsAfter,
+            chars_delta: event.charsDelta,
+            lines: event.lines,
+            multiline: event.multiline,
+          });
+          break;
         case 'STUDIO_EDIT_SAVE_ACTION':
           window.posthog.capture('app_studio_save', {
             tool_id: event.toolId,

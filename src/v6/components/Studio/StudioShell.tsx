@@ -15,7 +15,6 @@ import { ThumbnailService } from '../../studio/thumbnail/thumbnail-service';
 import { StudioTimeline } from './branching/StudioTimeline';
 import type { StudioReturnContext, StudioToolRouteState } from '../../studio/navigation/studio-tool-context';
 import { getPdfJs, getPdfLib } from '../../services/pdf/pdf-loader';
-import { StudioInPlaceEditor } from './StudioInPlaceEditor';
 import { StudioDialog } from './StudioDialog';
 import { canAddDocumentToStudio, canCreateWorkspace, canUseDocumentWithPageCount, freePageLimitMessage } from '../../../app/platform/plan-limits';
 import { showStudioPaywall } from '../../../app/react/studio-paywall';
@@ -278,7 +277,6 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
     const setSelection = useStudioStore((s: StudioState) => s.setSelection);
     const setInteractionMode = useStudioStore((s: StudioState) => s.setInteractionMode);
     const startEditSession = useStudioStore((s: StudioState) => s.startEditSession);
-    const _setActiveEditPageId = useStudioStore((s: StudioState) => s.setActiveEditPageId);
     const editSession = useStudioStore((s: StudioState) => s.editSession);
     const clearEditSession = useStudioStore((s: StudioState) => s.clearEditSession);
     const updateDocument = useStudioStore((s: StudioState) => s.updateDocument);
@@ -1597,7 +1595,6 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
                 onChange={handleUploadInputChange}
             />
             {isHistoryOpen && <StudioTimeline />}
-            <StudioInPlaceEditor stageRef={stageRef} />
             {isMobileLayout && (
                 <StudioToolSheet
                     open={isToolSheetOpen}

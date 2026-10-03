@@ -83,7 +83,9 @@ function createPdfCanvasFactory() {
         canvas.width = width;
         canvas.height = height;
       }
-      const context = canvas.getContext('2d');
+      // Explicit: on the `OffscreenCanvas | HTMLCanvasElement` union TS may fall back to the generic
+      // `RenderingContext` overload, which pdf.js does not accept.
+      const context = canvas.getContext('2d') as CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D | null;
       if (!context) {
         throw new Error('Canvas factory failed to get 2d context');
       }
@@ -162,7 +164,7 @@ async function rasterizePdfPage(
     canvas.height = viewport.height;
   }
 
-  const context = canvas.getContext('2d');
+  const context = canvas.getContext('2d') as CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D | null;
   if (!context) {
     return { blob: null, pageCount: pdf.numPages };
   }
