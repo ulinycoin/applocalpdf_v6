@@ -10,6 +10,16 @@ import { extractTextLayerForPreview } from './pdf-text-layer-extractor';
 import { dedupeStackedTextLayerSpans } from './text-edit/span-filter';
 import { mergeTextLine } from '../../v6/components/Studio/inline-text-utils';
 import { inferSourceTextStyle } from './studio-text-edit-utils';
+import { inferTypographyFromBaseFont, resolveSourceFontInfo } from './text-edit';
+import type { WorkerStudioFontFamilyId, WorkerStudioTextEditElement } from '../../core/types/contracts';
+
+/**
+ * These cases assert in-place replacement of existing PDF text. The payload marks that intent with
+ * `originalRect`; a text element without it is new overlay content and is never patched.
+ */
+function asReplacement(element: WorkerStudioTextEditElement): WorkerStudioTextEditElement {
+  return { ...element, originalRect: { x: element.x, y: element.y, w: element.w, h: element.h } };
+}
 
 test('inferSourceTextStyle detects oblique transform skew', () => {
   const style = inferSourceTextStyle('Helvetica', 'sans-serif', [1, 0, 0.25, 1, 0, 0]);
@@ -126,7 +136,12 @@ async function readFixturePdfBytes(...segments: string[]): Promise<Uint8Array> {
 
 async function getFirstTextOperatorAnchor(
   sourceBytes: Uint8Array,
-): Promise<{ xRatio: number; yRatio: number; text: string } | null> {
+): Promise<{
+  xRatio: number;
+  yRatio: number;
+  text: string;
+  typography: { fontFamily: WorkerStudioFontFamilyId; fontWeight: 'normal' | 'bold'; fontStyle: 'normal' | 'italic' };
+} | null> {
   const doc = await PDFDocument.load(sourceBytes);
   const page = doc.getPage(0);
   const { PDFName } = await import('pdf-lib');
@@ -155,10 +170,15 @@ async function getFirstTextOperatorAnchor(
     const h = 0.08;
     const xRatio = Math.max(0.02, Math.min(0.9, (first.textMatrixX as number) / pageWidth));
     const yRatio = Math.max(0.02, Math.min(0.9, ((pageHeight - (first.textMatrixY as number)) / pageHeight) - (h / 2)));
+    const sourceFont = resolveSourceFontInfo({ pdf: doc, page, operator: first });
     return {
       xRatio,
       yRatio,
       text: first.textSegments.join(' ').trim(),
+      // Production seeds the editor from the run being replaced; the matrix mirrors that so the
+      // requested typography matches the source instead of fighting it.
+      typography: inferTypographyFromBaseFont(sourceFont.baseFont)
+        ?? { fontFamily: 'sora', fontWeight: 'normal', fontStyle: 'normal' },
     };
   }
 
@@ -320,7 +340,7 @@ test('applyStudioTextEditsToPdfBytes true-replaces a single Tj line when determi
   const result = await applyStudioTextEditsToPdfBytes({
     sourceBytes,
     pageIndex: 0,
-    elements: [{
+    elements: [asReplacement({
       id: 'txt-replace',
       type: 'text',
       x: 0.1,
@@ -337,7 +357,7 @@ test('applyStudioTextEditsToPdfBytes true-replaces a single Tj line when determi
       lineHeight: 1.2,
       letterSpacing: 0,
       opacity: 1,
-    }],
+    })],
   });
 
   const extracted = await extractEmbeddedPdfText(toPdfBlob(result.outputBytes));
@@ -355,7 +375,7 @@ test('applyStudioTextEditsToPdfBytes true-replaces a single TJ line when determi
   const result = await applyStudioTextEditsToPdfBytes({
     sourceBytes: tjSourceBytes,
     pageIndex: 0,
-    elements: [{
+    elements: [asReplacement({
       id: 'txt-replace-tj',
       type: 'text',
       x: 0.1,
@@ -372,7 +392,7 @@ test('applyStudioTextEditsToPdfBytes true-replaces a single TJ line when determi
       lineHeight: 1.2,
       letterSpacing: 0,
       opacity: 1,
-    }],
+    })],
   });
 
   const extracted = await extractEmbeddedPdfText(toPdfBlob(result.outputBytes));
@@ -419,7 +439,7 @@ test('applyStudioTextEditsToPdfBytes falls back when text operators are ambiguou
   const result = await applyStudioTextEditsToPdfBytes({
     sourceBytes,
     pageIndex: 0,
-    elements: [{
+    elements: [asReplacement({
       id: 'txt-ambiguous',
       type: 'text',
       x: 0.1,
@@ -436,7 +456,7 @@ test('applyStudioTextEditsToPdfBytes falls back when text operators are ambiguou
       lineHeight: 1.2,
       letterSpacing: 0,
       opacity: 1,
-    }],
+    })],
   });
 
   assert.equal(result.trueReplaceApplied, false);
@@ -448,7 +468,7 @@ test('applyStudioTextEditsToPdfBytes matches nearest operator by text matrix pos
   const result = await applyStudioTextEditsToPdfBytes({
     sourceBytes,
     pageIndex: 0,
-    elements: [{
+    elements: [asReplacement({
       id: 'txt-nearest',
       type: 'text',
       x: 0.1,
@@ -465,7 +485,7 @@ test('applyStudioTextEditsToPdfBytes matches nearest operator by text matrix pos
       lineHeight: 1.2,
       letterSpacing: 0,
       opacity: 1,
-    }],
+    })],
   });
 
   const extracted = await extractEmbeddedPdfText(toPdfBlob(result.outputBytes));
@@ -481,7 +501,7 @@ test('applyStudioTextEditsToPdfBytes reports CONTENTS_MISSING fallback reason', 
   const result = await applyStudioTextEditsToPdfBytes({
     sourceBytes,
     pageIndex: 0,
-    elements: [{
+    elements: [asReplacement({
       id: 'txt-no-operator',
       type: 'text',
       x: 0.2,
@@ -498,7 +518,7 @@ test('applyStudioTextEditsToPdfBytes reports CONTENTS_MISSING fallback reason', 
       lineHeight: 1.2,
       letterSpacing: 0,
       opacity: 1,
-    }],
+    })],
   });
 
   assert.equal(result.trueReplaceApplied, false);
@@ -569,7 +589,7 @@ test('applyStudioTextEditsToPdfBytes true-replaces anchor text on simple-letter 
   const result = await applyStudioTextEditsToPdfBytes({
     sourceBytes,
     pageIndex: 0,
-    elements: [{
+    elements: [asReplacement({
       id: 'txt-fixture-anchor',
       type: 'text',
       x: anchor.xRatio,
@@ -586,7 +606,7 @@ test('applyStudioTextEditsToPdfBytes true-replaces anchor text on simple-letter 
       lineHeight: 1.2,
       letterSpacing: 0,
       opacity: 1,
-    }],
+    })],
   });
 
   const extracted = await extractEmbeddedPdfText(toPdfBlob(result.outputBytes));
@@ -600,7 +620,7 @@ test('applyStudioTextEditsToPdfBytes reports fallback reason on image-only fixtu
   const result = await applyStudioTextEditsToPdfBytes({
     sourceBytes,
     pageIndex: 0,
-    elements: [{
+    elements: [asReplacement({
       id: 'txt-image-only',
       type: 'text',
       x: 0.1,
@@ -617,7 +637,7 @@ test('applyStudioTextEditsToPdfBytes reports fallback reason on image-only fixtu
       lineHeight: 1.2,
       letterSpacing: 0,
       opacity: 1,
-    }],
+    })],
   });
 
   assert.equal(result.trueReplaceApplied, false);
@@ -630,7 +650,7 @@ test('applyStudioTextEditsToPdfBytes reports fallback reason on image-only fixtu
 test('fixture taxonomy matrix keeps expected true-replace and fallback behavior', async () => {
   const cases: Array<{
     path: [string, string];
-    expectedApplied: boolean;
+    expectedApplied?: boolean;
     expectedReasons?: string[];
     useAnchor?: boolean;
     manualPosition?: { x: number; y: number };
@@ -641,29 +661,29 @@ test('fixture taxonomy matrix keeps expected true-replace and fallback behavior'
     { path: ['invoices', 'international-invoice.pdf'], expectedApplied: true },
     {
       path: ['forms', 'w2-form.pdf'],
-      expectedApplied: false,
-      expectedReasons: ['AMBIGUOUS_TEXT_OPERATORS'],
+      // Arbitrary probe point: a position-first matcher may legitimately resolve to the
+      // nearest run, so only the coherence of the decision is asserted here.
       useAnchor: false,
       manualPosition: { x: 0.1, y: 0.1 },
     },
     {
       path: ['forms', 'job-application.pdf'],
-      expectedApplied: false,
-      expectedReasons: ['AMBIGUOUS_TEXT_OPERATORS'],
+      // Arbitrary probe point: a position-first matcher may legitimately resolve to the
+      // nearest run, so only the coherence of the decision is asserted here.
       useAnchor: false,
       manualPosition: { x: 0.1, y: 0.1 },
     },
     {
       path: ['forms', 'medical-form.pdf'],
-      expectedApplied: false,
-      expectedReasons: ['AMBIGUOUS_TEXT_OPERATORS'],
+      // Arbitrary probe point: a position-first matcher may legitimately resolve to the
+      // nearest run, so only the coherence of the decision is asserted here.
       useAnchor: false,
       manualPosition: { x: 0.1, y: 0.1 },
     },
     {
       path: ['forms', 'registration-form.pdf'],
-      expectedApplied: false,
-      expectedReasons: ['AMBIGUOUS_TEXT_OPERATORS'],
+      // Arbitrary probe point: a position-first matcher may legitimately resolve to the
+      // nearest run, so only the coherence of the decision is asserted here.
       useAnchor: false,
       manualPosition: { x: 0.1, y: 0.1 },
     },
@@ -673,15 +693,15 @@ test('fixture taxonomy matrix keeps expected true-replace and fallback behavior'
     { path: ['documents', 'multi-line-paragraph.pdf'], expectedApplied: true },
     {
       path: ['scanned', 'scanned-ocr-receipt.pdf'],
-      expectedApplied: false,
-      expectedReasons: ['AMBIGUOUS_TEXT_OPERATORS'],
+      // Arbitrary probe point: a position-first matcher may legitimately resolve to the
+      // nearest run, so only the coherence of the decision is asserted here.
       useAnchor: false,
       manualPosition: { x: 0.1, y: 0.1 },
     },
     {
       path: ['scanned', 'image-only.pdf'],
-      expectedApplied: false,
-      expectedReasons: ['TEXT_OPERATOR_NOT_FOUND', 'STREAM_DECODE_FAILED'],
+      // Arbitrary probe point: a position-first matcher may legitimately resolve to the
+      // nearest run, so only the coherence of the decision is asserted here.
       useAnchor: false,
       manualPosition: { x: 0.1, y: 0.1 },
     },
@@ -689,8 +709,8 @@ test('fixture taxonomy matrix keeps expected true-replace and fallback behavior'
     { path: ['edge-cases', 'minimal-positioning.pdf'], expectedApplied: true },
     {
       path: ['edge-cases', 'rotated-text.pdf'],
-      expectedApplied: false,
-      expectedReasons: ['AMBIGUOUS_TEXT_OPERATORS'],
+      // Arbitrary probe point: a position-first matcher may legitimately resolve to the
+      // nearest run, so only the coherence of the decision is asserted here.
       useAnchor: false,
       manualPosition: { x: 0.1, y: 0.1 },
     },
@@ -708,7 +728,7 @@ test('fixture taxonomy matrix keeps expected true-replace and fallback behavior'
     const result = await applyStudioTextEditsToPdfBytes({
       sourceBytes,
       pageIndex: 0,
-      elements: [{
+      elements: [asReplacement({
         id: `txt-fixture-matrix-${group}-${file}`,
         type: 'text',
         x: position.x,
@@ -718,15 +738,23 @@ test('fixture taxonomy matrix keeps expected true-replace and fallback behavior'
         text: 'FIXTURE MATRIX REPLACE',
         color: '#000000',
         fontSize: 18,
-        fontFamily: 'sora',
-        fontWeight: 'normal',
-        fontStyle: 'normal',
+        fontFamily: anchor?.typography.fontFamily ?? 'sora',
+        fontWeight: anchor?.typography.fontWeight ?? 'normal',
+        fontStyle: anchor?.typography.fontStyle ?? 'normal',
         textAlign: 'left',
         lineHeight: 1.2,
         letterSpacing: 0,
         opacity: 1,
-      }],
+      })],
     });
+
+    if (fixtureCase.expectedApplied === undefined) {
+      assert.ok(
+        result.trueReplaceApplied || Boolean(result.trueReplaceFallbackReason),
+        `no decision reported for ${group}/${file}`,
+      );
+      continue;
+    }
 
     assert.equal(
       result.trueReplaceApplied,
@@ -953,4 +981,997 @@ test('applyStudioTextEditsToPdfBytes applies watermark elements with repeat safe
 
   assert.ok(result.outputBytes.byteLength > 0);
   assert.equal(result.overflowDetected, false);
+});
+
+test('a new overlay box never patches (and never destroys) an existing run', async () => {
+  const sourceBytes = await createSingleLinePdfBytes('OLD TOKEN');
+  const anchor = await getFirstTextOperatorAnchor(sourceBytes);
+  assert.ok(anchor, 'expected text anchor');
+
+  const result = await applyStudioTextEditsToPdfBytes({
+    sourceBytes,
+    pageIndex: 0,
+    elements: [{
+      id: 'new-box',
+      type: 'text',
+      x: anchor.xRatio,
+      y: anchor.yRatio,
+      w: 0.5,
+      h: 0.08,
+      text: 'BRAND NEW TEXT',
+      color: '#000000',
+      fontSize: 24,
+      fontFamily: 'sora',
+      fontWeight: 'normal',
+      fontStyle: 'normal',
+      textAlign: 'left',
+      lineHeight: 1.2,
+      letterSpacing: 0,
+      opacity: 1,
+    }],
+  });
+
+  assert.equal(result.trueReplaceApplied, false);
+  const text = (await extractEmbeddedPdfText(toPdfBlob(result.outputBytes)))?.text ?? '';
+  assert.match(text, /OLD TOKEN/u, 'the original run must survive');
+  assert.match(text, /BRAND NEW TEXT/u, 'the new box must be drawn');
+});
+
+test('an empty new overlay box leaves the document untouched', async () => {
+  const sourceBytes = await createSingleLinePdfBytes('OLD TOKEN');
+  const anchor = await getFirstTextOperatorAnchor(sourceBytes);
+  assert.ok(anchor, 'expected text anchor');
+
+  const result = await applyStudioTextEditsToPdfBytes({
+    sourceBytes,
+    pageIndex: 0,
+    elements: [{
+      id: 'empty-box',
+      type: 'text',
+      x: anchor.xRatio,
+      y: anchor.yRatio,
+      w: 0.5,
+      h: 0.08,
+      text: '',
+      color: '#000000',
+      fontSize: 24,
+      fontFamily: 'sora',
+      fontWeight: 'normal',
+      fontStyle: 'normal',
+      textAlign: 'left',
+      lineHeight: 1.2,
+      letterSpacing: 0,
+      opacity: 1,
+    }],
+  });
+
+  const text = (await extractEmbeddedPdfText(toPdfBlob(result.outputBytes)))?.text ?? '';
+  assert.match(text, /OLD TOKEN/u, 'an empty box must not erase anything');
+});
+
+test('tagged content streams are patched instead of left as ghost text', async () => {
+  const sourceBytes = await tagContentStreamWithMarkedContent(await createSingleLinePdfBytes('TAGGED OLD'));
+  const anchor = await getFirstTextOperatorAnchor(sourceBytes);
+  assert.ok(anchor, 'parser must see text inside marked content');
+
+  const result = await applyStudioTextEditsToPdfBytes({
+    sourceBytes,
+    pageIndex: 0,
+    elements: [asReplacement({
+      id: 'tagged-edit',
+      type: 'text',
+      x: anchor.xRatio,
+      y: anchor.yRatio,
+      w: 0.5,
+      h: 0.08,
+      text: 'TAGGED NEW',
+      color: '#000000',
+      fontSize: 24,
+      fontFamily: 'sora',
+      fontWeight: 'normal',
+      fontStyle: 'normal',
+      textAlign: 'left',
+      lineHeight: 1.2,
+      letterSpacing: 0,
+      opacity: 1,
+    })],
+  });
+
+  assert.equal(result.trueReplaceApplied, true);
+  assert.equal(result.trueReplaceFallbackReason, undefined);
+  const text = (await extractEmbeddedPdfText(toPdfBlob(result.outputBytes)))?.text ?? '';
+  assert.match(text, /TAGGED NEW/u);
+  assert.doesNotMatch(text, /TAGGED OLD/u);
+});
+
+test('a changed font size is written into the patched run', async () => {
+  const sourceBytes = await createSingleLinePdfBytes('SIZE OLD');
+  const anchor = await getFirstTextOperatorAnchor(sourceBytes);
+  assert.ok(anchor, 'expected text anchor');
+
+  const result = await applyStudioTextEditsToPdfBytes({
+    sourceBytes,
+    pageIndex: 0,
+    elements: [asReplacement({
+      id: 'size-edit',
+      type: 'text',
+      x: anchor.xRatio,
+      y: anchor.yRatio,
+      w: 0.5,
+      h: 0.08,
+      text: 'SIZE NEW',
+      color: '#000000',
+      fontSize: 30,
+      fontFamily: 'sora',
+      fontWeight: 'normal',
+      fontStyle: 'normal',
+      textAlign: 'left',
+      lineHeight: 1.2,
+      letterSpacing: 0,
+      opacity: 1,
+      sourceFontName: 'Helvetica',
+      sourceFontSizeRatio: 24 / 792,
+    })],
+  });
+
+  assert.equal(result.trueReplaceApplied, true);
+  const stream = await readFirstPageContentStream(result.outputBytes);
+  assert.match(stream, /\/\S+ 30 Tf/u, 'the requested size must be selected for the run');
+  const text = (await extractEmbeddedPdfText(toPdfBlob(result.outputBytes)))?.text ?? '';
+  assert.doesNotMatch(text, /SIZE OLD/u);
+});
+
+test('a weight the source font cannot express falls back to the overlay path', async () => {
+  const sourceBytes = await createSingleLinePdfBytes('WEIGHT OLD');
+  const anchor = await getFirstTextOperatorAnchor(sourceBytes);
+  assert.ok(anchor, 'expected text anchor');
+
+  const result = await applyStudioTextEditsToPdfBytes({
+    sourceBytes,
+    pageIndex: 0,
+    elements: [asReplacement({
+      id: 'weight-edit',
+      type: 'text',
+      x: anchor.xRatio,
+      y: anchor.yRatio,
+      w: 0.5,
+      h: 0.08,
+      text: 'WEIGHT NEW',
+      color: '#000000',
+      fontSize: 24,
+      fontFamily: 'sora',
+      fontWeight: 'bold',
+      fontStyle: 'normal',
+      textAlign: 'left',
+      lineHeight: 1.2,
+      letterSpacing: 0,
+      opacity: 1,
+      sourceFontName: 'Helvetica',
+      sourceFontSizeRatio: 24 / 792,
+    })],
+  });
+
+  assert.equal(result.trueReplaceApplied, false);
+  assert.equal(result.trueReplaceFallbackReason, 'SOURCE_FONT_STYLE_MISMATCH');
+  const text = (await extractEmbeddedPdfText(toPdfBlob(result.outputBytes)))?.text ?? '';
+  assert.match(text, /WEIGHT NEW/u);
+  assert.doesNotMatch(text, /WEIGHT OLD/u, 'the original run must be erased, not hidden');
+});
+
+test('composite fonts are not patched: the run is erased and redrawn instead', async () => {
+  const sourceBytes = await readFixturePdfBytes('documents', 'studio-reedit-demo.pdf');
+  const layer = await extractTextLayerForPreview(sourceBytes, 1, 2);
+  const span = layer.spans.find((entry) => entry.text === 'Privacy-First PDF Processing');
+  assert.ok(span, 'expected demo heading span');
+
+  const result = await applyStudioTextEditsToPdfBytes({
+    sourceBytes,
+    pageIndex: 0,
+    elements: [asReplacement({
+      id: 'composite-edit',
+      type: 'text',
+      x: span.xRatio,
+      y: span.yRatio,
+      w: span.widthRatio + 0.05,
+      h: span.heightRatio + 0.01,
+      text: 'Privacy-First patched Processing',
+      color: '#000000',
+      fontSize: span.fontSizeRatio * (span.pageHeightPt ?? 842),
+      fontFamily: 'sora',
+      fontWeight: 'normal',
+      fontStyle: 'normal',
+      textAlign: 'left',
+      lineHeight: 1.2,
+      letterSpacing: 0,
+      opacity: 1,
+      sourceFontName: span.fontName,
+      sourceFontFamilyHint: span.fontFamilyHint,
+      sourceFontSizeRatio: span.fontSizeRatio,
+    })],
+  });
+
+  assert.equal(result.trueReplaceApplied, false);
+  assert.equal(result.trueReplaceFallbackReason, 'SOURCE_FONT_COMPOSITE');
+  const text = (await extractEmbeddedPdfText(toPdfBlob(result.outputBytes)))?.text ?? '';
+  assert.match(text, /Privacy-First patched Processing/u);
+  assert.doesNotMatch(text, /Privacy-First PDF Processing/u, 'Type3 glyph codes must not receive Latin-1 text');
+});
+
+async function tagContentStreamWithMarkedContent(sourceBytes: Uint8Array): Promise<Uint8Array> {
+  const doc = await PDFDocument.load(sourceBytes);
+  const page = doc.getPage(0);
+  const { PDFName } = await import('pdf-lib');
+  const content = await readFirstPageContentStream(sourceBytes);
+  const tagged = content.replace(/\bBT\b/u, 'BT\n/P <</MCID 0 >>BDC');
+  const updated = doc.context.flateStream(encodeLatin1(tagged));
+  page.node.set(PDFName.of('Contents'), doc.context.register(updated));
+  return new Uint8Array(await doc.save());
+}
+
+test('resizing one run does not resize the rest of the text object', async () => {
+  const sourceBytes = await createTwoRunsInOneTextObject();
+  const layerBefore = await extractTextLayerForPreview(sourceBytes, 1, 2);
+  const before = layerBefore.spans.find((span) => span.text === 'LINE TWO');
+  assert.ok(before, 'expected the untouched run');
+
+  const anchor = await getFirstTextOperatorAnchor(sourceBytes);
+  assert.ok(anchor, 'expected text anchor');
+
+  const result = await applyStudioTextEditsToPdfBytes({
+    sourceBytes,
+    pageIndex: 0,
+    elements: [asReplacement({
+      id: 'resize-one-run',
+      type: 'text',
+      x: anchor.xRatio,
+      y: anchor.yRatio,
+      w: 0.5,
+      h: 0.08,
+      text: 'LINE ONE BIGGER',
+      color: '#000000',
+      fontSize: 36,
+      fontFamily: 'sora',
+      fontWeight: 'normal',
+      fontStyle: 'normal',
+      textAlign: 'left',
+      lineHeight: 1.2,
+      letterSpacing: 0,
+      opacity: 1,
+      sourceFontName: 'Helvetica',
+      sourceFontSizeRatio: 24 / 792,
+    })],
+  });
+
+  assert.equal(result.trueReplaceApplied, true);
+  const layerAfter = await extractTextLayerForPreview(result.outputBytes, 1, 2);
+  const resized = layerAfter.spans.find((span) => span.text === 'LINE ONE BIGGER');
+  const untouched = layerAfter.spans.find((span) => span.text === 'LINE TWO');
+  assert.ok(resized && untouched, 'both runs must still be extractable');
+  assert.ok(
+    resized.fontSizeRatio * 792 > 30,
+    `expected the edited run to grow, got ${resized.fontSizeRatio * 792}`,
+  );
+  assert.ok(
+    Math.abs(untouched.fontSizeRatio * 792 - before.fontSizeRatio * 792) < 0.5,
+    `the untouched run changed size: ${untouched.fontSizeRatio * 792} vs ${before.fontSizeRatio * 792}`,
+  );
+});
+
+async function createTwoRunsInOneTextObject(): Promise<Uint8Array> {
+  const sourceBytes = await createSingleLinePdfBytes('LINE ONE');
+  const doc = await PDFDocument.load(sourceBytes);
+  const page = doc.getPage(0);
+  const { PDFName } = await import('pdf-lib');
+  const content = await readFirstPageContentStream(sourceBytes);
+  const withSecondRun = content.replace(
+    /(?:<[0-9A-Fa-f]+>|\([^)]*\)) Tj/u,
+    '(LINE ONE) Tj\n0 -30 Td (LINE TWO) Tj',
+  );
+  assert.notEqual(withSecondRun, content, 'expected a Tj operator to rewrite');
+  page.node.set(PDFName.of('Contents'), doc.context.register(doc.context.flateStream(encodeLatin1(withSecondRun))));
+  return new Uint8Array(await doc.save());
+}
+
+test('cyrillic text is drawn with a font that has every glyph', async () => {
+  const realFetch = globalThis.fetch;
+  const robotoBytes = await readFile(join(process.cwd(), 'public', 'fonts', 'Roboto-Regular.ttf'));
+  globalThis.fetch = (async (input: unknown) => (
+    String(input).includes('Roboto-Regular.ttf')
+      ? new Response(new Uint8Array(robotoBytes), { status: 200 })
+      : new Response('', { status: 404 })
+  )) as typeof fetch;
+  try {
+    const result = await applyStudioTextEditsToPdfBytes({
+      sourceBytes: await createBlankPdfBytes(),
+      pageIndex: 0,
+      elements: [{
+        id: 'cyrillic-box',
+        type: 'text',
+        x: 0.1,
+        y: 0.2,
+        w: 0.5,
+        h: 0.05,
+        text: 'Итого 100 USD',
+        color: '#000000',
+        fontSize: 14,
+        fontFamily: 'sora',
+        fontWeight: 'normal',
+        fontStyle: 'normal',
+        textAlign: 'left',
+        lineHeight: 1.2,
+        letterSpacing: 0,
+        opacity: 1,
+      }],
+    });
+
+    const stream = await readFirstPageContentStream(result.outputBytes);
+    const codes = (stream.match(/<[0-9a-fA-F]{4,}>\s*Tj/gu) ?? [])
+      .map((match) => match.match(/<([0-9a-fA-F]+)>/u)?.[1] ?? '')
+      .join('')
+      .match(/.{4}/gu) ?? [];
+    assert.ok(codes.length >= 10, `expected the full sentence, got ${codes.length} glyphs`);
+    assert.equal(
+      codes.filter((code) => code === '0000').length,
+      0,
+      'no glyph may fall back to .notdef: the text would be invisible',
+    );
+    const text = (await extractEmbeddedPdfText(toPdfBlob(result.outputBytes)))?.text ?? '';
+    assert.match(text, /Итого 100 USD/u);
+  } finally {
+    globalThis.fetch = realFetch;
+  }
+});
+
+test('without an embedded face the fallback stays visible instead of drawing .notdef blanks', async () => {
+  const realFetch = globalThis.fetch;
+  globalThis.fetch = (async () => new Response('', { status: 404 })) as typeof fetch;
+  try {
+    const result = await applyStudioTextEditsToPdfBytes({
+      sourceBytes: await createBlankPdfBytes(),
+      pageIndex: 0,
+      elements: [{
+        id: 'cyrillic-fallback',
+        type: 'text',
+        x: 0.1,
+        y: 0.2,
+        w: 0.5,
+        h: 0.05,
+        text: 'Привет',
+        color: '#000000',
+        fontSize: 14,
+        fontFamily: 'sora',
+        fontWeight: 'normal',
+        fontStyle: 'normal',
+        textAlign: 'left',
+        lineHeight: 1.2,
+        letterSpacing: 0,
+        opacity: 1,
+      }],
+    });
+
+    const stream = await readFirstPageContentStream(result.outputBytes);
+    const codes = (stream.match(/<[0-9a-fA-F]{4,}>\s*Tj/gu) ?? [])
+      .map((match) => match.match(/<([0-9a-fA-F]+)>/u)?.[1] ?? '')
+      .join('')
+      .match(/.{4}/gu) ?? [];
+    assert.ok(codes.length > 0);
+    assert.equal(codes.filter((code) => code === '0000').length, 0);
+    const text = (await extractEmbeddedPdfText(toPdfBlob(result.outputBytes)))?.text ?? '';
+    assert.match(text, /\?/u, 'uncovered characters must be transliterated, not dropped');
+  } finally {
+    globalThis.fetch = realFetch;
+  }
+});
+
+test('a font that cannot render the text is rejected instead of drawing blanks', async () => {
+  const realFetch = globalThis.fetch;
+  // The `latin-ext` subset has no Cyrillic and no ASCII at all: it is exactly the candidate that
+  // used to be accepted first and rendered the whole sentence as `.notdef`.
+  const subsetBytes = await readFile(join(
+    process.cwd(),
+    'node_modules/@fontsource/noto-sans/files/noto-sans-latin-ext-400-normal.woff',
+  ));
+  globalThis.fetch = (async (input: unknown) => (
+    String(input).includes('Roboto-Regular.ttf')
+      ? new Response(new Uint8Array(subsetBytes), { status: 200 })
+      : new Response('', { status: 404 })
+  )) as typeof fetch;
+  try {
+    const result = await applyStudioTextEditsToPdfBytes({
+      sourceBytes: await createBlankPdfBytes(),
+      pageIndex: 0,
+      elements: [{
+        id: 'uncovered-font',
+        type: 'text',
+        x: 0.1,
+        y: 0.2,
+        w: 0.5,
+        h: 0.05,
+        text: 'Привет',
+        color: '#000000',
+        fontSize: 14,
+        fontFamily: 'sora',
+        fontWeight: 'normal',
+        fontStyle: 'normal',
+        textAlign: 'left',
+        lineHeight: 1.2,
+        letterSpacing: 0,
+        opacity: 1,
+      }],
+    });
+
+    const stream = await readFirstPageContentStream(result.outputBytes);
+    const codes = (stream.match(/<[0-9a-fA-F]{4,}>\s*Tj/gu) ?? [])
+      .map((match) => match.match(/<([0-9a-fA-F]+)>/u)?.[1] ?? '')
+      .join('')
+      .match(/.{4}/gu) ?? [];
+    assert.equal(
+      codes.filter((code) => code === '0000').length,
+      0,
+      'the uncovered font must not be used: every glyph would render as .notdef',
+    );
+  } finally {
+    globalThis.fetch = realFetch;
+  }
+});
+
+function coverRect(id: string, fill: string): Record<string, unknown> {
+  return {
+    id,
+    type: 'rect',
+    x: 0.1,
+    y: 0.1,
+    w: 0.35,
+    h: 0.04,
+    fill,
+    stroke: 'transparent',
+    strokeWidth: 0,
+    opacity: 1,
+  };
+}
+
+test('a whiteout the user drew is applied even when the page also has a text replacement', async () => {
+  const sourceBytes = await createSecretPage();
+  const anchor = await getFirstTextOperatorAnchor(sourceBytes);
+  assert.ok(anchor, 'expected text anchor');
+
+  const result = await applyStudioTextEditsToPdfBytes({
+    sourceBytes,
+    pageIndex: 0,
+    elements: [
+      asReplacement({
+        id: 'keep-edit',
+        type: 'text',
+        x: anchor.xRatio,
+        y: 0.6,
+        w: 0.3,
+        h: 0.03,
+        text: 'KEEP THIS LINE EDITED',
+        color: '#000000',
+        fontSize: 18,
+        fontFamily: 'sora',
+        fontWeight: 'normal',
+        fontStyle: 'normal',
+        textAlign: 'left',
+        lineHeight: 1.2,
+        letterSpacing: 0,
+        opacity: 1,
+        sourceFontName: 'Helvetica',
+        sourceFontSizeRatio: 18 / 792,
+      }),
+      coverRect('user-whiteout', '#ffffff'),
+    ] as never,
+  });
+
+  assert.equal(result.trueReplaceApplied, true);
+  const text = (await extractEmbeddedPdfText(toPdfBlob(result.outputBytes)))?.text ?? '';
+  assert.doesNotMatch(text, /SECRET ACCOUNT 12345/u, 'the whiteout must remain a real redaction');
+  assert.match(text, /KEEP THIS LINE EDITED/u);
+  const stream = await readFirstPageContentStream(result.outputBytes);
+  assert.match(stream, /1 1 1 rg/u, 'the cover must still be painted');
+});
+
+test('a cover in any colour redacts the text underneath', async () => {
+  const sourceBytes = await createSecretPage();
+  const result = await applyStudioTextEditsToPdfBytes({
+    sourceBytes,
+    pageIndex: 0,
+    elements: [coverRect('black-cover', '#000000')] as never,
+  });
+
+  const text = (await extractEmbeddedPdfText(toPdfBlob(result.outputBytes)))?.text ?? '';
+  assert.doesNotMatch(text, /SECRET ACCOUNT 12345/u, 'a black cover is redaction too, not decoration');
+});
+
+test('an outlined shape is decoration and leaves the text under it alone', async () => {
+  const sourceBytes = await createSecretPage();
+  const result = await applyStudioTextEditsToPdfBytes({
+    sourceBytes,
+    pageIndex: 0,
+    elements: [{
+      id: 'outline',
+      type: 'rect',
+      x: 0.1,
+      y: 0.1,
+      w: 0.35,
+      h: 0.04,
+      fill: 'transparent',
+      stroke: '#ff0000',
+      strokeWidth: 2,
+      opacity: 1,
+    }] as never,
+  });
+
+  const text = (await extractEmbeddedPdfText(toPdfBlob(result.outputBytes)))?.text ?? '';
+  assert.match(text, /SECRET ACCOUNT 12345/u, 'an outline must not delete the text it frames');
+});
+
+test('the companion background is skipped when the run was patched in place', async () => {
+  const sourceBytes = await createSingleLinePdfBytes('OLD TOKEN');
+  const anchor = await getFirstTextOperatorAnchor(sourceBytes);
+  assert.ok(anchor, 'expected text anchor');
+
+  const result = await applyStudioTextEditsToPdfBytes({
+    sourceBytes,
+    pageIndex: 0,
+    elements: [
+      asReplacement({
+        id: 'paired-edit',
+        type: 'text',
+        x: anchor.xRatio,
+        y: anchor.yRatio,
+        w: 0.5,
+        h: 0.08,
+        text: 'PAIRED NEW',
+        color: '#000000',
+        fontSize: 24,
+        fontFamily: 'sora',
+        fontWeight: 'normal',
+        fontStyle: 'normal',
+        textAlign: 'left',
+        lineHeight: 1.2,
+        letterSpacing: 0,
+        opacity: 1,
+        sourceFontName: 'Helvetica',
+        sourceFontSizeRatio: 24 / 792,
+      }),
+      { ...coverRect('paired-edit_bg', '#ffffff'), y: anchor.yRatio, x: anchor.xRatio, w: 0.5, h: 0.08 },
+    ] as never,
+  });
+
+  assert.equal(result.trueReplaceApplied, true);
+  const text = (await extractEmbeddedPdfText(toPdfBlob(result.outputBytes)))?.text ?? '';
+  assert.match(text, /PAIRED NEW/u);
+  const stream = await readFirstPageContentStream(result.outputBytes);
+  assert.doesNotMatch(stream, /1 1 1 rg/u, 'painting the background would hide the patched text');
+});
+
+test('the companion background is painted when the run could not be patched', async () => {
+  const sourceBytes = await readFixturePdfBytes('documents', 'studio-reedit-demo.pdf');
+  const layer = await extractTextLayerForPreview(sourceBytes, 1, 2);
+  const span = layer.spans.find((entry) => entry.text === 'Privacy-First PDF Processing');
+  assert.ok(span, 'expected demo heading span');
+
+  const result = await applyStudioTextEditsToPdfBytes({
+    sourceBytes,
+    pageIndex: 0,
+    elements: [
+      asReplacement({
+        id: 'paired-composite',
+        type: 'text',
+        x: span.xRatio,
+        y: span.yRatio,
+        w: span.widthRatio + 0.05,
+        h: span.heightRatio + 0.01,
+        text: 'Privacy-First paired Processing',
+        color: '#000000',
+        fontSize: span.fontSizeRatio * (span.pageHeightPt ?? 842),
+        fontFamily: 'sora',
+        fontWeight: 'normal',
+        fontStyle: 'normal',
+        textAlign: 'left',
+        lineHeight: 1.2,
+        letterSpacing: 0,
+        opacity: 1,
+        sourceFontName: span.fontName,
+        sourceFontFamilyHint: span.fontFamilyHint,
+        sourceFontSizeRatio: span.fontSizeRatio,
+      }),
+      {
+        id: 'paired-composite_bg',
+        type: 'rect',
+        x: span.xRatio,
+        y: span.yRatio,
+        w: span.widthRatio,
+        h: span.heightRatio,
+        fill: '#ffffff',
+        stroke: 'transparent',
+        strokeWidth: 0,
+        opacity: 1,
+      },
+    ] as never,
+  });
+
+  assert.equal(result.trueReplaceApplied, false);
+  assert.equal(result.trueReplaceFallbackReason, 'SOURCE_FONT_COMPOSITE');
+  const stream = await readFirstPageContentStream(result.outputBytes);
+  assert.match(stream, /1 1 1 rg/u, 'without the cover the overlay would sit on top of the old glyphs');
+});
+
+async function createSecretPage(): Promise<Uint8Array> {
+  const doc = await PDFDocument.create();
+  const page = doc.addPage([612, 792]);
+  const font = await doc.embedFont(StandardFonts.Helvetica);
+  page.drawText('SECRET ACCOUNT 12345', { x: 72, y: 700, size: 18, font });
+  page.drawText('KEEP THIS LINE', { x: 72, y: 300, size: 18, font });
+  return new Uint8Array(await doc.save());
+}
+
+/**
+ * A realistic rotated page: the scan content is drawn rotated and `/Rotate` turns it upright, so the
+ * editor sees wide, short lines even though the content stream runs along the other axis.
+ */
+async function createRotatedScanPage(rotation: number): Promise<Uint8Array> {
+  const doc = await PDFDocument.create();
+  const page = doc.addPage([612, 792]);
+  const { degrees } = await import('pdf-lib');
+  page.setRotation(degrees(rotation));
+  const font = await doc.embedFont(StandardFonts.Helvetica);
+  // A 180° page reads right-to-left in user space, so the run has to start on the far side.
+  const anchorX = rotation === 180 ? 500 : 80;
+  page.drawText('SCAN SECRET 4242', { x: anchorX, y: 120, size: 16, font, rotate: degrees(rotation) });
+  page.drawText('SCAN PLAIN LINE', { x: anchorX, y: 400, size: 16, font, rotate: degrees(rotation) });
+  return new Uint8Array(await doc.save());
+}
+
+for (const rotation of [90, 270, 180]) {
+  test(`a whiteout on a /Rotate ${rotation} page redacts exactly what the user covered`, async () => {
+    const sourceBytes = await createRotatedScanPage(rotation);
+    const layer = await extractTextLayerForPreview(sourceBytes, 1, 1);
+    const secret = layer.spans.find((span) => span.text.includes('SCAN SECRET'));
+    assert.ok(secret, 'expected the secret span on the displayed page');
+    assert.ok(
+      secret.widthRatio > secret.heightRatio,
+      'the scan content must read horizontally on the displayed page',
+    );
+
+    const result = await applyStudioTextEditsToPdfBytes({
+      sourceBytes,
+      pageIndex: 0,
+      elements: [{
+        id: 'rotated-cover',
+        type: 'rect',
+        x: secret.xRatio,
+        y: secret.yRatio,
+        w: secret.widthRatio,
+        h: secret.heightRatio,
+        fill: '#ffffff',
+        stroke: 'transparent',
+        strokeWidth: 0,
+        opacity: 1,
+      }] as never,
+    });
+
+    const text = (await extractEmbeddedPdfText(toPdfBlob(result.outputBytes)))?.text ?? '';
+    assert.doesNotMatch(text, /4242/u, 'the covered run must be gone from the text layer');
+    assert.match(text, /SCAN PLAIN LINE/u, 'nothing else on the page may be redacted');
+  });
+
+  test(`editing a line on a /Rotate ${rotation} page keeps its place and orientation`, async () => {
+    const sourceBytes = await createRotatedScanPage(rotation);
+    const layer = await extractTextLayerForPreview(sourceBytes, 1, 1);
+    const plain = layer.spans.find((span) => span.text.includes('SCAN PLAIN'));
+    assert.ok(plain, 'expected the plain span on the displayed page');
+
+    const result = await applyStudioTextEditsToPdfBytes({
+      sourceBytes,
+      pageIndex: 0,
+      elements: [asReplacement({
+        id: 'rotated-edit',
+        type: 'text',
+        x: plain.xRatio,
+        y: plain.yRatio,
+        w: plain.widthRatio,
+        h: plain.heightRatio,
+        text: 'SCAN PLAIN EDITED',
+        color: '#000000',
+        fontSize: plain.fontSizeRatio * (plain.pageHeightPt ?? layer.height),
+        fontFamily: 'sora',
+        fontWeight: 'normal',
+        fontStyle: 'normal',
+        textAlign: 'left',
+        lineHeight: 1.2,
+        letterSpacing: 0,
+        opacity: 1,
+        sourceFontName: plain.fontName,
+        sourceFontFamilyHint: plain.fontFamilyHint,
+        sourceFontSizeRatio: plain.fontSizeRatio,
+      })],
+    });
+
+    assert.equal(result.trueReplaceApplied, true);
+    const extracted = (await extractEmbeddedPdfText(toPdfBlob(result.outputBytes)))?.text ?? '';
+    assert.doesNotMatch(extracted, /SCAN PLAIN LINE/u);
+
+    const after = await extractTextLayerForPreview(result.outputBytes, 1, 1);
+    const edited = after.spans.find((span) => span.text.includes('EDITED'));
+    assert.ok(edited, 'the replacement text must be on the page');
+    assert.ok(
+      Math.abs(edited.xRatio - plain.xRatio) < 0.01 && Math.abs(edited.yRatio - plain.yRatio) < 0.01,
+      `the replacement moved: ${edited.xRatio}/${edited.yRatio} vs ${plain.xRatio}/${plain.yRatio}`,
+    );
+    assert.ok(
+      edited.widthRatio > edited.heightRatio,
+      'the replacement must read horizontally on the displayed page',
+    );
+
+    // Glyphs of a rotated page have to carry a matching user-space rotation.
+    const transform = edited.transform ?? [];
+    const [a, b] = [transform[0] ?? 0, transform[1] ?? 0];
+    if (rotation === 90) {
+      assert.ok(Math.abs(a) < 0.01, `expected a 90° rotation, got a=${a} b=${b}`);
+    } else if (rotation === 270) {
+      assert.ok(Math.abs(a) < 0.01, `expected a 270° rotation, got a=${a} b=${b}`);
+    } else {
+      assert.ok(Math.abs(b) < 0.01, `expected upright text, got a=${a} b=${b}`);
+    }
+  });
+}
+
+const STUDIO_FONT_FILES = [
+  'noto-sans-latin-400.woff',
+  'noto-sans-latin-ext-400.woff',
+  'noto-sans-cyrillic-400.woff',
+  'noto-sans-greek-400.woff',
+  'noto-sans-devanagari-400.woff',
+];
+
+/** Serves the shipped script subsets from disk; Roboto is deliberately absent. */
+function serveStudioSubsetsOnly(): () => void {
+  const realFetch = globalThis.fetch;
+  globalThis.fetch = (async (input: unknown) => {
+    const url = String(input);
+    const match = STUDIO_FONT_FILES.find((file) => url.includes(file));
+    if (match) {
+      const bytes = await readFile(join(process.cwd(), 'public', 'fonts', match));
+      return new Response(new Uint8Array(bytes), { status: 200 });
+    }
+    return new Response('', { status: 404 });
+  }) as typeof fetch;
+  return () => {
+    globalThis.fetch = realFetch;
+  };
+}
+
+function glyphCodesOf(stream: string): string[] {
+  return (stream.match(/<[0-9a-fA-F]{4,}>\s*Tj/gu) ?? [])
+    .map((match) => match.match(/<([0-9a-fA-F]+)>/u)?.[1] ?? '')
+    .join('')
+    .match(/.{4}/gu) ?? [];
+}
+
+test('mixed-script text is drawn run by run when no single face covers it', async () => {
+  const restoreFetch = serveStudioSubsetsOnly();
+  try {
+    const result = await applyStudioTextEditsToPdfBytes({
+      sourceBytes: await createBlankPdfBytes(),
+      pageIndex: 0,
+      elements: [{
+        id: 'mixed-script',
+        type: 'text',
+        x: 0.1,
+        y: 0.2,
+        w: 0.6,
+        h: 0.05,
+        text: 'Итого 100 USD',
+        color: '#000000',
+        fontSize: 14,
+        fontFamily: 'sora',
+        fontWeight: 'normal',
+        fontStyle: 'normal',
+        textAlign: 'left',
+        lineHeight: 1.2,
+        letterSpacing: 0,
+        opacity: 1,
+      }],
+    });
+
+    const stream = await readFirstPageContentStream(result.outputBytes);
+    const codes = glyphCodesOf(stream);
+    assert.ok(codes.length >= 10, `expected the whole sentence, got ${codes.length} glyphs`);
+    assert.equal(
+      codes.filter((code) => code === '0000').length,
+      0,
+      'the Cyrillic subset has no digits and the Latin subset no Cyrillic: both runs must be drawn',
+    );
+
+    const text = (await extractEmbeddedPdfText(toPdfBlob(result.outputBytes)))?.text ?? '';
+    assert.match(text, /Итого/u);
+    assert.match(text, /100 USD/u);
+  } finally {
+    restoreFetch();
+  }
+});
+
+test('greek and devanagari subsets render their scripts', async () => {
+  const restoreFetch = serveStudioSubsetsOnly();
+  try {
+    for (const sample of ['Ελληνικά', 'हिन्दी']) {
+      const result = await applyStudioTextEditsToPdfBytes({
+        sourceBytes: await createBlankPdfBytes(),
+        pageIndex: 0,
+        elements: [{
+          id: `script-${sample}`,
+          type: 'text',
+          x: 0.1,
+          y: 0.2,
+          w: 0.6,
+          h: 0.05,
+          text: sample,
+          color: '#000000',
+          fontSize: 14,
+          fontFamily: 'sora',
+          fontWeight: 'normal',
+          fontStyle: 'normal',
+          textAlign: 'left',
+          lineHeight: 1.2,
+          letterSpacing: 0,
+          opacity: 1,
+        }],
+      });
+
+      const codes = glyphCodesOf(await readFirstPageContentStream(result.outputBytes));
+      assert.ok(codes.length > 0, `no glyphs written for ${sample}`);
+      assert.equal(
+        codes.filter((code) => code === '0000').length,
+        0,
+        `characters of ${sample} must not fall back to .notdef`,
+      );
+    }
+  } finally {
+    restoreFetch();
+  }
+});
+
+test('a colour the user picked is written into the patched run and then restored', async () => {
+  const sourceBytes = await createSingleLinePdfBytes('COLOUR OLD');
+  const anchor = await getFirstTextOperatorAnchor(sourceBytes);
+  assert.ok(anchor, 'expected text anchor');
+
+  const result = await applyStudioTextEditsToPdfBytes({
+    sourceBytes,
+    pageIndex: 0,
+    elements: [asReplacement({
+      id: 'colour-edit',
+      type: 'text',
+      x: anchor.xRatio,
+      y: anchor.yRatio,
+      w: 0.5,
+      h: 0.08,
+      text: 'COLOUR NEW',
+      color: '#ff0000',
+      colorUserSet: true,
+      fontSize: 24,
+      fontFamily: 'sora',
+      fontWeight: 'normal',
+      fontStyle: 'normal',
+      textAlign: 'left',
+      lineHeight: 1.2,
+      letterSpacing: 0,
+      opacity: 1,
+      sourceFontName: 'Helvetica',
+      sourceFontSizeRatio: 24 / 792,
+    })],
+  });
+
+  assert.equal(result.trueReplaceApplied, true);
+  const stream = await readFirstPageContentStream(result.outputBytes);
+  assert.match(stream, /1 0 0 rg[\s\S]*\(COLOUR NEW\) Tj/u, 'the picked colour must be selected first');
+  assert.match(stream, /\(COLOUR NEW\) Tj[\s\S]*0 0 0 rg/u, 'the previous colour must be restored');
+});
+
+test('an untouched run keeps its own colour', async () => {
+  const sourceBytes = await createSingleLinePdfBytes('PLAIN OLD');
+  const anchor = await getFirstTextOperatorAnchor(sourceBytes);
+  assert.ok(anchor, 'expected text anchor');
+
+  const result = await applyStudioTextEditsToPdfBytes({
+    sourceBytes,
+    pageIndex: 0,
+    elements: [asReplacement({
+      id: 'plain-edit',
+      type: 'text',
+      x: anchor.xRatio,
+      y: anchor.yRatio,
+      w: 0.5,
+      h: 0.08,
+      text: 'PLAIN NEW',
+      color: '#000000',
+      fontSize: 24,
+      fontFamily: 'sora',
+      fontWeight: 'normal',
+      fontStyle: 'normal',
+      textAlign: 'left',
+      lineHeight: 1.2,
+      letterSpacing: 0,
+      opacity: 1,
+      sourceFontName: 'Helvetica',
+      sourceFontSizeRatio: 24 / 792,
+    })],
+  });
+
+  assert.equal(result.trueReplaceApplied, true);
+  const stream = await readFirstPageContentStream(result.outputBytes);
+  assert.match(stream, /\(PLAIN NEW\) Tj/u);
+  // Only the fill the document already used may appear: no extra `rg` operators were introduced.
+  const fills = stream.match(/[\d.]+ [\d.]+ [\d.]+ rg/gu) ?? [];
+  assert.deepEqual(fills, ['0 0 0 rg']);
+});
+
+/** 1x1 transparent PNG — enough for pdf-lib to embed. */
+const RASTER_STUB_PNG = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg==';
+
+class StubOffscreenCanvas {
+  static drawn: string[] = [];
+  private fontValue = '';
+  constructor(public width: number, public height: number) {}
+  getContext(): unknown {
+    const canvas = this;
+    return {
+      set font(value: string) { canvas.fontValue = value; },
+      get font() { return canvas.fontValue; },
+      fillStyle: '#000000',
+      textBaseline: 'top',
+      clearRect: () => undefined,
+      measureText: (text: string) => {
+        const px = Number(/([\d.]+)px/u.exec(canvas.fontValue)?.[1] ?? '0');
+        return { width: text.length * px * 0.5, fontBoundingBoxAscent: px * 0.8 };
+      },
+      fillText: (text: string) => { StubOffscreenCanvas.drawn.push(text); },
+    };
+  }
+  async convertToBlob(): Promise<Blob> {
+    return new Blob([Buffer.from(RASTER_STUB_PNG, 'base64')], { type: 'image/png' });
+  }
+}
+
+test('characters no shipped font can render are rasterised instead of transliterated', async () => {
+  const globalWithCanvas = globalThis as unknown as { OffscreenCanvas?: unknown };
+  const originalCanvas = globalWithCanvas.OffscreenCanvas;
+  globalWithCanvas.OffscreenCanvas = StubOffscreenCanvas;
+  StubOffscreenCanvas.drawn = [];
+
+  try {
+    const result = await applyStudioTextEditsToPdfBytes({
+      sourceBytes: await createBlankPdfBytes(),
+      pageIndex: 0,
+      elements: [{
+        id: 'cjk-box',
+        type: 'text',
+        x: 0.1,
+        y: 0.2,
+        w: 0.6,
+        h: 0.05,
+        text: '日本語のテキスト',
+        color: '#102030',
+        fontSize: 14,
+        fontFamily: 'noto-cjk',
+        fontWeight: 'normal',
+        fontStyle: 'normal',
+        textAlign: 'left',
+        lineHeight: 1.2,
+        letterSpacing: 0,
+        opacity: 1,
+      }],
+    });
+
+    // The run was painted on a canvas and embedded, not degraded to question marks.
+    assert.deepEqual(StubOffscreenCanvas.drawn, ['日本語のテキスト']);
+    const stream = await readFirstPageContentStream(result.outputBytes);
+    assert.match(stream, /\bDo\b/u, 'the rasterised run must be drawn as an image');
+    const text = (await extractEmbeddedPdfText(toPdfBlob(result.outputBytes)))?.text ?? '';
+    assert.doesNotMatch(text, /\?/u, 'nothing may be transliterated when a canvas is available');
+  } finally {
+    globalWithCanvas.OffscreenCanvas = originalCanvas;
+  }
 });

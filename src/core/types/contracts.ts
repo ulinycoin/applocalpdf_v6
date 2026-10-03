@@ -163,6 +163,11 @@ export interface WorkerStudioTextEditElement {
   sourceFontSizeRatio?: number;
   /** Page-top ratio of alphabetic baseline (for overlay text snapped to PDF guides). */
   baselineRatio?: number;
+  /**
+   * True when the colour was picked in the UI. Source runs keep their own colour otherwise, because
+   * the editor's default swatch is black and repainting untouched headings black would be a surprise.
+   */
+  colorUserSet?: boolean;
   originalRect?: {
     x: number;
     y: number;
@@ -351,6 +356,29 @@ export type RunnerTelemetryEvent =
   | { type: 'STUDIO_EDIT_TOOL_SELECTED'; runId: string; toolId: string; tool: string; method: 'ui' | 'shortcut' }
   | { type: 'STUDIO_EDIT_ZOOM_CHANGED'; runId: string; toolId: string; source: 'wheel' | 'button' | 'preset'; preset?: 'fitPage' | 'fitWidth' | '100'; scaleLevel: number }
   | { type: 'STUDIO_EDIT_FLOATING_MENU_ACTION'; runId: string; toolId: string; action: 'duplicate' | 'delete' | 'update'; changeType?: string }
+  // Text editing itself carries no text: only the shape of the change (see studio-text-edit-metrics).
+  | {
+    type: 'STUDIO_TEXT_EDIT_STARTED';
+    runId: string;
+    toolId: string;
+    fileId: string;
+    pageIndex: number;
+    mode: 'existing-line' | 'new-box';
+  }
+  | {
+    type: 'STUDIO_TEXT_EDIT_COMMITTED';
+    runId: string;
+    toolId: string;
+    fileId: string;
+    pageIndex: number;
+    mode: 'existing-line' | 'new-box';
+    changed: boolean;
+    charsBefore: number;
+    charsAfter: number;
+    charsDelta: number;
+    lines: number;
+    multiline: boolean;
+  }
   | { type: 'APP_SESSION_ATTRIBUTED'; flowId: string; entryUrl: string; entryPath: string; referrer: string; referringDomain: string; utmSource?: string; utmMedium?: string; utmCampaign?: string }
   | { type: 'APP_FILE_UPLOADED'; flowId: string; toolId: string; fileCount: number; mimeCategory: string; totalBytes: number; source: 'wizard' | 'studio' }
   | { type: 'TOOL_RUN_ABANDONED'; flowId: string; runId?: string; toolId: string; reason: 'pagehide' | 'visibility_hidden' | 'navigation' | 'cancel' }

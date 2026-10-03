@@ -78,6 +78,7 @@ function normalizeTextElement(input: WorkerStudioTextEditElement): WorkerStudioT
       ? clamp(input.baselineRatio, 0, 1)
       : undefined,
     originalRect: normalizeOriginalRectInput(input.originalRect),
+    ...(input.colorUserSet === true ? { colorUserSet: true } : {}),
   };
 }
 

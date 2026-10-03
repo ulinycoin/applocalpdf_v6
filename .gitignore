@@ -60,3 +60,6 @@ pbn/
 e2e-ocr.log
 backlink-directories-*.csv
 graphify-out/
+
+# Studio script fonts are copied from node_modules by scripts/copy-studio-fonts.mjs
+public/fonts/noto-sans-*.woff

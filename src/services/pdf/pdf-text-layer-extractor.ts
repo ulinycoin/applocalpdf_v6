@@ -203,10 +203,12 @@ export async function extractTextLayerForPreview(
       continue;
     }
 
-    const tx = multiplyTransform(viewport.transform as number[], item.transform as number[]);
+    const viewportTransform = viewport.transform as number[];
+    const textMatrix = item.transform as number[];
+    const tx = multiplyTransform(viewportTransform, textMatrix);
     const x = tx[4];
     const y = tx[5];
-    const fontSizePt = readFontSizePt(item.transform as number[]);
+    const fontSizePt = readFontSizePt(textMatrix);
     const fontHeight = Math.hypot(tx[2], tx[3]) || (Number(item.height) * scale) || fontSizePt * scale;
     const style = textStyles[item.fontName];
     let fontAscent = fontHeight;
@@ -221,16 +223,42 @@ export async function extractTextLayerForPreview(
       fontDescent = Math.abs(style.descent) * fontHeight;
     }
 
-    const estimatedWidth = fontHeight * item.str.length * 0.46;
-    const width = Math.max(1, (Number(item.width) * scale || estimatedWidth));
-    const height = Math.max(1, (Number(item.height) * scale || fontHeight * 1.1));
-    const top = y - fontAscent;
+    // A text run is a box in the text's own coordinate system, and `/Rotate` turns it on screen, so
+    // the displayed box has to be built from the mapped corners. Assuming a horizontal run put the
+    // width along the wrong axis on every rotated page — the editor then framed (and edited) a band
+    // perpendicular to the text.
+    const [ua, ub, uc, ud, ue, uf] = textMatrix;
+    const baselineLength = Math.hypot(ua, ub) || fontSizePt || 1;
+    const upLength = Math.hypot(uc, ud) || 1;
+    const emUnits = baselineLength;
+    const ascentLength = fontHeight > 0 ? (fontAscent / fontHeight) * emUnits : emUnits;
+    const descentLength = fontHeight > 0 ? (fontDescent / fontHeight) * emUnits : emUnits * 0.18;
+    const runWidth = Math.max(1, Number(item.width) || (fontHeight * item.str.length * 0.46));
+    const baselineUnit = { x: ua / baselineLength, y: ub / baselineLength };
+    const upUnit = { x: uc / upLength, y: ud / upLength };
+    const toDisplay = (px: number, py: number) => ({
+      x: (viewportTransform[0] * px) + (viewportTransform[2] * py) + viewportTransform[4],
+      y: (viewportTransform[1] * px) + (viewportTransform[3] * py) + viewportTransform[5],
+    });
+    const runCorners = [
+      [ue, uf],
+      [ue + (baselineUnit.x * runWidth), uf + (baselineUnit.y * runWidth)],
+    ].flatMap(([px, py]) => [
+      toDisplay(px + (upUnit.x * ascentLength), py + (upUnit.y * ascentLength)),
+      toDisplay(px - (upUnit.x * descentLength), py - (upUnit.y * descentLength)),
+    ]);
+    const minX = Math.min(...runCorners.map((point) => point.x));
+    const maxX = Math.max(...runCorners.map((point) => point.x));
+    const minY = Math.min(...runCorners.map((point) => point.y));
+    const maxY = Math.max(...runCorners.map((point) => point.y));
+    const width = Math.max(1, maxX - minX);
+    const height = Math.max(1, maxY - minY);
 
     spans.push({
       id: `span-${pageNumber}-${i}`,
       text: item.str,
-      xRatio: clamp01(x / viewport.width),
-      yRatio: clamp01(top / viewport.height),
+      xRatio: clamp01(minX / viewport.width),
+      yRatio: clamp01(minY / viewport.height),
       widthRatio: clamp(width / viewport.width, 0.001, 1),
       heightRatio: clamp(height / viewport.height, 0.001, 1),
       fontSizeRatio: clamp(fontSizePt / pageViewport.height, 0.004, 0.25),

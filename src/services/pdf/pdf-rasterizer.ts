@@ -92,7 +92,9 @@ class PdfJsRasterizer implements PdfRasterizer {
           canvas.width = width;
           canvas.height = height;
         }
-        const context = canvas.getContext('2d');
+        // Explicit for the same reason as the preview factory: the union receiver can resolve to
+        // the generic `RenderingContext` overload.
+        const context = canvas.getContext('2d') as CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D | null;
         if (!context) {
           throw new Error('PDF canvas factory failed to get 2d context');
         }
@@ -126,7 +128,7 @@ class PdfJsRasterizer implements PdfRasterizer {
     }
 
     const canvas = new OffscreenCanvas(viewport.width, viewport.height);
-    const context = canvas.getContext('2d');
+    const context = canvas.getContext('2d') as OffscreenCanvasRenderingContext2D | null;
     if (!context) {
       throw new Error('PDF rendering failed to get 2d context from OffscreenCanvas');
     }

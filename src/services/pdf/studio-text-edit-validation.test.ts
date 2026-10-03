@@ -359,3 +359,42 @@ test('normalizeAndValidateStudioEditRequest rejects invalid image dataUrl', () =
     elements: [{ id: 'img-2', type: 'image', x: 0.1, y: 0.2, w: 0.3, h: 0.1, opacity: 1, dataUrl: 'not-a-data-url' }],
   }), /Unsupported image/);
 });
+
+test('normalizeAndValidateStudioEditRequest keeps an explicit colour choice', () => {
+  const withFlag = normalizeAndValidateStudioEditRequest({
+    pageIndex: 0,
+    elements: [{
+      id: 'text-1',
+      type: 'text',
+      x: 0.1,
+      y: 0.2,
+      w: 0.3,
+      h: 0.05,
+      text: 'hi',
+      color: '#ff0000',
+      colorUserSet: true,
+      fontSize: 12,
+      opacity: 1,
+    }],
+  });
+  assert.equal(withFlag.elements[0]?.type === 'text' ? withFlag.elements[0].colorUserSet : undefined, true);
+
+  // Anything other than an explicit true must not mark the colour as user-chosen.
+  const withoutFlag = normalizeAndValidateStudioEditRequest({
+    pageIndex: 0,
+    elements: [{
+      id: 'text-2',
+      type: 'text',
+      x: 0.1,
+      y: 0.2,
+      w: 0.3,
+      h: 0.05,
+      text: 'hi',
+      color: '#ff0000',
+      colorUserSet: 'yes',
+      fontSize: 12,
+      opacity: 1,
+    }],
+  });
+  assert.equal(withoutFlag.elements[0]?.type === 'text' ? withoutFlag.elements[0].colorUserSet : undefined, undefined);
+});

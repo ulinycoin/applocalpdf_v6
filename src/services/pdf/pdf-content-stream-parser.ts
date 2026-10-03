@@ -6,6 +6,10 @@ export interface PdfParsedTextOperator {
   textMatrixX?: number;
   textMatrixY?: number;
   fontSize?: number;
+  /** Font resource name in effect for this run, e.g. `/F4`. */
+  fontResourceName?: string;
+  /** Non-stroking fill colour in effect, as `#rrggbb`. */
+  fillColor?: string;
 }
 
 interface Token {
@@ -139,6 +143,35 @@ function readWordToken(content: string, start: number): Token {
   };
 }
 
+function readDictionaryToken(content: string, start: number): Token {
+  let index = start;
+  let depth = 0;
+  while (index < content.length) {
+    const char = content[index];
+    if (char === '<' && content[index + 1] === '<') {
+      depth += 1;
+      index += 2;
+      continue;
+    }
+    if (char === '>' && content[index + 1] === '>') {
+      depth -= 1;
+      index += 2;
+      if (depth <= 0) {
+        return { type: 'word', value: content.slice(start, index), start, end: index };
+      }
+      continue;
+    }
+    if (char === '(') {
+      const literal = readLiteralToken(content, index);
+      index = literal ? literal.end : index + 1;
+      continue;
+    }
+    index += 1;
+  }
+  // Unbalanced dictionary: consume the rest so the caller cannot loop forever.
+  return { type: 'word', value: content.slice(start), start, end: content.length };
+}
+
 function readNextToken(content: string, cursor: number): Token | null {
   const start = skipWhitespaceAndComments(content, cursor);
   if (start >= content.length) {
@@ -149,7 +182,16 @@ function readNextToken(content: string, cursor: number): Token | null {
     return readLiteralToken(content, start);
   }
   if (char === '<') {
+    // Marked-content property lists (`/P <</MCID 0 >> BDC`) are dictionaries, not hex strings.
+    if (content[start + 1] === '<') {
+      return readDictionaryToken(content, start);
+    }
     return readHexToken(content, start);
+  }
+  if (char === '>') {
+    // A lone dictionary terminator is never an operator; consume it so the scan advances.
+    const width = content[start + 1] === '>' ? 2 : 1;
+    return { type: 'word', value: content.slice(start, start + width), start, end: start + width };
   }
   if (char === '[') {
     let index = start + 1;
@@ -208,19 +250,76 @@ function getTrailingNumbers(operands: Token[], count: number): number[] | null {
   return tail.map((token) => Number(token.value));
 }
 
+function toHexChannel(value: number): string {
+  const clamped = Math.max(0, Math.min(255, Math.round(value * 255)));
+  return clamped.toString(16).padStart(2, '0');
+}
+
+type Matrix = [number, number, number, number, number, number];
+
+const IDENTITY_MATRIX: Matrix = [1, 0, 0, 1, 0, 0];
+
+/** Same convention as pdf.js `Util.transform`: `m1` then `m2`. */
+function concatMatrix(m1: Matrix, m2: Matrix): Matrix {
+  return [
+    m1[0] * m2[0] + m1[2] * m2[1],
+    m1[1] * m2[0] + m1[3] * m2[1],
+    m1[0] * m2[2] + m1[2] * m2[3],
+    m1[1] * m2[2] + m1[3] * m2[3],
+    m1[0] * m2[4] + m1[2] * m2[5] + m1[4],
+    m1[1] * m2[4] + m1[3] * m2[5] + m1[5],
+  ];
+}
+
+function readMatrix(values: number[] | null): Matrix | null {
+  if (!values || values.length < 6) {
+    return null;
+  }
+  return [values[0]!, values[1]!, values[2]!, values[3]!, values[4]!, values[5]!];
+}
+
+function readFillColor(operands: Token[], operator: 'rg' | 'g'): string | undefined {
+  const count = operator === 'rg' ? 3 : 1;
+  const values = getTrailingNumbers(operands, count);
+  if (!values) {
+    return undefined;
+  }
+  if (operator === 'g') {
+    const hex = toHexChannel(values[0]!);
+    return `#${hex}${hex}${hex}`;
+  }
+  return `#${toHexChannel(values[0]!)}${toHexChannel(values[1]!)}${toHexChannel(values[2]!)}`;
+}
+
+function readFontResourceName(operands: Token[]): string | undefined {
+  const nameToken = operands[operands.length - 2];
+  if (!nameToken || nameToken.type !== 'word') {
+    return undefined;
+  }
+  const value = String(nameToken.value);
+  return value.startsWith('/') ? value : undefined;
+}
+
 export function parsePdfTextOperators(content: string): PdfParsedTextOperator[] {
   const operators: PdfParsedTextOperator[] = [];
   const operands: Token[] = [];
   let inTextObject = false;
-  let textMatrixX: number | undefined;
-  let textMatrixY: number | undefined;
+  let textMatrix: Matrix = IDENTITY_MATRIX;
+  let ctm: Matrix = IDENTITY_MATRIX;
+  const ctmStack: Matrix[] = [];
   let textLeading = 0;
   let textFontSize: number | undefined;
+  let textFontResource: string | undefined;
+  let fillColor: string | undefined;
   let cursor = 0;
 
   while (cursor < content.length) {
     const token = readNextToken(content, cursor);
     if (!token) {
+      break;
+    }
+    if (token.end <= cursor) {
+      // Defensive: never let a zero-width token stall the scan.
       break;
     }
 
@@ -231,12 +330,37 @@ export function parsePdfTextOperators(content: string): PdfParsedTextOperator[] 
     }
 
     const op = String(token.value);
+    // PDF names (font resources, colour spaces, marked-content tags) are operands, not operators.
+    if (op.startsWith('/')) {
+      operands.push(token);
+      continue;
+    }
+    if (op === 'q') {
+      ctmStack.push(ctm);
+      operands.length = 0;
+      continue;
+    }
+    if (op === 'Q') {
+      ctm = ctmStack.pop() ?? IDENTITY_MATRIX;
+      operands.length = 0;
+      continue;
+    }
+    if (op === 'cm') {
+      const matrix = readMatrix(getTrailingNumbers(operands, 6));
+      if (matrix) {
+        // Text positions have to be reported in device space: print-generated PDFs routinely
+        // draw through a scaled/offset CTM, so raw Tm values are not comparable to page ratios.
+        ctm = concatMatrix(ctm, matrix);
+      }
+      operands.length = 0;
+      continue;
+    }
     if (op === 'BT') {
       inTextObject = true;
-      textMatrixX = undefined;
-      textMatrixY = undefined;
+      textMatrix = IDENTITY_MATRIX;
       textLeading = 0;
       textFontSize = undefined;
+      textFontResource = undefined;
       operands.length = 0;
       continue;
     }
@@ -246,15 +370,23 @@ export function parsePdfTextOperators(content: string): PdfParsedTextOperator[] 
       continue;
     }
     if (!inTextObject) {
+      if (op === 'rg' || op === 'g') {
+        fillColor = readFillColor(operands, op) ?? fillColor;
+      }
+      operands.length = 0;
+      continue;
+    }
+
+    if (op === 'rg' || op === 'g') {
+      fillColor = readFillColor(operands, op) ?? fillColor;
       operands.length = 0;
       continue;
     }
 
     if (op === 'Tm') {
-      const values = getTrailingNumbers(operands, 6);
-      if (values) {
-        textMatrixX = values[4];
-        textMatrixY = values[5];
+      const matrix = readMatrix(getTrailingNumbers(operands, 6));
+      if (matrix) {
+        textMatrix = matrix;
       }
       operands.length = 0;
       continue;
@@ -264,8 +396,7 @@ export function parsePdfTextOperators(content: string): PdfParsedTextOperator[] 
       const values = getTrailingNumbers(operands, 2);
       if (values) {
         const [tx, ty] = values;
-        textMatrixX = (textMatrixX ?? 0) + tx;
-        textMatrixY = (textMatrixY ?? 0) + ty;
+        textMatrix = concatMatrix([1, 0, 0, 1, tx, ty], textMatrix);
         if (op === 'TD') {
           textLeading = -ty;
         }
@@ -284,7 +415,7 @@ export function parsePdfTextOperators(content: string): PdfParsedTextOperator[] 
     }
 
     if (op === 'T*') {
-      textMatrixY = (textMatrixY ?? 0) - textLeading;
+      textMatrix = concatMatrix([1, 0, 0, 1, 0, -textLeading], textMatrix);
       operands.length = 0;
       continue;
     }
@@ -293,6 +424,7 @@ export function parsePdfTextOperators(content: string): PdfParsedTextOperator[] 
       const values = getTrailingNumbers(operands, 1);
       if (values) {
         textFontSize = values[0];
+        textFontResource = readFontResourceName(operands) ?? textFontResource;
       }
       operands.length = 0;
       continue;
@@ -301,14 +433,17 @@ export function parsePdfTextOperators(content: string): PdfParsedTextOperator[] 
     if (op === 'Tj') {
       const last = operands[operands.length - 1];
       if (last && (last.type === 'literal' || last.type === 'hex')) {
+        const device = concatMatrix(ctm, textMatrix);
         operators.push({
           operator: 'Tj',
           start: last.start,
           end: token.end,
           textSegments: [String(last.value)],
-          textMatrixX,
-          textMatrixY,
+          textMatrixX: device[4],
+          textMatrixY: device[5],
           fontSize: textFontSize,
+          fontResourceName: textFontResource,
+          fillColor,
         });
       }
       operands.length = 0;
@@ -318,14 +453,17 @@ export function parsePdfTextOperators(content: string): PdfParsedTextOperator[] 
     if (op === 'TJ') {
       const last = operands[operands.length - 1];
       if (last && last.type === 'array') {
+        const device = concatMatrix(ctm, textMatrix);
         operators.push({
           operator: 'TJ',
           start: last.start,
           end: token.end,
           textSegments: extractSegmentsFromArray(last.value as Token[]),
-          textMatrixX,
-          textMatrixY,
+          textMatrixX: device[4],
+          textMatrixY: device[5],
           fontSize: textFontSize,
+          fontResourceName: textFontResource,
+          fillColor,
         });
       }
       operands.length = 0;

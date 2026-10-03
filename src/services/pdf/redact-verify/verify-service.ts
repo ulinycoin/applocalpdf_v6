@@ -1,30 +1,27 @@
 import type { WorkerStudioEditElement, WorkerStudioRectEditElement } from '../../../core/types/contracts';
+import { collectLinkedBackgroundOwners, isCoverRect, isUserCoverRect } from '../text-edit';
 import type { RedactCheck, RedactCertificate, RedactCheckId, RedactCheckResult, RedactVerifyResult } from './redact-verify-types';
 
-export function isWhiteoutRectElement(element: WorkerStudioEditElement): boolean {
-  if (element.type !== 'rect') {
-    return false;
-  }
-  const fill = String(element.fill || '').trim().toLowerCase();
-  const stroke = String(element.stroke || '').trim().toLowerCase();
-  return (
-    (fill === '#ffffff' || fill === '#fff')
-    && (stroke === 'transparent' || stroke === '#000000' || stroke === '#ffffff' || stroke === '#fff')
-    && (element.strokeWidth ?? 0) <= 0.001
-    && (element.opacity ?? 1) >= 0.99
-  );
+/**
+ * A rect is a redaction target when it is a cover the user drew. The linked `${id}_bg` companion of
+ * an edited text box is excluded: covering that line is the text element's own job, and treating the
+ * cover as redaction made verification report the freshly edited line as leaked text.
+ */
+export function isWhiteoutRectElement(
+  element: WorkerStudioEditElement,
+  linkedBackgroundOwners: ReadonlyMap<string, string> = collectLinkedBackgroundOwners([element]),
+): boolean {
+  return isCoverRect(element) && !linkedBackgroundOwners.has(element.id);
 }
 
 /**
- * Verify + download gate is only for intentional whiteout redaction.
- * Text edits often ship a linked whiteout background — that must NOT block download.
+ * Verify + download gate runs whenever the payload contains a cover the user drew. A text edit alone
+ * ships a linked background that must NOT block download, but a real whiteout next to a text edit has
+ * to be verified — before this it was skipped entirely and the user got no certificate and no warning.
  */
 export function shouldRunRedactVerify(elements: WorkerStudioEditElement[]): boolean {
-  const hasTextElements = elements.some((element) => element.type === 'text');
-  if (hasTextElements) {
-    return false;
-  }
-  return elements.some(isWhiteoutRectElement);
+  const linkedBackgroundOwners = collectLinkedBackgroundOwners(elements);
+  return elements.some((element) => isUserCoverRect(element, linkedBackgroundOwners));
 }
 
 /**
@@ -43,8 +40,9 @@ async function extractRedactedStringsFromSource(
   const redactedStrings = new Set<string>();
   let redactionCount = 0;
 
+  const linkedBackgroundOwners = collectLinkedBackgroundOwners(elements);
   for (const element of elements) {
-    if (isWhiteoutRectElement(element)) {
+    if (isWhiteoutRectElement(element, linkedBackgroundOwners)) {
       redactionCount += 1;
     }
   }
@@ -108,7 +106,7 @@ async function extractTextAtElementPositions(
 
     for (const element of elements) {
       if (element.type === 'rect') {
-        if (!isWhiteoutRectElement(element)) continue;
+        if (!isWhiteoutRectElement(element, collectLinkedBackgroundOwners(elements))) continue;
 
         const rx = element.x;
         const ry = element.y;

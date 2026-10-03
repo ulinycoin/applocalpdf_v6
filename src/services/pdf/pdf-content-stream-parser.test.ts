@@ -53,3 +53,37 @@ test('parsePdfTextOperators tracks TL/T* and Tf font size', () => {
   assert.equal(operators[1]?.textMatrixY, 478);
   assert.equal(operators[1]?.fontSize, 18);
 });
+
+test('parsePdfTextOperators skips marked-content dictionaries instead of aborting', () => {
+  const tagged = 'BT /P <</MCID 0 >>BDC /F1 12 Tf 1 0 0 1 72 700 Tm (Hello) Tj EMC ET';
+  const operators = parsePdfTextOperators(tagged);
+  assert.equal(operators.length, 1);
+  assert.deepEqual(operators[0]?.textSegments, ['Hello']);
+  assert.equal(operators[0]?.fontResourceName, '/F1');
+});
+
+test('parsePdfTextOperators reports resource name and fill colour per run', () => {
+  const content = '1 0 0 rg BT /F7 11 Tf 1 0 0 1 40 600 Tm (Red) Tj ET 0 g BT /F8 9 Tf (Black) Tj ET';
+  const operators = parsePdfTextOperators(content);
+  assert.equal(operators[0]?.fontResourceName, '/F7');
+  assert.equal(operators[0]?.fillColor, '#ff0000');
+  assert.equal(operators[1]?.fontResourceName, '/F8');
+  assert.equal(operators[1]?.fillColor, '#000000');
+});
+
+test('parsePdfTextOperators applies the CTM to text positions', () => {
+  const scaled = 'q 2 0 0 2 100 50 cm BT /F1 10 Tf 1 0 0 1 40 20 Tm (Scaled) Tj ET Q';
+  const operators = parsePdfTextOperators(scaled);
+  assert.equal(operators.length, 1);
+  assert.equal(operators[0]?.textMatrixX, 180);
+  assert.equal(operators[0]?.textMatrixY, 90);
+});
+
+test('parsePdfTextOperators advances Td inside a flipped text matrix', () => {
+  const content = 'BT 1 0 0 -1 50 700 Tm 8 0 Td (A) Tj 8 0 Td (B) Tj ET';
+  const operators = parsePdfTextOperators(content);
+  assert.equal(operators.length, 2);
+  assert.equal(operators[0]?.textMatrixX, 58);
+  assert.equal(operators[1]?.textMatrixX, 66);
+  assert.equal(operators[0]?.textMatrixY, 700);
+});

@@ -78,7 +78,10 @@ export function normalizeFontFamilyFromString(value: unknown): WorkerStudioFontF
   if (normalized.includes('roboto')) {
     return 'roboto';
   }
-  if (normalized.includes('times') || normalized.includes('serif')) {
+  // `serif` also matches inside `sans-serif`, which silently turned every generic sans family
+  // into Times. Drop the sans-serif token before looking for a real serif family.
+  const withoutSans = normalized.replace(/sans[-\s]?serif/gu, '');
+  if (withoutSans.includes('times') || withoutSans.includes('serif')) {
     return 'times';
   }
   if (normalized.includes('mono') || normalized.includes('courier') || normalized.includes('code')) {

@@ -17,7 +17,7 @@ async function createPdfWithText(text: string): Promise<Uint8Array> {
   return stable;
 }
 
-test('shouldRunRedactVerify ignores text edits even with linked whiteout', () => {
+test('shouldRunRedactVerify skips linked backgrounds but verifies real covers', () => {
   const text: WorkerStudioTextEditElement = {
     type: 'text',
     id: 't1',
@@ -46,9 +46,21 @@ test('shouldRunRedactVerify ignores text edits even with linked whiteout', () =>
     strokeWidth: 0,
     opacity: 1,
   };
-  assert.equal(shouldRunRedactVerify([text, whiteout]), false);
+  // The editor's own companion cover is not a redaction claim.
+  const linkedBackground = { ...whiteout, id: 't1_bg' };
   assert.equal(shouldRunRedactVerify([text]), false);
+  assert.equal(shouldRunRedactVerify([text, linkedBackground]), false);
+
+  // A cover the user drew is, even when the same save also edits text.
   assert.equal(shouldRunRedactVerify([whiteout]), true);
+  assert.equal(shouldRunRedactVerify([text, whiteout]), true);
+
+  // Any opaque cover colour counts; an outlined shape does not.
+  assert.equal(shouldRunRedactVerify([{ ...whiteout, fill: '#000000' }]), true);
+  assert.equal(
+    shouldRunRedactVerify([{ ...whiteout, fill: 'transparent', stroke: '#ff0000', strokeWidth: 2 }]),
+    false,
+  );
 });
 
 test('buildCertificate produces correct format', async () => {

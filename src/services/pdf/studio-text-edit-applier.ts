@@ -11,16 +11,28 @@ import type {
   WorkerStudioWatermarkEditElement,
 } from '../../core/types/contracts';
 import { parsePdfTextOperators } from './pdf-content-stream-parser';
+import { resolvePublicAssetUrl } from './public-asset-url';
+import { isRasterTextAvailable, rasterizeTextRun } from './text-raster';
 import {
+  collectLinkedBackgroundOwners,
   collectOperatorsForRedaction,
+  planTextSegments,
+  resolvePageGeometry,
+  countMissingGlyphs,
+  isCoverRect,
+  pickCoveringFont,
   collectOperatorsInRect,
   isStudioTextEditV2Enabled,
   matchesPatchedOperator,
   redactOperatorsInDecodedStreams,
+  resolveRequestedFontSizeFromElement,
+  resolveSourceFontInfo,
   resolveTargetRect,
   resolveTypographyFromElement,
   resolveFontSizeFromElement,
+  inferTypographyFromBaseFont,
   textElementMovedFromOriginal as hasTextElementMovedFromOriginal,
+  type SourceFontInfo,
   type StreamOperatorRef,
 } from './text-edit';
 
@@ -74,19 +86,17 @@ function segmentTextForWrapping(text: string): string[] {
 }
 
 function layoutTextAtFixedFontSize(params: {
-  font: PDFFont;
+  /** Width of an arbitrary substring, possibly spanning several fonts. */
+  measure: (text: string) => number;
   text: string;
   blockWidth: number;
   fontSize: number;
-  tracking: number;
 }): { lines: Array<{ text: string; width: number }>; overflow: boolean } {
-  const { font, text, blockWidth, fontSize, tracking } = params;
+  const { measure, text, blockWidth } = params;
   const safeText = text.trim() || ' ';
   const maxWidth = Math.max(1, blockWidth);
   const words = safeText.split(/\s+/u).filter(Boolean);
   const lines: Array<{ text: string; width: number }> = [];
-
-  const measure = (value: string) => measureTextWidthWithTracking(font, value, fontSize, tracking);
   const pushLine = (value: string) => {
     const trimmed = value.trim();
     if (!trimmed) {
@@ -263,6 +273,10 @@ function containsDevanagari(input: string): boolean {
   return /[\u0900-\u097F]/u.test(input);
 }
 
+function containsGreek(input: string): boolean {
+  return /[\u0370-\u03FF\u1F00-\u1FFF]/u.test(input);
+}
+
 const LATVIAN_TRANSLITERATION: Record<string, string> = {
   ā: 'a', Ā: 'A', č: 'c', Č: 'C', ē: 'e', Ē: 'E',
   ģ: 'g', Ģ: 'G', ī: 'i', Ī: 'I', ķ: 'k', Ķ: 'K',
@@ -272,46 +286,6 @@ const LATVIAN_TRANSLITERATION: Record<string, string> = {
 
 function replaceUnsupportedChars(input: string): string {
   return input.replace(/[^\u0000-\u00FF]/gu, (char) => LATVIAN_TRANSLITERATION[char] ?? '?');
-}
-
-function canFontEncodeText(font: PDFFont, text: string): boolean {
-  try {
-    font.encodeText(text || ' ');
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-function hasMissingGlyphs(font: PDFFont, text: string): boolean {
-  for (const char of text) {
-    if (char > '\u00FF') {
-      try {
-        const width = font.widthOfTextAtSize(char, 12);
-        if (width < 0.1) {
-          return true;
-        }
-      } catch {
-        return true;
-      }
-      break;
-    }
-  }
-  return false;
-}
-
-function isAutoWhiteoutRect(element: WorkerStudioEditElement): boolean {
-  if (element.type !== 'rect') {
-    return false;
-  }
-  const fill = String(element.fill || '').trim().toLowerCase();
-  const stroke = String(element.stroke || '').trim().toLowerCase();
-  return (
-    (fill === '#ffffff' || fill === '#fff')
-    && (stroke === 'transparent' || stroke === '#000000' || stroke === '#ffffff' || stroke === '#fff')
-    && (element.strokeWidth ?? 0) <= 0.001
-    && (element.opacity ?? 1) >= 0.99
-  );
 }
 
 function encodeLatin1(input: string): Uint8Array {
@@ -489,8 +463,9 @@ function selectOperatorCandidateByPosition(params: {
         sourceText.length * Math.max(4, candidate.operator.fontSize ?? 12) * 0.5,
       );
       const widthScore = Math.abs(estimatedWidth - targetWidth) / Math.max(1, targetWidth);
-      // Width mismatch is a weak signal: user edit boxes are often wider than source glyph runs.
-      const score = posScore + Math.min(0.08, widthScore * 0.05);
+      // Width is only a tie-breaker: user edit boxes are routinely wider than the source glyph run,
+      // and a weight large enough to overcome small position differences picked the wrong line.
+      const score = posScore + Math.min(0.002, widthScore * 0.002);
       return {
         candidate,
         score,
@@ -531,6 +506,14 @@ function selectOperatorCandidateByPosition(params: {
     return null;
   }
   return best.candidate;
+}
+
+interface PlannedTextRun {
+  /** Text handed to `drawText`; a transliteration for runs that have to be rasterised. */
+  text: string;
+  font: PDFFont;
+  /** Original characters when no embedded face can render them. */
+  rasterText?: string;
 }
 
 interface PageStreamState {
@@ -585,6 +568,10 @@ async function loadPageStreamState(pdf: PDFDocument, pageIndex: number): Promise
   return { pdf, resolved, decodedByStream, PDFName, page };
 }
 
+function formatPdfNumber(value: number): string {
+  return Number(value.toFixed(3)).toString();
+}
+
 function tryPatchStreamOperator(params: {
   state: PageStreamState;
   text: string;
@@ -596,7 +583,28 @@ function tryPatchStreamOperator(params: {
   pageWidth: number;
   pageHeight: number;
   persist?: boolean;
-}): { applied: boolean; reason?: string; patchedOperator?: StreamOperatorRef } {
+  /** Text runs are only patched in place when the source font encodes Latin-1 literals. */
+  requireSimpleFont?: boolean;
+  /** Explicit size in points when the user changed it; the run inherits the stream size otherwise. */
+  fontSizeOverride?: number;
+  /** Explicit fill colour (hex) when the user picked one; the run keeps the stream colour otherwise. */
+  colorOverride?: string;
+  /**
+   * Typography the user asked for, resolved against the source font once it is known. A mismatch
+   * cannot be patched in place: the run keeps the font that is already selected.
+   */
+  requestedTypographyFor?: (sourceBaseFont?: string) => {
+    fontFamily: WorkerStudioFontFamilyId;
+    fontWeight: 'normal' | 'bold';
+    fontStyle: 'normal' | 'italic';
+  };
+}): {
+  applied: boolean;
+  reason?: string;
+  patchedOperator?: StreamOperatorRef;
+  candidate?: StreamOperatorRef;
+  sourceFont?: SourceFontInfo;
+} {
   const { state, text } = params;
   const persist = params.persist !== false;
   const { resolved, decodedByStream, PDFName, page } = state;
@@ -637,7 +645,69 @@ function tryPatchStreamOperator(params: {
     return { applied: false, reason: 'STREAM_NOT_FOUND' };
   }
 
-  const replacement = `(${escapePdfLiteralString(text)}) Tj`;
+  const candidate: StreamOperatorRef = { streamIndex: target.streamIndex, operator: target.operator };
+  const sourceFont = resolveSourceFontInfo({ pdf: state.pdf, page, operator: target.operator });
+  if (params.requireSimpleFont && !sourceFont.simpleLatin) {
+    // Composite (Type0/Identity-H) and Type3 fonts address glyphs by their own codes, so a
+    // Latin-1 literal written into them renders as wrong glyphs or blanks. Report the run so the
+    // caller can erase it and draw the replacement instead.
+    return {
+      applied: false,
+      reason: sourceFont.composite ? 'SOURCE_FONT_COMPOSITE' : 'SOURCE_FONT_UNSUPPORTED',
+      candidate,
+      sourceFont,
+    };
+  }
+
+  const appearanceOps: string[] = [];
+  const restoreOps: string[] = [];
+  if (params.fontSizeOverride !== undefined && Number.isFinite(params.fontSizeOverride)) {
+    const resourceName = target.operator.fontResourceName;
+    if (!resourceName) {
+      return { applied: false, reason: 'SOURCE_FONT_UNRESOLVED', candidate, sourceFont };
+    }
+    appearanceOps.push(`${resourceName} ${formatPdfNumber(params.fontSizeOverride)} Tf`);
+    // `Tf` is stream state, not run state: without restoring it the following runs in the same
+    // text object would silently inherit the new size too.
+    const sourceSize = target.operator.fontSize;
+    if (sourceSize !== undefined && Number.isFinite(sourceSize)) {
+      restoreOps.push(`${resourceName} ${formatPdfNumber(sourceSize)} Tf`);
+    }
+  }
+  if (params.colorOverride) {
+    const requested = hexToRgb(params.colorOverride);
+    const sourceColor = target.operator.fillColor ? hexToRgb(target.operator.fillColor) : undefined;
+    const changed = !sourceColor
+      || Math.abs(sourceColor.r - requested.r) > 0.001
+      || Math.abs(sourceColor.g - requested.g) > 0.001
+      || Math.abs(sourceColor.b - requested.b) > 0.001;
+    if (changed) {
+      appearanceOps.push(`${formatPdfNumber(requested.r)} ${formatPdfNumber(requested.g)} ${formatPdfNumber(requested.b)} rg`);
+      // Same reasoning as `Tf`: `rg` is stream state and has to be put back for the next runs.
+      if (sourceColor) {
+        restoreOps.push(`${formatPdfNumber(sourceColor.r)} ${formatPdfNumber(sourceColor.g)} ${formatPdfNumber(sourceColor.b)} rg`);
+      }
+    }
+  }
+
+  if (params.requireSimpleFont && params.requestedTypographyFor) {
+    // Patching only swaps the string operand, so it keeps the font that is already selected. A
+    // different family/weight/style has to be drawn with its own embedded font instead.
+    const sourceTypography = inferTypographyFromBaseFont(sourceFont.baseFont);
+    const requestedTypography = params.requestedTypographyFor(sourceFont.baseFont);
+    if (
+      sourceTypography
+      && (
+        sourceTypography.fontFamily !== requestedTypography.fontFamily
+        || sourceTypography.fontWeight !== requestedTypography.fontWeight
+        || sourceTypography.fontStyle !== requestedTypography.fontStyle
+      )
+    ) {
+      return { applied: false, reason: 'SOURCE_FONT_STYLE_MISMATCH', candidate, sourceFont };
+    }
+  }
+
+  const replacement = [...appearanceOps, `(${escapePdfLiteralString(text)}) Tj`, ...restoreOps].join(' ');
   const updatedContent = `${streamTarget.content.slice(0, target.operator.start)}${replacement}${streamTarget.content.slice(target.operator.end)}`;
 
   // Update the in-memory decoded content so subsequent patches in the same pass see the change.
@@ -658,10 +728,9 @@ function tryPatchStreamOperator(params: {
 
   return {
     applied: true,
-    patchedOperator: {
-      streamIndex: target.streamIndex,
-      operator: target.operator,
-    },
+    patchedOperator: candidate,
+    candidate,
+    sourceFont,
   };
 }
 
@@ -741,13 +810,33 @@ export async function applyStudioTextEditsToPdfBytes(params: {
   }
 
   const page = pdf.getPage(params.pageIndex);
-  const pageWidth = page.getWidth();
-  const pageHeight = page.getHeight();
+  // Editor ratios are relative to the *displayed* page (pdf.js viewport, `/Rotate` applied), while
+  // content-stream matching works in the unrotated MediaBox. `pageWidth`/`pageHeight` are the
+  // display size so every ratio → point conversion below matches what the user drew; the patch path
+  // switches to the MediaBox explicitly.
+  const geometry = resolvePageGeometry(page);
+  const pageWidth = geometry.displayWidth;
+  const pageHeight = geometry.displayHeight;
 
   pdf.registerFontkit(fontkit);
 
   const fontCache = new Map<string, PDFFont>();
   const imageCache = new Map<string, Awaited<ReturnType<typeof pdf.embedPng>>>();
+  const rasterCache = new Map<string, Awaited<ReturnType<typeof pdf.embedPng>>>();
+  // A run nothing can render is painted on a canvas and embedded once per distinct run.
+  const embedRasterRun = async (
+    text: string,
+    raster: { bytes: Uint8Array; widthPt: number },
+  ): Promise<Awaited<ReturnType<typeof pdf.embedPng>>> => {
+    const key = `${text}\u0000${Math.round(raster.widthPt)}\u0000${raster.bytes.byteLength}`;
+    const cached = rasterCache.get(key);
+    if (cached) {
+      return cached;
+    }
+    const embedded = await pdf.embedPng(raster.bytes);
+    rasterCache.set(key, embedded);
+    return embedded;
+  };
 
   const getStandardFont = async (family: WorkerStudioFontFamilyId, weight: 'normal' | 'bold', style: 'normal' | 'italic') => {
     const fontName = getPdfFontName(family, weight, style);
@@ -759,29 +848,31 @@ export async function applyStudioTextEditsToPdfBytes(params: {
     return embedded;
   };
 
-  // Embed Cyrillic and Latin-Ext Noto fonts. String literals in import() let Vite resolve them
-  // at build time; each is wrapped in try/catch so one failure doesn't block the other.
-  try {
-    const cyrillicMod = await import('@fontsource/noto-sans/files/noto-sans-cyrillic-400-normal.woff?url') as { default: string };
-    const resp = await fetch(cyrillicMod.default);
-    if (resp.ok) {
-      const bytes = new Uint8Array(await resp.arrayBuffer());
-      fontCache.set('noto-sans-cyrillic-400', await pdf.embedFont(bytes, { subset: true }));
-    }
-  } catch { /* skip */ }
+  // Script subsets, copied into public/fonts by scripts/copy-studio-fonts.mjs. They live next to
+  // Roboto so every face is loaded the same way — the URLs respect the deployed base path, and the
+  // pipeline can be exercised outside a Vite build.
+  const scriptSubsets: Array<{ key: string; file: string }> = [
+    { key: 'noto-sans-latin-400', file: 'fonts/noto-sans-latin-400.woff' },
+    { key: 'noto-sans-latin-ext-400', file: 'fonts/noto-sans-latin-ext-400.woff' },
+    { key: 'noto-sans-cyrillic-400', file: 'fonts/noto-sans-cyrillic-400.woff' },
+    { key: 'noto-sans-greek-400', file: 'fonts/noto-sans-greek-400.woff' },
+    { key: 'noto-sans-devanagari-400', file: 'fonts/noto-sans-devanagari-400.woff' },
+  ];
+  // Each face is independent: one failed fetch must not cost the other scripts their font.
+  await Promise.all(scriptSubsets.map(async ({ key, file }) => {
+    try {
+      const resp = await fetch(resolvePublicAssetUrl(file));
+      if (resp.ok) {
+        const bytes = new Uint8Array(await resp.arrayBuffer());
+        fontCache.set(key, await pdf.embedFont(bytes, { subset: true }));
+      }
+    } catch { /* skip this subset */ }
+  }));
 
+  // Roboto from /public/fonts — the only face here with full Latin + Latin-Ext + Cyrillic
+  // coverage, so it is the first candidate for any non-Latin1 text.
   try {
-    const latinExtMod = await import('@fontsource/noto-sans/files/noto-sans-latin-ext-400-normal.woff?url') as { default: string };
-    const resp = await fetch(latinExtMod.default);
-    if (resp.ok) {
-      const bytes = new Uint8Array(await resp.arrayBuffer());
-      fontCache.set('noto-sans-latin-ext-400', await pdf.embedFont(bytes, { subset: true }));
-    }
-  } catch { /* skip */ }
-
-  // Roboto from /public/fonts — covers Latin, Latin-Ext, Cyrillic; works as fallback.
-  try {
-    const robotoResp = await fetch('/fonts/Roboto-Regular.ttf');
+    const robotoResp = await fetch(resolvePublicAssetUrl('fonts/Roboto-Regular.ttf'));
     if (robotoResp.ok) {
       const bytes = new Uint8Array(await robotoResp.arrayBuffer());
       const font = await pdf.embedFont(bytes, { subset: true });
@@ -810,12 +901,31 @@ export async function applyStudioTextEditsToPdfBytes(params: {
 
     if (!needsExtended) {
       addUnique(await getStandardFont(family, weight, style));
+      // Standard fonts cover WinAnsi only; the embedded faces pick up anything past it.
+      addUnique(fontCache.get('roboto-regular') ?? null);
+      addUnique(fontCache.get('noto-sans-latin-ext-400') ?? null);
+      return candidates;
     }
 
-    addUnique(fontCache.get('noto-sans-latin-ext-400') ?? null);
-    addUnique(fontCache.get('noto-sans-cyrillic-400') ?? null);
-    addUnique(fontCache.get('noto-sans-latin-400') ?? null);
+    // The Google subsets cover disjoint ranges — `cyrillic` has no digits, punctuation or ASCII and
+    // `latin-ext` has no ASCII at all — so a single subset silently drops part of a real sentence
+    // ("Итого 100 USD"). The catalogue below is tried in coverage order, and whatever no face covers
+    // is drawn segment by segment instead of degrading the whole string.
     addUnique(fontCache.get('roboto-regular') ?? null);
+    const scriptSubsetKeys = [
+      ...(containsCyrillic(text) ? ['noto-sans-cyrillic-400'] : []),
+      ...(containsGreek(text) ? ['noto-sans-greek-400'] : []),
+      ...(containsDevanagari(text) ? ['noto-sans-devanagari-400'] : []),
+      'noto-sans-latin-400',
+      'noto-sans-latin-ext-400',
+      'noto-sans-cyrillic-400',
+      'noto-sans-greek-400',
+      'noto-sans-devanagari-400',
+    ];
+    for (const key of scriptSubsetKeys) {
+      addUnique(fontCache.get(key) ?? null);
+    }
+    addUnique(await getStandardFont(family, weight, style));
 
     return candidates;
   };
@@ -830,22 +940,87 @@ export async function applyStudioTextEditsToPdfBytes(params: {
   }): Promise<{ font: PDFFont; text: string }> => {
     const needsExtended = !canEncodeAsLatin1(params.text);
     const candidates = await getPreferredFontCandidates(params.family, params.weight, params.style, params.text);
-    for (const candidate of candidates) {
-      if (canFontEncodeText(candidate, params.text)) {
-        if (!needsExtended || !hasMissingGlyphs(candidate, params.text)) {
-          return { font: candidate, text: params.text };
-        }
-      }
+    const covering = pickCoveringFont(candidates, params.text);
+    if (covering) {
+      return { font: covering, text: params.text };
     }
 
     if (needsExtended) {
-      // Transiterate to ASCII — better than rectangles.
-      const bestFallback = fontCache.get('noto-sans-latin-ext-400')
-        ?? fontCache.get('roboto-regular')
-        ?? await getStandardFont('sora', 'normal', 'normal');
-      return { font: bestFallback, text: replaceUnsupportedChars(params.text) || ' ' };
+      // Transliterate to ASCII — better than blank glyphs. The replacement text has to pass the same
+      // coverage check, otherwise the fallback would itself draw a row of `.notdef` boxes.
+      const transliterated = replaceUnsupportedChars(params.text) || ' ';
+      const fallbacks: PDFFont[] = [];
+      const addFallback = (font: PDFFont | null) => {
+        if (font && !fallbacks.includes(font)) {
+          fallbacks.push(font);
+        }
+      };
+      addFallback(fontCache.get('roboto-regular') ?? null);
+      addFallback(fontCache.get('noto-sans-latin-ext-400') ?? null);
+      addFallback(await getStandardFont(params.family, params.weight, params.style));
+      return {
+        font: pickCoveringFont(fallbacks, transliterated)
+          ?? await getStandardFont('sora', 'normal', 'normal'),
+        text: transliterated,
+      };
     }
-    return { font: await getStandardFont('sora', 'normal', 'normal'), text: params.text };
+    return { font: await getStandardFont(params.family, params.weight, params.style), text: params.text };
+  };
+
+  /**
+   * Plans text as runs of fonts. A single covering face is the common case and stays a single run;
+   * when no face covers the whole string the runs are split per grapheme so only the characters that
+   * are genuinely unsupported get transliterated instead of the entire sentence.
+   */
+  const resolveTextPlan = async (params: {
+    family: WorkerStudioFontFamilyId;
+    weight: 'normal' | 'bold';
+    style: 'normal' | 'italic';
+    text: string;
+  }): Promise<{
+    runs: PlannedTextRun[];
+    text: string;
+    planSubstring: (value: string) => PlannedTextRun[];
+  }> => {
+    const candidates = await getPreferredFontCandidates(params.family, params.weight, params.style, params.text);
+    const covering = pickCoveringFont(candidates, params.text);
+    if (covering) {
+      return {
+        runs: [{ text: params.text, font: covering }],
+        text: params.text,
+        planSubstring: (value) => [{ text: value, font: covering }],
+      };
+    }
+
+    const fallbackFont = await getStandardFont('sora', 'normal', 'normal');
+    const indexed = candidates.map((candidateFont, index) => ({ candidateFont, index }));
+    // Coverage of a grapheme never changes during one edit, and layout measures the same words
+    // repeatedly, so the per-character answers are cached.
+    const coverageCache = new Map<string, boolean>();
+    const canRender = (candidate: { candidateFont: PDFFont; index: number }, value: string) => {
+      const key = `${candidate.index}\u0000${value}`;
+      const cached = coverageCache.get(key);
+      if (cached !== undefined) {
+        return cached;
+      }
+      const covered = countMissingGlyphs(candidate.candidateFont, value) === 0;
+      coverageCache.set(key, covered);
+      return covered;
+    };
+
+    const plan = (value: string): PlannedTextRun[] => planTextSegments({
+      text: value,
+      fonts: indexed,
+      canRender,
+    }).map((run) => (run.font
+      ? { text: run.text, font: run.font.candidateFont }
+      // Nothing can render these characters: keep the originals so layout, re-planning per line and
+      // rasterisation all see the real text. Transliteration happens at draw time only, and only
+      // when the runtime has no canvas at all.
+      : { text: run.text, font: fallbackFont, rasterText: run.text }));
+
+    const runs = plan(params.text);
+    return { runs, text: runs.map((run) => run.text).join(''), planSubstring: plan };
   };
 
   let overflowDetected = false;
@@ -855,13 +1030,25 @@ export async function applyStudioTextEditsToPdfBytes(params: {
   let trueReplaceFallbackReason: string | undefined = 'INELIGIBLE_EDIT_PAYLOAD';
   const formFieldErrors: string[] = [];
   const consumedTextIds = new Set<string>();
+  const sourceFontByElementId = new Map<string, SourceFontInfo>();
 
   const streamState = await loadPageStreamState(pdf, params.pageIndex);
 
-  applyTrueReplaceToTextElements(params.elements, streamState);
+  // A brand-new box the user never typed into carries no content: keeping it would send an empty
+  // replacement to the worker and, before the guard below, silently erase the nearest text run.
+  const elements = params.elements.filter((element) => !(
+    element.type === 'text' && !element.originalRect && element.text.trim().length === 0
+  ));
+
+  // The editor pairs every text box with a `${id}_bg` cover rectangle. The link is explicit, so the
+  // applier can tell a companion cover from a whiteout the user drew — the old geometry heuristic
+  // treated both the same way and silently dropped user whiteouts.
+  const linkedBackgroundByRectId = collectLinkedBackgroundOwners(elements);
+
+  applyTrueReplaceToTextElements(elements, streamState);
   params.signal?.throwIfAborted();
 
-  for (const element of params.elements) {
+  for (const element of elements) {
     params.signal?.throwIfAborted();
     await processEditElement(element);
   }
@@ -885,9 +1072,15 @@ export async function applyStudioTextEditsToPdfBytes(params: {
     const modifiedStreamIndices = new Set<number>();
     const textElements = elements.filter((e): e is WorkerStudioTextEditElement => e.type === 'text');
     for (const target of textElements) {
+      if (!target.originalRect) {
+        // A box the user just placed is new content, not a replacement. Patching it would hijack
+        // (and destroy) the nearest existing run instead of drawing the box where it was put, so
+        // new boxes always go through the overlay path below.
+        continue;
+      }
       const sanitizedText = sanitizeInlineText(target.text || ' ');
       const movedFromOriginal = hasTextElementMovedFromOriginal(target);
-      const targetRect = resolveTargetRect(target);
+      const targetRect = geometry.toUserRatiosTopDown(resolveTargetRect(target));
       if (!streamState) {
         trueReplaceFallbackReason = 'STREAM_DECODE_FAILED';
         continue;
@@ -895,6 +1088,7 @@ export async function applyStudioTextEditsToPdfBytes(params: {
 
       const isNonLatin1 = !canEncodeAsLatin1(sanitizedText);
       const patchText = movedFromOriginal || isNonLatin1 ? '' : sanitizedText;
+      const requestedSize = resolveRequestedFontSizeFromElement(target, pageHeight);
 
       const result = tryPatchStreamOperator({
         state: streamState,
@@ -904,10 +1098,17 @@ export async function applyStudioTextEditsToPdfBytes(params: {
         targetWidthRatio: targetRect.w,
         targetHeightRatio: targetRect.h,
         targetTextAlign: target.textAlign,
-        pageWidth,
-        pageHeight,
+        pageWidth: geometry.mediaWidth,
+        pageHeight: geometry.mediaHeight,
         persist: !textEditV2,
+        requireSimpleFont: true,
+        fontSizeOverride: requestedSize.changedFromSource ? requestedSize.fontSize : undefined,
+        colorOverride: target.colorUserSet ? target.color : undefined,
+        requestedTypographyFor: (sourceBaseFont) => resolveTypographyFromElement(target, sourceBaseFont),
       });
+      if (result.sourceFont) {
+        sourceFontByElementId.set(target.id, result.sourceFont);
+      }
       if (result.applied) {
         if (result.patchedOperator) {
           modifiedStreamIndices.add(result.patchedOperator.streamIndex);
@@ -924,10 +1125,12 @@ export async function applyStudioTextEditsToPdfBytes(params: {
       if (textEditV2) {
         const operatorsInRect = collectOperatorsForRedaction({
           decodedByStream: streamState.decodedByStream,
-          pageWidth,
-          pageHeight,
+          pageWidth: geometry.mediaWidth,
+          pageHeight: geometry.mediaHeight,
           rect: targetRect,
-          anchorOperator: result.patchedOperator?.operator,
+          // A rejected patch still knows which run it matched, so the original can be erased
+          // rather than left behind as ghost text under the overlay.
+          anchorOperator: result.patchedOperator?.operator ?? result.candidate?.operator,
           fontSizeRatio: target.sourceFontSizeRatio,
         });
         const shouldPreservePatch = result.applied && !movedFromOriginal && !isNonLatin1;
@@ -953,15 +1156,17 @@ export async function applyStudioTextEditsToPdfBytes(params: {
       return;
     }
     const line = sanitizeInlineText(element.text || ' ');
-    const typography = resolveTypographyFromElement(element);
-    const rendered = await resolveRenderableText({
+    // Prefer the real PostScript name of the run being replaced over the generic family pdf.js
+    // reports, so an overlay keeps the document's own typeface.
+    const typography = resolveTypographyFromElement(element, sourceFontByElementId.get(element.id)?.baseFont);
+    const textPlan = await resolveTextPlan({
       family: typography.fontFamily,
       weight: typography.fontWeight,
       style: typography.fontStyle,
       text: line,
     });
-    const font = rendered.font;
-    const textToDraw = rendered.text || ' ';
+    const textToDraw = textPlan.text || ' ';
+    const font = textPlan.runs[0]?.font ?? await getStandardFont(typography.fontFamily, typography.fontWeight, typography.fontStyle);
     const { r, g, b } = hexToRgb(element.color);
     const blockWidth = element.w * pageWidth;
     const blockHeight = element.h * pageHeight;
@@ -969,19 +1174,34 @@ export async function applyStudioTextEditsToPdfBytes(params: {
 
     const requestedFontSize = resolveFontSizeFromElement(element, pageHeight);
 
+    const tracking = element.letterSpacing ?? 0;
+    const measurePlanText = (value: string, fontSize: number) => {
+      let width = 0;
+      let glyphs = 0;
+      for (const run of textPlan.planSubstring(value)) {
+        // Matches the advance used while drawing run by run. Rasterised runs are measured with an
+        // em-per-character estimate because the canvas can only be consulted asynchronously.
+        const advance = run.rasterText
+          ? (run.rasterText.length * fontSize * 0.95) + (tracking * run.rasterText.length)
+          : run.font.widthOfTextAtSize(run.text, fontSize) + (tracking * run.text.length);
+        width += advance;
+        glyphs += (run.rasterText ?? run.text).length;
+      }
+      return glyphs > 0 ? width : 0;
+    };
+
     let renderFontSize = requestedFontSize;
-    const textWidth = measureTextWidthWithTracking(font, textToDraw, renderFontSize, element.letterSpacing ?? 0);
+    const textWidth = measurePlanText(textToDraw, renderFontSize);
     if (textWidth > blockWidth) {
       renderFontSize = clamp((renderFontSize * blockWidth) / textWidth, 4, renderFontSize);
     }
 
     const lineHeightFactor = typeof element.lineHeight === 'number' ? element.lineHeight : 1.2;
     const textLayout = layoutTextAtFixedFontSize({
-      font,
+      measure: (value) => measurePlanText(value, renderFontSize),
       text: textToDraw,
       blockWidth,
       fontSize: renderFontSize,
-      tracking: element.letterSpacing ?? 0,
     });
     overflowDetected ||= textLayout.overflow || (textLayout.lines.length * renderFontSize * Math.max(0.8, lineHeightFactor) > blockHeight + 0.5);
 
@@ -1013,22 +1233,26 @@ export async function applyStudioTextEditsToPdfBytes(params: {
       : renderFontSize * 0.2;
 
     const isOverlayText = !element.originalRect && !element.sourceFontName;
-    let baseY: number;
+    // Baseline measured from the top of the displayed page, i.e. in the same space as the editor.
+    let baselineTop: number;
     if (typeof element.baselineRatio === 'number' && Number.isFinite(element.baselineRatio)) {
       // Snapped to a PDF text-layer baseline — use it directly (WYSIWYG after Save).
-      baseY = pageHeight - clamp(element.baselineRatio, 0, 1) * pageHeight;
+      baselineTop = clamp(element.baselineRatio, 0, 1) * pageHeight;
     } else {
       // Editor positions the box by CSS top; glyphs sit inside the first line-box
       // (half-leading + em ascent). pdf-lib drawText uses the alphabetic baseline.
       const lineBox = renderFontSize * Math.max(1, lineHeightFactor);
       const halfLeading = isOverlayText ? Math.max(0, (lineBox - renderFontSize) / 2) : 0;
-      const baselineFromTop = halfLeading + ascent;
-      baseY = pageHeight - yTop - baselineFromTop;
+      baselineTop = yTop + halfLeading + ascent;
     }
+    const toUserRatioPoint = (displayX: number, displayY: number) => (
+      geometry.toUserPoint(displayX / pageWidth, displayY / pageHeight)
+    );
+    const uprightRotation = geometry.uprightRotationDegrees;
 
     // Prefer the linked `_bg` rect from the editor; avoid a second oversized whiteout here.
     // Brand-new overlay text (no originalRect) must NOT paint a white field — it covers the page.
-    const hasLinkedBackground = params.elements.some(
+    const hasLinkedBackground = elements.some(
       (candidate) => candidate.type === 'rect' && candidate.id === `${element.id}_bg`,
     );
     const isReplacingExistingPdfText = Boolean(element.originalRect || element.sourceFontName);
@@ -1036,11 +1260,17 @@ export async function applyStudioTextEditsToPdfBytes(params: {
       const whiteoutPadX = Math.min(1.5, blockWidth * 0.006);
       const whiteoutHeight = Math.min(ascent + descent, renderFontSize * 1.12);
       const whiteoutDescent = Math.min(descent, renderFontSize * 0.22);
+      const cover = geometry.toUserRect({
+        x: (element.x * pageWidth - whiteoutPadX) / pageWidth,
+        y: (baselineTop + whiteoutDescent - whiteoutHeight) / pageHeight,
+        w: (blockWidth + whiteoutPadX * 2) / pageWidth,
+        h: whiteoutHeight / pageHeight,
+      });
       page.drawRectangle({
-        x: element.x * pageWidth - whiteoutPadX,
-        y: baseY - whiteoutDescent,
-        width: blockWidth + whiteoutPadX * 2,
-        height: whiteoutHeight,
+        x: cover.x,
+        y: cover.y,
+        width: cover.w,
+        height: cover.h,
         color: rgb(1, 1, 1),
         opacity: 1,
         borderWidth: 0,
@@ -1049,31 +1279,64 @@ export async function applyStudioTextEditsToPdfBytes(params: {
 
     for (let lineIndex = 0; lineIndex < textLayout.lines.length; lineIndex += 1) {
       const layoutLine = textLayout.lines[lineIndex]!;
-      let x = element.x * pageWidth;
+      let displayX = element.x * pageWidth;
       if (element.textAlign === 'center') {
-        x += Math.max(0, (blockWidth - layoutLine.width) / 2);
+        displayX += Math.max(0, (blockWidth - layoutLine.width) / 2);
       }
       if (element.textAlign === 'right') {
-        x += Math.max(0, blockWidth - layoutLine.width);
+        displayX += Math.max(0, blockWidth - layoutLine.width);
       }
-      const y = baseY - (lineIndex * lineHeightPt);
-      page.drawText(layoutLine.text, {
-        x,
-        y,
-        size: renderFontSize,
-        font,
-        color: rgb(r, g, b),
-        opacity: element.opacity,
-      });
+      const displayY = baselineTop + (lineIndex * lineHeightPt);
+      // One draw call per run: a mixed-script sentence is emitted with the face that covers each part.
+      for (const run of textPlan.planSubstring(layoutLine.text)) {
+        if (run.rasterText && isRasterTextAvailable()) {
+          const raster = await rasterizeTextRun({
+            text: run.rasterText,
+            fontSizePt: renderFontSize,
+            bold: typography.fontWeight === 'bold',
+            colorHex: element.color,
+          });
+          if (raster) {
+            const embedded = await embedRasterRun(run.rasterText, raster);
+            // Sit the glyph baseline on the text baseline, then advance by the painted width.
+            const rasterTop = displayY - raster.baselineOffsetPt;
+            const anchor = toUserRatioPoint(displayX, rasterTop + raster.heightPt);
+            page.drawImage(embedded, {
+              x: anchor.x,
+              y: anchor.y,
+              width: raster.widthPt,
+              height: raster.heightPt,
+              opacity: element.opacity,
+              ...(uprightRotation ? { rotate: degrees(uprightRotation) } : {}),
+            });
+            displayX += raster.widthPt + (tracking * run.rasterText.length);
+            continue;
+          }
+        }
+        // No canvas in this runtime: degrade only these characters, not the whole sentence.
+        const fallbackText = run.rasterText ? (replaceUnsupportedChars(run.rasterText) || '?') : run.text;
+        const anchor = toUserRatioPoint(displayX, displayY);
+        page.drawText(fallbackText, {
+          x: anchor.x,
+          y: anchor.y,
+          size: renderFontSize,
+          font: run.font,
+          color: rgb(r, g, b),
+          opacity: element.opacity,
+          ...(uprightRotation ? { rotate: degrees(uprightRotation) } : {}),
+        });
+        displayX += run.font.widthOfTextAtSize(fallbackText, renderFontSize) + (tracking * fallbackText.length);
+      }
     }
   }
 
   async function processFormFieldElement(element: WorkerStudioFormFieldEditElement): Promise<void> {
     const form = pdf.getForm();
-    const sx = element.x * pageWidth;
-    const sh = element.h * pageHeight;
-    const sy = pageHeight - (element.y * pageHeight) - sh;
-    const sw = element.w * pageWidth;
+    const box = geometry.toUserRect({ x: element.x, y: element.y, w: element.w, h: element.h });
+    const sx = box.x;
+    const sy = box.y;
+    const sw = box.w;
+    const sh = box.h;
     const preferredName = (element.name || element.id).trim().slice(0, 120) || element.id;
     let fieldName = preferredName;
     if (usedFormFieldNames.has(fieldName)) {
@@ -1163,8 +1426,10 @@ export async function applyStudioTextEditsToPdfBytes(params: {
     const textToDraw = rendered.text || ' ';
     const { r, g, b } = hexToRgb(element.color);
     const uiAngle = element.rotation || 0;
-    const pdfAngle = -uiAngle;
-    const angleRad = (pdfAngle * Math.PI) / 180;
+    // The angle is measured in the editor, i.e. on the displayed page. A page rotation has to be
+    // added back so the watermark keeps the angle the user set.
+    const pdfAngle = geometry.uprightRotationDegrees - uiAngle;
+    const angleRad = (uiAngle * Math.PI) / 180;
     const cos = Math.cos(angleRad);
     const sin = Math.sin(angleRad);
     const textWidthPt = Math.max(1, font.widthOfTextAtSize(textToDraw, element.fontSize));
@@ -1172,12 +1437,17 @@ export async function applyStudioTextEditsToPdfBytes(params: {
     const centerOffsetX = textWidthPt * 0.5;
     const centerOffsetY = element.fontSize * 0.3;
 
-    const drawCenteredRotatedText = (centerX: number, centerY: number) => {
-      const anchorX = centerX - (centerOffsetX * cos - centerOffsetY * sin);
-      const anchorY = centerY - (centerOffsetX * sin + centerOffsetY * cos);
+    // Offsets are computed in display space (y down) and only then mapped into the page.
+    const drawCenteredRotatedText = (centerDisplayX: number, centerDisplayY: number) => {
+      const offsetX = centerOffsetX * cos + centerOffsetY * sin;
+      const offsetY = centerOffsetX * sin - centerOffsetY * cos;
+      const anchor = geometry.toUserPoint(
+        (centerDisplayX - offsetX) / pageWidth,
+        (centerDisplayY - offsetY) / pageHeight,
+      );
       page.drawText(textToDraw, {
-        x: anchorX,
-        y: anchorY,
+        x: anchor.x,
+        y: anchor.y,
         size: element.fontSize,
         font,
         color: rgb(r, g, b),
@@ -1187,11 +1457,9 @@ export async function applyStudioTextEditsToPdfBytes(params: {
     };
 
     if (!element.repeatEnabled) {
-      const xTopLeft = element.x * pageWidth;
-      const yTop = element.y * pageHeight;
-      const centerX = xTopLeft + textWidthPt * 0.5;
-      const centerY = pageHeight - yTop - textHeightPt * 0.5;
-      drawCenteredRotatedText(centerX, centerY);
+      const centerDisplayX = element.x * pageWidth + textWidthPt * 0.5;
+      const centerDisplayY = element.y * pageHeight + textHeightPt * 0.5;
+      drawCenteredRotatedText(centerDisplayX, centerDisplayY);
     } else {
       const charCount = Math.max(4, textToDraw.trim().length || 0);
       const baseWidthRatio = Math.max(0.08, (element.fontSize * charCount * 0.64) / pageWidth);
@@ -1215,9 +1483,9 @@ export async function applyStudioTextEditsToPdfBytes(params: {
         const staggerX = row % 2 === 1 ? stepX * 0.5 : 0;
         const xRatio = startX + staggerX + col * stepX;
         const yRatio = startY + row * stepY;
-        const centerX = (xRatio + textWidthRatio * 0.5) * pageWidth;
-        const centerY = pageHeight - ((yRatio + textHeightRatio * 0.5) * pageHeight);
-        drawCenteredRotatedText(centerX, centerY);
+        const centerDisplayX = (xRatio + textWidthRatio * 0.5) * pageWidth;
+        const centerDisplayY = (yRatio + textHeightRatio * 0.5) * pageHeight;
+        drawCenteredRotatedText(centerDisplayX, centerDisplayY);
       }
     }
   }
@@ -1230,10 +1498,12 @@ export async function applyStudioTextEditsToPdfBytes(params: {
     const { r, g, b } = hexToRgb(element.color);
     for (const path of strokePaths) {
       for (let i = 0; i < path.length - 2; i += 2) {
-        const sx = path[i] * pageWidth;
-        const sy = pageHeight - (path[i + 1] * pageHeight);
-        const ex = path[i + 2] * pageWidth;
-        const ey = pageHeight - (path[i + 3] * pageHeight);
+        const start = geometry.toUserPoint(path[i]!, path[i + 1]!);
+        const end = geometry.toUserPoint(path[i + 2]!, path[i + 3]!);
+        const sx = start.x;
+        const sy = start.y;
+        const ex = end.x;
+        const ey = end.y;
         page.drawLine({
           start: { x: sx, y: sy },
           end: { x: ex, y: ey },
@@ -1259,35 +1529,39 @@ export async function applyStudioTextEditsToPdfBytes(params: {
       imageCache.set(cacheKey, embedded);
     }
 
-    const sx = element.x * pageWidth;
-    const sy = pageHeight - ((element.y + element.h) * pageHeight);
-    const sw = element.w * pageWidth;
-    const sh = element.h * pageHeight;
+    // Anchor on the display-space bottom-left corner and rotate with the page so the picture stays
+    // upright and inside the box the user drew.
+    const anchor = geometry.toUserPoint(element.x, element.y + element.h);
     page.drawImage(embedded, {
-      x: sx,
-      y: sy,
-      width: sw,
-      height: sh,
+      x: anchor.x,
+      y: anchor.y,
+      width: element.w * pageWidth,
+      height: element.h * pageHeight,
       opacity: element.opacity,
+      ...(geometry.uprightRotationDegrees ? { rotate: degrees(geometry.uprightRotationDegrees) } : {}),
     });
   }
 
   async function processRectElement(element: WorkerStudioRectEditElement): Promise<void> {
     // Intentional whiteout = true redaction: remove text operators under the rect, then paint.
-    if (isAutoWhiteoutRect(element) && streamState) {
-      const rect = { x: element.x, y: element.y, w: element.w, h: element.h };
+    // Companion backgrounds of an edited text box are excluded — the text element itself owns that
+    // run and already redacts it.
+    if (isCoverRect(element) && !linkedBackgroundByRectId.has(element.id) && streamState) {
+      // Content-stream operators live in the unrotated MediaBox, so the drawn box has to be mapped
+      // back before anything can be found under it.
+      const rect = geometry.toUserRatiosTopDown({ x: element.x, y: element.y, w: element.w, h: element.h });
       // Prefer loose bbox match for paint-redact; baseline-only collector is tuned for text replace.
       let operators = collectOperatorsInRect({
         decodedByStream: streamState.decodedByStream,
-        pageWidth,
-        pageHeight,
+        pageWidth: geometry.mediaWidth,
+        pageHeight: geometry.mediaHeight,
         rect,
       });
       if (operators.length === 0) {
         operators = collectOperatorsForRedaction({
           decodedByStream: streamState.decodedByStream,
-          pageWidth,
-          pageHeight,
+          pageWidth: geometry.mediaWidth,
+          pageHeight: geometry.mediaHeight,
           rect,
         });
       }
@@ -1298,10 +1572,11 @@ export async function applyStudioTextEditsToPdfBytes(params: {
       }
     }
 
-    const sx = element.x * pageWidth;
-    const sy = pageHeight - ((element.y + element.h) * pageHeight);
-    const sw = element.w * pageWidth;
-    const sh = element.h * pageHeight;
+    const box = geometry.toUserRect({ x: element.x, y: element.y, w: element.w, h: element.h });
+    const sx = box.x;
+    const sy = box.y;
+    const sw = box.w;
+    const sh = box.h;
     const strokeRgb = hexToRgb(element.stroke);
     const fillRgb = hexToRgb(element.fill);
     const fillColor = element.fill === 'transparent'
@@ -1338,12 +1613,17 @@ export async function applyStudioTextEditsToPdfBytes(params: {
       case 'image':
         await processImageElement(element);
         return;
-      case 'rect':
-        if (trueReplaceApplied && isAutoWhiteoutRect(element)) {
+      case 'rect': {
+        // Only the companion background of an edited text box may be skipped, and only when that
+        // run was patched in place: the replacement text is already in the stream, so painting the
+        // background on top of it would hide it. A whiteout the user drew is never dropped.
+        const backgroundOwnerId = linkedBackgroundByRectId.get(element.id);
+        if (backgroundOwnerId && consumedTextIds.has(backgroundOwnerId)) {
           return;
         }
         await processRectElement(element);
         return;
+      }
     }
   }
 }

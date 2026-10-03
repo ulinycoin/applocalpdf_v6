@@ -28,8 +28,10 @@ test('resolveFontFamily uses exact and heuristic fallback mapping', () => {
 
 test('estimateInlineFontSizePt scales from ratio and clamps to bounds', () => {
   assert.equal(estimateInlineFontSizePt(0.02, 800), 16);
-  assert.equal(estimateInlineFontSizePt(0.0001, 800), 8);
-  assert.equal(estimateInlineFontSizePt(0.5, 1200), 96);
+  // Bounds match the editable range (4..144pt) so footnotes and headlines keep their real size
+  // instead of drifting, which the applier would otherwise read as a deliberate resize.
+  assert.equal(estimateInlineFontSizePt(0.0001, 800), 4);
+  assert.equal(estimateInlineFontSizePt(0.5, 1200), 144);
 });
 
 test('findNearestTextSpan selects closest span within threshold', () => {

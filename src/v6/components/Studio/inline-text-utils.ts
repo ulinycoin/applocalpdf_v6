@@ -458,7 +458,9 @@ export function mergeTextLine(spans: TextLayerSpanLike[], anchor: TextLayerSpanL
 
 export function estimateInlineFontSizePt(fontSizeRatio: number, pageHeightPt: number): number {
   const size = fontSizeRatio * pageHeightPt;
-  return Number(clamp(size, 8, 96).toFixed(2));
+  // Keep the whole editable range: a tighter clamp made footnotes (6pt) and headlines (120pt)
+  // drift from the source size, and that drift looked like an intentional user change on save.
+  return Number(clamp(size, 4, 144).toFixed(2));
 }
 
 function measureTextWidthWithTracking(font: PDFFont, text: string, fontSize: number, tracking: number): number {
