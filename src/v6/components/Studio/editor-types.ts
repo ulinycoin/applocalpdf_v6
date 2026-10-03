@@ -27,6 +27,10 @@ export interface TextElement {
     ascent?: number;
     sourceFontName?: string;
     sourceFontFamilyHint?: string;
+    /** Set when the run's font is anonymous in the file (Type3), so the UI can say so. */
+    sourceFontUnresolved?: boolean;
+    /** Colour picked in the panel; source runs keep their own colour until then. */
+    colorUserSet?: boolean;
     sourceFontSizeRatio?: number;
     /** Page-top ratio of alphabetic baseline when snapped to a PDF text guide. */
     baselineRatio?: number;

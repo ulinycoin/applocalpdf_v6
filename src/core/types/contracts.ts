@@ -113,6 +113,17 @@ export interface WorkerPdfTextLayerSpan {
   ascentRatio?: number;
   descentRatio?: number;
   transform?: number[];
+  /**
+   * Real PostScript name from the content stream. pdf.js reports a generic family and an internal
+   * font id, so without this the editor seeds every clicked line as regular Helvetica. Absent when
+   * the font is anonymous (Type3) — treat that as "unknown", not as "regular".
+   */
+  sourceFontName?: string;
+  sourceFontFamily?: WorkerStudioFontFamilyId;
+  sourceFontWeight?: 'normal' | 'bold';
+  sourceFontStyle?: 'normal' | 'italic';
+  /** Non-stroking fill colour of the run, as `#rrggbb`. */
+  color?: string;
 }
 
 export interface WorkerPdfImageCandidate {
@@ -168,6 +179,11 @@ export interface WorkerStudioTextEditElement {
    * the editor's default swatch is black and repainting untouched headings black would be a surprise.
    */
   colorUserSet?: boolean;
+  /**
+   * True when the run being edited has no identifiable font in the file (anonymous Type3 glyphs):
+   * the editor then draws a substitute and the panel says so instead of implying a match.
+   */
+  sourceFontUnresolved?: boolean;
   originalRect?: {
     x: number;
     y: number;

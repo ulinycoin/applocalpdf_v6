@@ -31,6 +31,8 @@ interface StudioTextSettingsPanelProps {
     }) => void;
     onDelete?: () => void;
     onDuplicate?: () => void;
+    /** Shown when the run's own font is unknown, so the substitute is not mistaken for a match. */
+    sourceFontNote?: string;
 }
 
 function ColorSwatch({
@@ -98,6 +100,7 @@ export function StudioTextSettingsPanel({
     onStyleChange,
     onDelete,
     onDuplicate,
+    sourceFontNote,
 }: StudioTextSettingsPanelProps) {
     return (
         <div className="ep">
@@ -129,6 +132,10 @@ export function StudioTextSettingsPanel({
                 <option value="times">Times New Roman</option>
                 <option value="mono">Courier</option>
             </select>
+
+            {sourceFontNote && (
+                <p className="ep-hint" data-testid="studio-text-substituted-font">{sourceFontNote}</p>
+            )}
 
             {/* Size + Bold + Italic in one row */}
             <div className="ep-row">

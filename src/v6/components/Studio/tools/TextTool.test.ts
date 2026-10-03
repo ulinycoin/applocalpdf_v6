@@ -187,3 +187,78 @@ test('TextTool opens editor for new text even in move interaction mode', () => {
   assert.equal(ctx.elements.length, 1);
   assert.equal(ctx.elements[0]?.type, 'text');
 });
+
+const styledSpan = {
+  id: 'span-styled',
+  text: 'Heading',
+  xRatio: 0.2,
+  yRatio: 0.3,
+  widthRatio: 0.2,
+  heightRatio: 0.03,
+  fontSizeRatio: 0.024,
+  ascentRatio: 0.02,
+  pageHeightPt: 792,
+  fontName: 'g_d0_f1',
+  fontFamilyHint: 'sans-serif',
+};
+
+test('TextTool seeds the clicked line with the font it was drawn with', () => {
+  const ctx = createContext({
+    textLayerSpans: [{
+      ...styledSpan,
+      sourceFontName: 'TimesNewRomanPS-BoldMT',
+      sourceFontFamily: 'times',
+      sourceFontWeight: 'bold',
+      sourceFontStyle: 'normal',
+      color: '#1a1a1a',
+    }],
+  });
+
+  TextTool.onPointerDown(ctx, {} as any, { x: 0.21, y: 0.31 });
+
+  const element = ctx.elements.find((item) => item.type === 'text');
+  assert.equal(element?.type, 'text');
+  // The line also gets a linked `${id}_bg` cover, so pick the text element explicitly.
+  assert.equal(element?.type === 'text' ? element.fontFamily : undefined, 'times');
+  assert.equal(element?.type === 'text' ? element.fontWeight : undefined, 'bold');
+  assert.equal(element?.type === 'text' ? element.color : undefined, '#1a1a1a');
+  assert.equal(element?.type === 'text' ? element.sourceFontName : undefined, 'TimesNewRomanPS-BoldMT');
+});
+
+test('TextTool falls back to the pdf.js hints for an anonymous font', () => {
+  const ctx = createContext({
+    textLayerSpans: [{ ...styledSpan, color: '#102030' }],
+  });
+
+  TextTool.onPointerDown(ctx, {} as any, { x: 0.21, y: 0.31 });
+
+  const element = ctx.elements.find((item) => item.type === 'text');
+  assert.equal(element?.type, 'text');
+  // No name to recover: keep the previous behaviour (generic hint) instead of inventing a weight.
+  assert.equal(element?.type === 'text' ? element.fontWeight : undefined, 'normal');
+  assert.equal(element?.type === 'text' ? element.color : undefined, '#102030');
+});
+
+test('TextTool marks a line whose own font is not stored in the file', () => {
+  const ctx = createContext({
+    textLayerSpans: [{ ...styledSpan, color: '#102030' }],
+  });
+
+  TextTool.onPointerDown(ctx, {} as any, { x: 0.21, y: 0.31 });
+
+  const element = ctx.elements.find((item) => item.type === 'text');
+  assert.equal(element?.type === 'text' ? element.sourceFontUnresolved : undefined, true);
+
+  const resolved = createContext({
+    textLayerSpans: [{
+      ...styledSpan,
+      sourceFontName: 'Helvetica',
+      sourceFontFamily: 'sora',
+      sourceFontWeight: 'normal',
+      sourceFontStyle: 'normal',
+    }],
+  });
+  TextTool.onPointerDown(resolved, {} as any, { x: 0.21, y: 0.31 });
+  const resolvedElement = resolved.elements.find((item) => item.type === 'text');
+  assert.equal(resolvedElement?.type === 'text' ? resolvedElement.sourceFontUnresolved : undefined, undefined);
+});

@@ -25,6 +25,11 @@ export interface TextLayerSpanLike {
   pageHeightPt?: number;
   ascentRatio?: number;
   transform?: number[];
+  sourceFontName?: string;
+  sourceFontFamily?: FontFamilyId;
+  sourceFontWeight?: 'normal' | 'bold';
+  sourceFontStyle?: 'normal' | 'italic';
+  color?: string;
 }
 
 export interface PointRatio {
@@ -44,6 +49,11 @@ export interface MergedTextLine {
   pageHeightPt?: number;
   ascentRatio?: number;
   transform?: number[];
+  sourceFontName?: string;
+  sourceFontFamily?: FontFamilyId;
+  sourceFontWeight?: 'normal' | 'bold';
+  sourceFontStyle?: 'normal' | 'italic';
+  color?: string;
 }
 
 const FONT_EXACT_MAP: Record<string, FontFamilyId> = {
@@ -453,6 +463,11 @@ export function mergeTextLine(spans: TextLayerSpanLike[], anchor: TextLayerSpanL
     pageHeightPt: anchor.pageHeightPt,
     ascentRatio: anchor.ascentRatio,
     transform: anchor.transform,
+    sourceFontName: anchor.sourceFontName,
+    sourceFontFamily: anchor.sourceFontFamily,
+    sourceFontWeight: anchor.sourceFontWeight,
+    sourceFontStyle: anchor.sourceFontStyle,
+    color: anchor.color,
   };
 }
 

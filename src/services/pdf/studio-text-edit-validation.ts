@@ -79,6 +79,7 @@ function normalizeTextElement(input: WorkerStudioTextEditElement): WorkerStudioT
       : undefined,
     originalRect: normalizeOriginalRectInput(input.originalRect),
     ...(input.colorUserSet === true ? { colorUserSet: true } : {}),
+    ...(input.sourceFontUnresolved === true ? { sourceFontUnresolved: true } : {}),
   };
 }
 

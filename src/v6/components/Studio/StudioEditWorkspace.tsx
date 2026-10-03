@@ -309,6 +309,7 @@ export function StudioEditWorkspace({ onClose }: StudioEditWorkspaceProps = {}) 
                     const bg = ctrl.elements.find(e => e.id === bgId && e.type === 'rect') as import('./editor-types').RectElement | undefined;
                     return bg?.fill ?? ctrl.textStyle.backgroundColor;
                 })()}
+                sourceFontNote={selectedTextElement?.sourceFontUnresolved ? ui.substitutedFont : undefined}
                 onStyleChange={(patch) => {
                     if (ctrl.selectedElementId) {
                         // Mark a colour the user actually picked: source runs keep their own colour

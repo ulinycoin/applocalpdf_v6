@@ -194,15 +194,24 @@ function selectTextSpanForEditing(ctx: ToolContext, clickedSpan: TextLayerSpan) 
     opacity: 1,
   };
 
+  // Seed from the font the run was actually drawn with. pdf.js only knows a generic family and an
+  // internal id, so falling back to it lost the document's face and weight (bold headings became
+  // regular Helvetica). The colour is seeded the same way, and only counts as a user choice once
+  // the panel marks it.
+  const seededFamily = mergedLine.sourceFontFamily ?? resolveFontFamily(mergedLine.fontName, mergedLine.fontFamilyHint);
+  const seededStyle = mergedLine.sourceFontWeight
+    ? { fontWeight: mergedLine.sourceFontWeight, fontStyle: mergedLine.sourceFontStyle ?? 'normal' }
+    : inferSourceTextStyle(mergedLine.fontName, mergedLine.fontFamilyHint, mergedLine.transform);
   const next: TextElement = {
     id: textId, type: 'text', x: left, y: top, w: w + Math.min(0.02, Math.max(0.008, w * 0.12)), h,
-    text: mergedLine.text, color: ctx.textStyle.color || '#000000',
+    text: mergedLine.text, color: mergedLine.color ?? (ctx.textStyle.color || '#000000'),
     fontSize: estimateInlineFontSizePt(mergedLine.fontSizeRatio, mergedLine.pageHeightPt ?? DEFAULT_PAGE_HEIGHT_PT),
-    fontFamily: resolveFontFamily(mergedLine.fontName, mergedLine.fontFamilyHint),
-    ...inferSourceTextStyle(mergedLine.fontName, mergedLine.fontFamilyHint, mergedLine.transform),
+    fontFamily: seededFamily,
+    ...seededStyle,
     textAlign: 'left', lineHeight: 1.2, letterSpacing: 0, opacity: 1,
     ascent: mergedLine.ascentRatio ? mergedLine.ascentRatio * (mergedLine.pageHeightPt ?? DEFAULT_PAGE_HEIGHT_PT) : undefined,
-    sourceFontName: mergedLine.fontName,
+    sourceFontName: mergedLine.sourceFontName ?? mergedLine.fontName,
+    ...(mergedLine.sourceFontName ? {} : { sourceFontUnresolved: true }),
     sourceFontFamilyHint: mergedLine.fontFamilyHint,
     sourceFontSizeRatio: mergedLine.fontSizeRatio,
     originalRect,

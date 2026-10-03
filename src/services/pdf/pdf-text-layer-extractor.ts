@@ -1,3 +1,4 @@
+import type { WorkerStudioFontFamilyId } from '../../core/types/contracts';
 interface PdfJsLike {
   getDocument(params: { data: Uint8Array; disableWorker: boolean; verbosity?: number }): { promise: Promise<any> };
   GlobalWorkerOptions?: { workerSrc?: string };
@@ -18,6 +19,11 @@ export interface PdfTextLayerSpan {
   ascentRatio?: number;
   descentRatio?: number;
   transform?: number[];
+  sourceFontName?: string;
+  sourceFontFamily?: WorkerStudioFontFamilyId;
+  sourceFontWeight?: 'normal' | 'bold';
+  sourceFontStyle?: 'normal' | 'italic';
+  color?: string;
 }
 
 export interface PdfTextLayerResult {

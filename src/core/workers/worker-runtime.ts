@@ -1,5 +1,6 @@
 import { GlobalRegistry } from '../registry/global-registry';
 import type { IFileSystem, IWorkerCommand, IWorkerEvent } from '../types/contracts';
+import { resolveSpanFontInfo } from '../../services/pdf/studio-text-layer-fonts';
 import { getPdfPageCountFromBytes } from '../pdf/page-count';
 import { extractTextLayerForPreview } from '../../services/pdf/pdf-text-layer-extractor';
 import { scanPdfImageCandidatesFromBlob } from '../../services/pdf/pdf-image-extractor';
@@ -77,6 +78,18 @@ export async function executeWorkerCommand(
         pdfBytes = new Uint8Array(await blob.arrayBuffer());
       }
       const layer = await extractTextLayerForPreview(pdfBytes, pageNumber);
+      // pdf.js reports a generic family and an internal font id, which made every clicked line seed
+      // as regular Helvetica. The content stream knows the real name and fill colour; this is
+      // best-effort and never blocks the layer.
+      let spans = layer.spans;
+      try {
+        const { PDFDocument } = await import('pdf-lib');
+        const pdf = await PDFDocument.load(new Uint8Array(pdfBytes));
+        const fontInfo = await resolveSpanFontInfo({ pdf, pageIndex: pageNumber - 1, spans: layer.spans });
+        spans = layer.spans.map((span) => ({ ...span, ...(fontInfo.get(span.id) ?? {}) }));
+      } catch {
+        // keep the pdf.js hints
+      }
       return {
         id: command.id,
         type: 'EVENT',
@@ -85,7 +98,7 @@ export async function executeWorkerCommand(
           payload: {
             fileId,
             pageNumber,
-            spans: layer.spans,
+            spans,
             width: layer.width,
             height: layer.height,
             pageCount: layer.pageCount,
