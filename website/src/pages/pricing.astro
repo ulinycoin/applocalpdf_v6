@@ -21,7 +21,7 @@ const pricingSchema = {
     {
       '@type': 'Product',
       name: 'LocalPDF Pro',
-      description: 'One-time Pro licence — unlimited workspaces, unlimited pages, OCR, editing, conversion, protect/unlock, and full Studio access. One payment, no subscription.',
+      description: 'One-time Pro licence — unlimited downloads, unlimited Studio workspaces, and full Studio access on every device. Every PDF tool is free for everyone. One payment, no subscription.',
       url: 'https://localpdf.online/pricing',
       brand: { '@type': 'Brand', name: 'LocalPDF' },
       offers: [
@@ -52,7 +52,7 @@ const pricingSchema = {
     {
       '@type': 'Product',
       name: 'LocalPDF Free',
-      description: `Free plan — up to 3 Studio workspaces, ${FREE_DAILY_FILE_LIMIT} files per day, essential PDF tools. No credit card needed.`,
+      description: `Free plan — every PDF tool, up to 3 Studio workspaces, ${FREE_DAILY_FILE_LIMIT} downloads per day. No credit card needed.`,
       url: 'https://localpdf.online/pricing',
       brand: { '@type': 'Brand', name: 'LocalPDF' },
       offers: {
@@ -95,9 +95,9 @@ const pricingSchema = {
             <p class="plan-summary">Best for quick, occasional PDF tasks on your device.</p>
           </div>
           <ul class="feature-list">
+            <li>Every PDF tool — OCR, edit, convert, protect, merge</li>
+            <li>Up to {FREE_DAILY_FILE_LIMIT} downloads per day</li>
             <li>Up to 3 Studio workspaces</li>
-            <li>Up to {FREE_DAILY_FILE_LIMIT} files per day (upload and download)</li>
-            <li>Essential PDF tools</li>
             <li>Local-first processing</li>
           </ul>
           <a class="plan-link plan-link-secondary" href="/app">Use Free</a>
@@ -109,13 +109,12 @@ const pricingSchema = {
             <p class="plan-kicker">Pro Lifetime</p>
             <h2>${PRO_LIFETIME_PRICE_USD}</h2>
             <p class="plan-period">one time · no renewal</p>
-            <p class="plan-summary">Buy once and keep every Pro tool. Nothing renews, nothing to cancel.</p>
+            <p class="plan-summary">Buy once and drop the limits. Nothing renews, nothing to cancel.</p>
           </div>
           <ul class="feature-list">
+            <li>Unlimited downloads</li>
             <li>Unlimited Studio workspaces</li>
-            <li>Unlimited pages per document</li>
-            <li>OCR, editing, conversion, protect/unlock</li>
-            <li>Full Studio access, on every device</li>
+            <li>Larger files and full Studio access, on every device</li>
             <li>One-time payment — no subscription</li>
           </ul>
           <div class="checkout-stack">

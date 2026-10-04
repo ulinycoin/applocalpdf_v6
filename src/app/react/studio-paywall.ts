@@ -6,7 +6,6 @@ import {
   checkDailyFileQuota,
   consumeDailyFileQuota,
   dailyFileQuotaMessage,
-  type DailyFileQuotaKind,
 } from '../platform/daily-file-quota';
 
 export function showStudioPaywall(
@@ -71,60 +70,30 @@ export function activateProTrial(
 }
 
 /**
- * Free plan: three files in and three files out per day. Returns false and shows the upgrade
- * paywall when the allowance is spent, so callers must not continue with the file operation.
+ * Free plan: three downloads per day; processing and adding files are free and never gated.
+ * Returns false and shows the upgrade paywall when the allowance is spent, so callers must not
+ * continue with the download.
  */
-export function requestDailyFileAllowance(
+export function requestDailyDownloadAllowance(
   telemetry: TelemetrySink,
   plan: string,
-  kind: DailyFileQuotaKind,
   count = 1,
 ): boolean {
   if (plan !== 'basic') {
     return true;
   }
 
-  const check = checkDailyFileQuota(kind, count);
+  const check = checkDailyFileQuota(count);
   if (!check.allowed) {
     showStudioPaywall(
       telemetry,
-      dailyFileQuotaMessage(kind, count),
+      dailyFileQuotaMessage(count),
       (import.meta as { env?: Record<string, string | undefined> }).env?.VITE_BILLING_URL,
-      {
-        toolId: 'studio',
-        trigger: kind === 'processed' ? 'daily_files_processed' : 'daily_files_downloaded',
-      },
+      { toolId: 'studio', trigger: 'daily_files_downloaded' },
     );
     return false;
   }
 
-  consumeDailyFileQuota(kind, count);
+  consumeDailyFileQuota(count);
   return true;
-}
-
-/** Same check without consuming, for flows that must count exactly what succeeded. */
-export function canAcceptDailyFiles(
-  telemetry: TelemetrySink,
-  plan: string,
-  count = 1,
-): boolean {
-  if (plan !== 'basic') {
-    return true;
-  }
-
-  if (checkDailyFileQuota('processed', count).allowed) {
-    return true;
-  }
-
-  showStudioPaywall(
-    telemetry,
-    dailyFileQuotaMessage('processed', count),
-    (import.meta as { env?: Record<string, string | undefined> }).env?.VITE_BILLING_URL,
-    { toolId: 'studio', trigger: 'daily_files_processed' },
-  );
-  return false;
-}
-
-export function recordAcceptedFiles(count = 1): void {
-  consumeDailyFileQuota('processed', count);
 }

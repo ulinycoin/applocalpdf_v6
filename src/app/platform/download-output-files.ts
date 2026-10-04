@@ -1,5 +1,5 @@
 import type { PlatformRuntime } from './create-platform';
-import { requestDailyFileAllowance } from '../react/studio-paywall';
+import { requestDailyDownloadAllowance } from '../react/studio-paywall';
 
 export interface DownloadOutputsOptions {
   baseName?: string;
@@ -36,7 +36,7 @@ export async function downloadOutputFiles(
     throw new Error('Download is available only in browser runtime');
   }
 
-  if (!requestDailyFileAllowance(runtime.telemetry, runtime.billing.getContext().plan, 'downloaded', outputIds.length)) {
+  if (!requestDailyDownloadAllowance(runtime.telemetry, runtime.billing.getContext().plan, outputIds.length)) {
     return 0;
   }
 

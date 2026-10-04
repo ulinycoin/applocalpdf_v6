@@ -405,5 +405,4 @@ export type RunnerTelemetryEvent =
   | { type: 'STUDIO_DELETE_PAGES'; runId: string; pageCount: number; workspaceCount: number; method: 'button' | 'keyboard' }
   | { type: 'REDACT_VERIFY_RUN'; runId: string; toolId: string; passed: boolean; checkCount: number; failCount: number }
   | { type: 'REDACT_VERIFY_FAIL'; runId: string; toolId: string; checkId: string; message: string }
-  | { type: 'REDACT_CERT_DOWNLOAD'; runId: string; toolId: string }
-  | { type: 'REDACT_CERT_PAYWALL'; runId: string; toolId: string; action: 'shown' | 'cta_clicked' };
+  | { type: 'REDACT_CERT_DOWNLOAD'; runId: string; toolId: string };

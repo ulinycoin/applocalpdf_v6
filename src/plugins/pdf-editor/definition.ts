@@ -6,7 +6,7 @@ export const pdfEditorDefinition: IToolDefinition = {
   description: 'Edit visible text directly in the PDF preview and export an updated file.',
   entitlements: ['pdf.edit'],
   limits: {
-    featureTier: 'pro',
+    featureTier: 'basic',
     maxFileSize: { free: 50 * 1024 * 1024, pro: 500 * 1024 * 1024 },
     maxPagesPerFile: { free: 300, pro: 3000 },
   },

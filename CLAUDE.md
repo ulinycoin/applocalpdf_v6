@@ -18,9 +18,10 @@ drag-and-drop pages between documents — no competitor has this.
 **Stack:** React 18, Vite, Astro 6, Konva, pdf-lib, tesseract.js, Zustand,
 LemonSqueezy (billing), PostHog (analytics), Vercel (deploy)
 
-**Business model:** Freemium via LemonSqueezy.
-- Free: merge, split, compress (up to 25 pages, 3 workspaces)
-- Pro ($19 one-time, or $39.99/yr): OCR, edit, convert, protect/unlock (unlimited)
+**Business model:** Freemium via LemonSqueezy. **Обработка бесплатна на всех инструментах; платит тот, кто выносит файлы.**
+- Free: **все** инструменты (OCR, edit, convert, protect/unlock, redaction verify, merge, split, compress), 3 скачивания в сутки, 3 workspace в канвасе
+- Pro ($19 один раз, или $39.99/год): без лимита на скачивания и workspace + большие файлы
+- Никогда не гейтить исполнение инструмента или добавление файлов: стена живёт в `daily-file-quota.ts` (скачивания) и `plan-limits.ts` (workspace). Детали — memory `business_model.md`
 
 ---
 

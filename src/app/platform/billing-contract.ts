@@ -1,14 +1,15 @@
 export type BillingPlan = 'basic' | 'pro' | 'trial';
 export type BillingTier = 'free' | 'pro_monthly' | 'pro_yearly' | 'pro_lifetime';
 
-export const BASIC_ENTITLEMENTS = [
+/**
+ * Entitlements describe capabilities, not price. Every tool runs on every plan: the free tier is
+ * limited by downloads per day and canvas size, never by tool access (see the project memory
+ * "Business model"). Keep the plumbing for the licence payload, but never gate execution with it.
+ */
+export const PRO_ENTITLEMENTS = [
   'pdf.merge',
   'pdf.split',
   'pdf.compress',
-] as const;
-
-export const PRO_ENTITLEMENTS = [
-  ...BASIC_ENTITLEMENTS,
   'pdf.ocr',
   'pdf.rotate',
   'pdf.delete_pages',
@@ -20,19 +21,11 @@ export const PRO_ENTITLEMENTS = [
   'pdf.redact.verify',
 ] as const;
 
+export const BASIC_ENTITLEMENTS = PRO_ENTITLEMENTS;
+
 export const ALL_ENTITLEMENTS = [...PRO_ENTITLEMENTS] as const;
 
 export type BillingEntitlement = (typeof ALL_ENTITLEMENTS)[number];
-
-const ENTITLEMENT_SET = new Set<string>(ALL_ENTITLEMENTS);
-
-export function sanitizeEntitlements(raw: unknown, plan: BillingPlan): BillingEntitlement[] {
-  const source = Array.isArray(raw) ? raw : [];
-  const unique = Array.from(new Set(source.filter((value): value is string => typeof value === 'string')));
-  const filtered = unique.filter((value): value is BillingEntitlement => ENTITLEMENT_SET.has(value));
-  const allowed = (plan === 'pro' || plan === 'trial') ? new Set<string>(PRO_ENTITLEMENTS) : new Set<string>(BASIC_ENTITLEMENTS);
-  return filtered.filter((value) => allowed.has(value));
-}
 
 export function getDefaultEntitlementsForPlan(plan: BillingPlan): BillingEntitlement[] {
   return [...((plan === 'pro' || plan === 'trial') ? PRO_ENTITLEMENTS : BASIC_ENTITLEMENTS)];

@@ -142,7 +142,7 @@ export const featurePages: FeaturePageData[] = [
     monetizationBlock: {
       eyebrow: 'Free vs Pro',
       title: 'Free for quick tasks. Pro for recurring PDF work.',
-      body: 'Use Edit PDF for quick changes, cover-ups, and lightweight fixes. Upgrade when editing becomes recurring document work and you need broader Studio access without running into limits.',
+      body: 'Use Edit PDF for quick changes, cover-ups, and lightweight fixes. Editing is free on every plan; the free tier includes 3 downloads per day and 3 Studio workspaces. Pro removes those limits for recurring document work.',
       primaryCtaLabel: 'See Pro plans',
       secondaryCtaLabel: 'Open Edit PDF',
     },
@@ -227,7 +227,7 @@ export const featurePages: FeaturePageData[] = [
     monetizationBlock: {
       eyebrow: 'Free vs Pro',
       title: 'Free for quick tasks. Pro for recurring PDF work.',
-      body: 'Use Merge PDF for fast one-off packet assembly. Upgrade when merge becomes part of a recurring workflow with bigger files, more pages, and broader PDF work across Studio.',
+      body: 'Use Merge PDF for fast one-off packet assembly. Merging is free on every plan; the free tier includes 3 downloads per day and 3 Studio workspaces. Pro removes those limits when merging becomes a recurring workflow.',
       primaryCtaLabel: 'See Pro plans',
       secondaryCtaLabel: 'Open Merge PDF',
     },
@@ -304,7 +304,7 @@ export const featurePages: FeaturePageData[] = [
     monetizationBlock: {
       eyebrow: 'Free vs Pro',
       title: 'Free for quick tasks. Pro for recurring PDF work.',
-      body: 'Use OCR PDF when you need to unlock one scan fast. Upgrade when OCR becomes part of recurring document handling, larger files, and broader PDF workflows inside Studio.',
+      body: 'Use OCR PDF when you need a searchable scan fast. OCR is free on every plan; the free tier includes 3 downloads per day and 3 Studio workspaces. Pro removes those limits for recurring document handling.',
       primaryCtaLabel: 'See Pro plans',
       secondaryCtaLabel: 'Open OCR PDF',
     },
@@ -381,7 +381,7 @@ export const featurePages: FeaturePageData[] = [
     monetizationBlock: {
       eyebrow: 'Free vs Pro',
       title: 'Free for quick tasks. Pro for recurring PDF work.',
-      body: 'Use Compress PDF for quick size reduction before a send, upload, or archive step. Upgrade when compression becomes recurring work across larger documents and the rest of your PDF stack.',
+      body: 'Use Compress PDF for quick size reduction before a send, upload, or archive step. Compression is free on every plan; the free tier includes 3 downloads per day and 3 Studio workspaces. Pro removes those limits for recurring work.',
       primaryCtaLabel: 'See Pro plans',
       secondaryCtaLabel: 'Open Compress PDF',
     },
@@ -677,7 +677,7 @@ export const featurePages: FeaturePageData[] = [
     monetizationBlock: {
       eyebrow: 'Free vs Pro',
       title: 'Free for quick tasks. Pro for recurring PDF work.',
-      body: 'Use Auto-TOC to organize documents up to 5 pages for free. Upgrade when working with larger books, reports, or legal bundles to access unlimited TOC parsing across Studio.',
+      body: 'Use Auto-TOC on a document of any length for free. Upgrade to Pro when PDF work becomes recurring and you want unlimited downloads and Studio workspaces.',
       primaryCtaLabel: 'See Pro plans',
       secondaryCtaLabel: 'Open Auto-TOC',
     },
@@ -768,8 +768,8 @@ export const featurePages: FeaturePageData[] = [
     ],
     monetizationBlock: {
       eyebrow: 'Free vs Pro',
-      title: 'Protection runs on Pro',
-      body: 'Merging, splitting, and compressing are free. Password protection and permission restrictions are part of Pro, a one-time $19 upgrade that unlocks every Pro tool permanently.',
+      title: 'Every tool is free — protection included',
+      body: 'Protect PDF, merge, split, compress, OCR, editing and conversion all run free on every plan. Pro removes the free-tier limits: unlimited downloads and unlimited Studio workspaces, one-time $19, no subscription.',
       primaryCtaLabel: 'See Pro plans',
       secondaryCtaLabel: 'Open Protect PDF',
     },

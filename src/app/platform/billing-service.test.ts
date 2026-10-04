@@ -1,6 +1,7 @@
 import { test, describe, mock, beforeEach, before } from 'node:test';
 import * as assert from 'node:assert';
 import { BillingService, BASIC_CONTEXT, LOCAL_PRO_CONTEXT } from './billing-service';
+import { BASIC_ENTITLEMENTS, PRO_ENTITLEMENTS } from './billing-contract';
 
 function encodeBase64Url(buffer: ArrayBuffer | Uint8Array): string {
   let binary = '';
@@ -109,7 +110,10 @@ describe('BillingService', () => {
     await service.initialize();
     const context = service.getContext();
     assert.strictEqual(context.plan, 'pro');
-    assert.deepStrictEqual(context.entitlements, ['pdf.edit', 'pdf.ocr']);
+    // The token in this fixture lists only two entitlements; the licence must still hand over every
+    // tool, because tool access is not what Pro sells.
+    assert.deepStrictEqual(context.entitlements, [...PRO_ENTITLEMENTS]);
+    assert.ok(context.entitlements.includes('pdf.protect.encrypt'));
   });
 
   test('accepts a yearly pro token', async () => {
@@ -125,7 +129,11 @@ describe('BillingService', () => {
     const service = new BillingService('test_storage', publicKeyPem);
     const result = await service.saveToken(token);
     assert.strictEqual(result, true);
-    assert.deepStrictEqual(service.getContext().entitlements, ['pdf.merge', 'pdf.split', 'pdf.compress']);
+    const context = service.getContext();
+    // The free plan runs every tool: the day's limit lives on downloads, not on tool access.
+    assert.deepStrictEqual(context.entitlements, [...BASIC_ENTITLEMENTS]);
+    assert.ok(context.entitlements.includes('pdf.ocr'));
+    assert.ok(context.entitlements.includes('pdf.protect.encrypt'));
   });
 
   test('accepts a one-time lifetime pro token', async () => {
@@ -275,7 +283,7 @@ describe('BillingService', () => {
 
       // Switching the override off must fall back to the verified licence, not to Free.
       service.setLocalPro(false);
-      assert.deepStrictEqual(service.getContext().entitlements, ['pdf.ocr']);
+      assert.deepStrictEqual(service.getContext().entitlements, [...PRO_ENTITLEMENTS]);
     });
   });
 }

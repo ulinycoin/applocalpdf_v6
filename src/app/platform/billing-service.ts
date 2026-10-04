@@ -3,7 +3,6 @@ import {
   getDefaultEntitlementsForPlan,
   normalizePlan,
   normalizeTier,
-  sanitizeEntitlements,
 } from './billing-contract';
 import {
   getTrialState,
@@ -325,12 +324,13 @@ export class BillingService {
       if (plan === 'trial') return null;
       const tier = normalizeTier(payload.tier, plan);
       if (!tier) return null;
-      const entitlements = sanitizeEntitlements(payload.entitlements, plan);
-      const defaultEntitlements = getDefaultEntitlementsForPlan(plan);
 
+      // Tool access never depends on the licence: every plan runs every tool, so the free tier is
+      // limited by downloads per day instead. A token carrying a stale or narrow `entitlements` list
+      // (older licences do) therefore must not be able to lock a tool for a paying user.
       return {
         plan,
-        entitlements: entitlements.length > 0 ? entitlements : defaultEntitlements,
+        entitlements: getDefaultEntitlementsForPlan(plan),
       };
     } catch {
       return null;

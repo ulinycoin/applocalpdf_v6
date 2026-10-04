@@ -10,7 +10,7 @@ import type { WorkerPdfImageCandidate } from '../../../../core/public/contracts'
 import { createZipBlob } from '../../../utils/zip';
 import { type PageItem, type StudioDocument, type StudioState, useStudioStore } from '../studio-store';
 import { showStudioPaywall } from '../../../../app/react/studio-paywall';
-import { requestDailyFileAllowance } from '../../../../app/react/studio-paywall';
+import { requestDailyDownloadAllowance } from '../../../../app/react/studio-paywall';
 import { useHistoryStore } from '../store/history-store';
 import type { StudioToolRouteState } from '../../../studio/navigation/studio-tool-context';
 
@@ -812,7 +812,7 @@ export function useStudioConvertController(initialToolOverride?: StudioConvertTo
   ]);
 
   const downloadSingleResult = useCallback(async (outputId: string, name: string) => {
-    if (!requestDailyFileAllowance(runtime.telemetry, billingPlan, 'downloaded', 1)) {
+    if (!requestDailyDownloadAllowance(runtime.telemetry, billingPlan, 1)) {
       return;
     }
     await downloadFileById(runtime, outputId, name);
@@ -821,7 +821,7 @@ export function useStudioConvertController(initialToolOverride?: StudioConvertTo
   const downloadResults = useCallback(async () => {
     const baseDocName = activeDocument?.name || 'converted';
 
-    if (!requestDailyFileAllowance(runtime.telemetry, billingPlan, 'downloaded', Math.max(1, outputIds.length))) {
+    if (!requestDailyDownloadAllowance(runtime.telemetry, billingPlan, Math.max(1, outputIds.length))) {
       return;
     }
 

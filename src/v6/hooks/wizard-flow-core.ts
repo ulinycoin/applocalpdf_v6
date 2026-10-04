@@ -2,7 +2,6 @@ import type { PlatformRuntime } from '../../app/platform/create-platform';
 import { getOrCreateFlowId } from '../../app/platform/browser-context';
 import type { IWorkerCommand, ToolRunContext } from '../../core/public/contracts';
 import { isVfsQuotaExceededError } from '../../app/platform/error-utils';
-import { canAcceptDailyFiles, recordAcceptedFiles } from '../../app/react/studio-paywall';
 import type { LimitService, WizardState } from '../components/Wizard/types';
 
 export const INITIAL_WIZARD_STATE: WizardState = {
@@ -111,10 +110,6 @@ export class WizardFlowCore {
       return this.state;
     }
 
-    if (!canAcceptDailyFiles(this.deps.runtime.telemetry, this.deps.context.plan, files.length)) {
-      return this.state;
-    }
-
     this.state = {
       ...this.state,
       isValidating: true,
@@ -128,9 +123,6 @@ export class WizardFlowCore {
       for (const file of files) {
         const entry = await this.deps.runtime.vfs.write(file);
         writtenFileIds.push(entry.id);
-      }
-      if (this.deps.context.plan === 'basic') {
-        recordAcceptedFiles(writtenFileIds.length);
       }
     } catch (error) {
       if (writtenFileIds.length > 0) {

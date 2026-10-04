@@ -21,42 +21,42 @@ function installStorageStub(): void {
   } as unknown as Storage;
 }
 
-test('daily file quota allows the free allowance and blocks the next file', () => {
+test('daily download quota allows the free allowance and blocks the next download', () => {
   installStorageStub();
   resetDailyFileQuota();
 
   assert.equal(FREE_DAILY_FILE_LIMIT, 3);
-  assert.equal(getDailyFileUsage('processed'), 0);
-  assert.equal(checkDailyFileQuota('processed', 3).allowed, true);
+  assert.equal(getDailyFileUsage(), 0);
+  assert.equal(checkDailyFileQuota(3).allowed, true);
 
-  consumeDailyFileQuota('processed', 3);
-  assert.equal(getDailyFileUsage('processed'), 3);
-  assert.equal(checkDailyFileQuota('processed', 1).allowed, false);
-  assert.equal(checkDailyFileQuota('processed', 1).remaining, 0);
-});
-
-test('processed and downloaded allowances are counted separately', () => {
-  installStorageStub();
-  resetDailyFileQuota();
-
-  consumeDailyFileQuota('processed', 3);
-  assert.equal(getDailyFileUsage('processed'), 3);
-  assert.equal(getDailyFileUsage('downloaded'), 0);
-  assert.equal(checkDailyFileQuota('downloaded', 3).allowed, true);
-
-  consumeDailyFileQuota('downloaded', 1);
-  assert.equal(getDailyFileUsage('downloaded'), 1);
+  consumeDailyFileQuota(3);
+  assert.equal(getDailyFileUsage(), 3);
+  assert.equal(checkDailyFileQuota(1).allowed, false);
+  assert.equal(checkDailyFileQuota(1).remaining, 0);
 });
 
 test('a batch larger than the remaining allowance is refused as a whole', () => {
   installStorageStub();
   resetDailyFileQuota();
 
-  consumeDailyFileQuota('processed', 2);
-  const check = checkDailyFileQuota('processed', 2);
+  consumeDailyFileQuota(2);
+  const check = checkDailyFileQuota(2);
   assert.equal(check.allowed, false);
   assert.equal(check.remaining, 1);
-  assert.match(dailyFileQuotaMessage('processed', 2), /1 file left today/);
+  assert.match(dailyFileQuotaMessage(2), /1 download left today/);
+});
+
+test('legacy upload counters do not consume the download allowance', () => {
+  installStorageStub();
+  const today = new Date().toISOString().slice(0, 10);
+  localStorage.setItem('localpdf_daily_files', JSON.stringify({ date: today, processed: 3, downloaded: 0 }));
+
+  assert.equal(getDailyFileUsage(), 0);
+  assert.equal(checkDailyFileQuota(3).allowed, true);
+
+  consumeDailyFileQuota(1);
+  const record = JSON.parse(localStorage.getItem('localpdf_daily_files') ?? '{}') as Record<string, unknown>;
+  assert.equal(record.downloaded, 1);
 });
 
 test('yesterday counters do not leak into today', () => {
@@ -64,8 +64,8 @@ test('yesterday counters do not leak into today', () => {
   const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
   localStorage.setItem('localpdf_daily_files', JSON.stringify({ date: yesterday, processed: 3, downloaded: 3 }));
 
-  assert.equal(getDailyFileUsage('processed'), 0);
-  assert.equal(checkDailyFileQuota('downloaded', 3).allowed, true);
+  assert.equal(getDailyFileUsage(), 0);
+  assert.equal(checkDailyFileQuota(3).allowed, true);
 });
 
 test('a missing localStorage never throws and never blocks', () => {
@@ -74,9 +74,9 @@ test('a missing localStorage never throws and never blocks', () => {
   delete globalWithStorage.localStorage;
 
   try {
-    assert.equal(getDailyFileUsage('processed'), 0);
-    assert.doesNotThrow(() => consumeDailyFileQuota('processed', 5));
-    assert.equal(checkDailyFileQuota('processed', 3).allowed, true);
+    assert.equal(getDailyFileUsage(), 0);
+    assert.doesNotThrow(() => consumeDailyFileQuota(5));
+    assert.equal(checkDailyFileQuota(3).allowed, true);
   } finally {
     if (previous) {
       globalWithStorage.localStorage = previous;

@@ -3,17 +3,16 @@ import { useStudioStore, type PageItem, type StudioDocument, type StudioState } 
 import { usePlatform } from './platform-context';
 import { PipelineRunner } from '../../v6/studio/pipeline/PipelineRunner';
 import type { IPipelineRecipe } from '../../v6/studio/pipeline/types';
-import { openBillingPlans, openCheckout } from './billing';
+import { openBillingPlans } from './billing';
 import { getOrCreateFlowId } from '../platform/browser-context';
 import { StudioDownloadModal } from './StudioDownloadModal';
 import { getTrialState } from '../platform/trial-manager';
-import { getPrimaryPaidOffer } from '../platform/checkout-offers';
 import { TrialBanner } from './trial-banner';
 import QRCode from 'qrcode';
 import { APP_BASE_PATH } from '../../../shared/app-routes';
 import { downloadCertificateJson } from '../../v6/utils/redact-verify-ui';
-import { trackMonetizationEvent, trackPaywallShown } from './monetization-telemetry';
-import { requestDailyFileAllowance } from './studio-paywall';
+import { trackMonetizationEvent } from './monetization-telemetry';
+import { requestDailyDownloadAllowance } from './studio-paywall';
 import { getDeviceInstanceName } from '../platform/device-identity';
 
 type LicenseDevice = { id: string; name: string; createdAt: string };
@@ -291,26 +290,6 @@ export function StudioTopNav({ telemetryEnabled, onToggleTelemetry, telemetryOpe
     setDownloadTargetDocumentId(activeDocument.id);
     setDownloadFileName(activeDocument.name);
     setIsDownloadModalOpen(true);
-
-    const verify = activeDocument.lastRedactVerify;
-    const canCert = billingContext.entitlements.includes('pdf.redact.verify');
-    if (verify?.passed && verify.certificateJson && !canCert) {
-      const runId = verify.runId || crypto.randomUUID();
-      runtime.telemetry.track({
-        type: 'REDACT_CERT_PAYWALL',
-        runId,
-        toolId: 'studio.edit.redact',
-        action: 'shown',
-      });
-      trackPaywallShown({
-        source: 'redact_certificate',
-        toolId: 'studio.edit.redact',
-        trigger: 'cert_download',
-        userState: 'local',
-        hadPriorSuccessfulRun: true,
-        flowId: runId,
-      });
-    }
   };
 
   const handleShareToPhone = async (
@@ -430,7 +409,7 @@ export function StudioTopNav({ telemetryEnabled, onToggleTelemetry, telemetryOpe
     const fileName = filename.trim() || targetDocument.name;
     const safeName = fileName.replace(/[<>:"/\\|?*]/g, '_').slice(0, 64) || 'Workspace';
 
-    if (!requestDailyFileAllowance(runtime.telemetry, billingContext.plan, 'downloaded', 1)) {
+    if (!requestDailyDownloadAllowance(runtime.telemetry, billingContext.plan, 1)) {
       return;
     }
 
@@ -459,7 +438,6 @@ export function StudioTopNav({ telemetryEnabled, onToggleTelemetry, telemetryOpe
   }, [activeDocument, documents, downloadTargetDocumentId]);
 
   const redactVerify = downloadTargetDocument?.lastRedactVerify ?? null;
-  const canDownloadCertificate = billingContext.entitlements.includes('pdf.redact.verify');
 
   const handleDownloadCertificate = (): void => {
     if (!redactVerify?.certificateJson || !downloadTargetDocument) {
@@ -471,33 +449,6 @@ export function StudioTopNav({ telemetryEnabled, onToggleTelemetry, telemetryOpe
       runId: redactVerify.runId || crypto.randomUUID(),
       toolId: 'studio.edit.redact',
     });
-  };
-
-  const handleCertificatePaywall = (): void => {
-    const runId = redactVerify?.runId || crypto.randomUUID();
-    runtime.telemetry.track({
-      type: 'REDACT_CERT_PAYWALL',
-      runId,
-      toolId: 'studio.edit.redact',
-      action: 'cta_clicked',
-    });
-    trackMonetizationEvent('paywall_cta_clicked', {
-      source: 'redact_certificate',
-      toolId: 'studio.edit.redact',
-      trigger: 'cert_download',
-      userState: 'local',
-      hadPriorSuccessfulRun: true,
-      flowId: runId,
-    });
-    const offer = getPrimaryPaidOffer();
-    if (offer) {
-      openCheckout(offer.url, {
-        source: 'redact_certificate',
-        trigger: 'cert_download',
-        variant: offer.variant,
-        flowId: runId,
-      });
-    }
   };
 
   return (
@@ -683,9 +634,7 @@ export function StudioTopNav({ telemetryEnabled, onToggleTelemetry, telemetryOpe
         isOpen={isDownloadModalOpen}
         fileName={downloadFileName}
         redactVerify={redactVerify}
-        canDownloadCertificate={canDownloadCertificate}
         onDownloadCertificate={handleDownloadCertificate}
-        onCertificatePaywall={handleCertificatePaywall}
         onClose={() => {
           setIsDownloadModalOpen(false);
           setDownloadTargetDocumentId(null);

@@ -8,9 +8,7 @@ interface StudioDownloadModalProps {
   onDownload: (filename: string) => void;
   onShare: (filename: string, onProgress: (msg: string) => void) => Promise<{ qrCodeUrl: string; shareLink: string }>;
   redactVerify?: StudioDocumentRedactVerify | null;
-  canDownloadCertificate?: boolean;
   onDownloadCertificate?: () => void;
-  onCertificatePaywall?: () => void;
 }
 
 type ModalMode = 'input' | 'processing' | 'ready' | 'error';
@@ -28,9 +26,7 @@ export function StudioDownloadModal({
   onDownload,
   onShare,
   redactVerify = null,
-  canDownloadCertificate = false,
   onDownloadCertificate,
-  onCertificatePaywall,
 }: StudioDownloadModalProps) {
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [mode, setMode] = useState<ModalMode>('input');
@@ -42,6 +38,11 @@ export function StudioDownloadModal({
 
   const passedCount = redactVerify?.checks.filter((check) => check.result === 'pass').length ?? 0;
   const totalChecks = redactVerify?.checks.length ?? 0;
+  // A check that had nothing to examine (`skip`) is not a failure: on a scan with no text layer the
+  // text-extraction check simply does not apply. Say so instead of implying the redaction leaked.
+  const failedChecks = redactVerify?.checks.filter((check) => check.result === 'fail' || check.result === 'error') ?? [];
+  const skippedChecks = redactVerify?.checks.filter((check) => check.result === 'skip') ?? [];
+  const skippedOnly = failedChecks.length === 0 && skippedChecks.length > 0;
 
   useEffect(() => {
     if (!isOpen) {
@@ -134,11 +135,15 @@ export function StudioDownloadModal({
                 <div className="studio-redact-verify-title">
                   {redactVerify.passed
                     ? `Redaction verified · ${passedCount}/${totalChecks || 4} checks`
-                    : `Redaction not fully verified · ${passedCount}/${totalChecks || 4} checks`}
+                    : skippedOnly
+                      ? `Redaction applied · ${skippedChecks.map((check) => check.label).join(', ')} not applicable`
+                      : `Redaction not fully verified · ${passedCount}/${totalChecks || 4} checks`}
                 </div>
                 {!redactVerify.passed && (
                   <p className="studio-redact-verify-hint">
-                    Text may still be extractable under the whiteout. You can download the PDF; a verification certificate is only available when all checks pass.
+                    {skippedOnly
+                      ? 'This page had nothing for that check to examine, so no verification certificate was issued. The remaining checks passed. You can download the PDF.'
+                      : 'Text may still be extractable under the whiteout. You can download the PDF; a verification certificate is only available when all checks pass.'}
                   </p>
                 )}
                 <ul className="studio-redact-verify-list">
@@ -151,26 +156,14 @@ export function StudioDownloadModal({
                 </ul>
                 {redactVerify.passed && redactVerify.certificateJson && (
                   <div className="studio-redact-verify-cert-row">
-                    {canDownloadCertificate ? (
-                      <button
-                        type="button"
-                        className="studio-download-modal-ghost"
-                        onClick={onDownloadCertificate}
-                        data-testid="studio-redact-cert-download"
-                      >
-                        Download certificate.json
-                      </button>
-                    ) : (
-                      <button
-                        type="button"
-                        className="studio-download-modal-ghost"
-                        onClick={onCertificatePaywall}
-                        data-testid="studio-redact-cert-paywall"
-                        style={{ borderColor: 'var(--accent)', color: 'var(--accent)' }}
-                      >
-                        Certificate — Upgrade to Pro
-                      </button>
-                    )}
+                    <button
+                      type="button"
+                      className="studio-download-modal-ghost"
+                      onClick={onDownloadCertificate}
+                      data-testid="studio-redact-cert-download"
+                    >
+                      Download certificate.json
+                    </button>
                   </div>
                 )}
               </div>

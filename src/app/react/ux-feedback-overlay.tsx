@@ -154,7 +154,7 @@ export function UxFeedbackOverlay() {
                 <p className="ux-upsell-sub">
                   {trialState.isActive
                     ? 'You have full Pro access during your trial. Buy once to keep it after the trial ends.'
-                    : 'One payment, no subscription — unlock unlimited pages and every Pro tool for good.'}
+                    : 'Every tool is already free. One payment removes the limits: unlimited downloads, workspaces and pages.'}
                 </p>
               </div>
             </div>

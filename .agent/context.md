@@ -10,11 +10,12 @@ No competitor has this. It's the main technical differentiator.
 
 ## Business model
 
-Freemium via LemonSqueezy.
-- Free: merge, split, compress (up to 25 pages, 3 workspaces)
-- Pro ($19 one-time, or $39.99/yr): OCR, edit, convert, protect/unlock (unlimited)
+Freemium via LemonSqueezy. **Обработка бесплатна на всех инструментах; лимит — на выходе файлов (2026-10-04).**
+- Free: **все** инструменты, 3 скачивания в сутки, 3 workspace в канвасе
+- Pro ($19 один раз, или $39.99/yr): без лимита на скачивания и workspace, большие файлы
+- Исключения-превью (осознанно): OCR на free обрабатывает первые 3 страницы, extract-images показывает только первую картинку
 
-Main upgrade trigger: OCR (31 upsell hits/month out of 63 total).
+Main upgrade trigger: OCR (исторически; текущее узкое место — клик по CTA пейвола, 0.86%).
 
 ## Users
 
@@ -41,10 +42,11 @@ test/         Unit test fixtures
 
 See `.agent/architecture.md` for detailed structure.
 
-## Current status (2026-06-19)
+## Current status (2026-10-04)
 
 Level 1: All done (empty state, upsell, OCR paywall, OCR trial)
 Level 2: All done (JA landing, ZH landing, Auto-TOC)
+Model 2026-10-04: все инструменты бесплатны, платит тот, кто выносит файлы (лимит скачиваний)
 
 ## Active tasks
 

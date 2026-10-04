@@ -1,21 +1,20 @@
 /**
- * Free-tier daily file allowance. Counts what the user actually moves through the product:
- * files brought in (`processed`) and files taken out (`downloaded`). Both are capped at the same
- * number per day, for the free plan only.
+ * Free-tier daily download allowance.
+ *
+ * Processing is free on every tool: a free user may add any number of files and run any tool.
+ * The only thing capped is what leaves the product — files downloaded per day (`FREE_DAILY_FILE_LIMIT`).
+ * Pro removes the cap. Never gate tool execution or adding files: that contradicts the business model
+ * recorded in the project memory.
  */
 export const FREE_DAILY_FILE_LIMIT = 3;
 
-export type DailyFileQuotaKind = 'processed' | 'downloaded';
-
 interface DailyFileQuotaRecord {
   date: string;
-  processed: number;
   downloaded: number;
 }
 
 export interface DailyFileQuotaCheck {
   allowed: boolean;
-  kind: DailyFileQuotaKind;
   limit: number;
   used: number;
   requested: number;
@@ -29,7 +28,7 @@ function today(): string {
 }
 
 function emptyRecord(date: string): DailyFileQuotaRecord {
-  return { date, processed: 0, downloaded: 0 };
+  return { date, downloaded: 0 };
 }
 
 function readRecord(): DailyFileQuotaRecord {
@@ -45,7 +44,6 @@ function readRecord(): DailyFileQuotaRecord {
     }
     return {
       date,
-      processed: Number.isFinite(parsed.processed) ? Number(parsed.processed) : 0,
       downloaded: Number.isFinite(parsed.downloaded) ? Number(parsed.downloaded) : 0,
     };
   } catch {
@@ -61,49 +59,40 @@ function writeRecord(record: DailyFileQuotaRecord): void {
   }
 }
 
-export function getDailyFileUsage(kind: DailyFileQuotaKind): number {
-  return readRecord()[kind];
+export function getDailyFileUsage(): number {
+  return readRecord().downloaded;
 }
 
-export function checkDailyFileQuota(kind: DailyFileQuotaKind, requested = 1): DailyFileQuotaCheck {
-  const used = getDailyFileUsage(kind);
-  const remaining = Math.max(0, FREE_DAILY_FILE_LIMIT - used);
+export function checkDailyFileQuota(requested = 1): DailyFileQuotaCheck {
+  const used = getDailyFileUsage();
   return {
     allowed: requested > 0 && used + requested <= FREE_DAILY_FILE_LIMIT,
-    kind,
     limit: FREE_DAILY_FILE_LIMIT,
     used,
     requested,
-    remaining,
+    remaining: Math.max(0, FREE_DAILY_FILE_LIMIT - used),
   };
 }
 
-export function consumeDailyFileQuota(kind: DailyFileQuotaKind, count = 1): void {
+export function consumeDailyFileQuota(count = 1): void {
   if (count <= 0) {
     return;
   }
   const record = readRecord();
-  record[kind] += count;
+  record.downloaded += count;
   writeRecord(record);
 }
 
-export function dailyFileQuotaMessage(kind: DailyFileQuotaKind, requested = 1): string {
-  const check = checkDailyFileQuota(kind, requested);
-  const left = check.remaining;
-  const leftLabel = left === 1 ? '1 file' : `${left} files`;
-
-  if (kind === 'processed') {
-    return left === 0
-      ? `Free includes ${FREE_DAILY_FILE_LIMIT} files per day and you have added all of them today. Upgrade to Pro for unlimited files.`
-      : `Free includes ${FREE_DAILY_FILE_LIMIT} files per day — ${leftLabel} left today. Upgrade to Pro for unlimited files.`;
-  }
+export function dailyFileQuotaMessage(requested = 1): string {
+  const left = checkDailyFileQuota(requested).remaining;
+  const leftLabel = left === 1 ? '1 download' : `${left} downloads`;
 
   return left === 0
     ? `Free includes ${FREE_DAILY_FILE_LIMIT} downloads per day and you have used all of them today. Upgrade to Pro for unlimited downloads.`
     : `Free includes ${FREE_DAILY_FILE_LIMIT} downloads per day — ${leftLabel} left today. Upgrade to Pro for unlimited downloads.`;
 }
 
-/** Test seam: clears today's counters. */
+/** Test seam: clears today's counter. */
 export function resetDailyFileQuota(): void {
   try {
     globalThis.localStorage?.removeItem(STORAGE_KEY);

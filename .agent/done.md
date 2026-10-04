@@ -1,5 +1,60 @@
 # Completed Tasks
 
+## 2026-10-04
+
+### MODEL-01: «Обработка бесплатна, платим за скачивание» (закрывает P0-1)
+- Решение фаундера: все инструменты бесплатны на всех планах; free-план ограничен 3 скачиваниями в сутки; Pro снимает лимиты (скачивания, workspace, размер файлов).
+- `billing-contract.ts`: `BASIC_ENTITLEMENTS === PRO_ENTITLEMENTS` (все 11 capability у всех), `sanitizeEntitlements` удалён (был мёртв).
+- `billing-service.ts`: `verifyToken` отдаёт план-дефолт, а не список из токена — узкий/устаревший `entitlements` в JWT больше не может запереть инструмент.
+- `daily-file-quota.ts` считает только скачивания; `canAcceptDailyFiles`/`recordAcceptedFiles` и все гейты на загрузку файлов удалены (`StudioShell`, `wizard-flow-core`, `ocr-pdf-test-page`); `requestDailyDownloadAllowance(n)` в 6 точках выхода файла (canvas export, convert-workspace ×2, ZIP, Auto-TOC, `download-output-files`).
+- Удалён пейвол на сертификат редакции: тип `REDACT_CERT_PAYWALL`, эмиттеры в `studio-top-nav`, пропсы `StudioDownloadModal`.
+- Снята стена Auto-TOC «>5 страниц»; вместо `Upgrade to Pro to use this feature` — `toUserMessage(result)`.
+- `plugins/pdf-editor/definition.ts`: `featureTier` `pro` → `basic`.
+- Копирайт выровнен: `pricing.astro`, `index.astro`, `faq.astro`, `features.astro`, `data/featurePages.ts` (6 блоков, включая «Protection runs on Pro»), 2 compare-страницы, `pdf-tools-without-upload.astro`, `public/llm.txt`, `public/.well-known/llm.txt`, `public/llms.txt`, `public/index-ai.md`, in-app `ux-feedback-overlay`, `CLAUDE.md` §1, memory `business_model.md` + `MEMORY.md`.
+- Новые стражи: `src/app/platform/tool-access-is-free.test.ts`, `src/app/react/studio-paywall.test.ts`.
+
+### BUG-01: пустые пространства оставались на канвасе
+- `normalizeWorkspaceState` считал отфильтрованный список и выбрасывал его; `commitDocs` сохранял нефильтрованный. Теперь фильтр возвращается и сохраняется.
+- Регресс-тесты: `src/v6/components/Studio/store/document-store.test.ts` (3 кейса).
+
+### TELEMETRY-01: события денег и доверия доходят до PostHog
+- Дозомаплены `TOOL_RUN_DENIED`, `PAGE_COUNT_CHECK_ERROR`, `UI_PREVIEW_ERROR`, `UI_TOAST_SHOWN` (только `error`), `REDACT_VERIFY_RUN`, `REDACT_VERIFY_FAIL`, `REDACT_CERT_DOWNLOAD`.
+- В sink зафиксирован список осознанно немапленных типов (в т.ч. `UI_UPSELL_CTA_CLICKED` — дубль `paywall_cta_clicked`).
+
+### DEBT-01: мёртвые ветки и перф text-layer
+- Удалены `applyToSelection` (никогда не включался из UI) и `requestTextLayerSpansFallback` (заглушка, всегда `[]`) вместе с тестом-заглушкой.
+- Воркер кэширует загруженный pdf-lib документ по `fileId` (2 записи / 32 МБ) — снят повторный парс xref на каждый показ страницы.
+- `skip` в проверках редакции больше не подаётся как провал: «Redaction applied · Text extract not applicable» вместо «not fully verified» (сертификат по-прежнему только при полном прохождении).
+- Осознанное решение: шрифтовую логику `word-to-pdf`/`excel-to-pdf` НЕ сводим к `glyph-coverage`/`segmented-text` — там покрытие определяется шириной текста, а не glyph id; сведение означало бы переписать два работающих конвертера.
+
+### ROTATE-01: AcroForm appearance на повёрнутых страницах (P1-2)
+- `resolveWidgetPlacement()` в `src/services/pdf/text-edit/page-rotation.ts`: `x/y/width/height/rotate` для `addToPage` так, чтобы `/Rect` == нарисованному прямоугольнику, `/MK /R` == углу страницы; используется всеми 5 вызовами (text/multiline/checkbox/radio/dropdown).
+- Тесты: swap-кейс + `/Rotate 90|180|270` (Rect, `/MK /R`, fit-scale == 1, AABB appearance == боксу, горизонтальный advance) + checkbox/dropdown. Mutation-check подтверждён.
+
+### FONTS-01: арабский и иврит — настоящий текст; CJK остаётся растром (P1-1)
+- Ассеты `scripts/assets/studio-fonts/noto-sans-{arabic,hebrew}-400.woff` (79 084 / 8 952 Б, OFL, `@fontsource`), копирование без сети, 2 face + `containsHebrew()` в applier'е.
+- Обойдён баг fontkit+pdf-lib 1.17.1: арабские точки разлагались через `ccmp` (марки без Unicode-маппинга → текст не извлекался и рендер ломался) — `embedFont(..., { features: { ccmp: false } })`.
+- CJK не добавлен по цифрам: полные JP/SC/KR 9,59/17,77/10,41 МБ, 125 сабсетов JP = 5,04 МБ > лимита 5 МБ. Цена решения: JS +6,8 КБ, статика шрифтов +88 КБ.
+
+### FORMS-01: значение форм-поля вне WinAnsi больше не роняет сохранение
+- pdf-lib при `save()` пересобирает appearance «грязных» полей Helvetica (только WinAnsi) и бросает `WinAnsi cannot encode "П"` вне всех try/catch — одно кириллическое значение убивало весь экспорт.
+- Appearance теперь генерируется после `setText` шрифтом, покрывающим значение (`pickCoveringFont` по `fontCache`), поле остаётся clean; плюс страховка `saveWithoutLosingTheDocument()` → `save({ updateFieldAppearances: false })` + запись причины в `formFieldErrors`.
+- Тесты: кириллическое значение (до фикса падал) и CJK-значение (соседняя правка не теряется).
+
+### DECODE-01: content stream декодируется в браузере (продовый баг редакции)
+- `getPdfCore()` не работал никогда (`pdf-lib/es/core/index.js` без default-экспорта; в Node импорт ещё и падает), `Promise.race` 300 мс мемоизировал «недоступно», `getUnencodedContents` отдавал сжатые байты без проверки, `DecompressionStream` в Chromium дедлочился на `writer.write()` без чтения `readable`.
+- Следствие: whiteout не стирал текст, правка оставляла призрак — при зелёных тестах в Node. Теперь named-export, без raced-таймаута, проверка printable/Tj, конкурентные чтение и запись, формат по zlib-заголовку, таймаут 3 с. Тесты `pdf-content-stream-decode.test.ts`.
+
+### E2E-01: спеки правки в студии снова работают (P0-2)
+- `playwright.config.ts`: `webServer.timeout` 180 с → 600 с (сборка `build:all` идёт 4–5 мин, прогон умирал до тестов) + `reuseExistingServer: !CI`.
+- `test:e2e:studio-edit` = 11 файлов (было 8, из них 4 в `describe.skip`) + `--reporter=line`; результат **15 passed / 0 failed / 0 skipped**.
+- Новый `e2e/studio-edit-helpers.ts`; сняты `describe.skip` в 5 файлах; `memory-leak` переведён на `/app/studio` и выведен из быстрого гейта; `pdf-editor-p0-flow` фиксирует «Studio-first» гейт (4 легаси-флоу в `fixme` с причиной).
+- В наборе: кириллица сохраняется и извлекается, whiteout рядом с правкой не оставляет исходный текст (плюс проверка, что исходная строка не извлекается после обычной правки).
+
+### INFLATE-01: общий indflate для PDF-потоков
+- `DecompressionStream` дедлочится в Chromium, если ждать `writer.write()/close()` до вычитывания `readable` (в Node вычитывается само — потому баг был невидим). Дедлок жил в двух местах: декодер content stream (ломал редакцию и whiteout) и `pdf-text-extractor.ts::inflateIfNeeded` (ломал OCR-путь «в PDF уже есть текст», таймаут 180 мс).
+- Вынесено в `src/services/pdf/inflate-deflate.ts`: конкурентные чтение/запись, формат по zlib-заголовку `0x78`, таймаут 3 с. Тесты `inflate-deflate.test.ts` (zlib / raw deflate / не-deflate → null / обрезанный поток → null).
+
 ## 2026-04-23
 
 ### CLEANUP-01: Repo cleanup

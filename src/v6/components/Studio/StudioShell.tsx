@@ -20,7 +20,6 @@ import { canAddDocumentToStudio, canCreateWorkspace, canUseDocumentWithPageCount
 import { showStudioPaywall } from '../../../app/react/studio-paywall';
 import { PaywallModal } from '../../../app/react/PaywallModal';
 import { useHistoryStore } from './store/history-store';
-import { canAcceptDailyFiles, recordAcceptedFiles } from '../../../app/react/studio-paywall';
 import { getOrCreateFlowId } from '../../../app/platform/browser-context';
 import { LinearIcon } from '../icons/linear-icon';
 import { mergePagesIntoWorkspace, splitPagesToNewWorkspace, deletePages as deletePagesOp } from './studio-page-ops';
@@ -769,10 +768,6 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
 
         const billingContext = runtime.billing.getContext();
 
-        if (!canAcceptDailyFiles(runtime.telemetry, billingContext.plan, files.length)) {
-            return;
-        }
-
         for (let file of files) {
             let writtenFileId: string | null = null;
             try {
@@ -882,9 +877,6 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
         const positionedDocs = placeNewDocumentsInRows(documents, drafts, canvasDimensions.width, layoutGridColumns);
         for (const doc of positionedDocs) {
             addDocument(doc);
-        }
-        if (uploadedFiles.length > 0 && billingContext.plan === 'basic') {
-            recordAcceptedFiles(uploadedFiles.length);
         }
 
         if (positionedDocs.length > 0) {

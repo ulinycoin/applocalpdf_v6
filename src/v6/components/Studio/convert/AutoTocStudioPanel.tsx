@@ -4,7 +4,8 @@ import type { PlatformRuntime } from '../../../../app/platform/create-platform';
 import { TocReviewPanel, type ApplyOptions } from '../../../../plugins/auto-toc/ui/TocReviewPanel';
 import { requestTocParse, type TocParseResult } from '../../../../plugins/auto-toc/ui/toc-parser-client';
 import type { HeaderNode } from '../../../../plugins/auto-toc/logic/index';
-import { requestDailyFileAllowance } from '../../../../app/react/studio-paywall';
+import { requestDailyDownloadAllowance } from '../../../../app/react/studio-paywall';
+import { toUserMessage } from '../../../../app/react/tool-execution-messages';
 
 import latinUrl from '@fontsource/noto-sans/files/noto-sans-latin-400-normal.woff?url';
 import latinExtUrl from '@fontsource/noto-sans/files/noto-sans-latin-ext-400-normal.woff?url';
@@ -91,15 +92,6 @@ export function AutoTocStudioPanel({ onClose, inputFileId, fileName, runtime }: 
 
             window.posthog?.capture('app_tool_run_success', { toolId: 'auto-toc', action: 'parse', headersFound: result.headingCandidatesFound });
 
-            const plan = runtime.billing.getContext().plan;
-            const pageCount = result.totalPages ?? 0;
-            if (plan === 'basic' && pageCount > 5) {
-                window.posthog?.capture('app_upsell_shown', { toolId: 'auto-toc', source: 'page_limit', pageCount });
-                setError(`Free plan limited to 5 pages (this document has ${pageCount}). Upgrade to Pro for unlimited page TOC generation.`);
-                setPhase('config');
-                return;
-            }
-
             setParseResult(result);
             setHeaders(result.headers);
             setPhase('review');
@@ -146,7 +138,8 @@ export function AutoTocStudioPanel({ onClose, inputFileId, fileName, runtime }: 
             );
 
             if (result.type === 'TOOL_ACCESS_DENIED') {
-                setError('Upgrade to Pro to use this feature.');
+                // A denial here can only be a file/page limit now — tool access is free on every plan.
+                setError(toUserMessage(result));
                 setPhase('review');
                 return;
             }
@@ -274,7 +267,7 @@ export function AutoTocStudioPanel({ onClose, inputFileId, fileName, runtime }: 
                                         type="button"
                                         className="cvt-btn-primary"
                                         onClick={() => {
-                                            if (!requestDailyFileAllowance(runtime.telemetry, runtime.billing.getContext().plan, 'downloaded', 1)) {
+                                            if (!requestDailyDownloadAllowance(runtime.telemetry, runtime.billing.getContext().plan, 1)) {
                                                 return;
                                             }
                                             const anchor = document.createElement('a');
