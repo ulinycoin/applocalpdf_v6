@@ -23,7 +23,7 @@ import {
     redoEditHistory,
     undoEditHistory,
 } from '../store/edit-history-stack';
-import { requestTextLayerSpans, requestTextLayerSpansFallback } from '../../../pdf/text-layer-client';
+import { requestTextLayerSpans } from '../../../pdf/text-layer-client';
 import { CommandExecutor } from '../store/command-manager';
 import type { StudioToolRouteState } from '../../../studio/navigation/studio-tool-context';
 const USE_COMMAND_PATTERN_FOR_SAVES = true;
@@ -205,7 +205,6 @@ export function useStudioEditController(ui: any) {
     const [textLayerSpans, setTextLayerSpans] = useState<TextLayerSpan[]>([]);
     const [isSelectMode, setIsSelectMode] = useState(false);
     const [textSelectionMode, setTextSelectionMode] = useState<'line' | 'word'>('line');
-    const [applyToSelection, setApplyToSelection] = useState(false);
     const [signMode, setSignMode] = useState<'type' | 'draw'>('type');
     const [signTypedValue, setSignTypedValue] = useState('');
     const [signTypedFontSize, setSignTypedFontSize] = useState(30);
@@ -299,8 +298,6 @@ export function useStudioEditController(ui: any) {
         return null;
     }, [activeDocument, documents, editSession, selectedPages]);
 
-    const canApplyToSelection = selectedPages.length > 1;
-
     useEffect(() => {
         if (!editSession?.activeTool) return;
         if (editSession.activeTool === 'shapes') {
@@ -320,12 +317,6 @@ export function useStudioEditController(ui: any) {
             workingFileId: preview.page.fileId,
         });
     }, [preview?.docId, preview?.page.fileId, preview?.page.id, preview?.page.pageIndex, syncEditSessionTarget]);
-
-    useEffect(() => {
-        if (!canApplyToSelection && applyToSelection) {
-            setApplyToSelection(false);
-        }
-    }, [applyToSelection, canApplyToSelection]);
 
     const [sessionRunId] = useState(() => crypto.randomUUID());
 
@@ -379,27 +370,14 @@ export function useStudioEditController(ui: any) {
             try {
                 const workerSpans = await requestTextLayerSpans(runtime, preview.page.fileId, preview.page.pageIndex + 1, abortController.signal);
                 if (abortController.signal.aborted) return;
-                const spans = dedupeStackedTextLayerSpans(normalizeTextLayerSpans(
-                    workerSpans.length > 0
-                        ? workerSpans
-                        : await requestTextLayerSpansFallback(runtime, preview.page.fileId, preview.page.pageIndex + 1),
-                ));
+                const spans = dedupeStackedTextLayerSpans(normalizeTextLayerSpans(workerSpans));
                 if (abortController.signal.aborted) return;
                 setTextLayerSpans(spans);
                 if (spans.length === 0) setMessage(ui.noTextLayer);
             } catch (error) {
                 if (abortController.signal.aborted) return;
-                try {
-                    const fallbackSpans = dedupeStackedTextLayerSpans(normalizeTextLayerSpans(
-                        await requestTextLayerSpansFallback(runtime, preview.page.fileId, preview.page.pageIndex + 1),
-                    ));
-                    if (abortController.signal.aborted) return;
-                    setTextLayerSpans(fallbackSpans);
-                    if (fallbackSpans.length === 0) setMessage(ui.noTextLayer);
-                } catch (fallbackError) {
-                    if (abortController.signal.aborted) return;
-                    setMessage(ui.noTextLayer);
-                }
+                setTextLayerSpans([]);
+                setMessage(ui.noTextLayer);
             }
         })();
         return () => abortController.abort();
@@ -642,7 +620,7 @@ export function useStudioEditController(ui: any) {
     const applyChanges = async () => {
         if (!preview) return;
         const elementsToApply = elementsRef.current;
-        const targets = applyToSelection && canApplyToSelection ? selectedPages : [preview];
+        const targets = [preview];
         let overflowCount = 0;
         let failureCount = 0;
         setIsApplying(true);
@@ -984,8 +962,7 @@ export function useStudioEditController(ui: any) {
         shapeColor, setShapeColor,
         shapeStrokeWidth, setShapeStrokeWidth,
         watermarkOptions, setWatermarkOptions,
-        applyToSelection, setApplyToSelection,
-        hasDirtyChanges, canApplyToSelection,
+        hasDirtyChanges,
         applyChanges, undoLastSave, redoLastSave,
         isFormsComposerOpen,
         setFormsComposerOpen,

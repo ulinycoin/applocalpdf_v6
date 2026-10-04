@@ -14,6 +14,45 @@ export interface WorkerRuntimeDeps {
   fs: IFileSystem;
 }
 
+/**
+ * The editor asks for a text layer for every page it shows, and probing the real font name used to
+ * re-load the whole document through pdf-lib on each request — a second xref parse per page view,
+ * paid again on every click in a large file. Content of a given file id never changes (an edit writes
+ * a new file id), so the parsed document can be cached; the caps keep one big file from pinning memory
+ * for the whole session.
+ */
+const FONT_PROBE_CACHE_LIMIT = 2;
+const FONT_PROBE_CACHE_MAX_BYTES = 32 * 1024 * 1024;
+
+async function loadPdfDocumentForFontProbe(bytes: Uint8Array) {
+  const { PDFDocument } = await import('pdf-lib');
+  return PDFDocument.load(bytes);
+}
+
+type FontProbeDocument = Awaited<ReturnType<typeof loadPdfDocumentForFontProbe>>;
+
+const fontProbeCache = new Map<string, FontProbeDocument>();
+
+async function loadPdfDocumentCached(fileId: string, bytes: Uint8Array): Promise<FontProbeDocument> {
+  const cached = fontProbeCache.get(fileId);
+  if (cached) {
+    return cached;
+  }
+
+  const document = await loadPdfDocumentForFontProbe(bytes);
+  if (bytes.byteLength <= FONT_PROBE_CACHE_MAX_BYTES) {
+    fontProbeCache.set(fileId, document);
+    while (fontProbeCache.size > FONT_PROBE_CACHE_LIMIT) {
+      const oldest = fontProbeCache.keys().next().value;
+      if (oldest === undefined) {
+        break;
+      }
+      fontProbeCache.delete(oldest);
+    }
+  }
+  return document;
+}
+
 export async function executeWorkerCommand(
   command: IWorkerCommand,
   deps: WorkerRuntimeDeps,
@@ -83,8 +122,11 @@ export async function executeWorkerCommand(
       // best-effort and never blocks the layer.
       let spans = layer.spans;
       try {
-        const { PDFDocument } = await import('pdf-lib');
-        const pdf = await PDFDocument.load(new Uint8Array(pdfBytes));
+        // A payload that carries its own bytes is not tied to the file id, so it must never read the
+        // cache: only content fetched from the VFS under that id is safe to reuse.
+        const pdf = bytes === undefined
+          ? await loadPdfDocumentCached(fileId, new Uint8Array(pdfBytes))
+          : await loadPdfDocumentForFontProbe(new Uint8Array(pdfBytes));
         const fontInfo = await resolveSpanFontInfo({ pdf, pageIndex: pageNumber - 1, spans: layer.spans });
         spans = layer.spans.map((span) => ({ ...span, ...(fontInfo.get(span.id) ?? {}) }));
       } catch {

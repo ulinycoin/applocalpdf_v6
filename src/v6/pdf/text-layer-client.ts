@@ -26,14 +26,3 @@ export async function requestTextLayerSpans(
     }
     throw new Error('Unexpected worker response for text layer request');
 }
-
-export async function requestTextLayerSpansFallback(
-    runtime: any,
-    fileId: string,
-    pageNumber: number,
-): Promise<TextLayerSpan[]> {
-    void runtime;
-    void fileId;
-    void pageNumber;
-    return [];
-}

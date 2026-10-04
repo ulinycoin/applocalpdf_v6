@@ -178,6 +178,36 @@ test('executeWorkerCommand returns TEXT_LAYER_RESULT for GET_PDF_TEXT_LAYER', as
   }
 });
 
+test('a second text-layer request for the same file still returns the same spans from the cached document', async () => {
+  // The font probe caches the parsed pdf-lib document per file id; reusing it must not degrade the
+  // answer (the editor asks once per page view).
+  const registry = new GlobalRegistry();
+  const fs = new MemFs();
+  fs.seed('pdf-text-layer-cached', await createPdfWithText('Cached Worker'));
+
+  const request = async () => executeWorkerCommand(
+    {
+      id: `cmd-text-layer-${crypto.randomUUID()}`,
+      type: 'COMMAND',
+      payload: { type: 'GET_PDF_TEXT_LAYER', payload: { fileId: 'pdf-text-layer-cached', pageNumber: 1 } },
+    },
+    { registry, fs },
+  );
+
+  const first = await request();
+  const second = await request();
+
+  assert.equal(first.payload.type, 'TEXT_LAYER_RESULT');
+  assert.equal(second.payload.type, 'TEXT_LAYER_RESULT');
+  if (first.payload.type === 'TEXT_LAYER_RESULT' && second.payload.type === 'TEXT_LAYER_RESULT') {
+    const textOf = (event: typeof first) => event.payload.type === 'TEXT_LAYER_RESULT'
+      ? event.payload.payload.spans.map((span) => span.text).join(' ')
+      : '';
+    assert.match(textOf(first), /Cached/);
+    assert.equal(textOf(second), textOf(first));
+  }
+});
+
 test('executeWorkerCommand applies studio text edits and returns output id', async () => {
   const registry = new GlobalRegistry();
   const fs = new MemFs();

@@ -5,6 +5,7 @@ import type { RunnerTelemetryEvent, TelemetrySink } from '../telemetry/telemetry
 import type { IFileEntry, IFileSystem, IToolDefinition, IWorkerCommand, IWorkerEvent } from '../types/contracts';
 import { UnifiedToolRunner } from './unified-tool-runner';
 import { createValidPdfBlob } from '../../shared/test/create-valid-pdf';
+import { getDefaultEntitlementsForPlan } from '../../app/platform/billing-contract';
 
 class InMemoryFileEntry implements IFileEntry {
   constructor(readonly id: string, private readonly blob: Blob) {}
@@ -673,9 +674,10 @@ test('UnifiedToolRunner returns deterministic timeout error for page-count prech
   assert.ok(events.some((event) => event.type === 'PAGE_COUNT_CHECK_ERROR' && event.code === 'PAGE_COUNT_CHECK_TIMEOUT'));
 });
 
-test('the real plan gates Protect: a basic context cannot encrypt', async () => {
-  // The canvas used to hand Protect a hardcoded `plan: 'pro'` context, so the entitlement check
-  // always passed and a Pro feature shipped free to every visitor.
+test('the entitlement check still bites, and the shipped free plan satisfies every tool', async () => {
+  // The canvas used to hand Protect a hardcoded `plan: 'pro'` context, which hid this check. Free now
+  // legitimately owns every entitlement — the wall is the daily download quota — but the check itself
+  // must keep working so a thin context can never quietly re-gate a tool.
   const registry = new GlobalRegistry();
   registry.register(protectTool);
 
@@ -687,17 +689,13 @@ test('the real plan gates Protect: a basic context cannot encrypt', async () => 
   const denied = await runner.execute(
     'protect-pdf',
     { inputIds: ['f1'] },
-    { userId: 'u1', plan: 'basic', entitlements: ['pdf.merge', 'pdf.split', 'pdf.compress'] },
+    { userId: 'u1', plan: 'basic', entitlements: [] },
   );
   assert.equal(denied.type, 'TOOL_ACCESS_DENIED');
   assert.equal(denied.reason, 'ENTITLEMENT_REQUIRED');
   assert.match(denied.details ?? '', /pdf\.protect\.encrypt/u);
 
-  // Pro-less than the entitlement does not help either.
-  const partial = await runner.execute(
-    'protect-pdf',
-    { inputIds: ['f1'] },
-    { userId: 'u1', plan: 'pro', entitlements: ['pdf.edit'] },
-  );
-  assert.equal(partial.type, 'TOOL_ACCESS_DENIED');
+  // What the app actually ships for the free plan passes the same check.
+  const shipped = getDefaultEntitlementsForPlan('basic') as string[];
+  assert.ok((protectTool.entitlements ?? []).every((id) => shipped.includes(id)));
 });
