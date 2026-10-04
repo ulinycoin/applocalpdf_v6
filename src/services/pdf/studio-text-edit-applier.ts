@@ -30,12 +30,16 @@ import {
   resolveSourceFontInfo,
   resolveTargetRect,
   resolveTypographyFromElement,
+  resolveWidgetPlacement,
   resolveFontSizeFromElement,
   inferTypographyFromBaseFont,
   textElementMovedFromOriginal as hasTextElementMovedFromOriginal,
   type SourceFontInfo,
   type StreamOperatorRef,
 } from './text-edit';
+
+/** Matches pdf-lib's own default for every `addToPage`, and the width used to place widgets. */
+const STUDIO_FORM_FIELD_BORDER_WIDTH = 1;
 
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
@@ -240,6 +244,10 @@ function canEncodeAsLatin1(input: string): boolean {
 
 function containsArabic(input: string): boolean {
   return /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF]/u.test(input);
+}
+
+function containsHebrew(input: string): boolean {
+  return /[\u0590-\u05FF\uFB1D-\uFB4F]/u.test(input);
 }
 
 function containsCyrillic(input: string): boolean {
@@ -760,21 +768,31 @@ export async function applyStudioTextEditsToPdfBytes(params: {
 
   // Script subsets, copied into public/fonts by scripts/copy-studio-fonts.mjs. They live next to
   // Roboto so every face is loaded the same way — the URLs respect the deployed base path, and the
-  // pipeline can be exercised outside a Vite build.
-  const scriptSubsets: Array<{ key: string; file: string }> = [
+  // pipeline can be exercised outside a Vite build. Arabic and Hebrew are separate Noto families
+  // (their subsets are committed under scripts/assets/studio-fonts) because `noto-sans` has no face
+  // for either script; CJK deliberately has none — its smallest complete face is ~9.6 MB, so those
+  // runs stay raster text.
+  const scriptSubsets: Array<{ key: string; file: string; features?: Record<string, boolean> }> = [
     { key: 'noto-sans-latin-400', file: 'fonts/noto-sans-latin-400.woff' },
     { key: 'noto-sans-latin-ext-400', file: 'fonts/noto-sans-latin-ext-400.woff' },
     { key: 'noto-sans-cyrillic-400', file: 'fonts/noto-sans-cyrillic-400.woff' },
     { key: 'noto-sans-greek-400', file: 'fonts/noto-sans-greek-400.woff' },
     { key: 'noto-sans-devanagari-400', file: 'fonts/noto-sans-devanagari-400.woff' },
+    // `ccmp` off is what makes Arabic usable at all: Noto Sans Arabic decomposes every dotted letter
+    // into a dotless base plus a detached mark, and the bundled shaper then mis-places those marks
+    // and writes them without a Unicode mapping — the word renders broken *and* stops being
+    // searchable. The precomposed contextual forms used without `ccmp` render correctly and are
+    // extracted byte for byte.
+    { key: 'noto-sans-arabic-400', file: 'fonts/noto-sans-arabic-400.woff', features: { ccmp: false } },
+    { key: 'noto-sans-hebrew-400', file: 'fonts/noto-sans-hebrew-400.woff' },
   ];
   // Each face is independent: one failed fetch must not cost the other scripts their font.
-  await Promise.all(scriptSubsets.map(async ({ key, file }) => {
+  await Promise.all(scriptSubsets.map(async ({ key, file, features }) => {
     try {
       const resp = await fetch(resolvePublicAssetUrl(file));
       if (resp.ok) {
         const bytes = new Uint8Array(await resp.arrayBuffer());
-        fontCache.set(key, await pdf.embedFont(bytes, { subset: true }));
+        fontCache.set(key, await pdf.embedFont(bytes, { subset: true, ...(features ? { features } : {}) }));
       }
     } catch { /* skip this subset */ }
   }));
@@ -826,11 +844,15 @@ export async function applyStudioTextEditsToPdfBytes(params: {
       ...(containsCyrillic(text) ? ['noto-sans-cyrillic-400'] : []),
       ...(containsGreek(text) ? ['noto-sans-greek-400'] : []),
       ...(containsDevanagari(text) ? ['noto-sans-devanagari-400'] : []),
+      ...(containsArabic(text) ? ['noto-sans-arabic-400'] : []),
+      ...(containsHebrew(text) ? ['noto-sans-hebrew-400'] : []),
       'noto-sans-latin-400',
       'noto-sans-latin-ext-400',
       'noto-sans-cyrillic-400',
       'noto-sans-greek-400',
       'noto-sans-devanagari-400',
+      'noto-sans-arabic-400',
+      'noto-sans-hebrew-400',
     ];
     for (const key of scriptSubsetKeys) {
       addUnique(fontCache.get(key) ?? null);
@@ -963,7 +985,7 @@ export async function applyStudioTextEditsToPdfBytes(params: {
     await processEditElement(element);
   }
 
-  const outputBytes = await pdf.save();
+  const outputBytes = await saveWithoutLosingTheDocument(pdf);
   const stableBytes = new Uint8Array(outputBytes.byteLength);
   stableBytes.set(outputBytes);
   return {
@@ -973,6 +995,23 @@ export async function applyStudioTextEditsToPdfBytes(params: {
     trueReplaceFallbackReason,
     formFieldErrors: formFieldErrors.length > 0 ? formFieldErrors : undefined,
   };
+
+  /**
+   * `save()` regenerates every field appearance, and pdf-lib throws when a value cannot be encoded by
+   * its field font (WinAnsi for the standard fonts). That throw was outside every try/catch, so one
+   * form value in a script no shipped face covers (CJK) failed the whole export — the user lost every
+   * other edit on the page. The value itself is already stored in the field dictionary, so the
+   * degraded save keeps the document and lets the viewer generate the appearance.
+   */
+  async function saveWithoutLosingTheDocument(document: PDFDocument): Promise<Uint8Array> {
+    try {
+      return await document.save();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      formFieldErrors.push(`Field appearances were not regenerated: ${message}`);
+      return await document.save({ updateFieldAppearances: false });
+    }
+  }
 
   async function applyTrueReplaceToTextElements(
     elements: WorkerStudioEditElement[],
@@ -1242,11 +1281,27 @@ export async function applyStudioTextEditsToPdfBytes(params: {
 
   async function processFormFieldElement(element: WorkerStudioFormFieldEditElement): Promise<void> {
     const form = pdf.getForm();
-    const box = geometry.toUserRect({ x: element.x, y: element.y, w: element.w, h: element.h });
-    const sx = box.x;
-    const sy = box.y;
-    const sw = box.w;
-    const sh = box.h;
+    // A widget appearance is generated in unrotated user space and the viewer rotates it together
+    // with the page, so on `/Rotate 90/180/270` pages the widget has to counter-rotate itself or the
+    // value reads sideways. `resolveWidgetPlacement` gives pdf-lib the box that leaves `/Rect` on the
+    // rectangle the user drew while `/MK /R` keeps the appearance upright on the displayed page.
+    const placement = resolveWidgetPlacement({
+      geometry,
+      rect: { x: element.x, y: element.y, w: element.w, h: element.h },
+      borderWidth: STUDIO_FORM_FIELD_BORDER_WIDTH,
+    });
+    const sx = placement.x;
+    const sy = placement.y;
+    const sw = placement.width;
+    const sh = placement.height;
+    const widgetOptions = {
+      x: sx,
+      y: sy,
+      width: sw,
+      height: sh,
+      borderWidth: STUDIO_FORM_FIELD_BORDER_WIDTH,
+      rotate: degrees(placement.rotate),
+    };
     const preferredName = (element.name || element.id).trim().slice(0, 120) || element.id;
     let fieldName = preferredName;
     if (usedFormFieldNames.has(fieldName)) {
@@ -1255,58 +1310,86 @@ export async function applyStudioTextEditsToPdfBytes(params: {
     usedFormFieldNames.add(fieldName);
 
     try {
-      const ensureFormAppearanceFont = async (): Promise<PDFFont> => {
-        if (formAppearanceFont) {
+      /**
+       * The appearance font must encode the field's value. Helvetica (the standard font) is WinAnsi
+       * only, so a Cyrillic or Arabic default value made pdf-lib throw while writing the appearance —
+       * and that throw used to escape as a failed export. Pick a shipped face that covers the value;
+       * the cached font is reused only when it still covers it.
+       */
+      const ensureFormAppearanceFont = async (value?: string): Promise<PDFFont> => {
+        const text = value ?? '';
+        if (formAppearanceFont && (text.length === 0 || countMissingGlyphs(formAppearanceFont, text) === 0)) {
           return formAppearanceFont;
         }
-        formAppearanceFont = await pdf.embedFont(StandardFonts.Helvetica);
+
+        const helvetica = await getStandardFont('sora', 'normal', 'normal');
+        if (text.length === 0) {
+          formAppearanceFont = helvetica;
+          return helvetica;
+        }
+
+        const candidates = [
+          helvetica,
+          fontCache.get('roboto-regular') ?? null,
+          fontCache.get('noto-sans-latin-ext-400') ?? null,
+          fontCache.get('noto-sans-cyrillic-400') ?? null,
+          fontCache.get('noto-sans-greek-400') ?? null,
+          fontCache.get('noto-sans-devanagari-400') ?? null,
+          fontCache.get('noto-sans-arabic-400') ?? null,
+          fontCache.get('noto-sans-hebrew-400') ?? null,
+        ].filter((font): font is PDFFont => font !== null);
+
+        formAppearanceFont = pickCoveringFont(candidates, text) ?? helvetica;
         return formAppearanceFont;
       };
 
       if (element.formType === 'text') {
         const field = form.createTextField(fieldName);
-        field.addToPage(page, { x: sx, y: sy, width: sw, height: sh });
+        field.addToPage(page, widgetOptions);
         field.setFontSize(clamp(element.fontSize || 12, 6, 72));
-        field.defaultUpdateAppearances(await ensureFormAppearanceFont());
         if (element.defaultValue) {
           field.setText(element.defaultValue);
         }
+        // The appearance must be generated *after* the value: `setText` marks the field dirty, and
+        // pdf-lib's save-time pass would then rebuild it with Helvetica (WinAnsi only) and throw for
+        // anything outside it. Generating here with a covering font leaves the field clean.
+        field.defaultUpdateAppearances(await ensureFormAppearanceFont(element.defaultValue));
         if (element.required) field.enableRequired();
       } else if (element.formType === 'multiline') {
         const field = form.createTextField(fieldName);
         field.addToPage(page, { x: sx, y: sy, width: sw, height: sh });
         field.enableMultiline();
         field.setFontSize(clamp(element.fontSize || 12, 6, 72));
-        field.defaultUpdateAppearances(await ensureFormAppearanceFont());
         if (element.defaultValue) {
           field.setText(element.defaultValue);
         }
+        field.defaultUpdateAppearances(await ensureFormAppearanceFont(element.defaultValue));
         if (element.required) field.enableRequired();
       } else if (element.formType === 'checkbox') {
         const cb = form.createCheckBox(fieldName);
-        cb.addToPage(page, { x: sx, y: sy, width: sw, height: sh });
+        cb.addToPage(page, widgetOptions);
         if (element.defaultValue && element.defaultValue.toLowerCase() !== 'off') cb.check();
         if (element.required) cb.enableRequired();
       } else if (element.formType === 'radio') {
         try {
           const existing = form.getRadioGroup(fieldName);
           if (existing) {
-            existing.addOptionToPage(`Opt_${crypto.randomUUID().slice(0, 4)}`, page, { x: sx, y: sy, width: sw, height: sh });
+            existing.addOptionToPage(`Opt_${crypto.randomUUID().slice(0, 4)}`, page, widgetOptions);
           } else {
             const rg = form.createRadioGroup(fieldName);
-            rg.addOptionToPage('Choice1', page, { x: sx, y: sy, width: sw, height: sh });
+            rg.addOptionToPage('Choice1', page, widgetOptions);
             if (element.defaultValue && element.defaultValue.toLowerCase() !== 'off') rg.select('Choice1');
             if (element.required) rg.enableRequired();
           }
         } catch {
           const rg = form.createRadioGroup(fieldName);
-          rg.addOptionToPage('Choice1', page, { x: sx, y: sy, width: sw, height: sh });
+          rg.addOptionToPage('Choice1', page, widgetOptions);
           if (element.defaultValue && element.defaultValue.toLowerCase() !== 'off') rg.select('Choice1');
           if (element.required) rg.enableRequired();
         }
       } else if (element.formType === 'dropdown') {
         const dropdown = form.createDropdown(fieldName);
-        dropdown.addToPage(page, { x: sx, y: sy, width: sw, height: sh });
+        dropdown.addToPage(page, widgetOptions);
         const options = Array.isArray(element.options) && element.options.length > 0
           ? element.options
           : ['Option 1', 'Option 2', 'Option 3'];

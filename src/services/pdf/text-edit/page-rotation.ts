@@ -41,6 +41,54 @@ export interface PageGeometry {
   toUserRatiosTopDown(rect: RatioRect): RatioRect;
 }
 
+/** Placement arguments an AcroForm widget needs so it survives a page rotation. */
+export interface WidgetPlacement {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  /** Rotation to hand to pdf-lib's `rotate` option; it equals the page rotation. */
+  rotate: PageRotation;
+}
+
+/**
+ * Placement for an AcroForm widget on a rotated page.
+ *
+ * Annotation appearance streams are written in unrotated user space and the viewer then rotates them
+ * together with the page, so a field on a `/Rotate 90/180/270` page shows its value sideways unless
+ * the widget itself counter-rotates. pdf-lib expresses that through the widget `/MK /R` entry: it
+ * lays the value out for the *displayed* box and emits `rotateInPlace` into the appearance stream.
+ * Its rect maths, however, assume the caller already passes the rotated rectangle, so the box handed
+ * to `addToPage` has to be pre-compensated — this returns exactly that box, such that the emitted
+ * `/Rect` still equals `geometry.toUserRect(rect)`.
+ */
+export function resolveWidgetPlacement(params: {
+  geometry: PageGeometry;
+  rect: RatioRect;
+  /** Widget border width in points; the appearance box grows by it, like `addToPage` does. */
+  borderWidth: number;
+}): WidgetPlacement {
+  const { geometry, rect, borderWidth } = params;
+  const box = geometry.toUserRect(rect);
+  if (geometry.rotation === 0) {
+    // Exactly what pdf-lib computes for a plain `addToPage` on an unrotated page.
+    return { x: box.x, y: box.y, width: box.w, height: box.h, rotate: 0 };
+  }
+  const half = borderWidth / 2;
+  const swapsAxes = geometry.rotation === 90 || geometry.rotation === 270;
+  const width = Math.max(0.01, (swapsAxes ? box.h : box.w) - borderWidth);
+  const height = Math.max(0.01, (swapsAxes ? box.w : box.h) - borderWidth);
+  // pdf-lib rotates the rect around the passed corner, so each direction has to start from the
+  // corner its rotation leaves fixed.
+  if (geometry.rotation === 90) {
+    return { x: box.x + box.w - half, y: box.y + half, width, height, rotate: 90 };
+  }
+  if (geometry.rotation === 180) {
+    return { x: box.x + box.w - half, y: box.y + box.h - half, width, height, rotate: 180 };
+  }
+  return { x: box.x + half, y: box.y + box.h - half, width, height, rotate: 270 };
+}
+
 export function normalizeRotation(value: unknown): PageRotation {
   const angle = typeof value === 'number' && Number.isFinite(value) ? value : 0;
   const normalized = ((Math.round(angle / 90) * 90) % 360 + 360) % 360;

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { PDFDocument, StandardFonts, degrees, type PDFPage } from 'pdf-lib';
-import { normalizeRotation, resolvePageGeometry } from './page-rotation';
+import { normalizeRotation, resolvePageGeometry, resolveWidgetPlacement } from './page-rotation';
 
 async function rotatedPage(rotation: number): Promise<PDFPage> {
   const doc = await PDFDocument.create();
@@ -77,4 +77,39 @@ test('toUserRatiosTopDown returns a top-down ratio rect in user space', async ()
   assert.ok(Math.abs(ratios.w - 30.6 / 612) < 0.001, `w=${ratios.w}`);
   assert.ok(Math.abs(ratios.y - (1 - (79.2 + 237.6) / 792)) < 0.001, `y=${ratios.y}`);
   assert.ok(Math.abs(ratios.h - 237.6 / 792) < 0.001, `h=${ratios.h}`);
+});
+
+test('resolveWidgetPlacement swaps the box axes so pdf-lib emits the drawn rect', async () => {
+  const rect = { x: 0.1, y: 0.5, w: 0.2, h: 0.05 };
+
+  // Upright pages keep the plain box: pdf-lib then grows it by the border width, as it always did.
+  const upright = resolveWidgetPlacement({ geometry: resolvePageGeometry(await rotatedPage(0)), rect, borderWidth: 1 });
+  assert.equal(upright.rotate, 0);
+  assert.ok(Math.abs(upright.x - 61.2) < 0.01, `x=${upright.x}`);
+  assert.ok(Math.abs(upright.y - 356.4) < 0.01, `y=${upright.y}`);
+  assert.ok(Math.abs(upright.width - 122.4) < 0.01, `width=${upright.width}`);
+  assert.ok(Math.abs(upright.height - 39.6) < 0.01, `height=${upright.height}`);
+
+  // /Rotate 90: user rect is 30.6 x 158.4, so the box handed over is transposed and anchored on the
+  // far corner — pdf-lib's `rotateRectangle` turns it back into exactly that rect.
+  const quarter = resolveWidgetPlacement({ geometry: resolvePageGeometry(await rotatedPage(90)), rect, borderWidth: 1 });
+  assert.equal(quarter.rotate, 90);
+  assert.ok(Math.abs(quarter.x - (306 + 30.6 - 0.5)) < 0.01, `x=${quarter.x}`);
+  assert.ok(Math.abs(quarter.y - 79.7) < 0.01, `y=${quarter.y}`);
+  assert.ok(Math.abs(quarter.width - 157.4) < 0.01, `width=${quarter.width}`);
+  assert.ok(Math.abs(quarter.height - 29.6) < 0.01, `height=${quarter.height}`);
+
+  const half = resolveWidgetPlacement({ geometry: resolvePageGeometry(await rotatedPage(180)), rect, borderWidth: 1 });
+  assert.equal(half.rotate, 180);
+  assert.ok(Math.abs(half.x - (428.4 + 122.4 - 0.5)) < 0.01, `x=${half.x}`);
+  assert.ok(Math.abs(half.y - (396 + 39.6 - 0.5)) < 0.01, `y=${half.y}`);
+  assert.ok(Math.abs(half.width - 121.4) < 0.01, `width=${half.width}`);
+  assert.ok(Math.abs(half.height - 38.6) < 0.01, `height=${half.height}`);
+
+  const threeQuarters = resolveWidgetPlacement({ geometry: resolvePageGeometry(await rotatedPage(270)), rect, borderWidth: 1 });
+  assert.equal(threeQuarters.rotate, 270);
+  assert.ok(Math.abs(threeQuarters.x - (275.4 + 0.5)) < 0.01, `x=${threeQuarters.x}`);
+  assert.ok(Math.abs(threeQuarters.y - (554.4 + 158.4 - 0.5)) < 0.01, `y=${threeQuarters.y}`);
+  assert.ok(Math.abs(threeQuarters.width - 157.4) < 0.01, `width=${threeQuarters.width}`);
+  assert.ok(Math.abs(threeQuarters.height - 29.6) < 0.01, `height=${threeQuarters.height}`);
 });

@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { InMemoryFileSystem } from '../../test-utils/in-memory-fs';
 import { createValidPdfBlob } from '../../../shared/test/create-valid-pdf';
-import { run } from './index';
+import { firstHardRedactionFailure, run } from './index';
 
 test('pdf-editor logic applies text edits and reports progress', async () => {
   const fs = new InMemoryFileSystem();
@@ -77,4 +77,30 @@ test('pdf-editor logic applies text edits and reports progress', async () => {
 test('pdf-editor logic rejects empty input', async () => {
   const fs = new InMemoryFileSystem();
   await assert.rejects(() => run({ inputIds: [], fs }), /at least one input file/);
+});
+
+test('pdf-editor logic enforces the shared payload cap instead of trusting its own normalizer', async () => {
+  const fs = new InMemoryFileSystem();
+  fs.seed('f1', await createValidPdfBlob(1));
+  const elements = Array.from({ length: 2001 }, (_, index) => ({
+    type: 'text',
+    pageIndex: 0,
+    text: `LINE ${index}`,
+    xRatio: 10,
+    yRatio: 10,
+    widthRatio: 20,
+    heightRatio: 5,
+  }));
+
+  await assert.rejects(
+    () => run({ inputIds: ['f1'], fs, options: { elements } }),
+    (error: Error & { code?: string }) => error.code === 'STUDIO_EDIT_TOO_LARGE',
+  );
+});
+
+test('a skipped redaction check is not treated as a failure, a failed one is', () => {
+  assert.equal(firstHardRedactionFailure([{ id: 'text_extract', result: 'pass' }, { id: 'metadata_xmp', result: 'skip' }]), undefined);
+  const failure = firstHardRedactionFailure([{ id: 'text_extract', result: 'fail' }, { id: 'raw_bytes', result: 'pass' }]);
+  assert.equal(failure?.id, 'text_extract');
+  assert.equal(firstHardRedactionFailure([{ id: 'error', result: 'error' }])?.id, 'error');
 });

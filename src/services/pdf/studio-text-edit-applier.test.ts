@@ -1,8 +1,9 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
+import { inflateSync } from 'node:zlib';
 import test from 'node:test';
-import { PDFDocument, StandardFonts } from 'pdf-lib';
+import { PDFDocument, PDFName, PDFRawStream, StandardFonts } from 'pdf-lib';
 import { applyStudioTextEditsToPdfBytes } from './studio-text-edit-applier';
 import { parsePdfTextOperators } from './pdf-content-stream-parser';
 import { extractEmbeddedPdfText } from './pdf-text-extractor';
@@ -10,7 +11,7 @@ import { extractTextLayerForPreview } from './pdf-text-layer-extractor';
 import { dedupeStackedTextLayerSpans } from './text-edit/span-filter';
 import { mergeTextLine } from '../../v6/components/Studio/inline-text-utils';
 import { inferSourceTextStyle } from './studio-text-edit-utils';
-import { inferTypographyFromBaseFont, resolveSourceFontInfo } from './text-edit';
+import { inferTypographyFromBaseFont, resolvePageGeometry, resolveSourceFontInfo } from './text-edit';
 import type { WorkerStudioFontFamilyId, WorkerStudioTextEditElement } from '../../core/types/contracts';
 
 /**
@@ -1718,12 +1719,259 @@ for (const rotation of [90, 270, 180]) {
   });
 }
 
+/**
+ * The annotation model of pdf.js' canvas renderer (`beginAnnotation` / `getTransformMatrix` in
+ * `pdf.mjs`): a widget appearance is transformed by the page viewport, the "fit the appearance AABB
+ * onto the annotation rect" matrix, the appearance `/Matrix`, and finally the `cm` operators the
+ * stream itself runs. Composing those reproduces where a viewer paints the field, which is the only
+ * way to assert orientation without a rasteriser (pdf.js text extraction ignores annotations).
+ */
+function concatTransform(m1: number[], m2: number[]): number[] {
+  const [a1, b1, c1, d1, e1, f1] = m1;
+  const [a2, b2, c2, d2, e2, f2] = m2;
+  return [
+    a1 * a2 + c1 * b2,
+    b1 * a2 + d1 * b2,
+    a1 * c2 + c1 * d2,
+    b1 * c2 + d1 * d2,
+    a1 * e2 + c1 * f2 + e1,
+    b1 * e2 + d1 * f2 + f1,
+  ];
+}
+
+function applyTransform(matrix: number[], x: number, y: number): [number, number] {
+  return [
+    (matrix[0] ?? 1) * x + (matrix[2] ?? 0) * y + (matrix[4] ?? 0),
+    (matrix[1] ?? 0) * x + (matrix[3] ?? 1) * y + (matrix[5] ?? 0),
+  ];
+}
+
+/** `PageViewport.transform` at scale 1; display space has its origin top-left, y growing down. */
+function viewportTransform(rotation: number, mediaWidth: number, mediaHeight: number): number[] {
+  if (rotation === 90) return [0, 1, 1, 0, 0, 0];
+  if (rotation === 180) return [-1, 0, 0, 1, mediaWidth, 0];
+  if (rotation === 270) return [0, -1, -1, 0, mediaHeight, mediaWidth];
+  return [1, 0, 0, -1, 0, mediaHeight];
+}
+
+function fitAppearanceToRect(rect: number[], bbox: number[], matrix: number[]): number[] {
+  const corners = [
+    [bbox[0] ?? 0, bbox[1] ?? 0],
+    [bbox[2] ?? 0, bbox[1] ?? 0],
+    [bbox[0] ?? 0, bbox[3] ?? 0],
+    [bbox[2] ?? 0, bbox[3] ?? 0],
+  ].map(([x, y]) => applyTransform(matrix, x!, y!));
+  const xs = corners.map((corner) => corner[0]);
+  const ys = corners.map((corner) => corner[1]);
+  const minX = Math.min(...xs);
+  const maxX = Math.max(...xs);
+  const minY = Math.min(...ys);
+  const maxY = Math.max(...ys);
+  const xRatio = ((rect[2] ?? 0) - (rect[0] ?? 0)) / (maxX - minX);
+  const yRatio = ((rect[3] ?? 0) - (rect[1] ?? 0)) / (maxY - minY);
+  return [xRatio, 0, 0, yRatio, (rect[0] ?? 0) - minX * xRatio, (rect[1] ?? 0) - minY * yRatio];
+}
+
+/** Content transform at the first text-showing operator: every `cm` executed up to that point. */
+function contentTransformBeforeText(content: string): number[] {
+  const stack: number[][] = [];
+  let ctm = [1, 0, 0, 1, 0, 0];
+  const tokenPattern = /(-?[\d.]+)\s+(-?[\d.]+)\s+(-?[\d.]+)\s+(-?[\d.]+)\s+(-?[\d.]+)\s+(-?[\d.]+)\s+(cm|Tm)|\bq\b|\bQ\b|\bBT\b|(?:\bTj\b|\bTJ\b)/gu;
+  let match: RegExpExecArray | null;
+  while ((match = tokenPattern.exec(content))) {
+    const operator = match[7];
+    if (operator === 'cm') {
+      ctm = concatTransform(ctm, match.slice(1, 7).map(Number));
+      continue;
+    }
+    if (operator === 'Tm') {
+      // The text matrix is not part of the CTM; the caller only needs the graphics state.
+      continue;
+    }
+    const word = match[0];
+    if (word === 'q') {
+      stack.push(ctm);
+      continue;
+    }
+    if (word === 'Q') {
+      ctm = stack.pop() ?? [1, 0, 0, 1, 0, 0];
+      continue;
+    }
+    if (word === 'Tj' || word === 'TJ') {
+      return ctm;
+    }
+  }
+  return ctm;
+}
+
+interface WidgetAppearance {
+  rect: number[];
+  rotation: number;
+  bbox: number[];
+  matrix: number[];
+  content: string;
+}
+
+async function readWidgetAppearance(pdfBytes: Uint8Array, fieldName: string): Promise<WidgetAppearance> {
+  const doc = await PDFDocument.load(pdfBytes);
+  const widget = doc.getForm().getTextField(fieldName).acroField.getWidgets()[0];
+  assert.ok(widget, `expected a widget for '${fieldName}'`);
+  const rectangle = widget.getRectangle();
+  const stream = doc.context.lookup(widget.getNormalAppearance());
+  assert.ok(stream instanceof PDFRawStream, 'expected a normal appearance stream');
+  const bboxObject = stream.dict.get(PDFName.of('BBox'));
+  const matrixObject = stream.dict.get(PDFName.of('Matrix'));
+  const readNumberArray = (object: unknown, fallback: number[]): number[] => {
+    if (!object || typeof (object as { get?: unknown }).get !== 'function') {
+      return fallback;
+    }
+    return fallback.map((_, index) => Number((object as { get(index: number): unknown }).get(index)));
+  };
+  const contents = Buffer.from(stream.getContents());
+  const filter = stream.dict.get(PDFName.of('Filter'));
+  const content = filter && String(filter).includes('FlateDecode')
+    ? inflateSync(contents).toString('latin1')
+    : contents.toString('latin1');
+
+  return {
+    rect: [rectangle.x, rectangle.y, rectangle.x + rectangle.width, rectangle.y + rectangle.height],
+    rotation: widget.getAppearanceCharacteristics()?.getRotation() ?? 0,
+    bbox: readNumberArray(bboxObject, [0, 0, 1, 1]),
+    matrix: readNumberArray(matrixObject, [1, 0, 0, 1, 0, 0]),
+    content,
+  };
+}
+
+async function createBlankRotatedPage(rotation: number): Promise<Uint8Array> {
+  const doc = await PDFDocument.create();
+  const page = doc.addPage([612, 792]);
+  const { degrees } = await import('pdf-lib');
+  page.setRotation(degrees(rotation));
+  return new Uint8Array(await doc.save());
+}
+
+async function readWidgetBox(pdfBytes: Uint8Array, fieldName: string): Promise<{ rect: number[]; rotation: number }> {
+  const doc = await PDFDocument.load(pdfBytes);
+  const widget = doc.getForm().getField(fieldName).acroField.getWidgets()[0];
+  assert.ok(widget, `expected a widget for '${fieldName}'`);
+  const rectangle = widget.getRectangle();
+  return {
+    rect: [rectangle.x, rectangle.y, rectangle.x + rectangle.width, rectangle.y + rectangle.height],
+    rotation: widget.getAppearanceCharacteristics()?.getRotation() ?? 0,
+  };
+}
+
+for (const rotation of [90, 180, 270]) {
+  test(`a form field on a /Rotate ${rotation} page fills its box and reads horizontally`, async () => {
+    const sourceBytes = await createBlankRotatedPage(rotation);
+    const element = {
+      id: 'rotated-field',
+      type: 'form-field' as const,
+      formType: 'text' as const,
+      name: 'rotatedField',
+      x: 0.1,
+      y: 0.5,
+      w: 0.2,
+      h: 0.05,
+      defaultValue: 'FIELD VALUE',
+      required: false,
+      fontSize: 14,
+      opacity: 1,
+    };
+    // Every widget type draws its appearance the same way, so a checkbox must not end up sideways
+    // and a dropdown must not end up stretched when only one call site is fixed.
+    const companions = [
+      { id: 'rotated-checkbox', type: 'form-field' as const, formType: 'checkbox' as const, name: 'rotatedCheckbox', x: 0.4, y: 0.5, w: 0.05, h: 0.04, defaultValue: 'on', options: undefined },
+      { id: 'rotated-dropdown', type: 'form-field' as const, formType: 'dropdown' as const, name: 'rotatedDropdown', x: 0.1, y: 0.62, w: 0.25, h: 0.05, defaultValue: 'One', options: ['One', 'Two'] },
+    ];
+
+    const result = await applyStudioTextEditsToPdfBytes({
+      sourceBytes,
+      pageIndex: 0,
+      elements: [element, ...companions.map((companion) => ({ ...companion, required: false, fontSize: 12, opacity: 1 }))] as never,
+    });
+    assert.equal(result.formFieldErrors, undefined, 'creating the field must not fail');
+
+    const source = await PDFDocument.load(sourceBytes);
+    const geometry = resolvePageGeometry(source.getPage(0));
+    const appearance = await readWidgetAppearance(result.outputBytes, element.name);
+
+    // The widget has to counter-rotate by exactly the page rotation, otherwise the viewer shows the
+    // value sideways once it rotates the annotation along with the page.
+    assert.equal(appearance.rotation, rotation, 'the widget must carry the counter-rotation');
+
+    // Bounds: /Rect is the rectangle the user drew, in the page's own coordinate system.
+    for (const candidate of [element, ...companions]) {
+      const widget = await readWidgetBox(result.outputBytes, candidate.name);
+      assert.equal(widget.rotation, rotation, `${candidate.formType} must carry the counter-rotation`);
+      const drawn = geometry.toUserRect({ x: candidate.x, y: candidate.y, w: candidate.w, h: candidate.h });
+      const expectedRect = [drawn.x, drawn.y, drawn.x + drawn.w, drawn.y + drawn.h];
+      widget.rect.forEach((value, index) => {
+        assert.ok(
+          Math.abs(value - (expectedRect[index] ?? 0)) < 0.01,
+          `${candidate.formType} /Rect[${index}] = ${value}, expected ${expectedRect[index]}`,
+        );
+      });
+    }
+
+    // The appearance must fill that rect one-to-one; a swapped box would be stretched by the fit.
+    const fit = fitAppearanceToRect(appearance.rect, appearance.bbox, appearance.matrix);
+    assert.ok(Math.abs(fit[0]! - 1) < 0.01 && Math.abs(fit[3]! - 1) < 0.01, `appearance is distorted: ${fit}`);
+
+    // Where the viewer actually paints the appearance, per the pdf.js annotation pipeline.
+    const viewport = viewportTransform(rotation, geometry.mediaWidth, geometry.mediaHeight);
+    const frame = concatTransform(concatTransform(viewport, fit), appearance.matrix);
+    const corners = [
+      [appearance.bbox[0]!, appearance.bbox[1]!],
+      [appearance.bbox[2]!, appearance.bbox[1]!],
+      [appearance.bbox[0]!, appearance.bbox[3]!],
+      [appearance.bbox[2]!, appearance.bbox[3]!],
+    ].map(([x, y]) => applyTransform(frame, x, y));
+    const frameXs = corners.map((corner) => corner[0]);
+    const frameYs = corners.map((corner) => corner[1]);
+    const expectedDisplay = {
+      x: element.x * geometry.displayWidth,
+      y: element.y * geometry.displayHeight,
+      w: element.w * geometry.displayWidth,
+      h: element.h * geometry.displayHeight,
+    };
+    assert.ok(
+      Math.abs(Math.min(...frameXs) - expectedDisplay.x) < 0.05
+      && Math.abs(Math.max(...frameXs) - (expectedDisplay.x + expectedDisplay.w)) < 0.05
+      && Math.abs(Math.min(...frameYs) - expectedDisplay.y) < 0.05
+      && Math.abs(Math.max(...frameYs) - (expectedDisplay.y + expectedDisplay.h)) < 0.05,
+      `the field is not in the drawn rect: x=[${Math.min(...frameXs)},${Math.max(...frameXs)}] y=[${Math.min(...frameYs)},${Math.max(...frameYs)}]`,
+    );
+
+    // No sideways render: the value has to advance along display +x with its glyphs pointing up.
+    assert.match(appearance.content, /Tj/u, 'the appearance must draw the value');
+    const text = concatTransform(frame, contentTransformBeforeText(appearance.content));
+    const advance = [text[0]!, text[1]!];
+    const up = [text[2]!, text[3]!];
+    assert.ok(
+      Math.abs(advance[1]) < 0.01 && advance[0] > 0.9,
+      `the value is rotated on the page: advance=[${advance}]`,
+    );
+    assert.ok(up[1] < -0.9 && Math.abs(up[0]) < 0.01, `the value is upside down or mirrored: up=[${up}]`);
+
+    // And it starts inside the box, so an upright-but-displaced appearance is still a failure.
+    const origin = applyTransform(text, 0, 0);
+    assert.ok(
+      origin[0] > Math.min(...frameXs) - 0.5 && origin[0] < Math.max(...frameXs) + 0.5
+      && origin[1] > Math.min(...frameYs) - 0.5 && origin[1] < Math.max(...frameYs) + 0.5,
+      `the value starts outside its box: [${origin}]`,
+    );
+  });
+}
+
 const STUDIO_FONT_FILES = [
   'noto-sans-latin-400.woff',
   'noto-sans-latin-ext-400.woff',
   'noto-sans-cyrillic-400.woff',
   'noto-sans-greek-400.woff',
   'noto-sans-devanagari-400.woff',
+  'noto-sans-arabic-400.woff',
+  'noto-sans-hebrew-400.woff',
 ];
 
 /** Serves the shipped script subsets from disk; Roboto is deliberately absent. */
@@ -1975,3 +2223,152 @@ test('characters no shipped font can render are rasterised instead of transliter
     globalWithCanvas.OffscreenCanvas = originalCanvas;
   }
 });
+
+/**
+ * Form values are written through the field's appearance font, and the default used to be Helvetica —
+ * a standard font that encodes WinAnsi only. One Cyrillic or CJK default value therefore failed the
+ * whole export (the throw escaped every try/catch, in `pdf.save()`).
+ */
+test('a form field with a Cyrillic value exports with a font that can encode it', async () => {
+  const restoreFetch = serveStudioSubsetsOnly();
+  try {
+    const result = await applyStudioTextEditsToPdfBytes({
+      sourceBytes: await createBlankPdfBytes(),
+      pageIndex: 0,
+      elements: [{
+        id: 'cyrillic-field',
+        type: 'form-field',
+        formType: 'text',
+        name: 'cyrillicField',
+        x: 0.1,
+        y: 0.5,
+        w: 0.4,
+        h: 0.06,
+        defaultValue: 'ПРИВЕТ',
+        required: false,
+        fontSize: 14,
+        opacity: 1,
+      }] as never,
+    });
+
+    assert.equal(result.formFieldErrors, undefined, 'the field must be created without an error');
+    const output = await PDFDocument.load(result.outputBytes);
+    assert.equal(output.getForm().getTextField('cyrillicField').getText(), 'ПРИВЕТ');
+  } finally {
+    restoreFetch();
+  }
+});
+
+test('a form value no shipped face can encode still exports the document', async () => {
+  const restoreFetch = serveStudioSubsetsOnly();
+  try {
+    const result = await applyStudioTextEditsToPdfBytes({
+      sourceBytes: await createBlankPdfBytes(),
+      pageIndex: 0,
+      elements: [
+        {
+          id: 'cjk-field',
+          type: 'form-field',
+          formType: 'text',
+          name: 'cjkField',
+          x: 0.1,
+          y: 0.5,
+          w: 0.4,
+          h: 0.06,
+          defaultValue: '漢字',
+          required: false,
+          fontSize: 14,
+          opacity: 1,
+        },
+        {
+          id: 'sibling-edit',
+          type: 'text',
+          x: 0.1,
+          y: 0.2,
+          w: 0.5,
+          h: 0.05,
+          text: 'KEEP THIS EDIT',
+          color: '#000000',
+          fontSize: 14,
+          fontFamily: 'sora',
+          fontWeight: 'normal',
+          fontStyle: 'normal',
+          textAlign: 'left',
+          lineHeight: 1.2,
+          letterSpacing: 0,
+          opacity: 1,
+        },
+      ] as never,
+    });
+
+    // The point is that nothing throws and the rest of the page survives.
+    const text = (await extractEmbeddedPdfText(toPdfBlob(result.outputBytes)))?.text ?? '';
+    assert.match(text, /KEEP THIS EDIT/u, 'a sibling edit must not be lost to a field value');
+    assert.ok(
+      (result.formFieldErrors ?? []).some((message) => /encode|appearance/iu.test(message)),
+      `expected a reported field problem, got ${JSON.stringify(result.formFieldErrors)}`,
+    );
+  } finally {
+    restoreFetch();
+  }
+});
+/**
+ * Arabic and Hebrew used to be rasterised: the value was visible but could not be searched or
+ * copied. Their faces ship from public/fonts like the other subsets, so the run is now real text.
+ * A canvaskess runtime is used on purpose — that is exactly where the old behaviour fell back to
+ * `?????`, so the extracted layer proves the glyphs are embedded rather than painted.
+ */
+for (const [script, sample] of [['arabic', 'مرحبا بالعالم'], ['hebrew', 'שלום עולם']] as const) {
+  test(`${script} text is embedded as text and survives extraction`, async () => {
+    const restoreFetch = serveStudioSubsetsOnly();
+    try {
+      const result = await applyStudioTextEditsToPdfBytes({
+        sourceBytes: await createBlankPdfBytes(),
+        pageIndex: 0,
+        elements: [{
+          id: `${script}-box`,
+          type: 'text',
+          x: 0.1,
+          y: 0.2,
+          w: 0.8,
+          h: 0.05,
+          text: sample,
+          color: '#000000',
+          fontSize: 16,
+          fontFamily: 'sora',
+          fontWeight: 'normal',
+          fontStyle: 'normal',
+          textAlign: 'left',
+          lineHeight: 1.2,
+          letterSpacing: 0,
+          opacity: 1,
+        }],
+      });
+
+      const stream = await readFirstPageContentStream(result.outputBytes);
+      assert.doesNotMatch(stream, /\bDo\b/u, 'the run must be drawn as text, not embedded as an image');
+      const codes = glyphCodesOf(stream);
+      assert.ok(codes.length > 0, `no glyphs written for ${sample}`);
+      assert.equal(
+        codes.filter((code) => code === '0000').length,
+        0,
+        `characters of ${sample} must not fall back to .notdef`,
+      );
+
+      const extracted = (await extractEmbeddedPdfText(toPdfBlob(result.outputBytes)))?.text ?? '';
+      assert.ok(
+        extracted.includes(sample),
+        `${script} text must stay searchable, got ${JSON.stringify(extracted)}`,
+      );
+
+      const layer = await extractTextLayerForPreview(result.outputBytes, 1, 1);
+      assert.ok(
+        layer.spans.some((span) => span.text.includes(sample)),
+        `the text layer must carry ${script} text, got ${JSON.stringify(layer.spans.map((span) => span.text))}`,
+      );
+    } finally {
+      restoreFetch();
+    }
+  });
+}
+

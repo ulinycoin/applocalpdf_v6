@@ -4,6 +4,8 @@ import type {
 } from '../../../core/types/contracts';
 import { getPdfPageCountFromBytes } from '../../../core/pdf/page-count';
 import { applyStudioTextEditsToPdfBytes } from '../../../services/pdf/studio-text-edit-applier';
+import { normalizeAndValidateStudioEditRequest } from '../../../services/pdf/studio-text-edit-validation';
+import { shouldRunRedactVerify, verifyRedactedPdf } from '../../../services/pdf/redact-verify';
 import {
   clamp,
   toFiniteNumber,
@@ -65,6 +67,14 @@ interface PdfEditorLineEdit {
 }
 
 type PdfEditorRawEdit = PdfEditorTextEdit | PdfEditorShapeEdit | PdfEditorLineEdit;
+
+/**
+ * A check that merely had nothing to examine (`skip`) is not a failure; only leaked text or a crashed
+ * check is. Exported so the rule itself is unit-tested instead of only wired in.
+ */
+export function firstHardRedactionFailure<T extends { result: string }>(checks: readonly T[]): T | undefined {
+  return checks.find((check) => check.result === 'fail' || check.result === 'error');
+}
 
 interface PreparedPageEdits {
   pageIndex: number;
@@ -250,13 +260,34 @@ export const run: ToolLogicFunction = async (rawParams) => {
         for (let pageEditIndex = 0; pageEditIndex < applicableEdits.length; pageEditIndex += 1) {
           signal?.throwIfAborted();
           const pageEdit = applicableEdits[pageEditIndex];
+          // The standalone editor used to hand its hand-normalized payload straight to the applier,
+          // which enforces none of the shared caps (element count, per-field ranges). Route it through
+          // the same validator the Studio canvas uses so the two paths cannot drift.
+          const { elements } = normalizeAndValidateStudioEditRequest({
+            pageIndex: pageEdit.pageIndex,
+            elements: pageEdit.elements,
+          });
+          const pageSourceBytes = outputBytes;
           const applied = await applyStudioTextEditsToPdfBytes({
             sourceBytes: outputBytes,
             pageIndex: pageEdit.pageIndex,
-            elements: pageEdit.elements,
+            elements,
             signal,
           });
           outputBytes = applied.outputBytes;
+
+          // Studio verifies a redaction and warns in the download dialog. This screen has no such
+          // dialog, so a cover whose text is still extractable must fail loudly instead of handing
+          // back a file that looks redacted. A check that had nothing to examine (`skip`) is fine.
+          if (shouldRunRedactVerify(elements)) {
+            const verification = await verifyRedactedPdf(pageSourceBytes, outputBytes, elements, 'pdf-editor', pageEdit.pageIndex);
+            const failed = firstHardRedactionFailure(verification.checks);
+            if (failed) {
+              throw new Error(
+                `Redaction could not be verified (${failed.message ?? failed.id}). The covered text is still extractable — open the document in Studio and redact it there.`,
+              );
+            }
+          }
 
           const localProgress = (pageEditIndex + 1) / applicableEdits.length;
           const overallProgress = ((inputIndex + localProgress) / inputIds.length) * 100;

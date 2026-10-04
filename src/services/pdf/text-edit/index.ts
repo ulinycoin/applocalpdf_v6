@@ -46,8 +46,10 @@ export {
 export {
   normalizeRotation,
   resolvePageGeometry,
+  resolveWidgetPlacement,
   type PageGeometry,
   type PageRotation,
+  type WidgetPlacement,
 } from './page-rotation';
 export {
   measureSegments,
