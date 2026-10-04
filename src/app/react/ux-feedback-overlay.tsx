@@ -44,14 +44,23 @@ function isUpsellEvent(event: RunnerTelemetryEvent): event is Extract<RunnerTele
   return event.type === 'UI_UPSELL_SHOWN';
 }
 
-const TOOL_UPSELL_MESSAGES: Record<string, string> = {
-  'ocr-pdf': 'OCR is a Pro feature',
-  'pdf-to-jpg': 'PDF to JPG is a Pro feature',
-  'extract-images': 'Download all images requires Pro',
-};
-
-function formatUpsellReason(toolId: string, rawReason: string): string {
-  return TOOL_UPSELL_MESSAGES[toolId] ?? rawReason;
+/**
+ * Every tool runs free now, so a denial can only come from a limit — and the runner reports limits
+ * with internal ids (`File file-abc exceeds maxFileSize`) that must not reach the user. Known
+ * technical reasons are translated here; everything else (daily quota, workspace count, Auto-TOC) is
+ * already a human sentence and is shown as it is.
+ */
+function formatUpsellReason(rawReason: string): string {
+  if (/maxFileSize/i.test(rawReason)) {
+    return 'This file is larger than the free limit';
+  }
+  if (/maxPagesPerFile/i.test(rawReason)) {
+    return 'This document has more pages than the free limit';
+  }
+  if (/requires PRO tier|^Missing entitlements/i.test(rawReason)) {
+    return 'This action is over the free limit';
+  }
+  return rawReason || 'Upgrade to remove the free limits';
 }
 
 function buildCheckoutUrlWithDistinctId(baseCheckoutUrl: string): string {
@@ -149,12 +158,12 @@ export function UxFeedbackOverlay() {
                 <h3 className="ux-upsell-title">
                   {trialState.isActive 
                     ? `Trial active — ${trialState.daysRemaining}d ${trialState.hoursRemaining}h left`
-                    : formatUpsellReason(upsell.toolId, upsell.reason)}
+                    : formatUpsellReason(upsell.reason)}
                 </h3>
                 <p className="ux-upsell-sub">
                   {trialState.isActive
                     ? 'You have full Pro access during your trial. Buy once to keep it after the trial ends.'
-                    : 'Every tool is already free. One payment removes the limits: unlimited downloads, workspaces and pages.'}
+                    : 'Every tool is already free. One payment removes the limits: unlimited downloads, workspaces and larger files.'}
                 </p>
               </div>
             </div>
