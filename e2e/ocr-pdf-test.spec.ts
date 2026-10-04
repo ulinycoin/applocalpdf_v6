@@ -24,7 +24,12 @@ async function createEmbeddedTextPdf(name: string): Promise<string> {
   return path;
 }
 
-async function createLargeEmbeddedTextPdf(name: string, minBytes = 12 * 1024 * 1024): Promise<string> {
+/**
+ * The fixture must stay inside the free OCR cap — `plugins/ocr-pdf/definition.ts` allows 10 MB on the
+ * free plan and 150 MB on Pro, and the specs run as a free visitor. A 12 MB payload used to be denied
+ * by the runner and the run only ever reached the upsell overlay.
+ */
+async function createLargeEmbeddedTextPdf(name: string, minBytes = 6 * 1024 * 1024): Promise<string> {
   const path = join(__dirname, `dummy-large-${name}.pdf`);
   const doc = await PDFDocument.create();
   const page = doc.addPage([612, 792]);
@@ -100,7 +105,7 @@ test.describe('OCR PDF Test route', () => {
 
       expect(payload.sourceMime).toBe('application/pdf');
       expect(typeof payload.sourceBytes).toBe('number');
-      expect((payload.sourceBytes as number) > 10 * 1024 * 1024).toBeTruthy();
+      expect((payload.sourceBytes as number) > 4 * 1024 * 1024).toBeTruthy();
     } finally {
       safeDelete(largePdfPath);
     }
