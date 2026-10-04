@@ -1,4 +1,5 @@
 import { extractPdfTextSegments } from './pdf-content-stream-parser';
+import { inflateDeflateBytes } from './inflate-deflate';
 
 interface PdfTextItem {
   str?: string;
@@ -28,44 +29,18 @@ export interface EmbeddedPdfTextResult {
 }
 
 async function inflateIfNeeded(raw: Uint8Array): Promise<string> {
-  const withTimeout = async <T>(promise: Promise<T>, timeoutMs: number): Promise<T> => {
-    let timeoutId: ReturnType<typeof setTimeout> | null = null;
-    try {
-      return await Promise.race([
-        promise,
-        new Promise<T>((_, reject) => {
-          timeoutId = setTimeout(() => reject(new Error('INFLATE_TIMEOUT')), timeoutMs);
-        }),
-      ]);
-    } finally {
-      if (timeoutId) {
-        clearTimeout(timeoutId);
-      }
-    }
-  };
-
   const direct = new TextDecoder('latin1').decode(raw);
   if (/\b(Tj|TJ)\b/u.test(direct)) {
     return direct;
   }
-  if (typeof DecompressionStream === 'undefined') {
-    return '';
-  }
-  for (const format of ['deflate', 'deflate-raw'] as const) {
-      try {
-        const inflated = await withTimeout((async () => {
-          const stream = new DecompressionStream(format);
-          const writer = stream.writable.getWriter();
-          await writer.write(new Uint8Array(raw));
-          await writer.close();
-          return new Uint8Array(await new Response(stream.readable).arrayBuffer());
-        })(), 180);
-        const decoded = new TextDecoder('latin1').decode(inflated);
-        if (/\b(Tj|TJ)\b/u.test(decoded)) {
-          return decoded;
-      }
-    } catch {
-      // Try next format.
+
+  // The inflated bytes may legitimately contain no text operators (an image-only page), so the text
+  // check stays here rather than inside the shared helper.
+  const inflated = await inflateDeflateBytes(raw);
+  if (inflated) {
+    const decoded = new TextDecoder('latin1').decode(inflated);
+    if (/\b(Tj|TJ)\b/u.test(decoded)) {
+      return decoded;
     }
   }
   return '';
