@@ -125,6 +125,17 @@ try {
     copyRecursive(appVendorPath, path.join(appDistPath, 'vendor'), []);
   }
 
+  // The OCR engine builds every Tesseract URL from VENDOR_ROOT, which is `/` outside dev
+  // (`src/services/ocr/ocr-engine.ts`), so production only ever fetches `/vendor/...`. Vite also
+  // copies `public/` into the app output (it has to: the editor fonts live at /app/fonts), which
+  // duplicated the whole vendor tree — 124 MB per deployment, on a Hobby plan with 10 GB of
+  // deployment storage. Drop the app copy; the root one is the path the app actually requests.
+  const duplicatedAppVendor = path.join(appDistPath, 'app', 'vendor');
+  if (fs.existsSync(duplicatedAppVendor)) {
+    fs.rmSync(duplicatedAppVendor, { recursive: true, force: true });
+    console.log('  → Dropped the duplicate app/vendor tree (production reads /vendor)');
+  }
+
   // STEP 4: Add physical SPA fallbacks for nested app routes so direct refreshes
   // can resolve even if edge rewrites are not applied. Vercel does not apply the
   // /app/:path* rewrite in vercel.json (verified in production: /app/merge-pdf returned
