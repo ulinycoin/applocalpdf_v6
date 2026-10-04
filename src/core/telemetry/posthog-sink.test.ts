@@ -217,6 +217,79 @@ test('PostHogTelemetrySink forwards studio page operations under their own event
   }
 });
 
+test('PostHogTelemetrySink forwards denials, page-count failures and redaction trust events', () => {
+  const calls: Array<{ event: string; properties?: Record<string, unknown> }> = [];
+  const globalWindow = globalThis as any;
+  const originalWindow = globalWindow.window;
+  globalWindow.window = {
+    posthog: {
+      capture: (event: string, properties?: Record<string, unknown>) => {
+        calls.push({ event, properties });
+      },
+    },
+  };
+
+  try {
+    const sink = new PostHogTelemetrySink();
+
+    sink.track({ type: 'TOOL_RUN_DENIED', runId: 'run-1', toolId: 'ocr-pdf', reason: 'LIMIT_EXCEEDED' });
+    sink.track({
+      type: 'PAGE_COUNT_CHECK_ERROR',
+      runId: 'run-1',
+      toolId: 'ocr-pdf',
+      fileId: 'file-1',
+      code: 'PAGE_COUNT_TIMEOUT',
+      message: 'Page count timed out',
+      durationMs: 12000,
+    });
+    sink.track({
+      type: 'UI_PREVIEW_ERROR',
+      runId: 'run-2',
+      toolId: 'studio',
+      fileId: 'file-1',
+      message: 'Invalid PDF structure',
+    });
+    sink.track({ type: 'UI_TOAST_SHOWN', runId: 'run-2', toolId: 'studio', message: 'Broken file', level: 'error' });
+    sink.track({ type: 'UI_TOAST_SHOWN', runId: 'run-2', toolId: 'studio', message: 'Saved', level: 'info' });
+    sink.track({ type: 'REDACT_VERIFY_RUN', runId: 'run-3', toolId: 'studio.edit.redact', passed: false, checkCount: 4, failCount: 1 });
+    sink.track({
+      type: 'REDACT_VERIFY_FAIL',
+      runId: 'run-3',
+      toolId: 'studio.edit.redact',
+      checkId: 'text_extract',
+      message: 'Text extraction: fail',
+    });
+    sink.track({ type: 'REDACT_CERT_DOWNLOAD', runId: 'run-3', toolId: 'studio.edit.redact' });
+
+    assert.deepEqual(calls, [
+      { event: 'app_tool_run_denied', properties: { run_id: 'run-1', tool_id: 'ocr-pdf', reason: 'LIMIT_EXCEEDED' } },
+      {
+        event: 'app_page_count_check_error',
+        properties: {
+          run_id: 'run-1',
+          tool_id: 'ocr-pdf',
+          code: 'PAGE_COUNT_TIMEOUT',
+          message: 'Page count timed out',
+          duration_ms: 12000,
+        },
+      },
+      { event: 'app_ui_preview_error', properties: { run_id: 'run-2', tool_id: 'studio', message: 'Invalid PDF structure' } },
+      { event: 'app_ui_error_toast', properties: { tool_id: 'studio', message: 'Broken file' } },
+      {
+        event: 'app_redact_verify_run',
+        properties: { run_id: 'run-3', tool_id: 'studio.edit.redact', passed: false, check_count: 4, fail_count: 1 },
+      },
+      {
+        event: 'app_redact_verify_fail',
+        properties: { run_id: 'run-3', tool_id: 'studio.edit.redact', check_id: 'text_extract', message: 'Text extraction: fail' },
+      },
+      { event: 'app_redact_cert_download', properties: { run_id: 'run-3', tool_id: 'studio.edit.redact' } },
+    ]);
+  } finally {
+    globalWindow.window = originalWindow;
+  }
+});
+
 test('PostHogTelemetrySink sends text editing telemetry without any document text', () => {
   const calls: Array<{ event: string; properties?: Record<string, unknown> }> = [];
   const globalWindow = globalThis as any;

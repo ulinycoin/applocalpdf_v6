@@ -12,6 +12,12 @@ declare global {
 
 /**
  * PostHogTelemetrySink forwards relevant runner telemetry events to PostHog and GA4.
+ *
+ * Declared runner events that are deliberately NOT forwarded here (do not "fix" this list):
+ * - TOOL_RUN_PROGRESS, ACCESS_CHECK_STAGE, PAGE_COUNT_WORKER_STAGE: per-run plumbing, high volume.
+ * - UI_TOAST_DEDUPED, UI_PREVIEW_RENDERED: dedupe/render bookkeeping, no product signal.
+ * - UI_UPSELL_CTA_CLICKED: already captured as `paywall_cta_clicked` by the monetization telemetry
+ *   (`src/app/react/monetization-telemetry.ts`); mapping it here would double-count the funnel.
  */
 export class PostHogTelemetrySink implements TelemetrySink {
   track(event: RunnerTelemetryEvent): void {
@@ -203,6 +209,61 @@ export class PostHogTelemetrySink implements TelemetrySink {
             page_count: event.pageCount,
             workspace_count: event.workspaceCount,
             method: event.method,
+          });
+          break;
+        case 'TOOL_RUN_DENIED':
+          window.posthog.capture('app_tool_run_denied', {
+            run_id: event.runId,
+            tool_id: event.toolId,
+            reason: event.reason,
+          });
+          break;
+        case 'PAGE_COUNT_CHECK_ERROR':
+          window.posthog.capture('app_page_count_check_error', {
+            run_id: event.runId,
+            tool_id: event.toolId,
+            code: event.code,
+            message: event.message,
+            duration_ms: event.durationMs,
+          });
+          break;
+        case 'UI_PREVIEW_ERROR':
+          window.posthog.capture('app_ui_preview_error', {
+            run_id: event.runId,
+            tool_id: event.toolId,
+            message: event.message,
+          });
+          break;
+        case 'UI_TOAST_SHOWN':
+          // Only failures: info toasts are expected UX, and forwarding every one would drown the funnel.
+          if (event.level === 'error') {
+            window.posthog.capture('app_ui_error_toast', {
+              tool_id: event.toolId,
+              message: event.message,
+            });
+          }
+          break;
+        case 'REDACT_VERIFY_RUN':
+          window.posthog.capture('app_redact_verify_run', {
+            run_id: event.runId,
+            tool_id: event.toolId,
+            passed: event.passed,
+            check_count: event.checkCount,
+            fail_count: event.failCount,
+          });
+          break;
+        case 'REDACT_VERIFY_FAIL':
+          window.posthog.capture('app_redact_verify_fail', {
+            run_id: event.runId,
+            tool_id: event.toolId,
+            check_id: event.checkId,
+            message: event.message,
+          });
+          break;
+        case 'REDACT_CERT_DOWNLOAD':
+          window.posthog.capture('app_redact_cert_download', {
+            run_id: event.runId,
+            tool_id: event.toolId,
           });
           break;
       }
