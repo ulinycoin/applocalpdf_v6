@@ -3,6 +3,14 @@ import { existsSync, unlinkSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { PDFDocument } from 'pdf-lib';
+import {
+  enableAddTextBoxMode,
+  enableStudioTestApi,
+  fillInlineEditor,
+  openEditTool,
+  selectFirstPage,
+  uploadPdf,
+} from './studio-edit-helpers';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -25,51 +33,21 @@ function safeDelete(path: string): void {
 }
 
 test.describe('Studio Edit Text', () => {
+  test.beforeEach(async ({ page }) => {
+    await enableStudioTestApi(page);
+  });
+
   test('text does not reset after input and drag', async ({ page }) => {
     const pdfPath = await createDummyPdf('studio-edit-text');
     try {
-      await page.goto('/app/studio');
+      await uploadPdf(page, pdfPath);
+      await selectFirstPage(page);
+      await openEditTool(page, 'Text');
 
-      const fileInput = page.locator('input[type="file"]').first();
-      await fileInput.setInputFiles(pdfPath);
-
-      await expect(page.locator('canvas').first()).toBeVisible({ timeout: 20000 });
-      await expect(page.getByRole('button', { name: 'Download' })).toBeEnabled({ timeout: 30000 });
-
-      await page.waitForFunction(() => {
-        const store = (window as Window & { __LOCALPDF_STUDIO_STORE__?: { getState: () => {
-          documents: Array<{ id: string; pages: Array<{ id: string }> }>;
-          setActiveDocument: (id: string | null) => void;
-          setSelection: (selection: Array<{ docId: string; pageId: string }>) => void;
-        } } }).__LOCALPDF_STUDIO_STORE__;
-        if (!store) {
-          return false;
-        }
-        const state = store.getState();
-        const doc = state.documents[0];
-        const firstPage = doc?.pages[0];
-        if (!doc || !firstPage) {
-          return false;
-        }
-        state.setActiveDocument(doc.id);
-        state.setSelection([{ docId: doc.id, pageId: firstPage.id }]);
-        return true;
-      }, { timeout: 20000 });
-
-      const editButton = page.getByRole('button', { name: 'Edit', exact: true });
-      await expect(editButton).toBeEnabled({ timeout: 10000 });
-      await editButton.click();
-
-      await expect(page).toHaveURL(/\/studio\/edit$/);
-      await expect(page.locator('.studio-edit-shell')).toBeVisible({ timeout: 20000 });
-
-      const textToolBtn = page.locator('.studio-editor-left-toolbar .studio-edit-tool-btn').first();
-      await textToolBtn.click();
-      await expect(textToolBtn).toHaveClass(/active/);
-
+      // A page without a text layer has nothing to latch onto: new content needs Add Text Box mode.
+      await enableAddTextBoxMode(page);
       const sheet = page.locator('.studio-edit-canvas-content').first();
-      await expect(sheet).toBeVisible({ timeout: 20000 });
-
+      await expect(sheet).toBeVisible({ timeout: 20_000 });
       const box = await sheet.boundingBox();
       if (!box) {
         throw new Error('Missing edit page sheet bounds');
@@ -82,29 +60,38 @@ test.describe('Studio Edit Text', () => {
         },
       });
 
-      const createdTextNode = page.locator('.studio-edit-text').first();
-      await expect(createdTextNode).toContainText('Text', { timeout: 5000 });
-      await createdTextNode.click();
+      await fillInlineEditor(page, 'Drag me text');
+      await expect(page.locator('.studio-edit-text').first()).toContainText('Drag me text');
 
-      const textarea = page.locator('.studio-edit-textarea').first();
-      await expect(textarea).toBeVisible({ timeout: 5000 });
-      await textarea.fill('Drag me text');
+      // Committing the editor (click on empty canvas) is what arms the drag: while the textarea is
+      // focused the element deliberately ignores pointer drags.
+      await sheet.click({
+        position: {
+          x: Math.max(8, Math.floor(box.width * 0.85)),
+          y: Math.max(8, Math.floor(box.height * 0.85)),
+        },
+      });
 
       const textNode = page.locator('.studio-edit-text').first();
-      await expect(textNode).toContainText('Drag me text');
-
-      const nodeBox = await textNode.boundingBox();
-      if (!nodeBox) {
+      const before = await textNode.boundingBox();
+      if (!before) {
         throw new Error('Missing text node bounds');
       }
 
-      await page.mouse.move(nodeBox.x + nodeBox.width / 2, nodeBox.y + nodeBox.height / 2);
+      await page.mouse.move(before.x + before.width / 2, before.y + before.height / 2);
       await page.mouse.down();
-      await page.mouse.move(nodeBox.x + nodeBox.width / 2 + 80, nodeBox.y + nodeBox.height / 2 + 40);
+      await page.mouse.move(before.x + before.width / 2 + 80, before.y + before.height / 2 + 40, { steps: 8 });
       await page.mouse.up();
 
       await expect(page.locator('.studio-edit-text').first()).toContainText('Drag me text');
       await expect(page.locator('.studio-edit-text').first()).not.toContainText(/^Text$/);
+
+      const after = await page.locator('.studio-edit-text').first().boundingBox();
+      if (!before || !after) {
+        throw new Error('Missing text node bounds after drag');
+      }
+      expect(after.x - before.x).toBeGreaterThan(40);
+      expect(after.y - before.y).toBeGreaterThan(15);
     } finally {
       safeDelete(pdfPath);
     }

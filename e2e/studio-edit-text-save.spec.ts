@@ -3,19 +3,34 @@ import { existsSync, unlinkSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { PDFDocument, StandardFonts } from 'pdf-lib';
-import { extractEmbeddedPdfText } from '../src/services/pdf/pdf-text-extractor';
+import {
+  clickTextLine,
+  enableStudioTestApi,
+  fillInlineEditor,
+  highlightBox,
+  openEditTool,
+  pickHighlightByVerticalOrder,
+  readSavedPageText,
+  saveEdits,
+  selectFirstPage,
+  squash,
+  uploadPdf,
+  waitForSavedFileId,
+  waitForTextLayer,
+} from './studio-edit-helpers';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-async function createTextPdf(name: string): Promise<string> {
+async function createTextPdf(name: string, lines: Array<[string, number]>): Promise<string> {
   const path = join(__dirname, `p0-text-save-${name}.pdf`);
   const doc = await PDFDocument.create();
   const page = doc.addPage([612, 792]);
   const font = await doc.embedFont(StandardFonts.Helvetica);
-  page.drawText('INLINE EDIT SAMPLE', { x: 80, y: 700, size: 24, font });
-  const bytes = await doc.save();
-  writeFileSync(path, bytes);
+  for (const [text, y] of lines) {
+    page.drawText(text, { x: 80, y, size: 24, font });
+  }
+  writeFileSync(path, await doc.save());
   return path;
 }
 
@@ -26,73 +41,86 @@ function safeDelete(path: string): void {
 }
 
 test.describe('Studio edit text save P0', () => {
+  test.beforeEach(async ({ page }) => {
+    await enableStudioTestApi(page);
+  });
+
   test('saves edited text into output PDF in VFS', async ({ page }) => {
-    const pdfPath = await createTextPdf('p0');
+    const pdfPath = await createTextPdf('p0', [['INLINE EDIT SAMPLE', 700]]);
     try {
-      await page.goto('/app/studio');
-      await page.locator('input[type="file"]').first().setInputFiles(pdfPath);
+      await uploadPdf(page, pdfPath);
+      const beforeFileId = await selectFirstPage(page);
+      await openEditTool(page, 'Text');
+      await waitForTextLayer(page);
 
-      const initialFileId = await page.waitForFunction(() => {
-        const store = (window as Window & { __LOCALPDF_STUDIO_STORE__?: { getState: () => {
-          documents: Array<{ id: string; pages: Array<{ id: string; fileId: string }> }>;
-          setActiveDocument: (id: string | null) => void;
-          setSelection: (selection: Array<{ docId: string; pageId: string }>) => void;
-        } } }).__LOCALPDF_STUDIO_STORE__;
-        if (!store) {
-          return null;
-        }
-        const state = store.getState();
-        const doc = state.documents[0];
-        const firstPage = doc?.pages[0];
-        if (!doc || !firstPage) {
-          return null;
-        }
-        state.setActiveDocument(doc.id);
-        state.setSelection([{ docId: doc.id, pageId: firstPage.id }]);
-        return firstPage.fileId;
-      }, { timeout: 20000 });
+      await clickTextLine(page, 0);
+      await fillInlineEditor(page, 'INLINE UPDATED P0');
+      await saveEdits(page);
 
-      const beforeFileId = await initialFileId.jsonValue() as string;
-      await page.getByRole('button', { name: 'Edit', exact: true }).click();
-      await expect(page.locator('.studio-edit-shell')).toBeVisible({ timeout: 20000 });
+      const updatedFileId = await waitForSavedFileId(page, beforeFileId);
+      const text = squash(await readSavedPageText(page, updatedFileId));
 
-      const selectTextBtn = page.locator('.studio-editor-left-toolbar .studio-edit-tool-btn').first();
-      await selectTextBtn.click();
-      await expect(selectTextBtn).toHaveClass(/active/);
+      expect(text).toContain('INLINEUPDATEDP0');
+      // The run is patched, not merely overlaid: the original glyphs must not stay extractable.
+      expect(text).not.toContain('INLINEEDITSAMPLE');
+    } finally {
+      safeDelete(pdfPath);
+    }
+  });
 
-      const highlight = page.locator('.studio-edit-text-highlight').first();
-      await expect(highlight).toBeVisible({ timeout: 15000 });
-      await highlight.click({ force: true });
+  test('saves a Cyrillic edit and extracts it back from the result', async ({ page }) => {
+    const pdfPath = await createTextPdf('cyrillic', [['CYRILLIC SOURCE LINE', 700]]);
+    try {
+      await uploadPdf(page, pdfPath);
+      const beforeFileId = await selectFirstPage(page);
+      await openEditTool(page, 'Text');
+      await waitForTextLayer(page);
 
-      const textarea = page.locator('.studio-edit-textarea').first();
-      await expect(textarea).toBeVisible({ timeout: 10000 });
-      await textarea.fill('INLINE UPDATED P0');
-      await page.getByTestId('studio-edit-save-btn').click();
+      await clickTextLine(page, 0);
+      await fillInlineEditor(page, 'Итого 100 USD ПРИВЕТ');
+      await saveEdits(page);
 
-      const afterFileId = await page.waitForFunction((prevId) => {
-        const store = (window as Window & { __LOCALPDF_STUDIO_STORE__?: { getState: () => {
-          documents: Array<{ pages: Array<{ fileId: string }> }>;
-        } } }).__LOCALPDF_STUDIO_STORE__;
-        const current = store?.getState().documents[0]?.pages[0]?.fileId;
-        if (!current || current === prevId) {
-          return null;
-        }
-        return current;
-      }, beforeFileId, { timeout: 20000 });
+      const updatedFileId = await waitForSavedFileId(page, beforeFileId);
+      const text = squash(await readSavedPageText(page, updatedFileId));
 
-      const updatedFileId = await afterFileId.jsonValue() as string;
-      const base64Pdf = await page.evaluate(async (fileId) => {
-        const api = (window as any).__LOCALPDF_V6_TEST_API;
-        if (!api?.readFileBase64) {
-          return '';
-        }
-        return api.readFileBase64(fileId);
-      }, updatedFileId);
+      expect(text).toContain('ИТОГО100USDПРИВЕТ');
+      expect(text).not.toContain('CYRILLICSOURCELINE');
+    } finally {
+      safeDelete(pdfPath);
+    }
+  });
 
-      const bytes = Uint8Array.from(Buffer.from(base64Pdf, 'base64'));
-      const extracted = await extractEmbeddedPdfText(new Blob([bytes], { type: 'application/pdf' }));
-      const normalized = (extracted?.text ?? '').replace(/\s+/g, '').toUpperCase();
-      expect(normalized).toContain('INLINEUPDATEDP0');
+  test('whiteout next to a text edit leaves no extractable original text', async ({ page }) => {
+    const pdfPath = await createTextPdf('whiteout', [
+      ['SECRET LINE TO ERASE', 700],
+      ['KEEP EDIT LINE', 640],
+    ]);
+    try {
+      await uploadPdf(page, pdfPath);
+      const beforeFileId = await selectFirstPage(page);
+      await openEditTool(page, 'Text');
+      await waitForTextLayer(page);
+
+      // Boxes are captured before editing: a committed line drops out of the highlight list.
+      const topIndex = await pickHighlightByVerticalOrder(page, 'top');
+      const bottomIndex = await pickHighlightByVerticalOrder(page, 'bottom');
+      const secretBox = await highlightBox(page, topIndex);
+
+      await clickTextLine(page, bottomIndex);
+      await fillInlineEditor(page, 'EDITED KEEP LINE');
+
+      await page.locator('.studio-editor-left-toolbar').getByRole('button', { name: 'Whiteout', exact: true }).click();
+      await page.mouse.move(secretBox.x - 6, secretBox.y - 4);
+      await page.mouse.down();
+      await page.mouse.move(secretBox.x + secretBox.width + 12, secretBox.y + secretBox.height + 4, { steps: 10 });
+      await page.mouse.up();
+
+      await saveEdits(page);
+      const updatedFileId = await waitForSavedFileId(page, beforeFileId);
+      const text = squash(await readSavedPageText(page, updatedFileId));
+
+      expect(text).toContain('EDITEDKEEPLINE');
+      expect(text).not.toContain('SECRETLINETOERASE');
     } finally {
       safeDelete(pdfPath);
     }

@@ -3,6 +3,19 @@ import { existsSync, unlinkSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { PDFDocument, StandardFonts } from 'pdf-lib';
+import {
+  clickTextLine,
+  enableStudioTestApi,
+  fillInlineEditor,
+  openEditTool,
+  readSavedPageText,
+  saveEdits,
+  selectFirstPage,
+  squash,
+  uploadPdf,
+  waitForSavedFileId,
+  waitForTextLayer,
+} from './studio-edit-helpers';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -34,67 +47,41 @@ function safeDelete(path: string): void {
 }
 
 test.describe('Studio inline text edit', () => {
+  test.beforeEach(async ({ page }) => {
+    await enableStudioTestApi(page);
+  });
+
   test('supports inline edit and save', async ({ page }) => {
     const pdfPath = await createTextPdf('text');
     try {
-      await page.goto('/app/studio');
-      await page.locator('input[type="file"]').first().setInputFiles(pdfPath);
+      await uploadPdf(page, pdfPath);
+      let currentFileId = await selectFirstPage(page);
+      await openEditTool(page, 'Text');
+      await waitForTextLayer(page);
 
-      await page.waitForFunction(() => {
-        const store = (window as Window & { __LOCALPDF_STUDIO_STORE__?: { getState: () => {
-          documents: Array<{ id: string; pages: Array<{ id: string }> }>;
-          setActiveDocument: (id: string | null) => void;
-          setSelection: (selection: Array<{ docId: string; pageId: string }>) => void;
-        } } }).__LOCALPDF_STUDIO_STORE__;
-        if (!store) {
-          return false;
-        }
-        const state = store.getState();
-        const doc = state.documents[0];
-        const firstPage = doc?.pages[0];
-        if (!doc || !firstPage) {
-          return false;
-        }
-        state.setActiveDocument(doc.id);
-        state.setSelection([{ docId: doc.id, pageId: firstPage.id }]);
-        return true;
-      }, { timeout: 20000 });
-
-      await page.getByRole('button', { name: 'Edit', exact: true }).click();
-      await expect(page.locator('.studio-edit-shell')).toBeVisible({ timeout: 20000 });
-
-      const selectTextBtn = page.locator('.studio-editor-left-toolbar .studio-edit-tool-btn').first();
-      await selectTextBtn.click();
-      await expect(selectTextBtn).toHaveClass(/active/);
-
-      const highlight = page.locator('.studio-edit-text-highlight').first();
-      await expect(highlight).toBeVisible({ timeout: 15000 });
-      await highlight.click({ force: true });
-
+      await clickTextLine(page, 0);
       const textarea = page.locator('.studio-edit-textarea').first();
-      await expect(textarea).toBeVisible({ timeout: 10000 });
+      await expect(textarea).toBeVisible({ timeout: 10_000 });
 
       const fontSize = await textarea.evaluate((el) => window.getComputedStyle(el).fontSize);
       expect(Number.parseFloat(fontSize)).toBeGreaterThan(10);
 
-      await textarea.fill('INLINE UPDATED');
-      await page.getByTestId('studio-edit-save-btn').click();
-      await expect(page.getByTestId('studio-edit-save-btn')).toBeDisabled({ timeout: 15000 });
+      await fillInlineEditor(page, 'INLINE UPDATED');
+      await saveEdits(page);
+      await expect(page.getByTestId('studio-edit-save-btn')).toBeDisabled({ timeout: 15_000 });
 
-      await expect(page.locator('.studio-edit-text').first()).toContainText('INLINE UPDATED');
+      currentFileId = await waitForSavedFileId(page, currentFileId);
+      expect(squash(await readSavedPageText(page, currentFileId))).toContain('INLINEUPDATED');
 
-      await page.getByRole('button', { name: 'Edit', exact: true }).click();
-      await expect(page.locator('.studio-edit-shell')).toBeVisible({ timeout: 20000 });
-      await selectTextBtn.click();
-      const highlightAfterSave = page.locator('.studio-edit-text-highlight').first();
-      await expect(highlightAfterSave).toBeVisible({ timeout: 15000 });
-      await highlightAfterSave.click({ force: true });
-      const textareaAfterSave = page.locator('.studio-edit-textarea').first();
-      await expect(textareaAfterSave).toBeVisible({ timeout: 10000 });
-      await textareaAfterSave.fill('INLINE UPDATED AGAIN');
-      await page.getByTestId('studio-edit-save-btn').click();
-      await expect(page.getByTestId('studio-edit-save-btn')).toBeDisabled({ timeout: 15000 });
-      await expect(page.locator('.studio-edit-text').first()).toContainText('INLINE UPDATED AGAIN');
+      // The saved page is reloaded inside the same overlay, so a second edit needs no reopening.
+      await waitForTextLayer(page);
+      await clickTextLine(page, 0);
+      await fillInlineEditor(page, 'INLINE UPDATED AGAIN');
+      await saveEdits(page);
+      await expect(page.getByTestId('studio-edit-save-btn')).toBeDisabled({ timeout: 15_000 });
+
+      currentFileId = await waitForSavedFileId(page, currentFileId);
+      expect(squash(await readSavedPageText(page, currentFileId))).toContain('INLINEUPDATEDAGAIN');
     } finally {
       safeDelete(pdfPath);
     }
@@ -103,36 +90,11 @@ test.describe('Studio inline text edit', () => {
   test('shows no-text-layer warning for PDF without embedded text', async ({ page }) => {
     const pdfPath = await createNoTextPdf('blank');
     try {
-      await page.goto('/app/studio');
-      await page.locator('input[type="file"]').first().setInputFiles(pdfPath);
+      await uploadPdf(page, pdfPath);
+      await selectFirstPage(page);
+      await openEditTool(page, 'Text');
 
-      await page.waitForFunction(() => {
-        const store = (window as Window & { __LOCALPDF_STUDIO_STORE__?: { getState: () => {
-          documents: Array<{ id: string; pages: Array<{ id: string }> }>;
-          setActiveDocument: (id: string | null) => void;
-          setSelection: (selection: Array<{ docId: string; pageId: string }>) => void;
-        } } }).__LOCALPDF_STUDIO_STORE__;
-        if (!store) {
-          return false;
-        }
-        const state = store.getState();
-        const doc = state.documents[0];
-        const firstPage = doc?.pages[0];
-        if (!doc || !firstPage) {
-          return false;
-        }
-        state.setActiveDocument(doc.id);
-        state.setSelection([{ docId: doc.id, pageId: firstPage.id }]);
-        return true;
-      }, { timeout: 20000 });
-
-      await page.getByRole('button', { name: 'Edit', exact: true }).click();
-      await expect(page.locator('.studio-edit-shell')).toBeVisible({ timeout: 20000 });
-
-      const selectTextBtn = page.locator('.studio-editor-left-toolbar .studio-edit-tool-btn').first();
-      await selectTextBtn.click();
-      await expect(selectTextBtn).toHaveClass(/active/);
-      await expect(page.getByText(/no text layer/i)).toBeVisible({ timeout: 15000 });
+      await expect(page.getByText(/no text layer/i)).toBeVisible({ timeout: 15_000 });
     } finally {
       safeDelete(pdfPath);
     }

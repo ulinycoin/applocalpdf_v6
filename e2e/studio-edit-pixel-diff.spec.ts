@@ -1,124 +1,116 @@
 import { expect, test } from '@playwright/test';
-import { existsSync, unlinkSync, writeFileSync, mkdirSync, readFileSync } from 'node:fs';
+import { existsSync, unlinkSync, writeFileSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { PDFDocument, StandardFonts } from 'pdf-lib';
 import pixelmatch from 'pixelmatch';
 import { PNG } from 'pngjs';
+import {
+  clickTextLine,
+  enableStudioTestApi,
+  fillInlineEditor,
+  openEditTool,
+  readVfsFileBase64,
+  saveEdits,
+  selectFirstPage,
+  selectLastDocumentFirstPage,
+  uploadPdf,
+  waitForSavedFileId,
+  waitForTextLayer,
+} from './studio-edit-helpers';
 
-const WORK_DIR = join(process.cwd(), 'e2e', 'temp_diff');
+// Playwright's own output directory: the repo ignores it, so the debug rasters never show up as
+// untracked build artifacts.
+const WORK_DIR = join(process.cwd(), 'test-results', 'studio-edit-pixel-diff');
 
-async function createBasePdf() {
-    if (!existsSync(WORK_DIR)) mkdirSync(WORK_DIR, { recursive: true });
-    const path = join(WORK_DIR, 'diff-test.pdf');
-    const doc = await PDFDocument.create();
-    const page = doc.addPage([500, 300]);
-    const font = await doc.embedFont(StandardFonts.Helvetica);
-
-    page.drawText('Original Text to Edit', { x: 50, y: 250, size: 24, font });
-
-    const bytes = await doc.save();
-    writeFileSync(path, bytes);
-    return path;
+async function createBasePdf(): Promise<string> {
+  if (!existsSync(WORK_DIR)) mkdirSync(WORK_DIR, { recursive: true });
+  const path = join(WORK_DIR, 'diff-test.pdf');
+  const doc = await PDFDocument.create();
+  const page = doc.addPage([500, 300]);
+  const font = await doc.embedFont(StandardFonts.Helvetica);
+  page.drawText('Original Text to Edit', { x: 50, y: 250, size: 24, font });
+  writeFileSync(path, await doc.save());
+  return path;
 }
 
-// Rendering happens purely in playwright now
+test.describe('Studio Edit Pixel Diff', () => {
+  test.setTimeout(180_000);
 
+  test.beforeEach(async ({ page }) => {
+    await enableStudioTestApi(page);
+  });
 
-test.describe.skip('Studio Edit Pixel Diff', () => {
-    test.beforeAll(() => {
-        if (!existsSync(WORK_DIR)) mkdirSync(WORK_DIR, { recursive: true });
-    });
+  test('edited pdf matches ui screenshot', async ({ page }) => {
+    if (!existsSync(WORK_DIR)) mkdirSync(WORK_DIR, { recursive: true });
+    const pdfPath = await createBasePdf();
 
-    test('edited pdf matches ui screenshot', async ({ page }) => {
-        const pdfPath = await createBasePdf();
+    try {
+      // 1. Edit the PDF in the studio and capture what the editor renders.
+      await uploadPdf(page, pdfPath);
+      const beforeFileId = await selectFirstPage(page);
+      await openEditTool(page, 'Text');
+      await waitForTextLayer(page);
 
-        try {
-            await page.goto('/app/studio');
-            await page.locator('input[type="file"]').first().setInputFiles([pdfPath]);
+      await clickTextLine(page, 0);
+      await fillInlineEditor(page, 'Testing pixel diff render');
 
-            await page.waitForFunction(() => {
-                const store = (window as Window & { __LOCALPDF_STUDIO_STORE__?: any }).__LOCALPDF_STUDIO_STORE__;
-                if (!store) return false;
-                const state = store.getState();
-                const doc = state.documents[0];
-                if (!doc || !doc.pages[0]) return false;
-                state.setActiveDocument(doc.id);
-                state.setSelection([{ docId: doc.id, pageId: doc.pages[0].id }]);
-                return true;
-            }, { timeout: 20000 });
+      const sheet = page.locator('.studio-edit-canvas-content').first();
+      const sheetBox = await sheet.boundingBox();
+      if (!sheetBox) {
+        throw new Error('Missing edit canvas bounds');
+      }
+      // Click the empty bottom-right corner: commits the inline editor and clears the selection.
+      await sheet.click({
+        position: { x: Math.floor(sheetBox.width * 0.8), y: Math.floor(sheetBox.height * 0.8) },
+      });
 
-            await page.getByRole('button', { name: 'Edit', exact: true }).first().click();
-            await expect(page.locator('.studio-edit-shell')).toBeVisible({ timeout: 20000 });
+      const uiScreenshotBuffer = await sheet.screenshot();
 
-            await page.waitForTimeout(3000); // Wait for extraction
+      await saveEdits(page);
+      const savedFileId = await waitForSavedFileId(page, beforeFileId);
 
-            const highlight = page.locator('.studio-edit-text-highlight').first();
-            await expect(highlight).toBeVisible({ timeout: 15000 });
-            await highlight.click();
+      // 2. Reopen the saved output straight from the VFS and render it through the same editor.
+      const editedPath = join(WORK_DIR, 'edited.pdf');
+      writeFileSync(editedPath, Buffer.from(await readVfsFileBase64(page, savedFileId), 'base64'));
+      await uploadPdf(page, editedPath);
+      await selectLastDocumentFirstPage(page);
+      await openEditTool(page, 'Text');
+      await waitForTextLayer(page);
 
-            const textarea = page.locator('.studio-editor-element.selected textarea');
-            await textarea.fill('Testing pixel diff render');
+      const savedSheet = page.locator('.studio-edit-canvas-content').first();
+      const savedScreenshotBuffer = await savedSheet.screenshot();
 
-            // Apply edit
-            await page.locator('.studio-edit-shell').click({ position: { x: 50, y: 50 } }); // Click outside
+      const uiPng = PNG.sync.read(uiScreenshotBuffer);
+      const savedPng = PNG.sync.read(savedScreenshotBuffer);
 
-            // Capture screenshot of the bounding area in the UI
-            const pageEditorContainer = page.locator('.studio-page-editor-container');
-            const uiScreenshotBuffer = await pageEditorContainer.screenshot();
+      writeFileSync(join(WORK_DIR, 'ui.png'), PNG.sync.write(uiPng));
+      writeFileSync(join(WORK_DIR, 'pdf.png'), PNG.sync.write(savedPng));
 
-            // Save PDF
-            const downloadPromise = page.waitForEvent('download');
-            await page.getByRole('button', { name: 'Export' }).click();
-            await page.getByRole('button', { name: 'Download PDF' }).click();
-            const download = await downloadPromise;
+      expect(uiPng.width).toBeGreaterThan(0);
+      expect(savedPng.width).toBeGreaterThan(0);
+      // Same page size and same editor container: the raster must line up, otherwise the comparison
+      // below would be meaningless rather than merely tolerant.
+      expect({ width: savedPng.width, height: savedPng.height }).toEqual({ width: uiPng.width, height: uiPng.height });
 
-            const downloadedPath = join(WORK_DIR, 'downloaded.pdf');
-            await download.saveAs(downloadedPath);
+      const diff = new PNG({ width: uiPng.width, height: uiPng.height });
+      const numDiffPixels = pixelmatch(
+        uiPng.data,
+        savedPng.data,
+        diff.data,
+        uiPng.width,
+        uiPng.height,
+        { threshold: 0.1 },
+      );
+      writeFileSync(join(WORK_DIR, 'diff.png'), PNG.sync.write(diff));
 
-            // Render downloaded PDF using browser evaluation
-            const pdfBase64 = readFileSync(downloadedPath).toString('base64');
-            const pdfDataUri = `data:application/pdf;base64,${pdfBase64}`;
+      const diffRatio = numDiffPixels / (uiPng.width * uiPng.height);
+      // The editor overlays HTML text on a rasterised page; a few percent of edge/antialiasing noise
+      // is expected. What must not happen is the saved PDF rendering something else entirely.
+      expect(diffRatio).toBeLessThan(0.06);
 
-            // Re-upload into the page and capture its rendered view natively
-            await page.locator('input[type="file"]').first().setInputFiles([downloadedPath]);
-
-            await page.waitForTimeout(3000); // Wait for the new file to load and render
-
-            // Hide the UI elements we don't want in the screenshot for the diff
-            await page.evaluate(() => {
-                const els = document.querySelectorAll('.studio-top-nav, .tool-sidebar, .studio-toolbar, .studio-thumbnail-panel, .studio-page-controls');
-                els.forEach((el: any) => el.style.display = 'none');
-            });
-
-            const pdfScreenshotBuffer = await page.locator('.studio-page-editor-container').screenshot();
-
-            // Decode both
-            const uiPng = PNG.sync.read(uiScreenshotBuffer);
-            const pdfPng = PNG.sync.read(pdfScreenshotBuffer);
-
-            writeFileSync(join(WORK_DIR, 'ui.png'), PNG.sync.write(uiPng));
-            writeFileSync(join(WORK_DIR, 'pdf.png'), PNG.sync.write(pdfPng));
-
-            expect(existsSync(join(WORK_DIR, 'ui.png'))).toBe(true);
-            expect(existsSync(join(WORK_DIR, 'pdf.png'))).toBe(true);
-
-            // Note: Actual pixelmatch requires exactly same dimensions. 
-            // We'll log the diff sizes to inform future refinement.
-            console.log(`UI Bounds: ${uiPng.width}x${uiPng.height}`);
-            console.log(`PDF Bounds: ${pdfPng.width}x${pdfPng.height}`);
-
-            if (uiPng.width === pdfPng.width && uiPng.height === pdfPng.height) {
-                const diff = new PNG({ width: uiPng.width, height: uiPng.height });
-                const numDiffPixels = pixelmatch(uiPng.data, pdfPng.data, diff.data, uiPng.width, uiPng.height, { threshold: 0.1 });
-                writeFileSync(join(WORK_DIR, 'diff.png'), PNG.sync.write(diff));
-
-                const diffRatio = numDiffPixels / (uiPng.width * uiPng.height);
-                // 3% threshold
-                expect(diffRatio).toBeLessThan(0.03);
-            }
-
-        } finally {
-            if (existsSync(pdfPath)) unlinkSync(pdfPath);
-        }
-    });
+      if (existsSync(editedPath)) unlinkSync(editedPath);
+    } finally {
+      if (existsSync(pdfPath)) unlinkSync(pdfPath);
+    }
+  });
 });

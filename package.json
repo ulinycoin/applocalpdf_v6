@@ -25,7 +25,7 @@
     "test": "node --import tsx --test src/**/*.test.ts src/*.test.ts test/**/*.test.ts",
     "test:watch": "node --import tsx --test --watch src/**/*.test.ts src/*.test.ts test/**/*.test.ts",
     "test:e2e": "playwright test",
-    "test:e2e:studio-edit": "playwright test e2e/studio-edit-advanced-formatting.spec.ts e2e/studio-edit-batch-save.spec.ts e2e/studio-edit-precision.spec.ts e2e/studio-edit-save-undo-redo.spec.ts e2e/studio-edit-telemetry-actions.spec.ts e2e/studio-edit-telemetry-undo-redo-single.spec.ts e2e/studio-edit-telemetry.spec.ts e2e/studio-edit-text-save.spec.ts",
+    "test:e2e:studio-edit": "playwright test e2e/studio-edit-text-save.spec.ts e2e/studio-inline-edit.spec.ts e2e/studio-edit.spec.ts e2e/studio-edit-advanced-formatting.spec.ts e2e/studio-edit-batch-save.spec.ts e2e/studio-edit-precision.spec.ts e2e/studio-edit-save-undo-redo.spec.ts e2e/studio-edit-telemetry.spec.ts e2e/studio-edit-telemetry-undo-redo-single.spec.ts e2e/studio-edit-telemetry-actions.spec.ts e2e/studio-edit-pixel-diff.spec.ts --reporter=line",
     "fixtures:pdfs": "node scripts/generate-e2e-pdf-fixtures.mjs",
     "indexnow:submit": "node scripts/submit-indexnow.mjs",
     "demo:studio-clips": "node scripts/record-studio-demos.mjs",

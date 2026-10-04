@@ -22,8 +22,10 @@ export default defineConfig({
   webServer: {
     command: 'npm run build:all && npx serve dist -l 4173',
     url: baseURL,
-    reuseExistingServer: false,
-    timeout: 180_000,
+    reuseExistingServer: !process.env.CI,
+    // `build:all` (tsc + vite + astro) takes ~4-5 min on slower machines; the old 180s ceiling made
+    // every run fail before the first test.
+    timeout: 600_000,
     env: {
       ...process.env,
       VITE_USE_V6_WIZARD: process.env.VITE_USE_V6_WIZARD ?? 'true',
