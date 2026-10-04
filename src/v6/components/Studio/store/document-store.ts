@@ -27,7 +27,12 @@ export interface DocumentState {
     clearDocs: () => void;
 }
 
-function normalizeWorkspaceState(docs: StudioDocument[], prevActiveDocId: string | null = null) {
+/**
+ * Drops workspaces that no longer hold pages, fixes the active workspace and the selection, and
+ * returns the surviving list. The caller must store the returned array: the previous version computed
+ * this filter and threw it away, so a workspace emptied by dragging a page out stayed on the canvas.
+ */
+function normalizeWorkspaceState(docs: StudioDocument[], prevActiveDocId: string | null = null): StudioDocument[] {
     const uiStore = useUIStore.getState();
     const sessionStore = useEditSessionStore.getState();
 
@@ -56,13 +61,15 @@ function normalizeWorkspaceState(docs: StudioDocument[], prevActiveDocId: string
     if (editSession && !existingPageIds.has(editSession.pageId)) {
         sessionStore.clearEditSession();
     }
+
+    return documents;
 }
 
 function commitDocs(state: DocumentState, nextDocs: StudioDocument[], overrides?: Partial<DocumentState>, activeDocOverride?: string | null): DocumentState {
-    normalizeWorkspaceState(nextDocs, activeDocOverride);
+    const documents = normalizeWorkspaceState(nextDocs, activeDocOverride);
     return {
         ...state,
-        documents: nextDocs,
+        documents,
         ...overrides,
         workspaceVersion: state.workspaceVersion + 1,
     };
