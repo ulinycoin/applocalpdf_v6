@@ -2740,6 +2740,8 @@ textarea:focus-visible {
 .studio-empty-state-hints {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
+  justify-content: center;
   gap: 8px;
 }
 
@@ -2752,6 +2754,16 @@ textarea:focus-visible {
   font-size: 11px;
   font-weight: 500;
   color: var(--text-muted);
+}
+
+/* The label sits outside the keycap, so "U" + "UPLOAD" cannot read as one doubled word. */
+.studio-empty-state-hint-label {
+  margin-left: -3px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  text-transform: uppercase;
 }
 
 .studio-empty-state-hint-sep {
@@ -8711,13 +8723,7 @@ textarea:focus-visible {
     font-size: 14px;
   }
 
-  /* var(--text-dim) is #b3b3af — legible on a laptop, not on a phone in daylight. */
-  .studio-empty-state-hint-sep {
-    font-size: 13px;
-    line-height: 1.5;
-    color: var(--text-muted);
-    text-align: center;
-  }
+  /* Keyboard hints never render on touch: the empty state shows a tap tip instead. */
 
   .studio-timeline-container {
     top: 60px;

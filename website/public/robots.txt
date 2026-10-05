@@ -1,6 +1,13 @@
 # robots.txt for LocalPDF
 # https://localpdf.online
 
+# Policy: search and answer engines are welcome (they cite and link back); crawlers whose
+# only purpose is building a training set are not. This matches Content-Signal below —
+# keep both in sync, and keep middleware.ts AI_CRAWLER_PATTERNS in sync with the allow list.
+#
+# Content-Signal: https://contentsignals.org/
+# Token reference (purpose per operator docs): https://utilix.app/crawlers.json
+
 User-agent: *
 Allow: /
 Content-Signal: ai-train=no, search=yes, ai-input=yes
@@ -21,21 +28,62 @@ User-agent: YandexBot
 Allow: /
 Crawl-delay: 1
 
-# AI crawlers — explicitly allowed
+# --- AI answer engines and user-triggered fetches: allowed ---
+# These retrieve a page to answer a person's question and link back to the source.
 User-agent: OAI-SearchBot
+Allow: /
+
+User-agent: ChatGPT-User
 Allow: /
 
 User-agent: PerplexityBot
 Allow: /
 
-User-agent: Google-Extended
+User-agent: Perplexity-User
 Allow: /
+
+User-agent: Claude-SearchBot
+Allow: /
+
+User-agent: Claude-User
+Allow: /
+
+User-agent: Amzn-SearchBot
+Allow: /
+
+User-agent: Amzn-User
+Allow: /
+
+User-agent: Meta-ExternalFetcher
+Allow: /
+
+# --- AI training crawlers: refused ---
+# Same decision the Content-Signal header states, written per operator so it is readable
+# without understanding Content-Signal. Note that Google-Extended is the Gemini training and
+# grounding control, not a crawler of its own: allowing it here contradicted ai-train=no.
+User-agent: Google-Extended
+Disallow: /
+
+User-agent: Applebot-Extended
+Disallow: /
+
+User-agent: GPTBot
+Disallow: /
 
 User-agent: ClaudeBot
-Allow: /
+Disallow: /
 
 User-agent: anthropic-ai
-Allow: /
+Disallow: /
 
 User-agent: Amazonbot
-Allow: /
+Disallow: /
+
+User-agent: Meta-ExternalAgent
+Disallow: /
+
+User-agent: CCBot
+Disallow: /
+
+User-agent: Bytespider
+Disallow: /

@@ -3,23 +3,22 @@
 // - /localpdf + AI crawler UA -> markdown (legacy UA-based behavior)
 // - Everything else (browsers, Googlebot, etc.) -> canonical HTML (no cloaking)
 
-// AI crawler user agent patterns to match (legacy UA-based behavior)
+// AI crawler user agent patterns to match (legacy UA-based behavior).
+// Mirrors the allow list in website/public/robots.txt: search and user-triggered fetchers get
+// the markdown representation, training-only crawlers are refused there and get nothing here.
 const AI_CRAWLER_PATTERNS = [
-  // Major AI search/indexing bots
-  /ClaudeBot/i,
+  // Search and citation crawlers
   /OAI-SearchBot/i,
   /PerplexityBot/i,
-  /GPTBot/i,
-  /ChatGPT-User/i,
+  /Claude-SearchBot/i,
+  /Amzn-SearchBot/i,
 
-  // Additional AI crawlers commonly encountered
-  /Google-Extended/i,
-  /Meta-ExternalAgent/i,
-  /Amazonbot/i,
-  /Bytespider/i,
-  /Anthropic-AI/i,
-  /Cohere-ai/i,
-  /Brave-Search/i,
+  // User-triggered fetches (a person asked about this page)
+  /ChatGPT-User/i,
+  /Perplexity-User/i,
+  /Claude-User/i,
+  /Amzn-User/i,
+  /Meta-ExternalFetcher/i,
 ];
 
 // Check if the user agent matches any known AI crawler

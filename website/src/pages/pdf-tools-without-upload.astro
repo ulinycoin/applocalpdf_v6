@@ -1,6 +1,7 @@
 ---
 import MarketingLayout from '../layouts/MarketingLayout.astro';
 import { getAppUrl } from '../utils/app-url';
+import { LOCAL_PROCESSING_SCOPE } from '../data/privacy-claims';
 
 const title = 'PDF Tools Without Upload — Local-First Workflows | LocalPDF';
 const description = 'Edit, merge, OCR, compress, split, and convert PDFs without uploading. Local workflows in your browser — free to start, Pro for recurring work.';
@@ -36,9 +37,10 @@ const schema = [
       <span class="eyebrow">Category</span>
       <h1>PDF tools without upload-first pressure</h1>
       <p class="section-intro">
-        LocalPDF is built for users who search for PDF tools without upload because the document is sensitive, internal,
-        or simply too important to treat as a disposable remote upload. Core workflows are designed to begin locally in
-        the browser — edit, merge, OCR, compress, split, sign, and convert in one product path.
+        A PDF is often the most complete copy of a document you have: a contract draft, a payroll export, a client
+        invoice, an internal record. Uploading it to a stranger's server should not be the default first step. LocalPDF
+        keeps the document on your device and gives you one workspace for the whole job — edit, merge, OCR, compress,
+        split, sign, and convert.
       </p>
       <div class="cta-row">
         <a class="btn-primary" href={appUrl}>Open LocalPDF — free</a>
@@ -48,17 +50,17 @@ const schema = [
     </section>
 
     <section class="section">
-      <h2 class="section-title">Why people search for PDF tools without upload</h2>
+      <h2 class="section-title">Why upload-first tools are a bad fit for sensitive documents</h2>
       <p>
         Most online PDF brands optimize for convenience: drop a file, wait for a server, download a result. That model
         works for disposable tasks. It breaks down when the PDF is a contract draft, a payroll export, a client invoice,
         or an internal record that should not enter a third-party upload queue by default.
       </p>
       <p>
-        Search queries like <em>pdf editor without upload</em>, <em>merge pdf without uploading</em>, or
-        <em>ocr pdf locally</em> usually mean the same thing: the user wants the job done without handing the file to a
-        remote pipeline first. LocalPDF is positioned for that intent — not as a generic “free online PDF toolbox,” but
-        as a <a href="/private-pdf-editor">private PDF editor</a> with a local-first workflow.
+        The practical question is not "is the vendor trustworthy" but "does the file need to leave at all." When the
+        answer is no, working in the browser removes the upload step, the retention question, and the wait. LocalPDF is
+        positioned for that: not a generic free online PDF toolbox, but a
+        <a href="/private-pdf-editor">private PDF editor</a> with a local-first workflow.
       </p>
     </section>
 
@@ -163,7 +165,7 @@ const schema = [
     <section class="section faq-grid">
       <article class="card">
         <h3>Can I use PDF tools without uploading?</h3>
-        <p>LocalPDF is built so core workflows can start locally in the browser instead of with a remote upload queue.</p>
+        <p>{LOCAL_PROCESSING_SCOPE}</p>
       </article>
       <article class="card">
         <h3>Which tools are included?</h3>

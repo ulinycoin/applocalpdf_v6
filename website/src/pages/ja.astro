@@ -3,6 +3,7 @@ import MarketingLayout from '../layouts/MarketingLayout.astro';
 import { featurePages } from '../data/featurePages';
 import { getAppUrl } from '../utils/app-url';
 import { CATEGORIES, ICONS } from '../data/tools';
+import { JA_TOOL_LABELS } from '../data/tool-labels';
 
 function getToolHref(toolId: string): string {
   const mapping: Record<string, string> = {
@@ -36,7 +37,7 @@ function getToolHref(toolId: string): string {
 }
 
 const title = 'ブラウザで動く個人向けPDFエディタ — 編集、結合、OCR | LocalPDF';
-const description = 'ブラウザ上で完全にローカル動作。アップロード不要、安全。結合、分割、圧縮、OCR、PDF変換を無料で利用。';
+const description = '文書はブラウザ内で処理され、アップロードされません。PDFの編集、結合、分割、圧縮、OCR、変換をオフラインでも無料で利用できます。';
 const canonical = 'https://localpdf.online/ja';
 const image = 'https://localpdf.online/logos/localpdf-social-1200x630.png';
 const imageAlt = 'LocalPDF — private PDF editor that runs entirely in your browser';
@@ -45,7 +46,7 @@ const appUrl = getAppUrl(undefined, { upload: '1' });
 const homepageFaqs = [
   {
     question: 'LocalPDFを使用するためにPDFをアップロードする必要がありますか？',
-    answer: 'いいえ。LocalPDFは完全にブラウザ内で動作します。お使いのデバイスからファイルを開いて作業し、結果をダウンロードするだけです。ファイルがサーバーにアップロードされることはありません。',
+    answer: 'いいえ。コアのPDF処理はブラウザ内で完結し、文書が処理サーバーへアップロードされたり、LocalPDFに保存されたりすることはありません。ツールの外側では通常のWebインフラ（ホスティング、分析、決済、ライセンス認証）を利用しています。',
   },
   {
     question: '異なるPDF間でページをドラッグできますか？',
@@ -53,11 +54,11 @@ const homepageFaqs = [
   },
   {
     question: 'LocalPDFは本当に無料ですか？何か裏がありますか？',
-    answer: 'はい、PDFの編集、結合、OCR、圧縮、分割、変換の6つのコアツールはすべて完全に無料です（無料枠では1日3回までダウンロードできます）。より多くのダウンロードやワークスペースが必要な方向けに、Proプラン（買い切り$19、または年額$39.99）があります。試用期限はなく、クレジットカード登録も不要です。',
+    answer: 'すべてのPDFツールが無料で使えます。無料枠ではワークスペース3つ、ダウンロードは1日3回までです。Proは買い切り$19（または年額$39.99）で、サブスクリプションは不要です。最新の価格は料金ページをご確認ください。',
   },
   {
     question: 'SmallpdfやAdobe Acrobatと何が違いますか？',
-    answer: '大きな違いは2つあります。1つ目は、LocalPDFはすべてをローカル（お使いのデバイス上）で処理するため、ファイルをアップロードする必要がなく、サーバー保存もされないため安心です。2つ目は、機能ごとの個別ページで何回もアップロードし直すのではなく、視覚的なキャンバス上で複数のドキュメントを並べて直感的にページをドラッグ＆ドロップして作業できる点です。',
+    answer: '大きな違いは2つあります。1つ目は、コアのPDF処理を端末上で行うため、文書を処理サーバーへアップロードする必要がないことです（サイト自体は通常のホスティング・分析・決済を利用しています）。2つ目は、機能ごとの個別ページで何回もアップロードし直すのではなく、視覚的なキャンバス上で複数のドキュメントを並べて直感的にページをドラッグ＆ドロップして作業できる点です。',
   },
   {
     question: 'LocalPDFはインターネットがなくても動きますか？',
@@ -66,6 +67,10 @@ const homepageFaqs = [
   {
     question: 'どのブラウザに対応していますか？',
     answer: 'Chrome、Firefox、Safari、Edgeで動作します。WebAssemblyを利用しているため、プラグイン等のインストールは一切不要です。また、PWA（デスクトップアプリ）としてインストールして素早く起動することもできます。',
+  },
+  {
+    question: 'どこまでがローカルで、どこからがローカルではないですか？',
+    answer: 'コアのPDF処理は端末上のブラウザ内で実行されます。文書の中身が処理サーバーへアップロードされたり、LocalPDFに保存されたりすることはありません。ツールの外側では通常のWebインフラ（ホスティング、分析、決済、ライセンス認証）を利用しています。',
   },
 ];
 
@@ -164,7 +169,7 @@ const hreflangs = [
         <span class="eyebrow">個人向けPDFエディタ — 100% ローカル処理</span>
         <h1>ブラウザで動く個人向けPDFエディタ — 編集、結合、OCR</h1>
         <p class="hero-text">
-          ファイルのアップロードは一切不要。結合、分割、圧縮、OCR、PDF変換などのすべての作業がお使いのデバイス上のブラウザ内で安全に完結します。まるで机の上の紙を扱うように、ページをドラッグ＆ドロップで移動できます。
+          ファイルのアップロードは不要。結合、分割、圧縮、OCR、PDF変換などのすべての作業がお使いのデバイス上のブラウザ内で完結します。まるで机の上の紙を扱うように、ページをドラッグ＆ドロップで移動できます。
         </p>
         <div class="hero-price">無料で利用可能 — アカウント登録不要</div>
         <div class="cta-row">
@@ -497,13 +502,13 @@ const hreflangs = [
           <div class="toolkit-category">
             <div class="category-header">
               <span class="category-icon" set:html={ICONS[category.icon]} />
-              <h3>{category.name}</h3>
+              <h3>{JA_TOOL_LABELS.categories[category.icon] ?? category.name}</h3>
             </div>
             <div class="category-tools-list">
               {category.tools.map((tool) => (
                 <a href={getToolHref(tool.id)} class="tool-item-link">
                   <div class="tool-item-icon" set:html={ICONS[tool.icon]} />
-                  <h4>{tool.name}</h4>
+                  <h4>{JA_TOOL_LABELS.tools[tool.id] ?? tool.name}</h4>
                 </a>
               ))}
             </div>
@@ -538,7 +543,7 @@ const hreflangs = [
             <li>すべてのツールが1つのキャンバスに、自由に切り替え</li>
             <li>ドキュメント間でページを直接ドラッグ＆ドロップ</li>
             <li>ネットワークの遅延なく、その場で瞬時に処理</li>
-            <li>ファイルがデバイス外に出ることは一切ありません</li>
+            <li>文書の中身がデバイス外へ送信されることはありません</li>
             <li>アカウント不要、サインアップ不要、サブスク登録不要</li>
           </ul>
         </div>
@@ -647,7 +652,7 @@ const hreflangs = [
           </ul>
         </div>
         <div class="comp-card">
-          <h3>Best for</h3>
+          <h3>こんな用途に</h3>
           <ul>
             <li>契約書や法務関連の書類</li>
             <li>請求書や財務記録</li>

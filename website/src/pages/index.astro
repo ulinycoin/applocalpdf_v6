@@ -3,6 +3,7 @@ import MarketingLayout from '../layouts/MarketingLayout.astro';
 import { featurePages } from '../data/featurePages';
 import { getAppUrl } from '../utils/app-url';
 import { CATEGORIES, ICONS } from '../data/tools';
+import { LOCAL_PROCESSING_BOUNDARY } from '../data/privacy-claims';
 
 function getToolHref(toolId: string): string {
   const mapping: Record<string, string> = {
@@ -58,6 +59,10 @@ const homepageFaqs = [
   {
     question: 'How is this different from Smallpdf or Adobe Acrobat?',
     answer: 'Core PDF processing stays on your device instead of uploading document contents to a processing server. The broader website still uses normal hosting, analytics, billing, and license-validation infrastructure. LocalPDF also uses a visual canvas where you can work with multiple documents side by side and drag pages between them.',
+  },
+  {
+    question: 'What exactly stays local, and what does not?',
+    answer: LOCAL_PROCESSING_BOUNDARY,
   },
   {
     question: 'Does LocalPDF work without internet?',
@@ -163,12 +168,12 @@ const hreflangs = [
     <!-- HERO -->
     <section class="hero section">
       <div class="hero-copy">
-        <span class="eyebrow">Private PDF editor — 100% local</span>
+        <span class="eyebrow">Private PDF editor — your file stays on your device</span>
         <h1>Edit PDFs Locally — Private PDF Editor, Merger &amp; OCR in Your Browser</h1>
         <p class="hero-text">
-          A full PDF workspace that runs entirely on your device. Edit text, merge documents,
-          run OCR on scans, compress, split, and convert — with zero uploads, no server storage,
-          and full offline support. Drag pages between documents visually, like paper on a desk.
+          A full PDF workspace that runs in your browser. Edit text, merge documents,
+          run OCR on scans, compress, split, and convert — the document is never uploaded to a
+          processing server, with full offline support. Drag pages between documents visually, like paper on a desk.
         </p>
         <div class="hero-price">Free to use — no account required</div>
         <div class="cta-row">
@@ -179,7 +184,7 @@ const hreflangs = [
           <a href="#how-it-works" class="btn-secondary">How it works</a>
         </div>
         <div class="hero-trust">
-          <span class="tag">0 bytes uploaded</span>
+          <span class="tag">Your PDF is never uploaded</span>
           <span class="tag">Works offline</span>
           <span class="tag">No account needed</span>
           <span class="tag">Used by legal, finance &amp; HR</span>
@@ -584,7 +589,7 @@ const hreflangs = [
         <div class="step">
           <div class="step-num">1</div>
           <h3>Open a PDF</h3>
-          <p>Drag any PDF into the Studio or open it from your device. The file stays in your browser's memory — zero bytes sent anywhere. Works offline too.</p>
+          <p>Drag any PDF into the Studio or open it from your device. The document is read into your browser's memory and stays there — it is not uploaded anywhere. Works offline too.</p>
         </div>
         <div class="step">
           <div class="step-num">2</div>
@@ -652,7 +657,7 @@ const hreflangs = [
     <section class="section">
       <span class="eyebrow">Why LocalPDF</span>
       <h2 class="section-title">Local-first vs upload-first PDF tools</h2>
-      <p class="section-intro">The difference is simple: your files never leave your device. Here's what that means in practice.</p>
+      <p class="section-intro">The difference is simple: the document is processed on your device instead of on someone else's server. Here's what that means in practice.</p>
       <div class="comp-grid">
         <div class="comp-card comp-accent">
           <h3>LocalPDF</h3>
@@ -662,7 +667,7 @@ const hreflangs = [
             <li>One workspace for everything</li>
             <li>Works offline</li>
             <li>No account required</li>
-            <li>Zero bytes sent to servers</li>
+            <li>Document contents never uploaded</li>
           </ul>
         </div>
         <div class="comp-card comp-cross">

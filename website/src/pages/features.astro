@@ -1,6 +1,7 @@
 ---
 import MarketingLayout from '../layouts/MarketingLayout.astro';
 import { getAppUrl } from '../utils/app-url';
+import { LOCAL_PROCESSING_SCOPE } from '../data/privacy-claims';
 
 const title = 'Free PDF Tools — Edit, Merge, OCR, Split, Sign | LocalPDF';
 const description = 'Free PDF tools that run locally in your browser — edit, merge, OCR, compress, split, sign, and convert. No uploads, no server storage.';
@@ -44,9 +45,10 @@ const schema = [
       <span class="eyebrow">Free PDF Tools</span>
       <h1>All the PDF tools you need, none of the uploads</h1>
       <p class="section-intro">
-        Edit, merge, OCR, compress, split, sign, convert, and auto-generate tables of contents —
-        every tool runs locally in your browser. No account, no uploads, no server storage.
+        Edit, merge, OCR, compress, split, sign, convert, and auto-generate tables of contents — every tool runs on your
+        device, with no account required.
       </p>
+      <p class="section-note">{LOCAL_PROCESSING_SCOPE}</p>
       <div class="cta-row">
         <a class="btn-primary" href={appUrl}>Open LocalPDF</a>
         <a class="btn-secondary" href="/security">How local processing works</a>
@@ -119,5 +121,12 @@ const schema = [
   .card-link {
     font-weight: 700;
     color: var(--accent);
+  }
+  .section-note {
+    max-width: 62ch;
+    margin-top: 10px;
+    font-size: 0.86rem;
+    line-height: 1.6;
+    color: #536674;
   }
 </style>

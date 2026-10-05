@@ -1,6 +1,7 @@
 ---
 import MarketingLayout from '../../layouts/MarketingLayout.astro';
 import { featurePages, type FeaturePageData } from '../../data/featurePages';
+import { LOCAL_PROCESSING_SCOPE } from '../../data/privacy-claims';
 import { getAppUrl } from '../../utils/app-url';
 
 interface Props {
@@ -572,6 +573,7 @@ const schema = [
       <div>
         <h2 class="section-title">{page.proofTitle}</h2>
         <p class="section-intro">{page.proofBody}</p>
+        <p class="scope-note">{LOCAL_PROCESSING_SCOPE}</p>
       </div>
       <div class="cta-row">
         <a class="btn-primary" href={appUrl}>Open LocalPDF</a>
@@ -1124,6 +1126,16 @@ const schema = [
   .related-card h3 {
     font-size: 1.4rem;
     margin-bottom: 12px;
+  }
+
+  .scope-note {
+    margin-top: 14px;
+    padding-top: 14px;
+    border-top: 1px solid var(--line);
+    font-size: 0.86rem;
+    line-height: 1.6;
+    color: #536674;
+    max-width: 62ch;
   }
 
   @media (max-width: 900px) {

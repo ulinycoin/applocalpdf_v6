@@ -1576,12 +1576,12 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
                                 <>
                                     <div className="studio-empty-state-hints" aria-label="Studio shortcuts">
                                         <span className="studio-empty-state-hint">U</span>
-                                        <span className="studio-empty-state-hint-sep">upload</span>
+                                        <span className="studio-empty-state-hint-label">UPLOAD</span>
                                         <span className="studio-empty-state-hint-sep">·</span>
                                         <span className="studio-empty-state-hint">⌘O</span>
-                                        <span className="studio-empty-state-hint-sep">open</span>
+                                        <span className="studio-empty-state-hint-label">OPEN</span>
                                         <span className="studio-empty-state-hint-sep">·</span>
-                                        <span className="studio-empty-state-hint">drag &amp; drop</span>
+                                        <span className="studio-empty-state-hint">DRAG &amp; DROP</span>
                                     </div>
                                     <div className="studio-empty-state-hints" aria-label="Studio tips">
                                         <span className="studio-empty-state-hint-drag">Drag a page onto another workspace to merge them</span>

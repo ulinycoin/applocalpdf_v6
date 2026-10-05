@@ -3,6 +3,7 @@ import mdx from '@astrojs/mdx';
 import sitemap from '@astrojs/sitemap';
 import { NOINDEX_BLOG_SITEMAP_URLS } from './src/data/noindexBlog.ts';
 import { featurePages } from './src/data/featurePages.ts';
+import { lastmodForUrl } from './src/utils/lastmod.ts';
 
 const SITE_ORIGIN = 'https://localpdf.online';
 
@@ -60,8 +61,6 @@ const sitemapBlockedPaths = new Set([
   ...NOINDEX_BLOG_SITEMAP_URLS,
   'https://localpdf.online/blog',
 ]);
-
-const TODAY = new Date().toISOString().split('T')[0];
 
 const sitemapPriority = {
   'https://localpdf.online/':              { priority: 1.0,  changefreq: 'weekly'  },
@@ -131,9 +130,10 @@ export default defineConfig({
       serialize: (item) => {
         const meta = sitemapPriority[item.url];
         const videos = demoVideosByUrl.get(item.url);
+        const lastmod = lastmodForUrl(item.url);
         return {
           ...item,
-          lastmod: TODAY,
+          ...(lastmod ? { lastmod } : {}),
           ...(meta || { priority: 0.6, changefreq: 'monthly' }),
           ...(videos
             ? {

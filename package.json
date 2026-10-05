@@ -20,7 +20,7 @@
     "build:all": "node build-vercel.mjs",
     "build:vercel": "node build-vercel.mjs",
     "billing:preflight": "node scripts/billing-preflight.mjs",
-    "release:check": "npm test && npm run build && npm run billing:preflight && npm run audit:workerization:strict",
+    "release:check": "npm test && npm run build && npm run build:all && npm run billing:preflight && npm run audit:workerization:strict && npm run audit:seo",
     "release:check:fast": "npm test && npm run build && npm run billing:preflight",
     "test": "node --import tsx --test src/**/*.test.ts src/*.test.ts test/**/*.test.ts",
     "test:watch": "node --import tsx --test --watch src/**/*.test.ts src/*.test.ts test/**/*.test.ts",
@@ -33,6 +33,8 @@
     "report:fallback-budget": "node scripts/fallback-budget-summary.mjs",
     "audit:workerization": "node scripts/workerization-audit.mjs",
     "audit:workerization:strict": "node scripts/workerization-audit.mjs --strict",
+    "audit:seo": "node scripts/seo-audit.mjs",
+    "seo:lastmod": "node scripts/gen-lastmod-manifest.mjs",
     "pretest": "node scripts/copy-studio-fonts.mjs"
   },
   "dependencies": {

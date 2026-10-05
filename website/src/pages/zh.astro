@@ -3,6 +3,7 @@ import MarketingLayout from '../layouts/MarketingLayout.astro';
 import { featurePages } from '../data/featurePages';
 import { getAppUrl } from '../utils/app-url';
 import { CATEGORIES, ICONS } from '../data/tools';
+import { ZH_TOOL_LABELS } from '../data/tool-labels';
 
 function getToolHref(toolId: string): string {
   const mapping: Record<string, string> = {
@@ -36,7 +37,7 @@ function getToolHref(toolId: string): string {
 }
 
 const title = '浏览器内私密PDF编辑器 — 独立编辑、合并及OCR | LocalPDF';
-const description = '在浏览器中私密地编辑、合并、OCR、压缩、拆分和转换PDF。零上传，无服务器存储，支持离线。';
+const description = '在浏览器中私密地编辑、合并、OCR、压缩、拆分和转换PDF。文档不会被上传，也不会存储在处理服务器上，支持离线使用。';
 const canonical = 'https://localpdf.online/zh';
 const image = 'https://localpdf.online/logos/localpdf-social-1200x630.png';
 const imageAlt = 'LocalPDF — private PDF editor that runs entirely in your browser';
@@ -45,7 +46,7 @@ const appUrl = getAppUrl(undefined, { upload: '1' });
 const homepageFaqs = [
   {
     question: '使用 LocalPDF 需要上传我的PDF吗？',
-    answer: '不需要。LocalPDF 完全在您的浏览器中运行。您只需从设备中打开文件、进行编辑，然后下载结果 — 没有任何内容会被上传到任何服务器。',
+    answer: '是的。核心 PDF 处理完全在您的浏览器中运行：文档不会被上传到处理服务器，也不会由 LocalPDF 存储。工具之外的部分仍使用常规网络基础设施：托管、分析、结算和许可证验证。',
   },
   {
     question: '我真的可以在不同的PDF之间拖动页面吗？',
@@ -53,11 +54,11 @@ const homepageFaqs = [
   },
   {
     question: 'LocalPDF 真的免费吗？有什么限制吗？',
-    answer: '是的，PDF编辑、合并、OCR、压缩、拆分和转换这六大核心工具完全免费（免费版每天可下载 3 次）。如果每天需要更多下载次数或更多工作区，可以选择 Pro 计划（一次性 $19，或每年 $39.99）。没有试用期限，也无需绑定信用卡。',
+    answer: '所有 PDF 工具都免费使用，免费版限制为最多 3 个工作区和每天 3 次下载。Pro 为一次性 $19 买断（或每年 $39.99），没有订阅要求；最新价格以定价页面为准。',
   },
   {
     question: '这与 Smallpdf 或 Adobe Acrobat 有何不同？',
-    answer: '有两个核心区别。首先，LocalPDF 将一切保留在您的本地设备上 — 无需上传，无服务器存储，您无需去信任任何第三方的隐私政策。其次，LocalPDF 采用可视化画布设计，您可以并排处理多个文档并在它们之间拖放页面，而不是像传统工具那样每次操作都要单独上传文件。',
+    answer: '有两个核心区别。首先，核心 PDF 处理在您的设备上完成，而不是把文档上传到处理服务器；网站本身仍使用常规的托管、分析和结算服务。其次，LocalPDF 采用可视化画布设计，您可以并排处理多个文档并在它们之间拖放页面，而不是像传统工具那样每次操作都要单独上传文件。',
   },
   {
     question: '无网络连接时 LocalPDF 还能工作吗？',
@@ -66,6 +67,10 @@ const homepageFaqs = [
   {
     question: 'LocalPDF 支持哪些浏览器？',
     answer: 'LocalPDF 支持 Chrome、Firefox、Safari 和 Edge。所有处理均使用 WebAssembly，因此无需安装任何插件或软件。您还可以通过 PWA 提示将其安装为 Chrome 应用以便快速访问。',
+  },
+  {
+    question: '哪些部分是本地的，哪些不是？',
+    answer: '核心 PDF 处理在您设备上的浏览器中进行：文档内容不会被上传到处理服务器，也不会由 LocalPDF 存储。工具之外的部分仍使用常规网络基础设施：托管、分析、结算和许可证验证。',
   },
 ];
 
@@ -164,7 +169,7 @@ const hreflangs = [
         <span class="eyebrow">私密PDF编辑器 — 100% 本地处理</span>
         <h1>在浏览器中轻松编辑、合并和OCR处理PDF</h1>
         <p class="hero-text">
-          完全在您的设备上运行的完整PDF工作区。编辑文本、合并文档、在扫描件上运行OCR、压缩、拆分和转换 — 零上传，无服务器存储，并支持完整的离线工作。可以像在桌面上整理纸张一样直观地拖放页面。
+          一个在浏览器中运行的完整PDF工作区。编辑文本、合并文档、在扫描件上运行OCR、压缩、拆分和转换 — 文档不会被上传到处理服务器，并支持完整的离线工作。可以像在桌面上整理纸张一样直观地拖放页面。
         </p>
         <div class="hero-price">免费使用 — 无需注册账户</div>
         <div class="cta-row">
@@ -497,13 +502,13 @@ const hreflangs = [
           <div class="toolkit-category">
             <div class="category-header">
               <span class="category-icon" set:html={ICONS[category.icon]} />
-              <h3>{category.name}</h3>
+              <h3>{ZH_TOOL_LABELS.categories[category.icon] ?? category.name}</h3>
             </div>
             <div class="category-tools-list">
               {category.tools.map((tool) => (
                 <a href={getToolHref(tool.id)} class="tool-item-link">
                   <div class="tool-item-icon" set:html={ICONS[tool.icon]} />
-                  <h4>{tool.name}</h4>
+                  <h4>{ZH_TOOL_LABELS.tools[tool.id] ?? tool.name}</h4>
                 </a>
               ))}
             </div>
@@ -534,7 +539,7 @@ const hreflangs = [
         <div class="relief-card">
           <h3>使用 LocalPDF</h3>
           <ul>
-            <li>直接从设备打开文件 — 零上传</li>
+            <li>直接从设备打开文件 — 内容不会上传</li>
             <li>所有工具集中在单个画布，自由切换</li>
             <li>直接在文档之间拖动页面</li>
             <li>即时响应，无需经过网络传输</li>
@@ -647,7 +652,7 @@ const hreflangs = [
           </ul>
         </div>
         <div class="comp-card">
-          <h3>Best for</h3>
+          <h3>最适合</h3>
           <ul>
             <li>合同与法律文件</li>
             <li>发票与财务记录</li>

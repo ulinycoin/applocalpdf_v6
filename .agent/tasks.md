@@ -2,6 +2,55 @@
 
 Last updated: 2026-10-05
 
+## Сессия 2026-10-05 (4) — /app, подсказки в Studio, локали /ja и /zh
+
+Триггер — второй внешний разбор. Две находки подтвердились как есть, одна оказалась уже закрытой, одна диагнозом мимо.
+
+### Уже было закрыто (проверено, правок не требует)
+
+- **/app не индексируется.** `vercel.json` уже содержит `X-Robots-Tag: noindex, nofollow, noarchive` на `/app{/}?` и `/app/:path*`; прод отдаёт заголовок на всех вариантах: `/app`, `/app?upload=1&tool=ocr-pdf`, `/app/studio`, `/app/studio/convert` (curl -I → 200 + заголовок). В robots.txt `/app` намеренно **не** закрыт — иначе Google не увидел бы noindex и всё равно проиндексировал бы URL по внешним ссылкам. Добавлена регрессия в `audit:seo`: падает, если из vercel.json пропадёт заголовок или если `/app` появится в `Disallow`.
+
+### Сделано
+
+1. **Подсказка шорткатов в пустом состоянии Studio.** На скриншоте прод-сборки было видно, почему читалось «Uupload·⌘Oopen»: подписи `upload`/`open` рендерились тем же классом `-hint-sep`, что и разделители, — 11px цветом `--text-dim` #b3b3af, без зазора после чипа «U», то есть визуально сливались с ним в одно слово. Правка в `StudioShell.tsx`: подписи вынесены в `studio-empty-state-hint-label` (UPLOAD / OPEN, uppercase, `--text-muted`, weight 600), «DRAG & DROP» стал чипом, у контейнера `flex-wrap: wrap`. Мёртвый мобильный блок `-hint-sep` (клавиатурные подсказки на тач не рендерятся вовсе) удалён. Проверено скриншотом прод-сборки: `U UPLOAD · ⌘O OPEN · DRAG & DROP`.
+2. **Локали /ja и /zh переведены в части каталога инструментов.** Обе страницы рендерили `CATEGORIES` из `src/data/tools.ts` как есть, отсюда английские «Content Design», «Organize & Optimize», «Data & Conversion», «Security», 22 названия инструментов и заголовок «Best for». Добавлен `website/src/data/tool-labels.ts` (ключи — `category.icon` и `tool.id`), оба locale-шаблона берут подписи оттуда с фолбэком на английский. Проверено на собранном HTML: 0 английских вхождений из списка.
+3. **Расхождение про бесплатный тариф устранено.** Китайская и японская FAQ обещали «шесть основных инструментов бесплатно», английская — «every PDF tool runs for free». Приведено к бизнес-модели из CLAUDE.md: все инструменты бесплатны, бесплатный тир ограничен 3 рабочими областями и 3 скачиваниями в сутки, Pro — $19 разово / $39.99 в год.
+4. **Граница локальности добавлена в обе локали.** Седьмой FAQ на /ja и /zh: ядро PDF-обработки в браузере, документ не загружается на сервер обработки и не хранится, вне инструмента — обычная веб-инфраструктура (хостинг, аналитика, платежи, проверка лицензии). Также убраны абсолюты в локалях: «零上传»/«无服务器存储» (hero и карточка сравнения zh), «ファイルがデバイス外に出ることは一切ありません» и «アップロードは一切不要» (ja), и переписаны meta description обеих локалей.
+5. **`audit:seo` расширен**: проверка заголовка /app (см. выше), запрет «六/6つ…完全に無料» в локалях и требование наличия формулировки границы в /ja и /zh. Негативный тест на синтетическом репозитории подтверждает срабатывание.
+
+### Приёмка
+
+`npm test` 460/460, `npm run build:all`, `npm run audit:workerization:strict` — exit 0, `npm run audit:seo` — pass (35 URL, 5 различных lastmod, noindex /app подтверждён, 83 страницы, локали без английских подписей). Визуальная проверка подсказок — скриншот `.studio-empty-state` на прод-сборке (Vite preview 4173).
+
+### Замечание по разбору
+
+Мета-текст не был зашит в общий шаблон: «This page is the destination for adding protection…» лежал в `website/src/data/featurePages.ts` (строка 749 в HEAD), а не в `FeaturePageTemplate.astro` — то есть чинились именно данные страниц, а не один шаблон. Шаблон отдаёт `intentSection.intro` как есть, поэтому вся кластерная лексика приходила из данных.
+
+## Сессия 2026-10-05 (3) — SEO: lastmod, AI-сигналы, вычистка метакомментариев из копирайта
+
+Триггер — внешний разбор SEO. Пять находок, все проверены на прод-выдаче.
+
+### Сделано
+
+1. **lastmod перестал быть штампом сборки.** `website/astro.config.mjs` ставил `lastmod: TODAY` на все 35 URL (прод: `2026-10-05T00:00:00.000Z` × 35). Теперь дата берётся из `website/src/data/lastmod.json` — маршрут датируется новейшим коммитом среди файлов, которые его рендерят (`website/src/data/route-sources.json`, он же источник для аудита). `npm run seo:lastmod` пересобирает манифест. Манифест — вход сборки, а не `git log` в рантайме: на Vercel клон без `.git`, там mtime всех файлов = время чекаута, то есть ровно тот же одинаковый штамп. Данные фич разрезаны на `website/src/data/features/<slug>.ts`, чтобы каждая страница имела свой источник и свою дату (было: 9 URL на одном `featurePages.ts`).
+2. **Демо-медиа в sitemap — только расширениями.** Проверено на проде: 7 блоков `<video:video>` (thumbnail/title/description/content_loc), ни одного URL с `.mp4`/`.webp` в `<loc>`. Видео есть только на страницах с реально отрендеренным `<video>`: `/`, `/private-pdf-editor`, `edit-pdf`, `merge-pdf`, `sign-pdf`, `protect-pdf`, `auto-toc-pdf`. CSP `media-src 'self' blob:` воспроизведение не блокирует, оба файла с прод-URL отдают 200 (`video/mp4`, `image/webp`).
+3. **SEO-метакомментарии вычищены из видимого текста (приоритет №1).** Были в 9 фич-страницах (`intentSection.intro` + тела карточек: «satisfy the broader edit cluster», «canonical destination for merge-style searches», «main destination for OCR-style searches», «main entry point instead of scattering users across lookalike edit pages», «long-tail conversion intents», «thin pages», «intents covered here») и на `/pdf-tools-without-upload` («users who search for PDF tools without upload», заголовок «Why people search for PDF tools without upload», примеры запросов `<em>pdf editor without upload</em>`). Переписано языком читателя; проверено на собранном HTML всех 83 страниц — 0 вхождений.
+4. **Content-Signal согласован с robots.txt.** `ai-train=no` соседствовал с `User-agent: Google-Extended / Allow: /` (Gemini training + grounding). Разведено по назначению из операторских доков: разрешены поисковые и user-triggered (`OAI-SearchBot`, `ChatGPT-User`, `PerplexityBot`/`-User`, `Claude-SearchBot`/`-User`, `Amzn-SearchBot`/`-User`, `Meta-ExternalFetcher`), отказано тренировочным (`Google-Extended`, `Applebot-Extended`, `GPTBot`, `ClaudeBot`, `anthropic-ai`, `Amazonbot`, `Meta-ExternalAgent`, `CCBot`, `Bytespider`). `middleware.ts` приведён к тому же allow-list (раньше отдавал markdown GPTBot/Google-Extended/Bytespider).
+5. **Единая формулировка про локальность.** Появился `website/src/data/privacy-claims.ts` (`PDF_NEVER_UPLOADED_SHORT`, `LOCAL_PROCESSING_SCOPE`, `LOCAL_PROCESSING_BOUNDARY`). Убраны несовместимые абсолюты: «0 bytes uploaded» (главная, how-local, privacy-бейджи), «100% local», «100% data residency», «guarantees complete confidentiality», «absolute privacy», «no privacy policy to trust», «zero bytes» в сравнении, «never leaves your device» в FAQ фич и 4 блог-постах. Граница «что локально, что нет» теперь на `/security`, `/how-local-pdf-processing-works`, в FAQ главной и на каждой фич-странице (общий `scope-note`).
+
+### Инструменты
+
+- `npm run seo:lastmod` — пересобрать `lastmod.json` (запускать после коммита копирайта).
+- `npm run audit:seo` — аудит собранного сайта: lastmod покрытие/разнообразие/будущее, медиа не в `<loc>`, обязательные поля `video:`, противоречие Content-Signal ↔ robots, запрещённые формулировки в 83 HTML.
+
+### Приёмка
+
+`npm test` 460/460, `npm run build`, `npm run build:all`, `npm run audit:workerization:strict` (exit 0), `npm run audit:seo` (pass): 35 URL, 5 различных lastmod, 7 видео-блоков, 0 медиа-URL.
+
+### Важно
+
+lastmod в манифесте обновится на даты коммита после `git commit` + `npm run seo:lastmod` (до коммита `audit:seo` даёт предупреждение «stale lastmod» — это ожидаемо, не ошибка).
+
 ## Сессия 2026-10-05 (2) — канвас: обнаружимость переноса страниц, счётчик скачиваний, бренд
 
 Триггер — визуальный разбор канваса (скриншоты 1440×900 и 390×844 + интерактивные замеры). Находки с цифрами:
