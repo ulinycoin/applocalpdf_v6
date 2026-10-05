@@ -19,12 +19,14 @@ export const DetachedPageObject: React.FC<DetachedPageObjectProps> = ({ page }) 
     const createCheckpoint = useHistoryStore((s) => s.createCheckpoint);
     const attachDetachedPage = useStudioStore((s: StudioState) => s.attachDetachedPage);
     const moveDetachedPage = useStudioStore((s: StudioState) => s.moveDetachedPage);
+    const setDraggingPageDocId = useStudioStore((s: StudioState) => s.setDraggingPageDocId);
     const removeDetachedPage = useStudioStore((s: StudioState) => s.removeDetachedPage);
     const activeDocumentId = useStudioStore((s: StudioState) => s.activeDocumentId);
     const gridColumns = useStudioStore((s: StudioState) => s.gridColumns);
 
     const handleDragEnd = (e: KonvaEventObject<DragEvent>) => {
         e.cancelBubble = true;
+        setDraggingPageDocId(null);
         const node = e.target;
         const stage = node.getStage();
         if (!stage) {
@@ -136,6 +138,8 @@ export const DetachedPageObject: React.FC<DetachedPageObjectProps> = ({ page }) 
             onDragStart={(e) => {
                 e.cancelBubble = true;
                 e.target.moveToTop();
+                // A loose page has no source workspace, so every workspace is a valid target.
+                setDraggingPageDocId('');
             }}
             onDragEnd={handleDragEnd}
             rotation={page.rotation}

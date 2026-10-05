@@ -14,6 +14,7 @@ import { downloadCertificateJson } from '../../v6/utils/redact-verify-ui';
 import { trackMonetizationEvent } from './monetization-telemetry';
 import { requestDailyDownloadAllowance } from './studio-paywall';
 import { getDeviceInstanceName } from '../platform/device-identity';
+import { DailyDownloadCounter } from './daily-download-counter';
 
 type LicenseDevice = { id: string; name: string; createdAt: string };
 
@@ -455,7 +456,15 @@ export function StudioTopNav({ telemetryEnabled, onToggleTelemetry, telemetryOpe
     <div className="studio-top-nav-container">
       <TrialBanner />
       <header className="studio-top-nav" aria-label="Studio top navigation">
-      <a href={marketingSiteUrl} className="studio-logo" style={{ flexShrink: 0 }}>
+      {/* The marketing site is a different app: opening it in place threw away the whole canvas. */}
+      <a
+        href={marketingSiteUrl}
+        className="studio-logo"
+        style={{ flexShrink: 0 }}
+        target="_blank"
+        rel="noopener noreferrer"
+        title="Open localpdf.online in a new tab"
+      >
         <div className="studio-nav-logo-icon">L</div>
         <span className="studio-logo-title">LocalPDF</span>
       </a>
@@ -493,6 +502,7 @@ export function StudioTopNav({ telemetryEnabled, onToggleTelemetry, telemetryOpe
       </div>
 
       <div className="studio-nav-actions">
+        <DailyDownloadCounter className="studio-nav-quota" />
         <button
           type="button"
           className="studio-nav-btn"

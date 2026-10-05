@@ -23,6 +23,7 @@ export const StudioDocument: React.FC<StudioDocumentProps> = ({ doc, gridColumns
     const viewportSize = useStudioStore((s: StudioState) => s.viewportSize);
     const studioViewPosition = useStudioStore((s: StudioState) => s.studioViewPosition);
     const studioViewScale = useStudioStore((s: StudioState) => s.studioViewScale);
+    const draggingPageDocId = useStudioStore((s: StudioState) => s.draggingPageDocId);
 
     const handleDragEnd = (e: KonvaEventObject<DragEvent>) => {
         // ONLY handle if the document itself was dragged
@@ -48,6 +49,10 @@ export const StudioDocument: React.FC<StudioDocumentProps> = ({ doc, gridColumns
     const labelMaxWidth = Math.max(120, width - PAGE_COUNT_WIDTH);
 
     const isActiveDocument = activeDocumentId === doc.id && selection.length === 0;
+    // While a page is being dragged every other workspace advertises itself as a drop target, not
+    // just the one the pointer happens to be over: merging workspaces is the point of the canvas
+    // and nothing on screen used to hint that it exists.
+    const isDropTargetCandidate = draggingPageDocId !== null && draggingPageDocId !== doc.id;
 
     return (
         <Group
@@ -128,6 +133,36 @@ export const StudioDocument: React.FC<StudioDocumentProps> = ({ doc, gridColumns
                 strokeWidth={1}
                 cornerRadius={[0, 0, 6, 6]}
             />
+            {/* Drop target outline, shown for every other workspace during a page drag */}
+            {isDropTargetCandidate && (
+                <>
+                    <Rect
+                        width={width + PAGE_PADDING * 2}
+                        height={height + PAGE_PADDING * 2 + 10 + 32}
+                        x={-PAGE_PADDING}
+                        y={-32}
+                        fill="rgba(35, 131, 226, 0.05)"
+                        stroke="#2383e2"
+                        strokeWidth={2}
+                        dash={[10, 8]}
+                        cornerRadius={6}
+                        listening={false}
+                    />
+                    <Group x={-PAGE_PADDING + 8} y={-30} listening={false}>
+                        <Rect width={220} height={24} fill="#2383e2" cornerRadius={4} opacity={0.92} />
+                        <Text
+                            text="Drop a page here to merge"
+                            fill="#ffffff"
+                            fontSize={11}
+                            fontStyle="bold"
+                            width={220}
+                            height={24}
+                            align="center"
+                            verticalAlign="middle"
+                        />
+                    </Group>
+                </>
+            )}
             {/* ── Active selection outline (single unified border) */}
             {isActiveDocument && (
                 <Rect

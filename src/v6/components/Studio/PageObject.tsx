@@ -91,6 +91,7 @@ export const PageObject: React.FC<PageObjectProps> = ({ page, docId, x, y, curre
     const isSelected = selection.some((s: SelectionItem) => s.pageId === page.id);
 
     const movePage = useStudioStore((s: StudioState) => s.movePage);
+    const setDraggingPageDocId = useStudioStore((s: StudioState) => s.setDraggingPageDocId);
     /**
      * The sharp tier is rendered for the device pixels this page actually covers, not for a fixed
      * absolute scale: at the fit zoom the tile is ~175 device px wide, and rendering it at scale 2
@@ -109,6 +110,8 @@ export const PageObject: React.FC<PageObjectProps> = ({ page, docId, x, y, curre
         e.cancelBubble = true; // Don't drag the document
         const node = e.target;
         node.moveToTop(); // Bring to front
+        // Every other workspace offers itself as a drop target while a page is in the air.
+        setDraggingPageDocId(docId);
     };
 
     const handleDragMove = (e: KonvaEventObject<DragEvent>) => {
@@ -132,6 +135,7 @@ export const PageObject: React.FC<PageObjectProps> = ({ page, docId, x, y, curre
     const handleDragEnd = (e: KonvaEventObject<DragEvent>) => {
         e.cancelBubble = true; // Prevent document from dragging when page is dragged
         setMergeHint(null);
+        setDraggingPageDocId(null);
         const node = e.target;
         const stage = node.getStage();
         if (!stage) return;

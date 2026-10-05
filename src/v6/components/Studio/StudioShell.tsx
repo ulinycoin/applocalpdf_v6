@@ -70,6 +70,8 @@ const DOC_WRAP_PADDING_Y = 80;
 const DOC_WRAP_GAP_X = 48;
 const DOC_WRAP_GAP_Y = 56;
 const DOC_BLOCK_HEIGHT = CARD_HEIGHT + CARD_GAP + 40;
+/** Remembers that the merge tip was dismissed; it is a one-time lesson, not a permanent banner. */
+const STUDIO_MERGE_TIP_KEY = 'localpdf_studio_merge_tip_seen';
 const ZOOM_MIN = 0.35;
 const ZOOM_MAX = 6;
 const ZOOM_STEP = 1.2;
@@ -339,6 +341,15 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
     const [overlayMode, setOverlayMode] = useState<OverlayMode | null>(null);
     const [paywallReason, setPaywallReason] = useState<string | null>(null);
     const [uploadAttention, setUploadAttention] = useState(false);
+    // The canvas' whole point is moving pages between workspaces and nothing used to say so once
+    // the empty state was gone: this tip teaches it exactly when a second workspace exists.
+    const [isMergeTipDismissed, setIsMergeTipDismissed] = useState(() => {
+        try {
+            return window.localStorage.getItem(STUDIO_MERGE_TIP_KEY) === '1';
+        } catch {
+            return true;
+        }
+    });
     // The armed tool lives in a ref: it must be cleared synchronously, otherwise a store-driven
     // re-render can re-enter the effect and run the tool several times (which burned three free
     // daily runs at once before this guard).
@@ -466,6 +477,15 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
         setViewScale(targetScale);
         setViewPosition({ x: nextX, y: nextY });
     }, [canvasDimensions.height, canvasDimensions.width, layoutGridColumns, viewScale]);
+
+    const dismissMergeTip = useCallback(() => {
+        setIsMergeTipDismissed(true);
+        try {
+            window.localStorage.setItem(STUDIO_MERGE_TIP_KEY, '1');
+        } catch {
+            /* best-effort: private mode must not break the canvas */
+        }
+    }, []);
 
     const handleOverlayClose = useCallback(() => {
         setOverlayMode(null);
@@ -1521,6 +1541,16 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
                             )}
                         </Layer>
                     </Stage>
+                    {!isMergeTipDismissed && documents.length >= 2 && (
+                        <div className="studio-merge-tip" role="status">
+                            <span className="studio-merge-tip-text">
+                                Drag a page onto another workspace to merge the files
+                            </span>
+                            <button type="button" className="studio-merge-tip-dismiss" onClick={dismissMergeTip}>
+                                Got it
+                            </button>
+                        </div>
+                    )}
                     {!hasFiles && (
                         <div className="studio-empty-state" aria-live="polite">
                             <div className="studio-empty-state-icon" aria-hidden="true">
@@ -1554,7 +1584,7 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
                                         <span className="studio-empty-state-hint">drag &amp; drop</span>
                                     </div>
                                     <div className="studio-empty-state-hints" aria-label="Studio tips">
-                                        <span className="studio-empty-state-hint-sep">Drag a page onto another workspace to merge them</span>
+                                        <span className="studio-empty-state-hint-drag">Drag a page onto another workspace to merge them</span>
                                     </div>
                                 </>
                             )}

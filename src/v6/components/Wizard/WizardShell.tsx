@@ -24,6 +24,7 @@ import type { StudioReturnContext, StudioSelectedPageRef, StudioToolRouteState }
 import { getPdfLib } from '../../services/pdf/pdf-loader';
 import { canRunStandalone } from '../../../../shared/standalone-tools';
 import { hasCanvasSurface, isCanvasTool } from '../../../../shared/canvas-tools';
+import { DailyDownloadCounter } from '../../../app/react/daily-download-counter';
 
 function classNames(...parts: Array<string | false | null | undefined>): string {
   return parts.filter(Boolean).join(' ');
@@ -748,15 +749,18 @@ export function WizardShell({ toolId, context, ioAdapter, limitService }: Wizard
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                     {!isStudioFlow && (
-                      <button className="wz-btn wz-btn-primary" style={{ width: '100%', justifyContent: 'center' }}
-                        onClick={() => { void downloadOutputs(); }}>
-                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                          <polyline points="7 10 12 15 17 10"/>
-                          <line x1="12" y1="15" x2="12" y2="3"/>
-                        </svg>
-                        {state.outputIds.length > 1 ? 'Download ZIP' : 'Download File'}
-                      </button>
+                      <>
+                        <button className="wz-btn wz-btn-primary" style={{ width: '100%', justifyContent: 'center' }}
+                          onClick={() => { void downloadOutputs(); }}>
+                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                            <polyline points="7 10 12 15 17 10"/>
+                            <line x1="12" y1="15" x2="12" y2="3"/>
+                          </svg>
+                          {state.outputIds.length > 1 ? 'Download ZIP' : 'Download File'}
+                        </button>
+                        <DailyDownloadCounter className="wz-result-quota" />
+                      </>
                     )}
                     <button className="wz-btn wz-btn-ghost" style={{ justifyContent: 'center' }} onClick={() => void resetFlow(true)}>
                       Run again

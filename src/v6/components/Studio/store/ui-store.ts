@@ -21,9 +21,12 @@ export interface UIState {
     viewportSize: { width: number; height: number };
     isHistoryOpen: boolean;
     renamingDocId: string | null;
+    /** Workspace the user is dragging a page out of, so the others can offer themselves as targets. */
+    draggingPageDocId: string | null;
 
     setSelection: (selection: { docId: string; pageId: string }[]) => void;
     setRenamingDocId: (id: string | null) => void;
+    setDraggingPageDocId: (docId: string | null) => void;
     requestInlineTool: (toolId: 'compress-pdf' | null) => void;
     setDraggingFile: (isDragging: boolean) => void;
     setActiveDocument: (id: string | null) => void;
@@ -51,6 +54,7 @@ export const useUIStore = create<UIState>((set) => ({
     whiteoutColor: '#ffffff',
     isHistoryOpen: false,
     renamingDocId: null,
+    draggingPageDocId: null,
 
     setSelection: (selection) => set((state) => ({
         selection,
@@ -70,12 +74,14 @@ export const useUIStore = create<UIState>((set) => ({
     setWhiteoutColor: (color) => set({ whiteoutColor: color }),
     setHistoryOpen: (open) => set({ isHistoryOpen: open }),
     setRenamingDocId: (id) => set({ renamingDocId: id }),
+    setDraggingPageDocId: (docId) => set({ draggingPageDocId: docId }),
     clearUI: () => set({
         selection: [],
         requestedInlineTool: null,
         activeDocumentId: null,
         interactionMode: null,
         operationScope: 'selection',
+        draggingPageDocId: null,
         studioViewScale: 1,
         studioViewPosition: { x: 0, y: 0 },
         // Intentionally not clearing gridColumns and viewportSize on clearUI

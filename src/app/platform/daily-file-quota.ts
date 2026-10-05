@@ -74,6 +74,23 @@ export function checkDailyFileQuota(requested = 1): DailyFileQuotaCheck {
   };
 }
 
+/** The counter lives in the chrome on both surfaces, so it has to react to every consuming path. */
+type QuotaListener = () => void;
+const listeners = new Set<QuotaListener>();
+
+export function subscribeDailyFileQuota(listener: QuotaListener): () => void {
+  listeners.add(listener);
+  return () => {
+    listeners.delete(listener);
+  };
+}
+
+function notifyQuotaChanged(): void {
+  for (const listener of listeners) {
+    listener();
+  }
+}
+
 export function consumeDailyFileQuota(count = 1): void {
   if (count <= 0) {
     return;
@@ -81,6 +98,7 @@ export function consumeDailyFileQuota(count = 1): void {
   const record = readRecord();
   record.downloaded += count;
   writeRecord(record);
+  notifyQuotaChanged();
 }
 
 export function dailyFileQuotaMessage(requested = 1): string {
@@ -99,4 +117,5 @@ export function resetDailyFileQuota(): void {
   } catch {
     /* ignore */
   }
+  notifyQuotaChanged();
 }

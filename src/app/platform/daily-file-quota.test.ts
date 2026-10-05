@@ -7,6 +7,7 @@ import {
   dailyFileQuotaMessage,
   getDailyFileUsage,
   resetDailyFileQuota,
+  subscribeDailyFileQuota,
 } from './daily-file-quota';
 
 function installStorageStub(): void {
@@ -82,4 +83,28 @@ test('a missing localStorage never throws and never blocks', () => {
       globalWithStorage.localStorage = previous;
     }
   }
+});
+
+test('the download counter is notified whenever the quota is consumed or reset', () => {
+  // The pill in the chrome reads the quota once and then relies on this signal; without it the
+  // number would keep saying "3 left" after a download.
+  installStorageStub();
+  resetDailyFileQuota();
+
+  let notifications = 0;
+  const unsubscribe = subscribeDailyFileQuota(() => { notifications += 1; });
+
+  consumeDailyFileQuota(1);
+  assert.equal(notifications, 1);
+  assert.equal(checkDailyFileQuota().remaining, 2);
+
+  consumeDailyFileQuota(0);
+  assert.equal(notifications, 1, 'a no-op consume must not repaint the counter');
+
+  resetDailyFileQuota();
+  assert.equal(notifications, 2);
+
+  unsubscribe();
+  consumeDailyFileQuota(1);
+  assert.equal(notifications, 2, 'unsubscribed listeners must stop hearing about the quota');
 });
