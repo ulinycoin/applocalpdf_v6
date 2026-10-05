@@ -58,3 +58,26 @@ test('selection and edit session are dropped for pages that no longer exist', ()
   assert.deepStrictEqual(useUIStore.getState().selection, [{ docId: 'a', pageId: 'p1' }]);
   assert.equal(useEditSessionStore.getState().editSession, null);
 });
+
+test('appendPages streams the rest of an imported file into the workspace already on the canvas', () => {
+  // The import path places the workspace from the declared page count and then appends pages as
+  // they are encoded, so the first page shows up before the last one is rendered.
+  useDocumentStore.getState().setDocuments([doc('a', [page('p1')])]);
+
+  useDocumentStore.getState().appendPages('a', [page('p2'), page('p3')]);
+
+  const state = useDocumentStore.getState();
+  assert.deepStrictEqual(state.documents[0].pages.map((p) => p.id), ['p1', 'p2', 'p3']);
+  assert.equal(useUIStore.getState().activeDocumentId, 'a');
+});
+
+test('appendPages ignores an unknown workspace and an empty batch', () => {
+  useDocumentStore.getState().setDocuments([doc('a', [page('p1')])]);
+  const versionAfterSet = useDocumentStore.getState().workspaceVersion;
+
+  useDocumentStore.getState().appendPages('missing', [page('p2')]);
+  useDocumentStore.getState().appendPages('a', []);
+
+  assert.deepStrictEqual(useDocumentStore.getState().documents[0].pages.map((p) => p.id), ['p1']);
+  assert.equal(useDocumentStore.getState().workspaceVersion, versionAfterSet);
+});

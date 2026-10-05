@@ -15,6 +15,8 @@ import { LinearIcon } from '../icons/linear-icon';
 import { getStudioEditMessages } from './studio-edit-i18n';
 import { StudioPageEditor, type StudioPageEditorHandle } from './StudioPageEditor';
 import { useStudioEditZoom } from './edit/use-studio-edit-zoom';
+import { usePlatform } from '../../../app/react/platform-context';
+import { renderPageTileUrl } from '../../studio/thumbnail/page-tile-cache';
 import type { FormFieldElement, WatermarkElement } from './editor-types';
 import type { FontFamilyId } from './inline-text-utils';
 
@@ -37,6 +39,7 @@ export function StudioEditWorkspace({ onClose }: StudioEditWorkspaceProps = {}) 
     }), [ui]);
 
     const ctrl = useStudioEditController(ui);
+    const { runtime } = usePlatform();
     const zoom = useStudioEditZoom(ctrl.runId || 'unknown', 1);
     const imageRef = useRef<HTMLImageElement | null>(null);
     const surfaceRef = useRef<HTMLDivElement | null>(null);
@@ -44,6 +47,7 @@ export function StudioEditWorkspace({ onClose }: StudioEditWorkspaceProps = {}) 
     const autoFitPreviewKeyRef = useRef<string | null>(null);
     const [canvasSize, setCanvasSize] = useState<{ width: number; height: number }>({ width: 620, height: 840 });
     const [viewportSize, setViewportSize] = useState<{ width: number; height: number }>({ width: 0, height: 0 });
+    const [sharpPageUrl, setSharpPageUrl] = useState<string | null>(null);
     const [hasPendingDrawnSignature, setHasPendingDrawnSignature] = useState(false);
     const [hasPendingAnnotatePenDraft, setHasPendingAnnotatePenDraft] = useState(false);
     const [pendingDiscard, setPendingDiscard] = useState<(() => void) | null>(null);
@@ -80,8 +84,46 @@ export function StudioEditWorkspace({ onClose }: StudioEditWorkspaceProps = {}) 
         }
     }, [ctrl.clearEditSession, ctrl.navigate, ctrl.preview, onClose]);
 
+    /**
+     * The canvas grid only keeps a small tile, so the edit surface renders its own sharp page for the
+     * device pixels it shows the page at (max 620x840 CSS px) and falls back to the tile until it
+     * arrives.
+     */
     useEffect(() => {
-        const url = ctrl.preview?.page.thumbnailUrl;
+        const page = ctrl.preview?.page;
+        if (!page) {
+            setSharpPageUrl(null);
+            return;
+        }
+        let cancelled = false;
+        let createdUrl: string | null = null;
+        const dpr = typeof window === 'undefined' ? 1 : (window.devicePixelRatio || 1);
+        void (async () => {
+            try {
+                const url = await renderPageTileUrl(runtime, page.fileId, page.pageIndex, 620 * dpr);
+                if (cancelled) {
+                    URL.revokeObjectURL(url);
+                    return;
+                }
+                createdUrl = url;
+                setSharpPageUrl(url);
+            } catch {
+                // Keep the grid tile as the background.
+            }
+        })();
+        return () => {
+            cancelled = true;
+            if (createdUrl) {
+                URL.revokeObjectURL(createdUrl);
+            }
+        };
+    }, [ctrl.preview?.page.fileId, ctrl.preview?.page.pageIndex, runtime]);
+
+    const tileUrl = ctrl.preview?.page.thumbnailUrl ?? null;
+    const pageImageSrc = sharpPageUrl ?? tileUrl;
+
+    useEffect(() => {
+        const url = pageImageSrc;
         if (!url) {
             setCanvasSize({ width: 620, height: 840 });
             return;
@@ -101,7 +143,7 @@ export function StudioEditWorkspace({ onClose }: StudioEditWorkspaceProps = {}) 
             setCanvasSize({ width: 620, height: 840 });
         };
         img.src = url;
-    }, [ctrl.preview?.page.thumbnailUrl]);
+    }, [pageImageSrc]);
 
     useEffect(() => {
         const element = zoom.containerRef.current;
@@ -677,7 +719,7 @@ export function StudioEditWorkspace({ onClose }: StudioEditWorkspaceProps = {}) 
                             >
                                 <img
                                     ref={imageRef}
-                                    src={ctrl.preview.page.thumbnailUrl}
+                                    src={pageImageSrc ?? undefined}
                                     alt={`Page ${ctrl.preview.page.pageIndex + 1}`}
                                     className="studio-edit-page-image"
                                     crossOrigin="anonymous"

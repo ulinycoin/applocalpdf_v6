@@ -13,6 +13,8 @@ export interface DocumentState {
     updateDocument: (id: string, updates: Partial<StudioDocument>) => void;
     removeDocument: (id: string) => void;
     setDocuments: (docs: StudioDocument[]) => void;
+    /** Appends pages to a workspace that is already on the canvas (used while a file is imported). */
+    appendPages: (docId: string, pages: PageItem[]) => void;
 
     movePage: (sourceDocId: string, pageId: string, targetDocId: string, index?: number) => void;
     detachPage: (docId: string, pageId: string, x: number, y: number) => void;
@@ -89,6 +91,14 @@ export const useDocumentStore = create<DocumentState>((set) => ({
 
     updateDocument: (id, updates) => set((state) => {
         return commitDocs(state, state.documents.map(d => d.id === id ? { ...d, ...updates } : d));
+    }),
+
+    appendPages: (docId, pages) => set((state) => {
+        if (pages.length === 0 || !state.documents.some(d => d.id === docId)) {
+            return state;
+        }
+        const nextDocs = state.documents.map(d => d.id === docId ? { ...d, pages: [...d.pages, ...pages] } : d);
+        return commitDocs(state, nextDocs, {}, docId);
     }),
 
     removeDocument: (id) => set((state) => {

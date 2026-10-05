@@ -7,118 +7,13 @@ import { PageItem, StudioDocument, StudioState, useStudioStore } from './studio-
 import { usePlatform } from '../../../app/react/platform-context';
 import { canUseDocumentWithPageCount, freePageLimitMessage } from '../../../app/platform/plan-limits';
 import { showStudioPaywall } from '../../../app/react/studio-paywall';
-import { getPdfJs } from '../../services/pdf/pdf-loader';
 import { useHistoryStore } from './store/history-store';
-import { acquireCanvas, releaseCanvas } from '../../utils/canvas-pool';
-import { onMemoryPressure } from '../../utils/memory-pressure';
+import { acquirePageTile, quantizeTileWidth } from '../../studio/thumbnail/page-tile-cache';
 
-// --- LRU Cache for High-Res Bitmaps (uses canvas pool for memory efficiency) ---
-const HIGH_RES_CACHE_LIMIT = 30;
-const HIGH_RES_CACHE_AGGRESSIVE_LIMIT = 10;
-const highResCache = new Map<string, HTMLCanvasElement>();
-
-function getCachedHighRes(key: string): HTMLCanvasElement | undefined {
-    const canvas = highResCache.get(key);
-    if (canvas) {
-        highResCache.delete(key);
-        highResCache.set(key, canvas);
-    }
-    return canvas;
-}
-
-function setCachedHighRes(key: string, canvas: HTMLCanvasElement) {
-    if (highResCache.size >= HIGH_RES_CACHE_LIMIT) {
-        const oldestKey = highResCache.keys().next().value;
-        if (oldestKey) {
-            const evicted = highResCache.get(oldestKey);
-            if (evicted) releaseCanvas(evicted);
-            highResCache.delete(oldestKey);
-        }
-    }
-    highResCache.set(key, canvas);
-}
-
-function evictHighResCache(targetSize: number): void {
-    while (highResCache.size > targetSize) {
-        const oldestKey = highResCache.keys().next().value;
-        if (!oldestKey) break;
-        const evicted = highResCache.get(oldestKey);
-        if (evicted) releaseCanvas(evicted);
-        highResCache.delete(oldestKey);
-    }
-}
-
-let memoryPressureCleanup: (() => void) | null = null;
-function ensureMemoryPressureListener(): void {
-    if (memoryPressureCleanup) return;
-    memoryPressureCleanup = onMemoryPressure(() => {
-        evictHighResCache(HIGH_RES_CACHE_AGGRESSIVE_LIMIT);
-        clearPdfDocumentCache();
-    });
-}
+const PAGE_WIDTH = 180;
+const PAGE_HEIGHT = 250;
 
 // --- LRU Cache for Loaded PDFJS Document Proxies ---
-const PDF_DOCUMENT_CACHE_LIMIT = 5;
-const pdfDocumentCache = new Map<string, Promise<any>>();
-
-async function getCachedPdfDocument(fileId: string, runtime: any): Promise<any> {
-    const cachedPromise = pdfDocumentCache.get(fileId);
-    if (cachedPromise) {
-        // Refresh position in Map for LRU eviction
-        pdfDocumentCache.delete(fileId);
-        pdfDocumentCache.set(fileId, cachedPromise);
-        return cachedPromise;
-    }
-
-    const pdfPromise = (async () => {
-        try {
-            const pdfjs = await getPdfJs();
-            const entry = await runtime.vfs.read(fileId);
-            const blob = await entry.getBlob();
-            const buffer = await blob.arrayBuffer();
-            const loadingTask = pdfjs.getDocument({ data: new Uint8Array(buffer) });
-            return await loadingTask.promise;
-        } catch (error) {
-            // Remove broken promise from cache so next try can start fresh
-            pdfDocumentCache.delete(fileId);
-            throw error;
-        }
-    })();
-
-    if (pdfDocumentCache.size >= PDF_DOCUMENT_CACHE_LIMIT) {
-        const oldestKey = pdfDocumentCache.keys().next().value;
-        if (oldestKey) {
-            const oldestPromise = pdfDocumentCache.get(oldestKey);
-            pdfDocumentCache.delete(oldestKey);
-            if (oldestPromise) {
-                try {
-                    const pdf = await oldestPromise;
-                    await pdf.destroy();
-                } catch (e) {
-                    console.error("Failed to destroy cached pdf document:", e);
-                }
-            }
-        }
-    }
-
-    pdfDocumentCache.set(fileId, pdfPromise);
-    return pdfPromise;
-}
-
-async function clearPdfDocumentCache(): Promise<void> {
-    const promises = Array.from(pdfDocumentCache.values());
-    pdfDocumentCache.clear();
-    for (const p of promises) {
-        try {
-            const pdf = await p;
-            await pdf.destroy();
-        } catch (e) {
-            // Silence destruction errors
-        }
-    }
-}
-
-
 interface PageObjectProps {
     page: PageItem;
     docId: string;
@@ -183,12 +78,10 @@ export const PageObject: React.FC<PageObjectProps> = ({ page, docId, x, y, curre
     // Tier 0: Thumbnail
     const [thumbImage] = useImage(page.thumbnailUrl);
 
-    // Tier 1: High-res
+    // Tier 1: sharp tile
     const [highResCanvas, setHighResCanvas] = React.useState<HTMLCanvasElement | null>(null);
-    const [isRenderingHighRes, setIsRenderingHighRes] = React.useState(false);
     const [mergeHint, setMergeHint] = React.useState<{ docId: string; name: string } | null>(null);
 
-    const documents = useStudioStore((s: StudioState) => s.documents);
     const gridColumns = useStudioStore((s: StudioState) => s.gridColumns);
     const studioViewScale = useStudioStore((s: StudioState) => s.studioViewScale);
     const detachPage = useStudioStore((s: StudioState) => s.detachPage);
@@ -198,15 +91,15 @@ export const PageObject: React.FC<PageObjectProps> = ({ page, docId, x, y, curre
     const isSelected = selection.some((s: SelectionItem) => s.pageId === page.id);
 
     const movePage = useStudioStore((s: StudioState) => s.movePage);
-    const highResRenderScale = React.useMemo(() => {
-        if (shouldPrefetchOnly) {
-            return 2;
-        }
-        if (isSelected) {
-            return studioViewScale >= 1.35 ? 3 : 2.5;
-        }
-        return studioViewScale >= 1.35 ? 3 : 2;
-    }, [isSelected, shouldPrefetchOnly, studioViewScale]);
+    /**
+     * The sharp tier is rendered for the device pixels this page actually covers, not for a fixed
+     * absolute scale: at the fit zoom the tile is ~175 device px wide, and rendering it at scale 2
+     * wasted ~47x the pixels.
+     */
+    const tilePixelWidth = React.useMemo(() => {
+        const dpr = typeof window === 'undefined' ? 1 : (window.devicePixelRatio || 1);
+        return quantizeTileWidth(PAGE_WIDTH * studioViewScale * dpr);
+    }, [studioViewScale]);
 
     const handleMouseDown = (e: KonvaEventObject<MouseEvent | TouchEvent>) => {
         e.cancelBubble = true;
@@ -224,7 +117,7 @@ export const PageObject: React.FC<PageObjectProps> = ({ page, docId, x, y, curre
         const stage = node.getStage();
         if (!stage) return;
 
-        const { targetDocId } = findDocumentUnderPointer(stage, node, documents, gridColumns);
+        const { targetDocId } = findDocumentUnderPointer(stage, node, useStudioStore.getState().documents, gridColumns);
         if (!targetDocId || targetDocId === docId) {
             if (mergeHint) setMergeHint(null);
             return;
@@ -232,7 +125,7 @@ export const PageObject: React.FC<PageObjectProps> = ({ page, docId, x, y, curre
         if (mergeHint?.docId === targetDocId) {
             return;
         }
-        const targetDoc = documents.find((doc) => doc.id === targetDocId);
+        const targetDoc = useStudioStore.getState().documents.find((doc) => doc.id === targetDocId);
         setMergeHint({ docId: targetDocId, name: targetDoc?.name ?? 'workspace' });
     };
 
@@ -255,6 +148,9 @@ export const PageObject: React.FC<PageObjectProps> = ({ page, docId, x, y, curre
         const STEP_X = CARD_WIDTH + GAP_X;
         const STEP_Y = CARD_HEIGHT + GAP_Y;
 
+        // Read the documents on demand: subscribing to the array re-rendered every mounted page
+        // on any workspace change (including each append during an import).
+        const documents = useStudioStore.getState().documents;
         const { targetDocId, targetDocNode } = findDocumentUnderPointer(stage, node, documents, gridColumns);
 
         const stageScale = stage.scaleX() || 1;
@@ -350,70 +246,33 @@ export const PageObject: React.FC<PageObjectProps> = ({ page, docId, x, y, curre
         }
     };
 
-    // Trigger High-Res render when component mounts (it only mounts when visible due to culling)
+    // Sharp tier: mounted only when the culling above says the page is close to the viewport.
     React.useEffect(() => {
-        ensureMemoryPressureListener();
         let isMounted = true;
-        const cacheKey = `${page.fileId}_${page.pageIndex}_${highResRenderScale}`;
-
-        const existingCanvas = getCachedHighRes(cacheKey);
-        if (existingCanvas) {
-            setHighResCanvas(existingCanvas);
-            return;
-        }
-
-        const renderHighRes = async () => {
-            if (isRenderingHighRes) return;
-            setIsRenderingHighRes(true);
-
-            let pooledCanvas: ReturnType<typeof acquireCanvas> | null = null;
-            try {
-                const pdf = await getCachedPdfDocument(page.fileId, runtime);
-
-                if (!isMounted) return;
-
-                const pdfPage = await pdf.getPage(page.pageIndex + 1);
-                const viewport = pdfPage.getViewport({ scale: highResRenderScale });
-
-                pooledCanvas = acquireCanvas(viewport.width, viewport.height);
-
-                await pdfPage.render({
-                    canvasContext: pooledCanvas.ctx,
-                    viewport,
-                    canvas: pooledCanvas.canvas,
-                }).promise;
-
-                if (isMounted) {
-                    setCachedHighRes(cacheKey, pooledCanvas.canvas);
-                    setHighResCanvas(pooledCanvas.canvas);
-                }
-            } catch (error) {
-                console.error("Failed to render high-res page:", error);
-                if (pooledCanvas) releaseCanvas(pooledCanvas.canvas);
-            } finally {
-                if (isMounted) setIsRenderingHighRes(false);
-            }
-        };
-
-        // Delay render slightly to prioritize scrolling/panning smoothness over immediate high-res
         const timeoutId = setTimeout(() => {
-            renderHighRes();
+            void (async () => {
+                try {
+                    const canvas = await acquirePageTile(runtime, page.fileId, page.pageIndex, tilePixelWidth);
+                    if (isMounted) {
+                        setHighResCanvas(canvas);
+                    }
+                } catch (error) {
+                    console.error('Failed to render page tile:', error);
+                }
+            })();
         }, 150);
 
         return () => {
             isMounted = false;
             clearTimeout(timeoutId);
         };
-    }, [highResRenderScale, page.fileId, page.pageIndex, runtime.vfs]);
+    }, [page.fileId, page.pageIndex, runtime, tilePixelWidth]);
 
     // If this is just a prefetch mount, we don't return any Konva nodes
-    // The useEffect above will still run and populate the LRU cache
+    // The useEffect above will still run and populate the tile cache
     if (shouldPrefetchOnly) {
         return null;
     }
-
-    const PAGE_WIDTH = 180;
-    const PAGE_HEIGHT = 250;
 
 
     return (

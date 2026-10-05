@@ -12,6 +12,7 @@ import { DetachedPageObject } from './DetachedPageObject';
 import { StudioToolRail, StudioToolSheet } from './StudioToolRail';
 import type { StudioConvertToolId } from './convert/use-studio-convert-controller';
 import { ThumbnailService } from '../../studio/thumbnail/thumbnail-service';
+import { pauseTileRendering, resumeTileRendering } from '../../studio/thumbnail/page-tile-cache';
 import { StudioTimeline } from './branching/StudioTimeline';
 import type { StudioReturnContext, StudioToolRouteState } from '../../studio/navigation/studio-tool-context';
 import { getPdfJs, getPdfLib } from '../../services/pdf/pdf-loader';
@@ -62,6 +63,8 @@ const STUDIO_MOBILE_SIDE_PADDING = 10;
 const CARD_WIDTH = 200;
 const CARD_HEIGHT = 280;
 const CARD_GAP = 20;
+/** Pages appended to the canvas per store write while a file is imported. */
+const PAGE_COMMIT_BATCH_SIZE = 8;
 const DOC_WRAP_PADDING_X = 80;
 const DOC_WRAP_PADDING_Y = 80;
 const DOC_WRAP_GAP_X = 48;
@@ -78,6 +81,8 @@ interface NewDocumentDraft {
     name: string;
     pages: PageItem[];
     isModified: boolean;
+    /** Declared page count when the pages themselves are not built yet (streaming import). */
+    pageCount?: number;
 }
 
 function toProtectedName(name: string): string {
@@ -188,8 +193,10 @@ function placeNewDocumentsInRows(
     let rowHeight = 0;
 
     for (const draft of drafts) {
-        const width = estimateDocumentWidth(draft.pages.length, gridColumns);
-        const height = estimateDocumentHeight(draft.pages.length, gridColumns);
+        const { pageCount, ...draftFields } = draft;
+        const totalPages = pageCount ?? draft.pages.length;
+        const width = estimateDocumentWidth(totalPages, gridColumns);
+        const height = estimateDocumentHeight(totalPages, gridColumns);
         const wouldOverflow = cursorX !== startX && (cursorX - startX + width > usableWidth);
 
         if (wouldOverflow) {
@@ -199,7 +206,7 @@ function placeNewDocumentsInRows(
         }
 
         positioned.push({
-            ...draft,
+            ...draftFields,
             x: cursorX,
             y: cursorY,
         });
@@ -264,6 +271,7 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
     const documents = useStudioStore((s: StudioState) => s.documents);
     const detachedPages = useStudioStore((s: StudioState) => s.detachedPages);
     const addDocument = useStudioStore((s: StudioState) => s.addDocument);
+    const appendPages = useStudioStore((s: StudioState) => s.appendPages);
     const setDocuments = useStudioStore((s: StudioState) => s.setDocuments);
     const setActiveDocument = useStudioStore((s: StudioState) => s.setActiveDocument);
     const activeDocumentId = useStudioStore((s: StudioState) => s.activeDocumentId);
@@ -757,7 +765,8 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
     }, [setDraggingFile]);
 
     const handleIncomingFiles = useCallback(async (files: File[], fromDrop: boolean) => {
-        const drafts: NewDocumentDraft[] = [];
+        /** Workspaces created by this batch, in the order they were placed on the canvas. */
+        const committedDocs: IStudioDocument[] = [];
         const uploadedFiles: File[] = [];
         if (files.length === 0) {
             return;
@@ -767,117 +776,160 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
         }
 
         const billingContext = runtime.billing.getContext();
+        // The canvas commits pages while the file is read; sharpening them at the same time would
+        // compete with the import for the main thread. They are rendered right after it ends.
+        pauseTileRendering();
 
-        for (let file of files) {
-            let writtenFileId: string | null = null;
-            try {
-                const workspaceCheck = canCreateWorkspace(billingContext, documents.length + drafts.length);
-                if (!workspaceCheck.allowed) {
-                    showStudioPaywall(
-                        runtime.telemetry,
-                        'Free includes up to 3 workspaces. Upgrade to Pro for unlimited workspaces.',
-                        import.meta.env.VITE_BILLING_URL,
-                        { toolId: 'studio', trigger: 'workspace_limit_3' },
-                    );
-                    break;
-                }
-
-                // If it's an image, wrap it in a PDF on the fly
-                if (file.type.startsWith('image/')) {
-                    const normalizedImage = await normalizeImageFileForPdf(file);
-                    const { PDFDocument } = await getPdfLib();
-                    const pdfDoc = await PDFDocument.create();
-                    const imageBytes = await normalizedImage.arrayBuffer();
-                    let embeddedImage;
-                    if (normalizedImage.type === 'image/jpeg' || normalizedImage.type === 'image/jpg' || normalizedImage.type === 'image/webp') {
-                        embeddedImage = await pdfDoc.embedJpg(imageBytes);
-                    } else if (normalizedImage.type === 'image/png') {
-                        embeddedImage = await pdfDoc.embedPng(imageBytes);
-                    } else {
-                        throw new Error(`Unsupported image type: ${normalizedImage.type}`);
+        try {
+            for (let file of files) {
+                let writtenFileId: string | null = null;
+                /** Pages already committed to the canvas for this file (0 means the file can still be dropped). */
+                let committedPageCount = 0;
+                try {
+                    const workspaceCheck = canCreateWorkspace(billingContext, documents.length + committedDocs.length);
+                    if (!workspaceCheck.allowed) {
+                        showStudioPaywall(
+                            runtime.telemetry,
+                            'Free includes up to 3 workspaces. Upgrade to Pro for unlimited workspaces.',
+                            import.meta.env.VITE_BILLING_URL,
+                            { toolId: 'studio', trigger: 'workspace_limit_3' },
+                        );
+                        break;
                     }
 
-                    const { width, height } = embeddedImage.scale(1);
-                    const page = pdfDoc.addPage([width, height]);
-                    page.drawImage(embeddedImage, {
-                        x: 0,
-                        y: 0,
-                        width,
-                        height,
-                    });
+                    // If it's an image, wrap it in a PDF on the fly
+                    if (file.type.startsWith('image/')) {
+                        const normalizedImage = await normalizeImageFileForPdf(file);
+                        const { PDFDocument } = await getPdfLib();
+                        const pdfDoc = await PDFDocument.create();
+                        const imageBytes = await normalizedImage.arrayBuffer();
+                        let embeddedImage;
+                        if (normalizedImage.type === 'image/jpeg' || normalizedImage.type === 'image/jpg' || normalizedImage.type === 'image/webp') {
+                            embeddedImage = await pdfDoc.embedJpg(imageBytes);
+                        } else if (normalizedImage.type === 'image/png') {
+                            embeddedImage = await pdfDoc.embedPng(imageBytes);
+                        } else {
+                            throw new Error(`Unsupported image type: ${normalizedImage.type}`);
+                        }
 
-                    const pdfBytes = await pdfDoc.save();
-                    const baseName = file.name.substring(0, file.name.lastIndexOf('.')) || file.name;
-                    file = new File([pdfBytes as any], `${baseName}.pdf`, { type: 'application/pdf' });
-                }
+                        const { width, height } = embeddedImage.scale(1);
+                        const page = pdfDoc.addPage([width, height]);
+                        page.drawImage(embeddedImage, {
+                            x: 0,
+                            y: 0,
+                            width,
+                            height,
+                        });
 
-                // 1. Save to VFS
-                const pdfjs = await getPdfJs();
-                const entry = await runtime.vfs.write(file);
-                writtenFileId = entry.id;
-                const buffer = await file.arrayBuffer();
+                        const pdfBytes = await pdfDoc.save();
+                        const baseName = file.name.substring(0, file.name.lastIndexOf('.')) || file.name;
+                        file = new File([pdfBytes as any], `${baseName}.pdf`, { type: 'application/pdf' });
+                    }
 
-                // 2. Load PDF once
-                const loadingTask = pdfjs.getDocument({ data: new Uint8Array(buffer) });
-                const pdf = await loadingTask.promise;
-                const numPages = pdf.numPages;
+                    // 1. Save to VFS
+                    const pdfjs = await getPdfJs();
+                    const entry = await runtime.vfs.write(file);
+                    writtenFileId = entry.id;
+                    const buffer = await file.arrayBuffer();
 
-                const documentCheck = canAddDocumentToStudio(billingContext, documents.length + drafts.length, numPages);
-                if (!documentCheck.allowed) {
-                    showStudioPaywall(
-                        runtime.telemetry,
-                        freePageLimitMessage('open larger PDFs'),
-                        import.meta.env.VITE_BILLING_URL,
-                        { toolId: 'studio', trigger: 'page_limit_25' },
+                    // 2. Load PDF once
+                    const loadingTask = pdfjs.getDocument({ data: new Uint8Array(buffer) });
+                    const pdf = await loadingTask.promise;
+                    const numPages = pdf.numPages;
+
+                    const documentCheck = canAddDocumentToStudio(billingContext, documents.length + committedDocs.length, numPages);
+                    if (!documentCheck.allowed) {
+                        showStudioPaywall(
+                            runtime.telemetry,
+                            freePageLimitMessage('open larger PDFs'),
+                            import.meta.env.VITE_BILLING_URL,
+                            { toolId: 'studio', trigger: 'page_limit_25' },
+                        );
+                        await pdf.destroy();
+                        await runtime.vfs.delete(entry.id).catch(() => undefined);
+                        writtenFileId = null;
+                        continue;
+                    }
+
+                    // The workspace is placed from the page count the PDF declares, so the canvas can
+                    // take the first page as soon as it is encoded instead of waiting for the last one.
+                    const docId = crypto.randomUUID();
+                    const [placed] = placeNewDocumentsInRows(
+                        [...documents, ...committedDocs],
+                        [{ id: docId, name: file.name, pages: [], isModified: false, pageCount: numPages }],
+                        canvasDimensions.width,
+                        layoutGridColumns,
                     );
+
+                    // Every store write redraws the whole canvas, so the tail of a long file is committed
+                    // in batches instead of page by page.
+                    const pendingPages: PageItem[] = [];
+                    const commitPendingPages = () => {
+                        if (pendingPages.length === 0) {
+                            return;
+                        }
+                        const batch = pendingPages.splice(0, pendingPages.length);
+                        appendPages(docId, batch);
+                        // Keep the local copy in sync: the placement of the next file and the final fit
+                        // are computed from it, not from the store.
+                        const committedIndex = committedDocs.findIndex((doc) => doc.id === docId);
+                        if (committedIndex >= 0) {
+                            const current = committedDocs[committedIndex];
+                            committedDocs[committedIndex] = { ...current, pages: [...current.pages, ...batch] };
+                        }
+                    };
+
+                    // 3. Generate pages and thumbnails, committing them as they arrive
+                    for (let i = 0; i < numPages; i++) {
+                        const page = await pdf.getPage(i + 1);
+                        const thumb = await ThumbnailService.generateThumbnailFromPage(page);
+                        const pageItem: PageItem = {
+                            id: crypto.randomUUID(),
+                            fileId: entry.id,
+                            pageIndex: i,
+                            thumbnailUrl: thumb,
+                            rotation: 0
+                        };
+
+                        if (committedPageCount === 0) {
+                            const committed: IStudioDocument = { ...placed, pages: [pageItem] };
+                            addDocument(committed);
+                            committedDocs.push(committed);
+                            // Show the first page instead of leaving the user on an empty canvas.
+                            fitToDocuments([...documents, ...committedDocs]);
+                        } else {
+                            pendingPages.push(pageItem);
+                            if (pendingPages.length >= PAGE_COMMIT_BATCH_SIZE) {
+                                commitPendingPages();
+                            }
+                        }
+                        committedPageCount += 1;
+                    }
+                    commitPendingPages();
+
+                    // Clean up pdf object
                     await pdf.destroy();
-                    await runtime.vfs.delete(entry.id).catch(() => undefined);
-                    writtenFileId = null;
-                    continue;
-                }
-
-                const pages: PageItem[] = [];
-
-                // 3. Generate pages and thumbnails
-                for (let i = 0; i < numPages; i++) {
-                    const page = await pdf.getPage(i + 1);
-                    const thumb = await ThumbnailService.generateThumbnailFromPage(page);
-                    pages.push({
-                        id: crypto.randomUUID(),
-                        fileId: entry.id,
-                        pageIndex: i,
-                        thumbnailUrl: thumb,
-                        rotation: 0
-                    });
-                }
-
-                // Clean up pdf object
-                await pdf.destroy();
-                uploadedFiles.push(file);
-                drafts.push({
-                    id: crypto.randomUUID(),
-                    name: file.name,
-                    pages,
-                    isModified: false,
-                });
-            } catch (error) {
-                if (writtenFileId) {
-                    await runtime.vfs.delete(writtenFileId).catch(() => undefined);
-                }
-                console.error('Failed to load file into Studio:', error);
-                if (isVfsQuotaExceededError(error)) {
-                    notifyStudioError('Storage quota exceeded. Close some documents or clear the workspace and try again.');
-                } else {
-                    const message = error instanceof Error ? error.message : 'Failed to load file into Studio.';
-                    notifyStudioError(message);
+                    uploadedFiles.push(file);
+                } catch (error) {
+                    // Only drop the stored file when nothing of it reached the canvas: a partially
+                    // imported workspace keeps the pages it already got.
+                    if (writtenFileId && committedPageCount === 0) {
+                        await runtime.vfs.delete(writtenFileId).catch(() => undefined);
+                    }
+                    console.error('Failed to load file into Studio:', error);
+                    if (isVfsQuotaExceededError(error)) {
+                        notifyStudioError('Storage quota exceeded. Close some documents or clear the workspace and try again.');
+                    } else {
+                        const message = error instanceof Error ? error.message : 'Failed to load file into Studio.';
+                        notifyStudioError(message);
+                    }
                 }
             }
+        } finally {
+            resumeTileRendering();
         }
 
-        const positionedDocs = placeNewDocumentsInRows(documents, drafts, canvasDimensions.width, layoutGridColumns);
-        for (const doc of positionedDocs) {
-            addDocument(doc);
-        }
+        const positionedDocs = committedDocs;
 
         if (positionedDocs.length > 0) {
             runtime.telemetry.track({
@@ -897,7 +949,7 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
             fitToDocuments([...documents, ...positionedDocs]);
             void createCheckpoint(runtime.vfs, 'upload', `Uploaded ${positionedDocs.length} ${positionedDocs.length === 1 ? 'file' : 'files'}`);
         }
-    }, [addDocument, canvasDimensions.width, createCheckpoint, documents, fitToDocuments, layoutGridColumns, notifyStudioError, onFilesDropped, runtime.telemetry, runtime.vfs]);
+    }, [addDocument, appendPages, canvasDimensions.width, createCheckpoint, documents, fitToDocuments, layoutGridColumns, notifyStudioError, onFilesDropped, runtime.telemetry, runtime.vfs]);
 
     const handleDrop = useCallback(async (e: React.DragEvent) => {
         e.preventDefault();

@@ -1,9 +1,17 @@
 import type { PDFPageProxy } from 'pdfjs-dist/types/src/display/api';
 import { getPdfJs } from '../../services/pdf/pdf-loader';
 
+/**
+ * The canvas grid draws a page into a 180x250 box, so the tile bitmap only has to cover that box at
+ * the screen's pixel ratio (180 * 2 = 360). Rendering bigger than the box costs memory twice — once
+ * for the bitmap and once for its decoded copy — while `page-tile-cache` renders the sharp tier at
+ * the size the page is actually displayed at.
+ */
+export const GRID_THUMBNAIL_WIDTH_PX = 360;
+export const THUMBNAIL_JPEG_QUALITY = 0.82;
+
 export class ThumbnailService {
-    private static readonly MIN_THUMBNAIL_WIDTH_PX = 1400;
-    private static readonly MIN_RENDER_SCALE = 1;
+    private static readonly MIN_RENDER_SCALE = 0.2;
     private static readonly MAX_RENDER_SCALE = 4;
 
     private static createCanvasFactory() {
@@ -42,9 +50,13 @@ export class ThumbnailService {
         return thumb;
     }
 
-    static async generateThumbnailFromPage(page: PDFPageProxy): Promise<string> {
+    /** Returns an object URL for a JPEG tile. The caller owns the URL and has to revoke it. */
+    static async generateThumbnailFromPage(
+        page: PDFPageProxy,
+        targetWidthPx: number = GRID_THUMBNAIL_WIDTH_PX,
+    ): Promise<string> {
         const baseViewport = page.getViewport({ scale: 1 });
-        const scaleFromWidth = ThumbnailService.MIN_THUMBNAIL_WIDTH_PX / Math.max(1, baseViewport.width);
+        const scaleFromWidth = targetWidthPx / Math.max(1, baseViewport.width);
         const renderScale = Math.min(
             ThumbnailService.MAX_RENDER_SCALE,
             Math.max(ThumbnailService.MIN_RENDER_SCALE, scaleFromWidth),
@@ -59,6 +71,10 @@ export class ThumbnailService {
         if (context) {
             context.imageSmoothingEnabled = true;
             context.imageSmoothingQuality = 'high';
+            // PDF pages may have transparent areas and JPEG has no alpha channel: paint white first
+            // or those areas come out black.
+            context.fillStyle = '#ffffff';
+            context.fillRect(0, 0, canvas.width, canvas.height);
             await (page as unknown as { render: (params: Record<string, unknown>) => { promise: Promise<void> } }).render({
                 canvasContext: context,
                 viewport,
@@ -66,7 +82,13 @@ export class ThumbnailService {
                 annotationMode: 0,
                 canvasFactory: ThumbnailService.createCanvasFactory(),
             }).promise;
-            return canvas.toDataURL('image/png');
+            const blob = await new Promise<Blob | null>((resolve) => {
+                canvas.toBlob(resolve, 'image/jpeg', THUMBNAIL_JPEG_QUALITY);
+            });
+            if (!blob) {
+                throw new Error('Thumbnail encode failed');
+            }
+            return URL.createObjectURL(blob);
         }
 
         throw new Error('Canvas context not available');
