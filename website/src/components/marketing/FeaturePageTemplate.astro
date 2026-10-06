@@ -2,6 +2,7 @@
 import MarketingLayout from '../../layouts/MarketingLayout.astro';
 import { featurePages, type FeaturePageData } from '../../data/featurePages';
 import { LOCAL_PROCESSING_SCOPE } from '../../data/privacy-claims';
+import { buildVideoObjects } from '../../utils/video-object';
 import { getAppUrl } from '../../utils/app-url';
 
 interface Props {
@@ -74,6 +75,7 @@ const schema = [
     })),
   },
   ...(howItWorksSchema ? [howItWorksSchema] : []),
+  ...buildVideoObjects(page.demoVideos ?? [], { pageUrl: canonical }),
 ];
 ---
 

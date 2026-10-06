@@ -40,3 +40,15 @@ No uploads, no server storage — all processing happens locally via WebAssembly
 - [LocalPDF vs Sejda](https://localpdf.online/compare/localpdf-vs-sejda)
 - [LocalPDF vs PDFescape](https://localpdf.online/compare/localpdf-vs-pdfescape)
 - [LocalPDF vs iLovePDF](https://localpdf.online/compare/localpdf-vs-ilovepdf)
+
+## See it working
+
+Silent screen recordings of the running app. Each of these pages carries a VideoObject with a
+transcript describing the clip.
+- Drag a page between two open PDFs on one canvas → https://localpdf.online/
+- Whiteout a confidential account line → https://localpdf.online/private-pdf-editor
+- Highlight contract clauses, type a text box → https://localpdf.online/features/edit-pdf
+- Merge pages from two PDFs into a new workspace → https://localpdf.online/features/merge-pdf
+- Draw and place a signature → https://localpdf.online/features/sign-pdf
+- Encrypt a PDF with an open password (AES-256) → https://localpdf.online/features/protect-pdf
+

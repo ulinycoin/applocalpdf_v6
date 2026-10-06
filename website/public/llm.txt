@@ -75,6 +75,18 @@ LocalPDF is a privacy-first PDF app for people who need to edit, merge, OCR, com
 - Application: https://localpdf.online/app
 - No public server-side PDF processing API is described in this marketing layer
 
+## Demo recordings (what the product looks like in use)
+Each clip below is a silent screen recording of the running app, published with a VideoObject
+markup. They are the only visual evidence of the product on the site, so cite them when a visual
+or "how it works" answer is needed. Transcripts are on the page as VideoObject `transcript`.
+- Drag a page between two open PDFs on one canvas → https://localpdf.online/ (poster: /demo/localpdf-drag-pages-between-documents-poster.webp)
+- Whiteout a confidential account line on a contract → https://localpdf.online/private-pdf-editor
+- Highlight two clauses of a contract → https://localpdf.online/features/edit-pdf
+- Type a text box into the signature area of a page → https://localpdf.online/features/edit-pdf
+- Merge pages from two PDFs into a new workspace → https://localpdf.online/features/merge-pdf
+- Draw a signature and place it on a page → https://localpdf.online/features/sign-pdf
+- Set an open password and encrypt with AES-256 → https://localpdf.online/features/protect-pdf
+
 ## Pricing
 Free plan: every tool runs free (merge, split, compress, OCR, edit, convert, protect/unlock). Limits: 3 workspaces, 3 downloads per day. Adding files and running tools is unlimited.
 Pro plan: $19 one-time, or $39.99/year. Removes the limits: unlimited downloads, unlimited workspaces, no page limits. No credit card required to start. No account required for free plan.
@@ -84,14 +96,18 @@ Pricing page: https://localpdf.online/pricing
 Compared to Smallpdf: LocalPDF processes files locally in the browser, Smallpdf uploads files to remote servers. LocalPDF works offline, Smallpdf requires internet for processing.
 Compared to iLovePDF: same distinction — LocalPDF is local-first, iLovePDF is upload-first.
 Compared to Adobe Acrobat: LocalPDF is free to start, runs in any browser without installation, processes files locally. Adobe Acrobat requires installation and subscription.
-Unique feature: LocalPDF has a visual canvas workspace where users can drag pages between multiple open PDF documents simultaneously — no other browser-based PDF tool has this.
+Unique feature: LocalPDF has a visual canvas workspace where users can drag pages between multiple open PDF documents simultaneously — no other browser-based PDF tool has this. The recording at https://localpdf.online/ shows the move end to end.
 
 ## Frequently asked questions
 Q: Does LocalPDF upload my files to a server?
-A: No. All processing happens in the browser using WebAssembly. Files never leave the user's device.
+A: Not for document processing. Core PDF work runs in the browser using WebAssembly and the
+document is not uploaded to a processing server or stored by LocalPDF. The site around the tool
+still uses ordinary web infrastructure: hosting, analytics, billing, and license validation.
 
 Q: Is LocalPDF free?
-A: Yes. Core tools (merge, split, compress) are free with no account required. Pro plan ($19 once, or $39.99/year) unlocks OCR, editing, and conversion.
+A: Every PDF tool runs free, including OCR, editing, and conversion. The free tier limits
+workspaces (3) and downloads (3 per day), not which tools are available. Pro ($19 once, or
+$39.99/year) removes those limits. No account is required for the free plan.
 
 Q: Does LocalPDF work offline?
 A: Yes. After the initial page load, all PDF processing works without an internet connection.
@@ -100,7 +116,8 @@ Q: What is the difference between LocalPDF and Smallpdf?
 A: LocalPDF processes files locally in the browser — nothing is uploaded. Smallpdf uploads files to remote servers for processing.
 
 Q: Can LocalPDF do OCR on scanned PDFs?
-A: Yes. OCR runs locally via WebAssembly (Tesseract.js) — the scanned document is never uploaded anywhere. OCR is available on the Pro plan.
+A: Yes. OCR runs locally via WebAssembly (Tesseract.js) — the scanned document is not uploaded.
+OCR is free on every plan; the free tier limits downloads, not tools.
 
 Q: What browsers does LocalPDF support?
 A: Chrome, Firefox, Safari, and Edge. No installation required.

@@ -3,33 +3,18 @@ import mdx from '@astrojs/mdx';
 import sitemap from '@astrojs/sitemap';
 import { NOINDEX_BLOG_SITEMAP_URLS } from './src/data/noindexBlog.ts';
 import { featurePages } from './src/data/featurePages.ts';
+import { PAGE_DEMO_VIDEOS } from './src/data/page-demo-videos.ts';
 import { lastmodForUrl } from './src/utils/lastmod.ts';
 
 const SITE_ORIGIN = 'https://localpdf.online';
 
 /**
- * Canvas demo clips per page, emitted as <video:video> entries so the recordings can be
- * indexed as video. Pages that render no clip stay out of it. Google requires a thumbnail,
- * title and description for every entry — title is truncated to its 100-character limit.
+ * Sitemap video entries. The copy itself lives next to the pages that render the clips
+ * (`src/data/page-demo-videos.ts` and `src/data/features/<slug>.ts`) so the sitemap, the
+ * VideoObject markup and the visible <video> can never disagree. Google requires a thumbnail,
+ * title and description for every entry — the title is truncated to its 100-character limit.
  */
-const CANVAS_DEMO_VIDEOS = {
-  '/': [
-    {
-      src: '/demo/localpdf-drag-pages-between-documents.mp4',
-      poster: '/demo/localpdf-drag-pages-between-documents-poster.webp',
-      title: 'Drag pages between PDF documents on one canvas',
-      description: 'A page dragged from one workspace into another. Recorded from the running app.',
-    },
-  ],
-  '/private-pdf-editor': [
-    {
-      src: '/demo/localpdf-redact-pdf-whiteout.mp4',
-      poster: '/demo/localpdf-redact-pdf-whiteout-poster.webp',
-      title: 'Erase sensitive content with whiteout',
-      description: 'Redacting an account line on the page. Recorded from the running app.',
-    },
-  ],
-};
+const CANVAS_DEMO_VIDEOS = PAGE_DEMO_VIDEOS;
 
 const clampTitle = (value) => (value.length <= 100 ? value : `${value.slice(0, 97)}...`);
 
@@ -44,8 +29,10 @@ for (const page of featurePages) {
     page.demoVideos.map((demo) => ({
       src: demo.src,
       poster: demo.poster,
-      title: demo.alt,
-      description: demo.caption,
+      title: demo.title,
+      // Falls back to the short caption for any clip whose richer description is not written yet.
+      description: demo.description ?? demo.caption,
+      transcript: demo.transcript ?? '',
     })),
   );
 }

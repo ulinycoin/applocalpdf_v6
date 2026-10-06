@@ -1,12 +1,16 @@
 ---
 import MarketingLayout from '../layouts/MarketingLayout.astro';
 import { getAppUrl } from '../utils/app-url';
+import { PAGE_DEMO_VIDEOS } from '../data/page-demo-videos';
+import { buildVideoObjects } from '../utils/video-object';
 
 const title = 'Private PDF Editor — Edit PDFs Locally | LocalPDF';
 const description = 'Edit, merge, OCR, and sign PDFs privately — all processing stays on your device. No upload, no server. Open and start working locally.';
 const canonical = 'https://localpdf.online/private-pdf-editor';
 const image = 'https://localpdf.online/logos/localpdf-social-1200x630.png';
 const appUrl = getAppUrl();
+
+const redactDemo = PAGE_DEMO_VIDEOS['/private-pdf-editor'][0];
 
 const schema = [
   {
@@ -17,6 +21,7 @@ const schema = [
     url: canonical,
     about: { '@type': 'Thing', name: 'Private PDF editor' },
   },
+  ...buildVideoObjects(PAGE_DEMO_VIDEOS['/private-pdf-editor'] ?? [], { pageUrl: canonical }),
 ];
 ---
 
@@ -48,17 +53,17 @@ const schema = [
       <figure class="demo-figure">
         <video
           class="demo-video"
-          src="/demo/localpdf-redact-pdf-whiteout.mp4"
-          poster="/demo/localpdf-redact-pdf-whiteout-poster.webp"
+          src={redactDemo.src}
+          poster={redactDemo.poster}
           width="1200"
           height="750"
           muted
           loop
           playsinline
           preload="none"
-          aria-label="Dragging a whiteout box over a confidential account line in the LocalPDF canvas editor, then saving the redacted page"
+          aria-label={redactDemo.alt}
         ></video>
-        <figcaption>Redacting an account line on the page. Recorded from the running app.</figcaption>
+        <figcaption>{redactDemo.caption}</figcaption>
       </figure>
     </section>
 

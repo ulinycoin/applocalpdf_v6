@@ -4,6 +4,8 @@ import { featurePages } from '../data/featurePages';
 import { getAppUrl } from '../utils/app-url';
 import { CATEGORIES, ICONS } from '../data/tools';
 import { LOCAL_PROCESSING_BOUNDARY } from '../data/privacy-claims';
+import { PAGE_DEMO_VIDEOS } from '../data/page-demo-videos';
+import { buildVideoObjects } from '../utils/video-object';
 
 function getToolHref(toolId: string): string {
   const mapping: Record<string, string> = {
@@ -42,6 +44,9 @@ const canonical = 'https://localpdf.online/';
 const image = 'https://localpdf.online/logos/localpdf-social-1200x630.png';
 const imageAlt = 'LocalPDF — private PDF editor that runs entirely in your browser';
 const appUrl = getAppUrl(undefined, { upload: '1' });
+
+/** The canvas drag demo: one source for the <video> element, its aria-label and the VideoObject. */
+const canvasDemo = PAGE_DEMO_VIDEOS['/'][0];
 
 const homepageFaqs = [
   {
@@ -126,6 +131,7 @@ const websiteSchema = [
       },
     })),
   },
+  ...buildVideoObjects(PAGE_DEMO_VIDEOS['/'] ?? [], { pageUrl: canonical }),
 ];
 
 const popularGuides = [
@@ -503,15 +509,15 @@ const hreflangs = [
       <figure class="demo-figure">
         <video
           class="demo-video"
-          src="/demo/localpdf-drag-pages-between-documents.mp4"
-          poster="/demo/localpdf-drag-pages-between-documents-poster.webp"
+          src={canvasDemo.src}
+          poster={canvasDemo.poster}
           width="1200"
           height="750"
           muted
           loop
           playsinline
           preload="none"
-          aria-label="Dragging a page out of one PDF workspace and dropping it into another on the LocalPDF canvas"
+          aria-label={canvasDemo.alt}
         ></video>
         <figcaption>
           A page dragged from one workspace into another. Recorded from the running app —

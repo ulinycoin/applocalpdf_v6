@@ -1,0 +1,30 @@
+{
+  "/demo/localpdf-add-text-to-pdf.mp4": {
+    "duration": "PT4S",
+    "uploadDate": "2026-10-01T22:27:05+03:00"
+  },
+  "/demo/localpdf-drag-pages-between-documents.mp4": {
+    "duration": "PT3S",
+    "uploadDate": "2026-10-01T22:27:05+03:00"
+  },
+  "/demo/localpdf-highlight-pdf-text.mp4": {
+    "duration": "PT5S",
+    "uploadDate": "2026-10-01T22:27:05+03:00"
+  },
+  "/demo/localpdf-merge-pdf-pages.mp4": {
+    "duration": "PT3S",
+    "uploadDate": "2026-10-01T22:27:05+03:00"
+  },
+  "/demo/localpdf-protect-pdf-password.mp4": {
+    "duration": "PT3S",
+    "uploadDate": "2026-10-01T22:27:05+03:00"
+  },
+  "/demo/localpdf-redact-pdf-whiteout.mp4": {
+    "duration": "PT3S",
+    "uploadDate": "2026-10-01T22:27:05+03:00"
+  },
+  "/demo/localpdf-sign-pdf-signature.mp4": {
+    "duration": "PT4S",
+    "uploadDate": "2026-10-01T22:27:05+03:00"
+  }
+}

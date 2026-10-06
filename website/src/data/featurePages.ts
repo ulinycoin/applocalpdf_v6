@@ -18,6 +18,11 @@ export interface FeaturePageData {
   /**
    * Canvas demos captured from the running app by `npm run demo:studio-clips`.
    * Only list tools that were actually recorded — no mockups or staged stills.
+   *
+   * `title`, `description` and `transcript` feed the VideoObject markup: the title must be unique
+   * across the site, the description unique to its clip, and the transcript has to describe what
+   * is on screen — the clips are silent, so that text is their only machine-readable record.
+   * `alt` and `caption` stay short: they are the aria-label and the visible figcaption.
    */
   demoVideos?: Array<{
     /** Silent H.264 clip; the poster is what reduced-motion visitors see. */
@@ -25,6 +30,9 @@ export interface FeaturePageData {
     poster: string;
     alt: string;
     caption: string;
+    title?: string;
+    description?: string;
+    transcript?: string;
   }>;
   intro: string;
   /** Studio tool this page opens; null means the canvas itself (merge, split, convert). */

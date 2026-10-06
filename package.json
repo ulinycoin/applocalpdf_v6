@@ -34,7 +34,8 @@
     "audit:workerization": "node scripts/workerization-audit.mjs",
     "audit:workerization:strict": "node scripts/workerization-audit.mjs --strict",
     "audit:seo": "node scripts/seo-audit.mjs",
-    "seo:lastmod": "node scripts/gen-lastmod-manifest.mjs",
+    "seo:lastmod": "node scripts/gen-lastmod-manifest.mjs && node scripts/gen-video-manifest.mjs",
+    "seo:video": "node scripts/gen-video-manifest.mjs",
     "pretest": "node scripts/copy-studio-fonts.mjs"
   },
   "dependencies": {

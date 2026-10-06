@@ -361,6 +361,109 @@ if (!sitemapOnly && siteDist) {
       }
     }
   }
+
+  // 7. VideoObject. Google requires name, thumbnailUrl and uploadDate, recommends description,
+  // duration and contentUrl, and wants name unique site-wide plus a unique description per clip.
+  // The transcript is our own addition (schema.org, not read by Google) and is what makes a
+  // silent screencast machine-readable, so it is checked too.
+  const REQUIRED = ['name', 'thumbnailUrl', 'uploadDate'];
+  const RECOMMENDED = ['description', 'duration', 'contentUrl', 'transcript'];
+  const videoObjects = [];
+  const pageHasVideoTag = new Set();
+
+  for (const page of pages) {
+    const raw = readFileSync(page, 'utf8');
+    const relative = path.relative(siteDist, page);
+    if (/<video[\s>]/.test(raw)) {
+      pageHasVideoTag.add(relative);
+    }
+    for (const match of raw.matchAll(
+      /<script type="application\/ld\+json">([\s\S]*?)<\/script>/g,
+    )) {
+      let data;
+      try {
+        data = JSON.parse(match[1]);
+      } catch (error) {
+        fail(`${relative}: invalid JSON-LD — ${error.message}`);
+        continue;
+      }
+      const nodes = (Array.isArray(data) ? data : [data]).flatMap((node) =>
+        node && node['@graph'] ? node['@graph'] : [node],
+      );
+      for (const node of nodes) {
+        if (node && node['@type'] === 'VideoObject') {
+          videoObjects.push({ page: relative, node });
+        }
+      }
+    }
+  }
+
+  const names = new Map();
+  const descriptions = new Map();
+  for (const { page, node } of videoObjects) {
+    const label = `${page} :: ${String(node.name).slice(0, 48)}`;
+    for (const field of REQUIRED) {
+      if (!node[field]) fail(`${label}: VideoObject is missing required "${field}"`);
+    }
+    for (const field of RECOMMENDED) {
+      if (!node[field]) fail(`${label}: VideoObject is missing recommended "${field}"`);
+    }
+    if (node.duration && !/^PT(\d+H)?(\d+M)?(\d+S)?$/.test(node.duration)) {
+      fail(`${label}: duration "${node.duration}" is not ISO 8601`);
+    }
+    if (node.uploadDate && Number.isNaN(Date.parse(node.uploadDate))) {
+      fail(`${label}: uploadDate "${node.uploadDate}" is not a date`);
+    }
+    if (node.transcript && String(node.transcript).length < 80) {
+      fail(`${label}: transcript is too short to describe the clip`);
+    }
+    for (const field of ['thumbnailUrl', 'contentUrl']) {
+      const values = node[field] ? [].concat(node[field]) : [];
+      for (const value of values) {
+        if (!/^https:\/\/localpdf\.online\//.test(value)) {
+          fail(`${label}: ${field} must be an absolute URL on localpdf.online — got ${value}`);
+          continue;
+        }
+        const localPath = path.join(siteDist, new URL(value).pathname);
+        if (!existsSync(localPath)) {
+          fail(`${label}: ${field} points at a file missing from the build — ${value}`);
+        }
+      }
+    }
+    if (node.name) {
+      names.set(node.name, (names.get(node.name) ?? 0) + 1);
+    }
+    if (node.description) {
+      descriptions.set(node.description, (descriptions.get(node.description) ?? 0) + 1);
+    }
+  }
+
+  for (const [name, count] of names) {
+    if (count > 1) fail(`VideoObject name is used ${count} times: "${name}"`);
+  }
+  for (const [description, count] of descriptions) {
+    if (count > 1) {
+      fail(`VideoObject description is used ${count} times: "${description.slice(0, 60)}..."`);
+    }
+  }
+  for (const page of pageHasVideoTag) {
+    if (!videoObjects.some((entry) => entry.page === page)) {
+      fail(`${page}: renders a <video> but ships no VideoObject markup`);
+    }
+  }
+
+  // A watch page that is missing from the sitemap relies on internal links alone.
+  const sitemapPaths = new Set(urls.map((url) => new URL(url).pathname.replace(/\/+$/, '') || '/'));
+  for (const page of new Set(videoObjects.map((entry) => entry.page))) {
+    const route = page.replace(/index\.html$/, '').replace(/\.html$/, '');
+    if (!sitemapPaths.has(`/${route}`)) {
+      fail(`${page}: page carries VideoObject but is not in the sitemap`);
+    }
+  }
+
+  notes.push(
+    `VideoObject audit: ${videoObjects.length} object(s) across ${pageHasVideoTag.size} page(s) with video`,
+  );
 }
 
 for (const note of notes) {

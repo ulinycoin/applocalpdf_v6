@@ -1,6 +1,29 @@
 # Active Tasks
 
-Last updated: 2026-10-05
+Last updated: 2026-10-06
+
+## Сессия 2026-10-06 — мультимодальный слой: VideoObject с транскриптами
+
+Триггер — вопрос «есть ли адаптация к мультимодальному поиску». Аудит показал: видео были размечены только в sitemap (`<video:video>`), а на страницах — ни `VideoObject`, ни одного транскрипта; 7 клипов без звуковой дорожки (ffprobe), то есть их содержимое существовало только в пикселях.
+
+### Сделано
+
+1. **VideoObject на всех 6 страницах с `<video>` (7 клипов).** Требования взяты из первоисточника (https://developers.google.com/search/docs/appearance/structured-data/video): обязательные `name`, `thumbnailUrl`, `uploadDate`; рекомендуемые `description`, `duration`, `contentUrl` (Google: «most effective way for Google to fetch your video content files»). Каждый объект содержит все семь плюс `transcript`, `inLanguage`, `creator`/`publisher`, `isPartOf`.
+2. **Факты о клипах — не выдуманные.** `scripts/gen-video-manifest.mjs` собирает `website/src/data/video-manifest.json`: длительность через ffprobe и дату публикации из коммита, добавившего .mp4 (fallback — mtime). Генератор падает, если клип есть на диске, но для него не написана копирайт-строка, или наоборот. `npm run seo:lastmod` теперь пересобирает оба манифеста; отдельно есть `npm run seo:video`.
+3. **Транскрипты написаны по кадрам, а не по названиям.** Из каждого клипа извлечены кадры (ffmpeg tile) и просмотрены; в тексте — то, что реально на экране: «workspace-a.pdf»/«workspace-b.pdf», строка «Confidential - Account 4417-0092», «Signed: A. Fou», панели Protect (AES-256, пресеты Basic/Business/Confidential) и Sign (Type/Draw, толщина). Транскрипт — свойство schema.org, Google его не читает; он существует ради машинного чтения беззвучных роликов.
+4. **Единый источник копирайта вместо трёх.** Раньше клипы описывались в `astro.config.mjs` (sitemap) и отдельно в разметке — теперь копирайт живёт рядом со страницами: `website/src/data/page-demo-videos.ts` (главная, private editor) и `website/src/data/features/<slug>.ts` (фичи). Sitemap, JSON-LD и `<video>` читают одно и то же, `title` уникален по сайту, `description` уникален для клипа (требование Google). Проверено: 1 объявление на клип, 0 вхождений в конфиге.
+5. **Видео добавлено в AI-слой.** Раздел «See it working» в `llms.txt` и «Demo recordings» в `llm.txt` с URL страниц и постеров; в llm.txt также поправлены три расхождения с бизнес-моделью: OCR «available on the Pro plan» → бесплатно на всех планах, «Core tools (merge, split, compress) are free… Pro unlocks OCR, editing, and conversion» → все инструменты бесплатны, лимит только на скачивания/workspace, и обещание про «interface works in any language» убрано.
+6. **`audit:seo` расширен проверками VideoObject**: обязательные и рекомендуемые поля, ISO 8601 для `duration`, парсибельность `uploadDate`, минимальная длина транскрипта, абсолютные URL на localpdf.online, существование `contentUrl`/`thumbnailUrl` файлов в сборке (без сетевых запросов), уникальность `name` и `description` по сайту, «есть `<video>`, но нет VideoObject» и «есть VideoObject, но страницы нет в sitemap». Негативный тест на синтетическом репозитории ловит все шесть классов ошибок.
+
+### Проверено
+
+- schema.org validator по разметке главной и `/features/edit-pdf`: 0 ошибок, 0 предупреждений.
+- Сборка: 7 `<video:video>` в sitemap, 0 медиа в `<loc>`, 7 VideoObject на 6 страницах, `npm test` 460/460, `npm run build:all`, `audit:workerization:strict`, `audit:seo` — pass.
+
+### Осознанно не сделано
+
+- **`image:image` в sitemap не добавлял.** Видимое растровое изображение на страницах одно — social card, одинаковая на всём сайте; постеры клипов не видны (атрибут `poster`). Секция image-sitemap для этого не нужна, а `ImageObject` на невидимый постер нарушал бы правило «разметка только о видимом контенте» (Google structured data policies). Если появится галерея скриншотов в контенте — вернуться к этому пункту.
+- **`Clip`/`SeekToAction` (key moments) не добавлял**: клипы 3–5 секунд, внутри нет смысловых сегментов.
 
 ## Сессия 2026-10-05 (4) — /app, подсказки в Studio, локали /ja и /zh
 
