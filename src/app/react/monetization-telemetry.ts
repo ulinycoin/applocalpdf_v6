@@ -10,6 +10,7 @@ declare global {
 export type MonetizationEventName =
   | 'paywall_shown'
   | 'paywall_cta_clicked'
+  | 'paywall_dismissed'
   | 'checkout_opened'
   | 'trial_started'
   | 'trial_expired'
@@ -17,7 +18,10 @@ export type MonetizationEventName =
   | 'purchase_completed'
   | 'billing_device_activated'
   | 'billing_device_deactivated'
-  | 'billing_device_limit_reached';
+  | 'billing_device_limit_reached'
+  // A share link is a distribution action, not a download; it needs its own name so the download
+  // funnel stays clean.
+  | 'app_file_shared';
 
 export interface MonetizationEventProps {
   source?: string;

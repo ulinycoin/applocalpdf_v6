@@ -1,8 +1,11 @@
 import type { PlatformRuntime } from './create-platform';
-import { requestDailyDownloadAllowance } from '../react/studio-paywall';
+import { clearDownloadAllowance, recordDownloadOutcome, refundDownloadAllowance, type DownloadSurface } from './download-exit';
 
 export interface DownloadOutputsOptions {
   baseName?: string;
+  surface?: DownloadSurface;
+  toolId?: string;
+  runId?: string;
 }
 
 function blobToDataUrl(blob: Blob): Promise<string> {
@@ -36,31 +39,58 @@ export async function downloadOutputFiles(
     throw new Error('Download is available only in browser runtime');
   }
 
-  if (!requestDailyDownloadAllowance(runtime.telemetry, runtime.billing.getContext().plan, outputIds.length)) {
+  if (outputIds.length === 0) {
+    return 0;
+  }
+
+  const exitContext = {
+    telemetry: runtime.telemetry,
+    plan: runtime.billing.getContext().plan,
+    surface: options.surface ?? ('studio' as DownloadSurface),
+    toolId: options.toolId ?? 'studio',
+    runId: options.runId,
+  };
+
+  if (!clearDownloadAllowance(exitContext, outputIds.length)) {
     return 0;
   }
 
   let count = 0;
+  let failureCode: string | undefined;
   for (let i = 0; i < outputIds.length; i += 1) {
-    const outputId = outputIds[i];
-    const entry = await runtime.vfs.read(outputId);
-    const blob = await entry.getBlob();
-    const mime = await entry.getType();
-    const ext = extensionFromMime(mime);
-    const fileName = options.baseName
-      ? `${options.baseName}-${i + 1}.${ext}`
-      : `${entry.getName() || outputId}.${ext}`;
+    try {
+      const outputId = outputIds[i];
+      const entry = await runtime.vfs.read(outputId);
+      const blob = await entry.getBlob();
+      const mime = await entry.getType();
+      const ext = extensionFromMime(mime);
+      const fileName = options.baseName
+        ? `${options.baseName}-${i + 1}.${ext}`
+        : `${entry.getName() || outputId}.${ext}`;
 
-    const href = await blobToDataUrl(blob);
-    const anchor = document.createElement('a');
-    anchor.href = href;
-    anchor.download = fileName;
-    anchor.style.display = 'none';
-    document.body.append(anchor);
-    anchor.click();
-    anchor.remove();
-    count += 1;
+      const href = await blobToDataUrl(blob);
+      const anchor = document.createElement('a');
+      anchor.href = href;
+      anchor.download = fileName;
+      anchor.style.display = 'none';
+      document.body.append(anchor);
+      anchor.click();
+      anchor.remove();
+      count += 1;
+    } catch (error) {
+      // One unreadable output must not silently swallow the failure: the caller gets the real count.
+      failureCode = error instanceof Error && error.name ? error.name : 'download_failed';
+    }
   }
+
+  recordDownloadOutcome(
+    exitContext,
+    count === outputIds.length ? 'success' : 'failure',
+    outputIds.length,
+    count,
+    failureCode,
+  );
+  refundDownloadAllowance(outputIds.length, count);
 
   return count;
 }

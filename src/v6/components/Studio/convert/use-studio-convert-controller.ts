@@ -10,7 +10,7 @@ import type { WorkerPdfImageCandidate } from '../../../../core/public/contracts'
 import { createZipBlob } from '../../../utils/zip';
 import { type PageItem, type StudioDocument, type StudioState, useStudioStore } from '../studio-store';
 import { showStudioPaywall } from '../../../../app/react/studio-paywall';
-import { requestDailyDownloadAllowance } from '../../../../app/react/studio-paywall';
+import { clearDownloadAllowance, downloadErrorCode, recordDownloadOutcome, refundDownloadAllowance } from '../../../../app/platform/download-exit';
 import { useHistoryStore } from '../store/history-store';
 import type { StudioToolRouteState } from '../../../studio/navigation/studio-tool-context';
 
@@ -812,18 +812,27 @@ export function useStudioConvertController(initialToolOverride?: StudioConvertTo
   ]);
 
   const downloadSingleResult = useCallback(async (outputId: string, name: string) => {
-    if (!requestDailyDownloadAllowance(runtime.telemetry, billingPlan, 1)) {
+    const exitContext = {
+      telemetry: runtime.telemetry,
+      plan: billingPlan,
+      surface: 'studio' as const,
+      toolId: 'studio.convert',
+    };
+    if (!clearDownloadAllowance(exitContext, 1)) {
       return;
     }
-    await downloadFileById(runtime, outputId, name);
+    try {
+      await downloadFileById(runtime, outputId, name);
+      recordDownloadOutcome(exitContext, 'success', 1, 1);
+    } catch (error) {
+      recordDownloadOutcome(exitContext, 'failure', 1, 0, downloadErrorCode(error));
+      refundDownloadAllowance(1, 0);
+    }
   }, [billingPlan, runtime]);
 
-  const downloadResults = useCallback(async () => {
+  // Extracted so the quota is decided once, before any bytes leave the app, and the outcome measured once after.
+  const deliverConvertOutputs = useCallback(async () => {
     const baseDocName = activeDocument?.name || 'converted';
-
-    if (!requestDailyDownloadAllowance(runtime.telemetry, billingPlan, Math.max(1, outputIds.length))) {
-      return;
-    }
 
     if (activeTool === 'ocr-pdf' && ocrResult && (ocrResult.kind === 'text' || ocrResult.kind === 'json')) {
       const extension = ocrResult.kind === 'json' ? '.json' : '.txt';
@@ -870,6 +879,31 @@ export function useStudioConvertController(initialToolOverride?: StudioConvertTo
       await downloadFileById(runtime, outputId, preferredName);
     }
   }, [activeDocument?.name, activeTool, ocrResult, outputIds, runtime]);
+
+  const downloadResults = useCallback(async () => {
+    // ZIP branches hand over a single archive, so that is what the allowance (and the metric) counts.
+    const zipBranch = (activeTool === 'extract-images' && outputIds.length > 2)
+      || (activeTool === 'ocr-pdf' && !!ocrResult && (ocrResult.kind === 'text' || ocrResult.kind === 'json'));
+    const requested = zipBranch ? 1 : Math.max(1, outputIds.length);
+    const exitContext = {
+      telemetry: runtime.telemetry,
+      plan: billingPlan,
+      surface: 'studio' as const,
+      toolId: 'studio.convert',
+    };
+
+    if (!clearDownloadAllowance(exitContext, requested)) {
+      return;
+    }
+
+    try {
+      await deliverConvertOutputs();
+      recordDownloadOutcome(exitContext, 'success', requested, requested);
+    } catch (error) {
+      recordDownloadOutcome(exitContext, 'failure', requested, 0, downloadErrorCode(error));
+      refundDownloadAllowance(requested, 0);
+    }
+  }, [activeTool, ocrResult, outputIds, runtime, billingPlan, deliverConvertOutputs]);
 
   const navigateBack = useCallback(() => {
     setInteractionMode('convert');

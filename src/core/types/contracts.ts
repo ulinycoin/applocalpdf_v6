@@ -398,11 +398,29 @@ export type RunnerTelemetryEvent =
   | { type: 'APP_SESSION_ATTRIBUTED'; flowId: string; entryUrl: string; entryPath: string; referrer: string; referringDomain: string; utmSource?: string; utmMedium?: string; utmCampaign?: string }
   | { type: 'APP_FILE_UPLOADED'; flowId: string; toolId: string; fileCount: number; mimeCategory: string; totalBytes: number; source: 'wizard' | 'studio' }
   | { type: 'TOOL_RUN_ABANDONED'; flowId: string; runId?: string; toolId: string; reason: 'pagehide' | 'visibility_hidden' | 'navigation' | 'cancel' }
-  | { type: 'OUTPUT_DOWNLOADED'; flowId: string; runId?: string; toolId: string; outputCount?: number; surface: 'wizard' | 'studio' }
+  // One download exit point, one event: every path that hands a file to the user reports here, including
+  // the attempts the daily quota refused, so `succeeded / attempted` is computable per surface.
+  | {
+    type: 'OUTPUT_DOWNLOADED';
+    flowId: string;
+    runId?: string;
+    toolId: string;
+    surface: 'wizard' | 'studio';
+    outcome: 'success' | 'failure' | 'denied';
+    /** The quota unit: one file the user receives. `requested` is what the caller asked for, `outputCount` what was handed over. */
+    outputCount?: number;
+    requested?: number;
+    errorCode?: string;
+    /** Why the quota refused the attempt; present only on the `denied` outcome. */
+    reason?: 'daily_download_limit';
+    remaining?: number;
+  }
+  | { type: 'SHARED_FILE_SAVED'; flowId: string; toolId: string; surface: 'share_receive' }
   | { type: 'STUDIO_EMPTY_STATE_CTA'; runId: string; action: 'upload' }
   | { type: 'STUDIO_MERGE_COMPLETED'; runId: string; sourceDocId: string; targetDocId: string; pageCount: number; method: 'button' | 'drag' }
   | { type: 'STUDIO_SPLIT_COMPLETED'; runId: string; sourceDocId: string; newDocId: string; pageCount: number; method: 'button' }
   | { type: 'STUDIO_DELETE_PAGES'; runId: string; pageCount: number; workspaceCount: number; method: 'button' | 'keyboard' }
   | { type: 'REDACT_VERIFY_RUN'; runId: string; toolId: string; passed: boolean; checkCount: number; failCount: number }
   | { type: 'REDACT_VERIFY_FAIL'; runId: string; toolId: string; checkId: string; message: string }
-  | { type: 'REDACT_CERT_DOWNLOAD'; runId: string; toolId: string };
+  // The redaction certificate leaves the app like any other file, so it reports through OUTPUT_DOWNLOADED
+  // (`surface: 'studio'`, toolId `studio.edit.redact`) instead of having its own one-off event.

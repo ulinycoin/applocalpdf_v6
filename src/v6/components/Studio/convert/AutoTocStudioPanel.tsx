@@ -4,7 +4,7 @@ import type { PlatformRuntime } from '../../../../app/platform/create-platform';
 import { TocReviewPanel, type ApplyOptions } from '../../../../plugins/auto-toc/ui/TocReviewPanel';
 import { requestTocParse, type TocParseResult } from '../../../../plugins/auto-toc/ui/toc-parser-client';
 import type { HeaderNode } from '../../../../plugins/auto-toc/logic/index';
-import { requestDailyDownloadAllowance } from '../../../../app/react/studio-paywall';
+import { clearDownloadAllowance, downloadErrorCode, recordDownloadOutcome, refundDownloadAllowance } from '../../../../app/platform/download-exit';
 import { toUserMessage } from '../../../../app/react/tool-execution-messages';
 
 import latinUrl from '@fontsource/noto-sans/files/noto-sans-latin-400-normal.woff?url';
@@ -267,15 +267,27 @@ export function AutoTocStudioPanel({ onClose, inputFileId, fileName, runtime }: 
                                         type="button"
                                         className="cvt-btn-primary"
                                         onClick={() => {
-                                            if (!requestDailyDownloadAllowance(runtime.telemetry, runtime.billing.getContext().plan, 1)) {
+                                            const exitContext = {
+                                                telemetry: runtime.telemetry,
+                                                plan: runtime.billing.getContext().plan,
+                                                surface: 'studio' as const,
+                                                toolId: 'auto-toc',
+                                            };
+                                            if (!clearDownloadAllowance(exitContext, 1)) {
                                                 return;
                                             }
-                                            const anchor = document.createElement('a');
-                                            anchor.href = outputUrl;
-                                            anchor.download = `${fileName.replace(/\.pdf$/i, '')}-with-toc.pdf`;
-                                            document.body.appendChild(anchor);
-                                            anchor.click();
-                                            document.body.removeChild(anchor);
+                                            try {
+                                                const anchor = document.createElement('a');
+                                                anchor.href = outputUrl;
+                                                anchor.download = `${fileName.replace(/\.pdf$/i, '')}-with-toc.pdf`;
+                                                document.body.appendChild(anchor);
+                                                anchor.click();
+                                                document.body.removeChild(anchor);
+                                                recordDownloadOutcome(exitContext, 'success', 1, 1);
+                                            } catch (error) {
+                                                recordDownloadOutcome(exitContext, 'failure', 1, 0, downloadErrorCode(error));
+                                                refundDownloadAllowance(1, 0);
+                                            }
                                         }}
                                     >
                                         <LinearIcon name="download" size={14} />

@@ -1,6 +1,40 @@
 # Active Tasks
 
-Last updated: 2026-10-06
+Last updated: 2026-10-08
+
+## Сессия 2026-10-08 — план v2: единая метрика выгрузки + оффер после экспорта
+
+Основание: `localpdf-plan-2026-10-08-v2.txt` (шаги 0 и 0.5). Триггер — ревью плана: `app_output_downloaded` нельзя было использовать как знаменатель воронки, потому что пути скачивания гейтились и измерялись по-разному.
+
+### Step 0 — метрика выгрузки
+
+Замер до правки (grep по репозиторию): `OUTPUT_DOWNLOADED` эмитился **из двух мест** — `studio-top-nav.tsx` (`handleConfirmDownload`) и `download-output-files.ts`, причём второй не эмитил вообще. Из семи путей выхода файла пять не были видны в аналитике, один (wizard) вообще не гейтился.
+
+1. **Единый контракт `src/app/platform/download-exit.ts`.** Единица метрики зафиксирована: **один файл, отданный пользователю**. `clearDownloadAllowance(context, requested)` решает доступ и сообщает попытку (`attempted`), `recordDownloadOutcome(context, outcome, requested, delivered, errorCode)` сообщает результат, `refundDownloadAllowance` возвращает квоту за недоставленное. Батч, на который не хватает allowance, отклоняется целиком — частичной выдачи не бывает.
+2. **Контракт события расширен** (`contracts.ts:401`): `outcome: 'success' | 'failure' | 'denied'`, `requested`, `outputCount`, `errorCode`, `reason: 'daily_download_limit'`, `remaining`. Sink (`posthog-sink.ts`) отдаёт их в `app_output_downloaded` плюс `unit: 'file'`; раньше событие шло без единицы измерения.
+3. **Wizard гейтнут и измерен.** `WizardShell.tsx` `downloadOutputs` (:324) теперь проходит через `clearDownloadAllowance` (surface `wizard`, toolId реального тула) и сообщает исход; `ioAdapter` никем не передаётся, то есть публичный путь всегда был ungated. Ошибки сохранения больше не теряются: `Promise.allSettled`, при нуле доставленных — `failure` + возврат квоты.
+4. **`download-output-files.ts` измерен.** Гейт был, события не было; теперь есть, с `surface`/`toolId` от вызывающего (`ocr-pdf-test-page` → `surface: 'wizard'`), частичный провал чтения не глотается.
+5. **Convert-путь** (`use-studio-convert-controller.ts`, `StudioConvertWorkspace.tsx`, `AutoTocStudioPanel.tsx`) переведён на тот же контракт. Зафиксировано правило ZIP: `extract-images` (>2 картинок) и OCR text/json отдают **один архив = один файл** квоты (раньше ZIP картинок списывал N); массовая выдача (`outputIds.length`) — N файлов.
+6. **share-to-phone больше не считается скачиванием.** `studio-top-nav.tsx:390` эмитил `OUTPUT_DOWNLOADED` (2.5% метрики, которой не является); теперь это `trackMonetizationEvent('app_file_shared', { destination: 'tmpfiles.org' })`.
+7. **Шаренный файл у получателя — своё событие.** `mobile-share-downloader.tsx` → `SHARED_FILE_SAVED` (surface `share_receive`). Осознанно **без гейта**: получатель не экспортирует свой документ, гейтить чужую отправку нельзя.
+8. **JSON-сертификат редакции** — `OUTPUT_DOWNLOADED` (`toolId: 'studio.edit.redact'`) вместо одноразового `REDACT_CERT_DOWNLOAD` (тип удалён). Осознанно **без гейта**: в сертификате хеши и результаты проверок, а не документ; списание квоты за него съело бы скачивание самого PDF.
+9. **`refundDailyFileQuota`** добавлен в `daily-file-quota.ts`: неудачный экспорт не должен съедать суточный лимит.
+
+Приёмка Step 0: `npm test` 467/467 (+7 тестов `download-exit.test.ts`, `studio-export-offer.test.ts`), `npm run build`, `npm run audit:workerization:strict` — exit 0; контрактные тесты sink обновлены под новые поля. e2e `e2e/download-exit.spec.ts` (wizard: 3 скачивания → 4-е отказано, квота 3, события success×3 + denied×1).
+
+### Step 1 — оффер в момент успешного экспорта
+
+1. **Правило квалификации** — `src/app/react/studio-export-offer.ts`: free-план + **2+ документа на канвасе** + не показывался в этой сессии. Правки текста в квалификацию не входят: тот, кто смонтировал два PDF перетаскиванием, — целевой покупатель.
+2. **Показ** — `useStudioExportOffer` + `StudioExportOfferBanner`: немодальный баннер в правом нижнем углу, вызывается из `handleConfirmDownload` **после** успешной доставки файла. Скачивание не блокируется, канвас не перекрывается.
+3. **Отдельный источник** `source='studio_export_moment'`, trigger `export_success`: воронка `paywall_shown` → `paywall_cta_clicked` → `checkout_opened` читается отдельно от исторических 18+3 кликов `upsell_overlay`. Добавлены `paywall_dismissed` и `app_file_shared` в `MonetizationEventName`.
+4. Цена, `FREE_DAILY_FILE_LIMIT` и гейты не менялись.
+
+### Открыто после Step 0/1
+
+- **`clearDownloadAllowance` для Pro не эмитит попытку** (гейт для Pro не нужен, отчитывается только результат). Для `attempted/succeeded` по Pro-сегменту нужен отдельный счёт; сейчас метрика честна для free.
+- **ZIP-ветки списывают 1 единицу**, хотя внутри N картинок: это правило зафиксировано в коде, но при пересмотре модели (лимит на «выгрузки» вместо «файлов») менять надо здесь: `use-studio-convert-controller.ts` (`zipBranch`) и `StudioConvertWorkspace.tsx` (`handleDownloadZip`).
+- **Старый отчёт по `app_output_downloaded`** (до 2026-10-08) несопоставим с новым: в нём нет `outcome`/`unit` и нет wizard-скачиваний. Любой дашборд, считающий «скачивания», надо переписать на `outcome='success'`.
+- **Оффер показывается только внутри Studio** (баннер рендерится в `StudioTopNav`). Экспорт из wizard-пути в Studio (`Save to Studio`) оффер не показывает — так и задумано (квалификация — воркспейс).
 
 ## Сессия 2026-10-06 — мультимодальный слой: VideoObject с транскриптами
 

@@ -45,8 +45,10 @@ test('PostHogTelemetrySink forwards app analytics events to PostHog', () => {
       flowId: 'flow-1',
       runId: 'run-1',
       toolId: 'merge-pdf',
-      outputCount: 1,
       surface: 'studio',
+      outcome: 'success',
+      requested: 1,
+      outputCount: 1,
     });
 
     sink.track({
@@ -95,8 +97,14 @@ test('PostHogTelemetrySink forwards app analytics events to PostHog', () => {
           flow_id: 'flow-1',
           run_id: 'run-1',
           tool_id: 'merge-pdf',
-          output_count: 1,
           surface: 'studio',
+          outcome: 'success',
+          output_count: 1,
+          requested: 1,
+          error_code: undefined,
+          reason: undefined,
+          remaining: undefined,
+          unit: 'file',
         },
       },
       {
@@ -259,7 +267,6 @@ test('PostHogTelemetrySink forwards denials, page-count failures and redaction t
       checkId: 'text_extract',
       message: 'Text extraction: fail',
     });
-    sink.track({ type: 'REDACT_CERT_DOWNLOAD', runId: 'run-3', toolId: 'studio.edit.redact' });
 
     assert.deepEqual(calls, [
       { event: 'app_tool_run_denied', properties: { run_id: 'run-1', tool_id: 'ocr-pdf', reason: 'LIMIT_EXCEEDED' } },
@@ -283,7 +290,6 @@ test('PostHogTelemetrySink forwards denials, page-count failures and redaction t
         event: 'app_redact_verify_fail',
         properties: { run_id: 'run-3', tool_id: 'studio.edit.redact', check_id: 'text_extract', message: 'Text extraction: fail' },
       },
-      { event: 'app_redact_cert_download', properties: { run_id: 'run-3', tool_id: 'studio.edit.redact' } },
     ]);
   } finally {
     globalWindow.window = originalWindow;
@@ -349,6 +355,62 @@ test('PostHogTelemetrySink sends text editing telemetry without any document tex
     // Nothing that could carry user content may leave the browser.
     const serialized = JSON.stringify(calls);
     assert.equal(/text"\s*:/.test(serialized), false, `unexpected text field: ${serialized}`);
+  } finally {
+    globalWindow.window = originalWindow;
+  }
+});
+
+test('PostHogTelemetrySink reports a refused download with the outcome fields the funnel needs', () => {
+  const calls: Array<{ event: string; properties?: Record<string, unknown> }> = [];
+  const globalWindow = globalThis as any;
+  const originalWindow = globalWindow.window;
+  globalWindow.window = {
+    posthog: {
+      capture: (event: string, properties?: Record<string, unknown>) => {
+        calls.push({ event, properties });
+      },
+    },
+  };
+
+  try {
+    const sink = new PostHogTelemetrySink();
+
+    sink.track({
+      type: 'OUTPUT_DOWNLOADED',
+      flowId: 'flow-1',
+      runId: 'run-1',
+      toolId: 'merge-pdf',
+      surface: 'wizard',
+      outcome: 'denied',
+      requested: 2,
+      reason: 'daily_download_limit',
+      remaining: 0,
+    });
+    sink.track({ type: 'SHARED_FILE_SAVED', flowId: 'flow-1', toolId: 'share-pdf', surface: 'share_receive' });
+
+    assert.deepEqual(calls, [
+      {
+        event: 'app_output_downloaded',
+        properties: {
+          flow_id: 'flow-1',
+          run_id: 'run-1',
+          tool_id: 'merge-pdf',
+          surface: 'wizard',
+          outcome: 'denied',
+          output_count: undefined,
+          requested: 2,
+          error_code: undefined,
+          reason: 'daily_download_limit',
+          remaining: 0,
+          unit: 'file',
+        },
+      },
+      // A file someone sent you is measured on its own name and never counted as a download.
+      {
+        event: 'app_shared_file_saved',
+        properties: { flow_id: 'flow-1', tool_id: 'share-pdf', surface: 'share_receive' },
+      },
+    ]);
   } finally {
     globalWindow.window = originalWindow;
   }

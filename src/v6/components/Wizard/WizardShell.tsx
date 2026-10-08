@@ -25,6 +25,7 @@ import { getPdfLib } from '../../services/pdf/pdf-loader';
 import { canRunStandalone } from '../../../../shared/standalone-tools';
 import { hasCanvasSurface, isCanvasTool } from '../../../../shared/canvas-tools';
 import { DailyDownloadCounter } from '../../../app/react/daily-download-counter';
+import { clearDownloadAllowance, downloadErrorCode, recordDownloadOutcome, refundDownloadAllowance } from '../../../app/platform/download-exit';
 
 function classNames(...parts: Array<string | false | null | undefined>): string {
   return parts.filter(Boolean).join(' ');
@@ -322,8 +323,45 @@ export function WizardShell({ toolId, context, ioAdapter, limitService }: Wizard
   const uiRunId = useMemo(() => `wizard-ui-${crypto.randomUUID()}`, []);
   const io = useMemo(() => ioAdapter ?? createBrowserIOAdapter(runtime), [ioAdapter, runtime]);
   const downloadOutputs = useCallback(async () => {
-    await Promise.all(state.outputIds.map(async (fileId) => io.save(fileId)));
-  }, [io, state.outputIds]);
+    const outputIds = state.outputIds;
+    if (outputIds.length === 0) {
+      return;
+    }
+
+    const exitContext = {
+      telemetry: runtime.telemetry,
+      plan: runtime.billing.getContext().plan,
+      surface: 'wizard' as const,
+      toolId,
+      runId: uiRunId,
+    };
+
+    // Standalone wizard tools (word-to-pdf, excel-to-pdf — the only ids in STANDALONE_WIZARD_TOOL_IDS):
+    // until now this path downloaded with no gate and no telemetry at all, so free users bypassed the
+    // daily cap and the funnel never saw them.
+    if (!clearDownloadAllowance(exitContext, outputIds.length)) {
+      return;
+    }
+
+    const results = await Promise.allSettled(outputIds.map(async (fileId) => io.save(fileId)));
+    const delivered = results.filter((result) => result.status === 'fulfilled').length;
+    const failure = results.find((result): result is PromiseRejectedResult => result.status === 'rejected');
+
+    if (delivered === 0) {
+      recordDownloadOutcome(exitContext, 'failure', outputIds.length, 0, downloadErrorCode(failure?.reason));
+      refundDownloadAllowance(outputIds.length, delivered);
+      return;
+    }
+
+    recordDownloadOutcome(
+      exitContext,
+      delivered === outputIds.length ? 'success' : 'failure',
+      outputIds.length,
+      delivered,
+      failure ? downloadErrorCode(failure.reason) : undefined,
+    );
+    refundDownloadAllowance(outputIds.length, delivered);
+  }, [io, runtime, state.outputIds, toolId, uiRunId]);
   const uploadAccept = useMemo(() => {
     if (toolId === 'word-to-pdf') {
       return '.docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document';

@@ -101,6 +101,20 @@ export function consumeDailyFileQuota(count = 1): void {
   notifyQuotaChanged();
 }
 
+/**
+ * Give back allowance that was consumed for a download that never delivered.
+ * A failed export must not eat the user's daily quota — the gate is about files that leave the app.
+ */
+export function refundDailyFileQuota(count = 1): void {
+  if (count <= 0) {
+    return;
+  }
+  const record = readRecord();
+  record.downloaded = Math.max(0, record.downloaded - count);
+  writeRecord(record);
+  notifyQuotaChanged();
+}
+
 export function dailyFileQuotaMessage(requested = 1): string {
   const left = checkDailyFileQuota(requested).remaining;
   const leftLabel = left === 1 ? '1 download' : `${left} downloads`;

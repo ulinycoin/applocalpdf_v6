@@ -211,7 +211,7 @@ export function OcrPdfTestPage() {
     if (outputIds.length === 0) {
       return;
     }
-    await downloadOutputFiles(runtime, outputIds, { baseName: 'ocr-result' });
+    await downloadOutputFiles(runtime, outputIds, { baseName: 'ocr-result', surface: 'wizard', toolId: 'ocr-pdf' });
   };
 
   return (

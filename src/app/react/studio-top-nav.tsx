@@ -12,9 +12,11 @@ import QRCode from 'qrcode';
 import { APP_BASE_PATH } from '../../../shared/app-routes';
 import { downloadCertificateJson } from '../../v6/utils/redact-verify-ui';
 import { trackMonetizationEvent } from './monetization-telemetry';
-import { requestDailyDownloadAllowance } from './studio-paywall';
+import { clearDownloadAllowance, downloadErrorCode, recordDownloadOutcome, refundDownloadAllowance } from '../platform/download-exit';
 import { getDeviceInstanceName } from '../platform/device-identity';
 import { DailyDownloadCounter } from './daily-download-counter';
+import { useStudioExportOffer } from './use-studio-export-offer';
+import { StudioExportOfferBanner } from './studio-export-offer-banner';
 
 type LicenseDevice = { id: string; name: string; createdAt: string };
 
@@ -62,6 +64,7 @@ function canExportAsSourceFile(pages: PageItem[]): { fileId: string } | null {
 
 export function StudioTopNav({ telemetryEnabled, onToggleTelemetry, telemetryOpen }: StudioTopNavProps) {
   const { runtime } = usePlatform();
+  const studioExportOffer = useStudioExportOffer();
   const [isDownloadModalOpen, setIsDownloadModalOpen] = useState(false);
   const [downloadFileName, setDownloadFileName] = useState('');
   const [downloadTargetDocumentId, setDownloadTargetDocumentId] = useState<string | null>(null);
@@ -388,12 +391,13 @@ export function StudioTopNav({ telemetryEnabled, onToggleTelemetry, telemetryOpe
       },
     });
 
-    runtime.telemetry.track({
-      type: 'OUTPUT_DOWNLOADED',
-      flowId: getOrCreateFlowId(),
+    // Encrypting and shipping the file through a third-party host is not a download: counting it in
+    // `app_output_downloaded` inflated the funnel by ~2.5% and made the export metric unusable.
+    trackMonetizationEvent('app_file_shared', {
+      source: 'studio_share_to_phone',
       toolId: 'studio-share',
-      outputCount: 1,
-      surface: 'studio',
+      destination: 'tmpfiles.org',
+      flowId: getOrCreateFlowId(),
     });
 
     return { qrCodeUrl, shareLink };
@@ -410,22 +414,29 @@ export function StudioTopNav({ telemetryEnabled, onToggleTelemetry, telemetryOpe
     const fileName = filename.trim() || targetDocument.name;
     const safeName = fileName.replace(/[<>:"/\\|?*]/g, '_').slice(0, 64) || 'Workspace';
 
-    if (!requestDailyDownloadAllowance(runtime.telemetry, billingContext.plan, 1)) {
+    const exitContext = {
+      telemetry: runtime.telemetry,
+      plan: billingContext.plan,
+      surface: 'studio' as const,
+      toolId: 'studio',
+    };
+
+    if (!clearDownloadAllowance(exitContext, 1)) {
       return;
     }
 
     try {
       await exportDocument(targetDocument, `${safeName}.pdf`);
-      runtime.telemetry.track({
-        type: 'OUTPUT_DOWNLOADED',
-        flowId: getOrCreateFlowId(),
-        toolId: 'studio',
-        outputCount: 1,
-        surface: 'studio',
-      });
+      recordDownloadOutcome(exitContext, 'success', 1, 1);
+      // Qualified users only, once per session, and only after the file is actually delivered:
+      // `showOffer` re-checks both the workspace size and the plan itself.
+      studioExportOffer.showOffer();
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Export failed';
       console.error(message);
+      recordDownloadOutcome(exitContext, 'failure', 1, 0, downloadErrorCode(error));
+      // The file never reached the user, so the allowance it consumed goes back.
+      refundDownloadAllowance(1, 0);
     } finally {
       setIsDownloadModalOpen(false);
       setDownloadTargetDocumentId(null);
@@ -444,12 +455,22 @@ export function StudioTopNav({ telemetryEnabled, onToggleTelemetry, telemetryOpe
     if (!redactVerify?.certificateJson || !downloadTargetDocument) {
       return;
     }
-    downloadCertificateJson(redactVerify.certificateJson, downloadTargetDocument.name);
-    runtime.telemetry.track({
-      type: 'REDACT_CERT_DOWNLOAD',
-      runId: redactVerify.runId || crypto.randomUUID(),
+    const exitContext = {
+      telemetry: runtime.telemetry,
+      plan: billingContext.plan,
+      surface: 'studio' as const,
       toolId: 'studio.edit.redact',
-    });
+      runId: redactVerify.runId || crypto.randomUUID(),
+    };
+    // The certificate is still a file the user keeps, so it must be visible in the same metric as every
+    // other exit. It is deliberately not charged against the daily allowance: it is proof of the
+    // redaction (hashes and check results), not the redacted document itself, which stays gated.
+    try {
+      downloadCertificateJson(redactVerify.certificateJson, downloadTargetDocument.name);
+      recordDownloadOutcome(exitContext, 'success', 1, 1);
+    } catch (error) {
+      recordDownloadOutcome(exitContext, 'failure', 1, 0, downloadErrorCode(error));
+    }
   };
 
   return (
@@ -654,6 +675,7 @@ export function StudioTopNav({ telemetryEnabled, onToggleTelemetry, telemetryOpe
         }}
         onShare={handleShareToPhone}
       />
+      <StudioExportOfferBanner offer={studioExportOffer} />
       </header>
     </div>
   );

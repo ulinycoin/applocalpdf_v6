@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react';
+import { usePlatform } from './platform-context';
+import { getOrCreateFlowId } from '../platform/browser-context';
 
 type DecryptState = 'loading' | 'decrypting' | 'ready' | 'error';
 
@@ -11,6 +13,7 @@ function hexToBuffer(hex: string): ArrayBuffer {
 }
 
 export function MobileShareDownloader() {
+  const { runtime } = usePlatform();
   const [status, setStatus] = useState<DecryptState>('loading');
   const [statusMessage, setStatusMessage] = useState('Initializing secure download...');
   const [decryptedBlob, setDecryptedBlob] = useState<Blob | null>(null);
@@ -85,6 +88,9 @@ export function MobileShareDownloader() {
     anchor.download = 'shared_document.pdf';
     anchor.click();
     URL.revokeObjectURL(objectUrl);
+    // Receiving a file someone sent you is not your export, so it must not consume — or appear in —
+    // the daily download allowance. It is measured under its own event.
+    runtime.telemetry.track({ type: 'SHARED_FILE_SAVED', flowId: getOrCreateFlowId(), toolId: 'share-pdf', surface: 'share_receive' });
   };
 
   return (

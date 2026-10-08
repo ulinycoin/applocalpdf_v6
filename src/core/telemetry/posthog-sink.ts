@@ -74,7 +74,20 @@ export class PostHogTelemetrySink implements TelemetrySink {
             flow_id: event.flowId,
             run_id: event.runId,
             tool_id: event.toolId,
+            surface: event.surface,
+            outcome: event.outcome,
             output_count: event.outputCount,
+            requested: event.requested,
+            error_code: event.errorCode,
+            reason: event.reason,
+            remaining: event.remaining,
+            unit: 'file',
+          });
+          break;
+        case 'SHARED_FILE_SAVED':
+          window.posthog.capture('app_shared_file_saved', {
+            flow_id: event.flowId,
+            tool_id: event.toolId,
             surface: event.surface,
           });
           break;
@@ -258,12 +271,6 @@ export class PostHogTelemetrySink implements TelemetrySink {
             tool_id: event.toolId,
             check_id: event.checkId,
             message: event.message,
-          });
-          break;
-        case 'REDACT_CERT_DOWNLOAD':
-          window.posthog.capture('app_redact_cert_download', {
-            run_id: event.runId,
-            tool_id: event.toolId,
           });
           break;
       }

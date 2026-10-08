@@ -5,7 +5,7 @@ import { trackMonetizationEvent, trackPaywallShown } from '../../../../app/react
 import { openCheckout } from '../../../../app/react/billing';
 import { getPrimaryPaidOffer } from '../../../../app/platform/checkout-offers';
 import { usePlatform } from '../../../../app/react/platform-context';
-import { requestDailyDownloadAllowance } from '../../../../app/react/studio-paywall';
+import { clearDownloadAllowance, downloadErrorCode, recordDownloadOutcome, refundDownloadAllowance } from '../../../../app/platform/download-exit';
 import { createZipBlob } from '../../../utils/zip';
 
 interface StudioConvertWorkspaceProps {
@@ -201,23 +201,37 @@ export function StudioConvertWorkspace({ onClose, initialTool }: StudioConvertWo
 
   const handleDownloadZip = useCallback(async () => {
     if (ctrl.outputIds.length === 0 || !ctrl.compressResultSummary) return;
-    if (!requestDailyDownloadAllowance(runtime.telemetry, ctrl.isPro ? 'pro' : 'basic', ctrl.outputIds.length)) return;
-    const entry = await runtime.vfs.read(ctrl.outputIds[0]);
-    const zipBlob = await createZipBlob([{
-      name: entry.getName(),
-      blob: await entry.getBlob(),
-    }]);
-    const url = URL.createObjectURL(zipBlob);
-    const anchor = document.createElement('a');
-    anchor.href = url;
-    anchor.download = ctrl.activeDocument
-      ? `${ctrl.activeDocument.name.replace(/\.pdf$/i, '')}-compressed.zip`
-      : 'compressed.zip';
-    document.body.appendChild(anchor);
-    anchor.click();
-    document.body.removeChild(anchor);
-    URL.revokeObjectURL(url);
-  }, [ctrl.outputIds, ctrl.compressResultSummary, ctrl.activeDocument, runtime.vfs]);
+    // The user receives one archive, so that is the unit the allowance and the metric count.
+    const requested = 1;
+    const exitContext = {
+      telemetry: runtime.telemetry,
+      plan: ctrl.isPro ? 'pro' : 'basic',
+      surface: 'studio' as const,
+      toolId: 'studio.convert.zip',
+    };
+    if (!clearDownloadAllowance(exitContext, requested)) return;
+    try {
+      const entry = await runtime.vfs.read(ctrl.outputIds[0]);
+      const zipBlob = await createZipBlob([{
+        name: entry.getName(),
+        blob: await entry.getBlob(),
+      }]);
+      const url = URL.createObjectURL(zipBlob);
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = ctrl.activeDocument
+        ? `${ctrl.activeDocument.name.replace(/\.pdf$/i, '')}-compressed.zip`
+        : 'compressed.zip';
+      document.body.appendChild(anchor);
+      anchor.click();
+      document.body.removeChild(anchor);
+      URL.revokeObjectURL(url);
+      recordDownloadOutcome(exitContext, 'success', requested, requested);
+    } catch (error) {
+      recordDownloadOutcome(exitContext, 'failure', requested, 0, downloadErrorCode(error));
+      refundDownloadAllowance(requested, 0);
+    }
+  }, [ctrl.outputIds, ctrl.compressResultSummary, ctrl.activeDocument, ctrl.isPro, runtime]);
 
   const alsoTry = ALSO_TRY.filter((item) => item.tool !== ctrl.activeTool);
 
