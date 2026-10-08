@@ -72,14 +72,26 @@ async function workspaceCount(page: import('@playwright/test').Page): Promise<nu
   });
 }
 
-async function downloadedEvents(page: import('@playwright/test').Page): Promise<DownloadEvent[]> {
-  return await page.evaluate(() => {
+/**
+ * All download exits recorded so far, plus a `count` that is safe to use inside `expect.poll`.
+ *
+ * The optional filter is a plain scalar on purpose: a callback passed out of `page.evaluate` is not
+ * serializable, so any filtering has to happen inside the page or over the returned array.
+ */
+async function downloadExits(
+  page: import('@playwright/test').Page,
+  outcome: 'success' | 'denied' | null = null,
+): Promise<DownloadEvent[]> {
+  return await page.evaluate((wanted) => {
     const api = (window as unknown as {
-      __LOCALPDF_V6_TEST_API?: { getTelemetrySnapshot: () => Array<{ type: string }> };
+      __LOCALPDF_V6_TEST_API?: { getTelemetrySnapshot: () => Array<Record<string, unknown>> };
     }).__LOCALPDF_V6_TEST_API;
     if (!api) return [];
-    return api.getTelemetrySnapshot().filter((event) => event.type === 'OUTPUT_DOWNLOADED');
-  }) as DownloadEvent[];
+    const exits = api
+      .getTelemetrySnapshot()
+      .filter((event) => event.type === 'OUTPUT_DOWNLOADED');
+    return wanted ? exits.filter((event) => event.outcome === wanted) : exits;
+  }, outcome) as DownloadEvent[];
 }
 
 /**
@@ -125,7 +137,18 @@ test.describe('download exit contract', () => {
         await expect.poll(() => readQuota(page), { timeout: 15_000 }).toBe(i);
       }
 
-      const successes = (await downloadedEvents(page)).filter((event) => event.outcome === 'success');
+      // The quota is consumed synchronously inside `clearDownloadAllowance`, but the outcome event is
+      // written only after `await Promise.allSettled(io.save(...))` — deliberately, because reporting
+      // `success` before the file is handed over would be a lie. So the snapshot must be waited for on
+      // its own: the third click has no following click during which the event could land.
+      await expect
+        .poll(
+          async () => (await downloadExits(page, 'success')).length,
+          { timeout: 15_000 },
+        )
+        .toBe(3);
+
+      const successes = await downloadExits(page, 'success');
       expect(successes.length).toBe(3);
       expect(successes[0].surface).toBe('wizard');
       expect(successes[0].toolId).toBe('excel-to-pdf');
@@ -135,7 +158,7 @@ test.describe('download exit contract', () => {
       await expect(page.getByText(/Free includes 3 downloads per day/i)).toBeVisible({ timeout: 15_000 });
       await expect.poll(() => readQuota(page), { timeout: 5_000 }).toBe(3);
 
-      const denied = (await downloadedEvents(page)).filter((event) => event.outcome === 'denied');
+      const denied = await downloadExits(page, 'denied');
       expect(denied.length).toBe(1);
       expect(denied[0].surface).toBe('wizard');
       expect(denied[0].reason).toBe('daily_download_limit');
