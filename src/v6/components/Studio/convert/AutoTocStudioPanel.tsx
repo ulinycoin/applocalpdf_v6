@@ -17,6 +17,7 @@ import cyrillicBoldUrl from '@fontsource/noto-sans/files/noto-sans-cyrillic-700-
 import { useStudioStore } from '../studio-store';
 import { PipelineRunner } from '../../../studio/pipeline/PipelineRunner';
 import type { IPipelineRecipe } from '../../../studio/pipeline/types';
+import { posthogCapture } from '../../../../core/public';
 
 interface AutoTocStudioPanelProps {
     onClose?: () => void;
@@ -49,7 +50,7 @@ export function AutoTocStudioPanel({ onClose, inputFileId, fileName, runtime }: 
 
         setPhase('parsing');
         setError(null);
-        window.posthog?.capture('app_tool_run_started', { toolId: 'auto-toc', action: 'parse' });
+        posthogCapture('app_tool_run_started', { toolId: 'auto-toc', action: 'parse' });
 
         try {
             // Собираем текущие страницы холста в один временный PDF
@@ -84,13 +85,13 @@ export function AutoTocStudioPanel({ onClose, inputFileId, fileName, runtime }: 
             if (requestId !== parseRequestId.current) return;
 
             if (result.error) {
-                window.posthog?.capture('app_tool_run_error', { toolId: 'auto-toc', message: result.error });
+                posthogCapture('app_tool_run_error', { toolId: 'auto-toc', message: result.error });
                 setError(result.error);
                 setPhase('config');
                 return;
             }
 
-            window.posthog?.capture('app_tool_run_success', { toolId: 'auto-toc', action: 'parse', headersFound: result.headingCandidatesFound });
+            posthogCapture('app_tool_run_success', { toolId: 'auto-toc', action: 'parse', headersFound: result.headingCandidatesFound });
 
             setParseResult(result);
             setHeaders(result.headers);
@@ -98,7 +99,7 @@ export function AutoTocStudioPanel({ onClose, inputFileId, fileName, runtime }: 
         } catch (err) {
             if (requestId !== parseRequestId.current) return;
             if (err instanceof DOMException && err.name === 'AbortError') return;
-            window.posthog?.capture('app_tool_run_error', { toolId: 'auto-toc', message: 'Parse failed' });
+            posthogCapture('app_tool_run_error', { toolId: 'auto-toc', message: 'Parse failed' });
             setError(err instanceof Error ? err.message : 'Parse failed');
             setPhase('config');
         }
@@ -107,7 +108,7 @@ export function AutoTocStudioPanel({ onClose, inputFileId, fileName, runtime }: 
     const handleApply = useCallback(async (options: ApplyOptions) => {
         setPhase('applying');
         setError(null);
-        window.posthog?.capture('app_tool_run_started', { toolId: 'auto-toc', action: 'apply' });
+        posthogCapture('app_tool_run_started', { toolId: 'auto-toc', action: 'apply' });
 
         const base = import.meta.env.BASE_URL || '/';
         const robotoUrl = `${base}fonts/Roboto-Regular.ttf`.replace(/\/+/g, '/');
@@ -151,10 +152,10 @@ export function AutoTocStudioPanel({ onClose, inputFileId, fileName, runtime }: 
 
             const url = URL.createObjectURL(await (await runtime.vfs.read(result.outputIds[0])).getBlob());
             setOutputUrl(url);
-            window.posthog?.capture('app_tool_run_success', { toolId: 'auto-toc', action: 'apply' });
+            posthogCapture('app_tool_run_success', { toolId: 'auto-toc', action: 'apply' });
             setPhase('result');
         } catch (err) {
-            window.posthog?.capture('app_tool_run_error', { toolId: 'auto-toc', message: 'Apply failed' });
+            posthogCapture('app_tool_run_error', { toolId: 'auto-toc', message: 'Apply failed' });
             setError(err instanceof Error ? err.message : 'Apply failed');
             setPhase('review');
         }

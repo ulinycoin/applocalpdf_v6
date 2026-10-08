@@ -415,3 +415,63 @@ test('PostHogTelemetrySink reports a refused download with the outcome fields th
     globalWindow.window = originalWindow;
   }
 });
+
+test('PostHogTelemetrySink survives the pre-SDK array shim and a missing reporter', () => {
+  const globalWindow = globalThis as any;
+  const originalWindow = globalWindow.window;
+
+  try {
+    // The inline snippet installs an array-like shim with only `push` until the SDK loads; the first
+    // telemetry event fires during bootstrap, so this must not throw out of `track()`.
+    globalWindow.window = { posthog: { push: () => {} } };
+    const shimmed = new PostHogTelemetrySink();
+    assert.doesNotThrow(() => {
+      shimmed.track({ type: 'OUTPUT_DOWNLOADED', flowId: 'flow-1', toolId: 'studio', surface: 'studio', outcome: 'success' });
+    });
+
+    globalWindow.window = {};
+    const missing = new PostHogTelemetrySink();
+    assert.doesNotThrow(() => {
+      missing.track({ type: 'OUTPUT_DOWNLOADED', flowId: 'flow-1', toolId: 'studio', surface: 'studio', outcome: 'success' });
+    });
+  } finally {
+    if (originalWindow === undefined) {
+      delete globalWindow.window;
+    } else {
+      globalWindow.window = originalWindow;
+    }
+  }
+});
+
+test('a throwing reporter cannot break the caller', () => {
+  const globalWindow = globalThis as any;
+  const originalWindow = globalWindow.window;
+
+  try {
+    // Local/dev reality: the SDK never loads, so `capture` stays the shim's, which throws on `push`.
+    globalWindow.window = {
+      posthog: {
+        capture: () => { throw new TypeError('t.push is not a function'); },
+      },
+    };
+    const sink = new PostHogTelemetrySink();
+
+    assert.doesNotThrow(() => {
+      sink.track({
+        type: 'OUTPUT_DOWNLOADED',
+        flowId: 'flow-1',
+        toolId: 'studio',
+        surface: 'studio',
+        outcome: 'success',
+        requested: 1,
+        outputCount: 1,
+      });
+    });
+  } finally {
+    if (originalWindow === undefined) {
+      delete globalWindow.window;
+    } else {
+      globalWindow.window = originalWindow;
+    }
+  }
+});

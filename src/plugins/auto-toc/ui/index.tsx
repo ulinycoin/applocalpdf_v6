@@ -11,6 +11,7 @@ import cyrillicUrl from '@fontsource/noto-sans/files/noto-sans-cyrillic-400-norm
 import latinBoldUrl from '@fontsource/noto-sans/files/noto-sans-latin-700-normal.woff?url';
 import latinExtBoldUrl from '@fontsource/noto-sans/files/noto-sans-latin-ext-700-normal.woff?url';
 import cyrillicBoldUrl from '@fontsource/noto-sans/files/noto-sans-cyrillic-700-normal.woff?url';
+import { posthogCapture } from '../../../core/public';
 
 interface AutoTocConfigProps {
   inputFiles: string[];
@@ -47,7 +48,7 @@ export default function AutoTocConfig({ inputFiles, onStart, onBack }: AutoTocCo
     setParseError(null);
 
     // Telemetry: parse started
-    window.posthog?.capture('app_tool_run_started', { toolId: 'auto-toc', action: 'parse', fileCount: inputFiles.length });
+    posthogCapture('app_tool_run_started', { toolId: 'auto-toc', action: 'parse', fileCount: inputFiles.length });
 
     try {
       const result = await requestTocParse(runtime, inputFiles[0], abortController.signal);
@@ -56,19 +57,19 @@ export default function AutoTocConfig({ inputFiles, onStart, onBack }: AutoTocCo
       if (requestId !== parseRequestId.current) return;
 
       if (result.error) {
-        window.posthog?.capture('app_tool_run_error', { toolId: 'auto-toc', action: 'parse', message: result.error });
+        posthogCapture('app_tool_run_error', { toolId: 'auto-toc', action: 'parse', message: result.error });
         setParseError(result.error);
         setPhase('config');
         return;
       }
 
-      window.posthog?.capture('app_tool_run_success', { toolId: 'auto-toc', action: 'parse', headersFound: result.headingCandidatesFound, totalPages: result.totalPages });
+      posthogCapture('app_tool_run_success', { toolId: 'auto-toc', action: 'parse', headersFound: result.headingCandidatesFound, totalPages: result.totalPages });
 
       // Billing check: free plan limited to 5 pages
       const plan = runtime.billing.getContext().plan;
       const pageCount = result.totalPages ?? 0;
       if (plan === 'basic' && pageCount > 5) {
-        window.posthog?.capture('app_upsell_shown', { toolId: 'auto-toc', source: 'page_limit', pageCount });
+        posthogCapture('app_upsell_shown', { toolId: 'auto-toc', source: 'page_limit', pageCount });
         setParseError(`Free plan limited to 5 pages (this document has ${pageCount}). Upgrade to Pro for unlimited page TOC generation.`);
         setPhase('config');
         return;
@@ -81,7 +82,7 @@ export default function AutoTocConfig({ inputFiles, onStart, onBack }: AutoTocCo
       if (requestId !== parseRequestId.current) return;
       // AbortError is expected on re-analysis or unmount
       if (err instanceof DOMException && err.name === 'AbortError') return;
-      window.posthog?.capture('app_tool_run_error', { toolId: 'auto-toc', action: 'parse', message: err instanceof Error ? err.message : 'Unknown' });
+      posthogCapture('app_tool_run_error', { toolId: 'auto-toc', action: 'parse', message: err instanceof Error ? err.message : 'Unknown' });
       setParseError(err instanceof Error ? err.message : 'Unknown error');
       setPhase('config');
     }

@@ -29,6 +29,11 @@ Last updated: 2026-10-08
 3. **Отдельный источник** `source='studio_export_moment'`, trigger `export_success`: воронка `paywall_shown` → `paywall_cta_clicked` → `checkout_opened` читается отдельно от исторических 18+3 кликов `upsell_overlay`. Добавлены `paywall_dismissed` и `app_file_shared` в `MonetizationEventName`.
 4. Цена, `FREE_DAILY_FILE_LIMIT` и гейты не менялись.
 
+### Найдено при живой проверке оффера (2026-10-08)
+
+1. **Баг: `window.posthog` — массив-шим до загрузки SDK.** Инлайн-сниппет ставит `window.posthog = []` с одним `push` (`e.__SV || (window.posthog = e)`), а SDK подменяет его на клиента позже. `PostHogTelemetrySink.track()` вызывал `window.posthog.capture(...)` без проверки, то есть **любое событие в это окно бросало `TypeError: t.push is not a function` из `track()`**, а первое событие (`APP_SESSION_ATTRIBUTED`) уходит во время бутстрапа — падал рендер всего приложения. Починено: `posthogCapture()` (экспортируется через `src/core/public/telemetry.ts` — `core/public` это allowlist UI→core) — единственная точка отправки, no-op, пока SDK не загрузился, и с `try/catch` вокруг `capture`: **падающий репортёр не имеет права ломать продукт**. До `try/catch` исключение из `capture` вылетало в `catch` обработчика экспорта, и тот записывал `OUTPUT_DOWNLOADED outcome='failure'` для файла, который пользователь реально получил. Регресс-тесты: `posthog-sink.test.ts` — «survives the pre-SDK array shim and a missing reporter» и «a throwing reporter cannot break the caller». Через `posthogCapture` переведены `monetization-telemetry.ts`, `studio-platform-shell.tsx` (pageview), `plugins/auto-toc/ui/index.tsx` (5 мест) и `AutoTocStudioPanel.tsx` (7 мест).
+2. **Импорт в Studio инкрементальный** (`PAGE_COMMIT_BATCH_SIZE`, сессия 2026-10-05): первый документ готов задолго до второго. Практическое следствие для будущего теста оффера — квалификацию надо проверять по состоянию на момент экспорта; в e2e это ожидание `documents.length === 2`. Первый прогон e2e падал именно на этом: экспорт случался при одном документе, и оффер (правильно) не показывался.
+
 ### Открыто после Step 0/1
 
 - **`clearDownloadAllowance` для Pro не эмитит попытку** (гейт для Pro не нужен, отчитывается только результат). Для `attempted/succeeded` по Pro-сегменту нужен отдельный счёт; сейчас метрика честна для free.

@@ -1,7 +1,10 @@
+import { posthogCapture } from '../../core/public';
+
 declare global {
   interface Window {
     posthog?: {
-      capture: (event: string, properties?: Record<string, unknown>) => void;
+      capture?: (event: string, properties?: Record<string, unknown>) => void;
+      push?: (args: unknown[]) => void;
     };
     gtag?: (command: string, action: string, params?: Record<string, unknown>) => void;
   }
@@ -55,9 +58,7 @@ export function trackMonetizationEvent(event: MonetizationEventName, props: Mone
   }
 
   const payload = withRoute(props);
-  if (window.posthog) {
-    window.posthog.capture(event, payload);
-  }
+  posthogCapture(event, payload);
 
   if (window.gtag) {
     window.gtag('event', event, payload);

@@ -6,6 +6,7 @@ import { UxFeedbackOverlay } from './ux-feedback-overlay';
 import { TelemetryPanel } from './telemetry-panel';
 import { StudioTopNav } from './studio-top-nav';
 import { APP_BASE_PATH } from '../../../shared/app-routes';
+import { posthogCapture } from '../../core/public';
 
 /**
  * SPA pageview tracker.
@@ -20,9 +21,7 @@ function PageViewTracker() {
   const { pathname, search } = useLocation();
 
   useEffect(() => {
-    if (window.posthog) {
-      window.posthog.capture('$pageview');
-    }
+    posthogCapture('$pageview', { path: pathname });
   }, [pathname, search]);
 
   return null;
