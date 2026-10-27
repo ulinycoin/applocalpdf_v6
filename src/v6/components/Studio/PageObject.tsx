@@ -9,6 +9,13 @@ import { canUseDocumentWithPageCount, freePageLimitMessage } from '../../../app/
 import { showStudioPaywall } from '../../../app/react/studio-paywall';
 import { useHistoryStore } from './store/history-store';
 import { acquirePageTile, quantizeTileWidth } from '../../studio/thumbnail/page-tile-cache';
+import {
+    PAGE_CARD_HEIGHT,
+    PAGE_CARD_WIDTH,
+    PAGE_STEP_X,
+    PAGE_STEP_Y,
+    pageGridColumns,
+} from './page-layout';
 
 const PAGE_WIDTH = 180;
 const PAGE_HEIGHT = 250;
@@ -30,18 +37,11 @@ function findDocumentUnderPointer(
     documents: StudioDocument[],
     gridColumns: number,
 ): { targetDocId: string | null; targetDocNode: Konva.Group | null } {
-    const CARD_WIDTH = 200;
-    const CARD_HEIGHT = 280;
-    const GAP_X = 20;
-    const GAP_Y = 30;
-    const STEP_X = CARD_WIDTH + GAP_X;
-    const STEP_Y = CARD_HEIGHT + GAP_Y;
-
     const stageScale = stage.scaleX() || 1;
     const absPos = node.absolutePosition();
     const centerPos = {
-        x: absPos.x + 100 * stageScale,
-        y: absPos.y + 140 * stageScale,
+        x: absPos.x + (PAGE_CARD_WIDTH / 2) * stageScale,
+        y: absPos.y + (PAGE_CARD_HEIGHT / 2) * stageScale,
     };
 
     for (const candidate of stage.find('.document')) {
@@ -51,10 +51,10 @@ function findDocumentUnderPointer(
 
         const transform = candidate.getAbsoluteTransform().copy().invert();
         const localPos = transform.point(centerPos);
-        const cols = Math.min(docItem.pages.length || 1, gridColumns);
+        const cols = pageGridColumns(docItem.pages.length, gridColumns);
         const rows = Math.ceil(docItem.pages.length / cols) || 1;
-        const width = Math.max(STEP_X, cols * STEP_X);
-        const height = Math.max(STEP_Y, rows * STEP_Y);
+        const width = Math.max(PAGE_STEP_X, cols * PAGE_STEP_X);
+        const height = Math.max(PAGE_STEP_Y, rows * PAGE_STEP_Y);
 
         if (localPos.x >= -30 && localPos.x <= width + 30 && localPos.y >= -50 && localPos.y <= height + 50) {
             return { targetDocId: dId, targetDocNode: candidate as Konva.Group };

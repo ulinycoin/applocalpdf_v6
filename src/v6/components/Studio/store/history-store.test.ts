@@ -314,3 +314,63 @@ test('restoreCheckpoint restores workspace and UI state atomically enough for St
   assert.equal(session.saveUndoStack.length, 0);
   assert.equal(session.commandUndoStack.length, 0);
 });
+
+test('undo and redo step between checkpoints and skip label-only events', async () => {
+  seedWorkspaceSnapshot({
+    documents: [
+      {
+        id: 'doc-1',
+        name: 'Uploaded',
+        pages: [makePage('file-a', 'page-a')],
+        x: 0,
+        y: 0,
+      },
+    ],
+    activeDocumentId: 'doc-1',
+    requestedInlineTool: null,
+    operationScope: 'selection',
+    viewScale: 1,
+    viewPosition: { x: 0, y: 0 },
+    selection: [],
+    interactionMode: null,
+  });
+  await useHistoryStore.getState().createCheckpoint(fs, 'upload', 'Uploaded');
+
+  useHistoryStore.getState().recordEvent('system', 'A label without state');
+
+  seedWorkspaceSnapshot({
+    documents: [
+      {
+        id: 'doc-1',
+        name: 'Pasted',
+        pages: [makePage('file-a', 'page-a'), makePage('file-a', 'page-b')],
+        x: 0,
+        y: 0,
+      },
+    ],
+    activeDocumentId: 'doc-1',
+    requestedInlineTool: null,
+    operationScope: 'selection',
+    viewScale: 1,
+    viewPosition: { x: 0, y: 0 },
+    selection: [{ docId: 'doc-1', pageId: 'page-b' }],
+    interactionMode: null,
+  });
+  await useHistoryStore.getState().createCheckpoint(fs, 'paste_pages', 'Pasted 1 page');
+
+  assert.equal(useHistoryStore.getState().timeline.length, 3);
+  assert.equal(useDocumentStore.getState().documents[0].pages.length, 2);
+
+  assert.equal(useHistoryStore.getState().undo(), true);
+  assert.equal(useDocumentStore.getState().documents[0].name, 'Uploaded');
+  assert.equal(useDocumentStore.getState().documents[0].pages.length, 1);
+  // The label-only event sits between the two checkpoints and is skipped, not targeted.
+  assert.equal(useHistoryStore.getState().historyIndex, 0);
+  assert.equal(useHistoryStore.getState().undo(), false);
+
+  assert.equal(useHistoryStore.getState().redo(), true);
+  assert.equal(useDocumentStore.getState().documents[0].name, 'Pasted');
+  assert.equal(useDocumentStore.getState().documents[0].pages.length, 2);
+  assert.equal(useHistoryStore.getState().historyIndex, 2);
+  assert.equal(useHistoryStore.getState().redo(), false);
+});

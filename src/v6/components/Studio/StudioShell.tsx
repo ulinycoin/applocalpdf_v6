@@ -24,6 +24,7 @@ import { useHistoryStore } from './store/history-store';
 import { getOrCreateFlowId } from '../../../app/platform/browser-context';
 import { LinearIcon } from '../icons/linear-icon';
 import { mergePagesIntoWorkspace, splitPagesToNewWorkspace, deletePages as deletePagesOp } from './studio-page-ops';
+import { pageGridColumns, pageRectInDocument, rectFromPoints, rectanglesIntersect } from './page-layout';
 import { CANVAS_EDIT_TOOL_IDS, isCanvasTool } from '../../../../shared/canvas-tools';
 
 const StudioEditWorkspace = lazy(async () => {
@@ -252,6 +253,25 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
     const uploadInputRef = useRef<HTMLInputElement | null>(null);
     const stageRef = useRef<Konva.Stage | null>(null);
     const stagePixelRatio = Math.max(1, Math.ceil(window.devicePixelRatio || 1));
+    /**
+     * Box selection is a Shift gesture: plain drag on the canvas has always panned, and swapping
+     * that for a marquee would take away the only way to move around a large workspace. Shift is
+     * already the modifier that adds to the selection (Shift-click), so dragging with it selects a
+     * range instead of one page.
+     */
+    const [isShiftDown, setIsShiftDown] = useState(false);
+    const marqueeRectRef = useRef<Konva.Rect | null>(null);
+    /**
+     * Releasing the mouse before Shift is common, and the click that follows the marquee would
+     * clear the selection the marquee just made. The timestamp, not a bare flag, keeps a stray
+     * value from swallowing a later intentional click on the background.
+     */
+    const marqueeJustFinishedRef = useRef(0);
+    const marqueeRef = useRef<{
+        start: { x: number; y: number };
+        baseSelection: { docId: string; pageId: string }[];
+        moved: boolean;
+    } | null>(null);
     // Read through a ref so the mobile fit can focus the active workspace without
     // making `fitToDocuments` change identity on every workspace switch (which
     // would re-fit the desktop viewport each time).
@@ -278,6 +298,8 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
     const setActiveDocument = useStudioStore((s: StudioState) => s.setActiveDocument);
     const activeDocumentId = useStudioStore((s: StudioState) => s.activeDocumentId);
     const createCheckpoint = useHistoryStore((s) => s.createCheckpoint);
+    const undoHistory = useHistoryStore((s) => s.undo);
+    const redoHistory = useHistoryStore((s) => s.redo);
     const isHistoryOpen = useStudioStore((s: StudioState) => s.isHistoryOpen);
     const setHistoryOpen = useStudioStore((s: StudioState) => s.setHistoryOpen);
     const renamingDocId = useStudioStore((s: StudioState) => s.renamingDocId);
@@ -318,6 +340,128 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
     useEffect(() => {
         activeDocumentIdRef.current = activeDocumentId;
     }, [activeDocumentId]);
+
+    useEffect(() => {
+        const onKey = (event: KeyboardEvent) => {
+            if (event.key !== 'Shift') return;
+            setIsShiftDown(event.type === 'keydown');
+        };
+        // A window that loses focus never delivers the keyup, which would leave the canvas unable
+        // to pan until Shift is tapped again.
+        const resetOnBlur = () => setIsShiftDown(false);
+        window.addEventListener('keydown', onKey);
+        window.addEventListener('keyup', onKey);
+        window.addEventListener('blur', resetOnBlur);
+        return () => {
+            window.removeEventListener('keydown', onKey);
+            window.removeEventListener('keyup', onKey);
+            window.removeEventListener('blur', resetOnBlur);
+        };
+    }, []);
+
+    /** Client coordinates -> stage-local coordinates (undoes pan and zoom). */
+    const stagePointFromClient = useCallback((clientX: number, clientY: number) => {
+        const stage = stageRef.current;
+        if (!stage) return null;
+        const box = stage.container().getBoundingClientRect();
+        return stage.getAbsoluteTransform().copy().invert().point({
+            x: clientX - box.left,
+            y: clientY - box.top,
+        });
+    }, []);
+
+    const handleCanvasMouseDown = useCallback((event: KonvaEventObject<MouseEvent>) => {
+        if (!event.evt.shiftKey) {
+            return;
+        }
+        const stage = stageRef.current;
+        if (!stage) {
+            return;
+        }
+        const state = useStudioStore.getState();
+        if (state.documents.length === 0 && state.detachedPages.length === 0) {
+            return;
+        }
+        const pointer = stage.getPointerPosition();
+        if (!pointer) {
+            return;
+        }
+        event.evt.preventDefault();
+        const start = stage.getAbsoluteTransform().copy().invert().point(pointer);
+        marqueeRef.current = { start, baseSelection: state.selection, moved: false };
+        marqueeRectRef.current?.setAttrs({ x: start.x, y: start.y, width: 0, height: 0, visible: true });
+        marqueeRectRef.current?.getLayer()?.batchDraw();
+    }, []);
+
+    // Listeners live on the window so the box keeps following the pointer over the viewport
+    // controls and off the canvas edge.
+    useEffect(() => {
+        const redrawMarquee = () => marqueeRectRef.current?.getLayer()?.batchDraw();
+
+        const handleMove = (event: PointerEvent) => {
+            const marquee = marqueeRef.current;
+            if (!marquee) return;
+            const point = stagePointFromClient(event.clientX, event.clientY);
+            if (!point) return;
+            const box = rectFromPoints(marquee.start, point);
+            if (!marquee.moved) {
+                const screenSize = Math.max(box.width, box.height) * (stageRef.current?.scaleX() ?? 1);
+                marquee.moved = screenSize > 3;
+            }
+            marqueeRectRef.current?.setAttrs({ x: box.x, y: box.y, width: box.width, height: box.height });
+            redrawMarquee();
+        };
+
+        const handleUp = (event: PointerEvent) => {
+            const marquee = marqueeRef.current;
+            if (!marquee) return;
+            marqueeRef.current = null;
+            marqueeRectRef.current?.setAttrs({ visible: false });
+            redrawMarquee();
+            // A Shift-click without movement is the existing toggle gesture, not a marquee.
+            if (!marquee.moved) return;
+            marqueeJustFinishedRef.current = performance.now();
+            const point = stagePointFromClient(event.clientX, event.clientY);
+            if (!point) return;
+            const box = rectFromPoints(marquee.start, point);
+            const state = useStudioStore.getState();
+            const columns = window.innerWidth <= STUDIO_MOBILE_BREAKPOINT
+                ? STUDIO_MOBILE_GRID_COLUMNS
+                : state.gridColumns;
+            const hits: { docId: string; pageId: string }[] = [];
+            for (const doc of state.documents) {
+                const docColumns = pageGridColumns(doc.pages.length, columns);
+                doc.pages.forEach((page, index) => {
+                    const slot = pageRectInDocument(index, docColumns);
+                    const pageRect = { ...slot, x: doc.x + slot.x, y: doc.y + slot.y };
+                    if (rectanglesIntersect(box, pageRect)) {
+                        hits.push({ docId: doc.id, pageId: page.id });
+                    }
+                });
+            }
+            if (hits.length === 0) {
+                return;
+            }
+            // Shift means "add": a marquee that starts on an existing selection extends it, the
+            // same way Shift-click does, and the count chip shows the total.
+            const next = [...marquee.baseSelection];
+            for (const hit of hits) {
+                if (!next.some((item) => item.pageId === hit.pageId)) {
+                    next.push(hit);
+                }
+            }
+            state.setSelection(next);
+        };
+
+        window.addEventListener('pointermove', handleMove);
+        window.addEventListener('pointerup', handleUp);
+        window.addEventListener('pointercancel', handleUp);
+        return () => {
+            window.removeEventListener('pointermove', handleMove);
+            window.removeEventListener('pointerup', handleUp);
+            window.removeEventListener('pointercancel', handleUp);
+        };
+    }, [stagePointFromClient]);
 
     const dotPatternCanvas = useMemo(() => {
         const size = 20;
@@ -997,6 +1141,21 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
         openUploadDialog();
     }, [openUploadDialog, runtime.telemetry]);
 
+    /**
+     * Cmd/Ctrl+A takes the active workspace, and only falls back to the whole canvas when no
+     * workspace is active: one keystroke must never arm a delete across every document.
+     */
+    const selectAllPages = useCallback(() => {
+        const activeDoc = documents.find((doc) => doc.id === activeDocumentId);
+        const targetDocs = activeDoc ? [activeDoc] : documents;
+        const pages = targetDocs.flatMap((doc) => doc.pages.map((page) => ({ docId: doc.id, pageId: page.id })));
+        if (pages.length === 0) {
+            return false;
+        }
+        setSelection(pages);
+        return true;
+    }, [activeDocumentId, documents, setSelection]);
+
     const copySelectedPages = useCallback(() => {
         if (selection.length === 0) {
             return false;
@@ -1056,8 +1215,11 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
         });
         setDocuments(nextDocuments);
         setSelection(clonedPages.map((page) => ({ docId: activeDocumentId, pageId: page.id })));
+        // Without a checkpoint the paste could not be undone: merge/split/delete create one, paste
+        // is the same kind of document mutation.
+        void createCheckpoint(runtime.vfs, 'paste_pages', `Pasted ${clonedPages.length} ${clonedPages.length === 1 ? 'page' : 'pages'}`);
         return true;
-    }, [activeDocumentId, documents, runtime.telemetry, runtime.billing, setDocuments, setSelection]);
+    }, [activeDocumentId, createCheckpoint, documents, runtime.telemetry, runtime.billing, runtime.vfs, setDocuments, setSelection]);
 
     const handleMergePages = useCallback((targetDocId: string) => {
         const selectionOutsideTarget = selection.filter((item) => item.docId !== targetDocId);
@@ -1112,9 +1274,29 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
             const isQuickUploadShortcut = !event.ctrlKey && !event.metaKey && !event.altKey && key === 'u';
             const isCopyShortcut = isModifierPressed && !event.shiftKey && !event.altKey && key === 'c';
             const isPasteShortcut = isModifierPressed && !event.shiftKey && !event.altKey && key === 'v';
+            const isSelectAllShortcut = isModifierPressed && !event.shiftKey && !event.altKey && key === 'a';
+            const isUndoShortcut = isModifierPressed && !event.altKey && key === 'z' && !event.shiftKey;
+            const isRedoShortcut = isModifierPressed && !event.altKey
+                && (key === 'y' || (key === 'z' && event.shiftKey));
             const isDeleteShortcut = !isModifierPressed
                 && (event.key === 'Delete' || event.key === 'Backspace')
                 && selection.length > 0;
+
+            // The canvas editor keeps its own undo stack on the same keys; stepping the canvas
+            // history underneath it would close the session out from under the user.
+            if (!overlayMode && (isUndoShortcut || isRedoShortcut)) {
+                if ((isRedoShortcut ? redoHistory() : undoHistory())) {
+                    event.preventDefault();
+                }
+                return;
+            }
+
+            if (isSelectAllShortcut) {
+                if (selectAllPages()) {
+                    event.preventDefault();
+                }
+                return;
+            }
 
             if (isDeleteShortcut) {
                 if (handleDeleteSelectedPages('keyboard')) {
@@ -1147,7 +1329,7 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
 
         window.addEventListener('keydown', onKeyDown);
         return () => window.removeEventListener('keydown', onKeyDown);
-    }, [copySelectedPages, handleDeleteSelectedPages, openUploadDialog, pasteSelectedPages, selection.length]);
+    }, [copySelectedPages, handleDeleteSelectedPages, openUploadDialog, overlayMode, pasteSelectedPages, redoHistory, selectAllPages, selection.length, undoHistory]);
 
     const handleStageWheel = useCallback((event: KonvaEventObject<WheelEvent>) => {
         const targetNode = event.target;
@@ -1500,7 +1682,9 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
                         width={canvasDimensions.width}
                         height={canvasDimensions.height}
                         pixelRatio={stagePixelRatio}
-                        draggable={hasFiles}
+                        // Shift turns the canvas into a selection surface; panning resumes as soon
+                        // as the modifier is released, so the box gesture never pans by accident.
+                        draggable={hasFiles && !isShiftDown}
                         x={viewPosition.x}
                         y={viewPosition.y}
                         scaleX={viewScale}
@@ -1524,6 +1708,15 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
                                 height={10000}
                                 fillPatternImage={dotPatternCanvas}
                                 fillPatternRepeat="repeat"
+                                onMouseDown={handleCanvasMouseDown}
+                                onClick={(event) => {
+                                    // Shift belongs to the marquee; clearing after it would undo the
+                                    // selection the same pointer release just made.
+                                    if (event.evt.shiftKey || performance.now() - marqueeJustFinishedRef.current < 400) {
+                                        return;
+                                    }
+                                    setSelection([]);
+                                }}
                             />
                             {hasFiles && (
                                 <>
@@ -1539,6 +1732,16 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
                                     ))}
                                 </>
                             )}
+                            <Rect
+                                ref={marqueeRectRef}
+                                visible={false}
+                                listening={false}
+                                fill="rgba(35, 131, 226, 0.08)"
+                                stroke="#2383e2"
+                                strokeWidth={1}
+                                strokeScaleEnabled={false}
+                                dash={[4, 3]}
+                            />
                         </Layer>
                     </Stage>
                     {!isMergeTipDismissed && documents.length >= 2 && (
@@ -1636,15 +1839,20 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
                         <button
                             className="studio-viewport-btn studio-viewport-desktop-only"
                             onClick={() => { pasteSelectedPages(); }}
-                            title="Paste copied pages (Ctrl/Cmd+V)"
-                            disabled={selection.length === 0 || !activeDocumentId || !hasClipboardPages}
-                            style={(!hasClipboardPages || selection.length === 0) ? { opacity: 0.4 } : undefined}
+                            title="Paste copied pages into the active workspace (Ctrl/Cmd+V)"
+                            disabled={!activeDocumentId || !hasClipboardPages}
+                            style={(!hasClipboardPages || !activeDocumentId) ? { opacity: 0.4 } : undefined}
                         >
                             Paste
                         </button>
 
                         <span className="studio-viewport-spacer" />
 
+                        {selection.length === 0 && hasFiles && (
+                            <span className="studio-viewport-hint studio-viewport-desktop-only">
+                                Shift-drag to select pages · ⌘/Ctrl+A
+                            </span>
+                        )}
                         {selection.length > 0 && (
                             <span className="studio-viewport-selection-count" title={`${selection.length} selected pages`}>
                                 {selection.length} selected

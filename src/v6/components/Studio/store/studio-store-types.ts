@@ -77,6 +77,7 @@ export type TimelineEventType =
     | 'upload'
     | 'delete_page'
     | 'move_page'
+    | 'paste_pages'
     | 'rotate_page'
     | 'edit_save'
     | 'convert'

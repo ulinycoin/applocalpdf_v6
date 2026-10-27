@@ -2,6 +2,15 @@ import React from 'react';
 import { Circle, Group, Rect, Text } from 'react-konva';
 import type { KonvaEventObject } from 'konva/lib/Node';
 import { PageObject } from './PageObject';
+import {
+    PAGE_CARD_HEIGHT as CARD_HEIGHT,
+    PAGE_CARD_WIDTH as CARD_WIDTH,
+    PAGE_INSET as PAGE_PADDING,
+    PAGE_STEP_X,
+    PAGE_STEP_Y,
+    pageGridColumns,
+    pageRectInDocument,
+} from './page-layout';
 import { StudioDocument as IStudioDocument, StudioState, useStudioStore } from './studio-store';
 
 interface StudioDocumentProps {
@@ -31,21 +40,16 @@ export const StudioDocument: React.FC<StudioDocumentProps> = ({ doc, gridColumns
         updateDocument(doc.id, { x: e.target.x(), y: e.target.y() });
     };
 
-    const CARD_WIDTH = 200;
-    const CARD_HEIGHT = 280;
-    const GAP_X = 20;
-    const GAP_Y = 30;
     const STATUS_DOT_RADIUS = 4;
     const PAGE_COUNT_WIDTH = 54;
-    const PAGE_PADDING = 10;
 
     // Calculate grid dimensions
-    const cols = Math.min(doc.pages.length || 1, gridColumns);
+    const cols = pageGridColumns(doc.pages.length, gridColumns);
     const rows = Math.ceil(doc.pages.length / cols) || 1;
 
     // Bounds based on grid Layout
-    const width = Math.max(CARD_WIDTH + GAP_X, cols * (CARD_WIDTH + GAP_X));
-    const height = rows * (CARD_HEIGHT + GAP_Y);
+    const width = Math.max(PAGE_STEP_X, cols * PAGE_STEP_X);
+    const height = rows * PAGE_STEP_Y;
     const labelMaxWidth = Math.max(120, width - PAGE_COUNT_WIDTH);
 
     const isActiveDocument = activeDocumentId === doc.id && selection.length === 0;
@@ -177,10 +181,12 @@ export const StudioDocument: React.FC<StudioDocumentProps> = ({ doc, gridColumns
                     listening={false}
                 />
             )}
-            {/* Document Label in header */}
+            {/* Document Label in header. Rename is a double click: a single click on the header is
+                how you make this workspace the target for paste/merge, and opening the rename
+                dialog on that click stole the keyboard (Ctrl+V went into the dialog input). */}
             <Group
                 y={-32}
-                onClick={(e) => {
+                onDblClick={(e) => {
                     e.cancelBubble = true;
                     setRenamingDocId(doc.id);
                 }}
@@ -241,10 +247,7 @@ export const StudioDocument: React.FC<StudioDocumentProps> = ({ doc, gridColumns
                 </Group>
             )}
             {doc.pages.map((page, index) => {
-                const col = index % gridColumns;
-                const row = Math.floor(index / gridColumns);
-                const localX = PAGE_PADDING + col * (CARD_WIDTH + GAP_X);
-                const localY = PAGE_PADDING + row * (CARD_HEIGHT + GAP_Y);
+                const { x: localX, y: localY } = pageRectInDocument(index, cols);
 
                 // --- Viewport Culling Logic ---
                 // Convert page's local rect to world coordinates

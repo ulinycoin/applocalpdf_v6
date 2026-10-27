@@ -13,6 +13,10 @@ export interface HistoryState {
     recordEvent: (type: TimelineEventType, label: string) => void;
     createCheckpoint: (vfs: IFileSystem, type: TimelineEventType, label: string, isManualVersion?: boolean) => Promise<void>;
     restoreCheckpoint: (index: number) => void;
+    /** Step to the closest earlier checkpoint; false when there is nothing to undo. */
+    undo: () => boolean;
+    /** Step to the closest later checkpoint; false when there is nothing to redo. */
+    redo: () => boolean;
     pruneHistory: (vfs: IFileSystem) => Promise<void>;
     clearHistory: (vfs: IFileSystem) => Promise<void>;
 }
@@ -155,6 +159,32 @@ export const useHistoryStore = create<HistoryState>((set, get) => ({
         useEditSessionStore.getState().clearSession();
 
         set({ historyIndex: index });
+    },
+
+    /**
+     * Undo/redo walk the timeline to the nearest entry that actually carries a snapshot: plain
+     * `recordEvent` entries are labels without state and cannot be restored.
+     */
+    undo: () => {
+        const { timeline, historyIndex } = get();
+        for (let index = historyIndex - 1; index >= 0; index -= 1) {
+            if (timeline[index]?.snapshot) {
+                get().restoreCheckpoint(index);
+                return true;
+            }
+        }
+        return false;
+    },
+
+    redo: () => {
+        const { timeline, historyIndex } = get();
+        for (let index = historyIndex + 1; index < timeline.length; index += 1) {
+            if (timeline[index]?.snapshot) {
+                get().restoreCheckpoint(index);
+                return true;
+            }
+        }
+        return false;
     },
 
     pruneHistory: async (vfs) => {

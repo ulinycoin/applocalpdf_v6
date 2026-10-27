@@ -3347,6 +3347,16 @@ textarea:focus-visible {
   flex: 0 0 auto;
 }
 
+.studio-viewport-hint {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--text-muted);
+  font-size: 11px;
+  padding-right: 8px;
+}
+
 .studio-viewport-btn-fit {
   min-width: 28px;
 }
