@@ -51,6 +51,10 @@ generate-large.mjs
 # Manual PDF scratch fixtures (not referenced by test/fixtures/pdfs/catalog.json)
 test/fixtures/pdfs/debug/
 
+# Font-reuse measurement corpus: third-party documents copied from the founder's disk, never committed.
+# Provenance (source path, size, sha256) lives in the generated manifest.json inside the directory.
+test/fixtures/font-corpus/
+
 # Developer scratch / mockups / logs
 .tmp/
 scratch/

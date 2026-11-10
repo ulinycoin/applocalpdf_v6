@@ -1,0 +1,1830 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-11-10T22:58:02.233Z",
+  "git": {
+    "commit": "04497a7",
+    "dirty": true
+  },
+  "measurement": {
+    "coverageRule": "hasGlyphForCodePoint (cmap path) / PDF ToUnicode CMap (cid path); never widthOfTextAtSize()",
+    "paths": {
+      "cmap": "re-embed the program and encode through pdf-lib: needs a character map inside the program (wave 1)",
+      "cid": "write two-byte codes, Unicode→CID from the PDF /ToUnicode: needs /ToUnicode and /CIDToGIDMap /Identity (wave 2)"
+    }
+  },
+  "corpus": {
+    "dir": "test/fixtures/font-corpus",
+    "files": 30,
+    "bytes": 17931568,
+    "pages": 387,
+    "documentLoadFailures": [
+      {
+        "file": "gen-broken-truncated.pdf",
+        "error": "Failed to parse PDF document (line:4213 col:96 offset=1391549): Failed to parse invalid PDF object"
+      },
+      {
+        "file": "scan-manual-nofonts.pdf",
+        "error": "Failed to parse PDF document (line:634 col:124 offset=96730): No PDF header found"
+      }
+    ],
+    "encryptedDocuments": [
+      "signed-wc001.pdf"
+    ]
+  },
+  "fonts": {
+    "occurrences": 926,
+    "uniquePrograms": 186,
+    "withProgram": 108,
+    "parsed": 99,
+    "parseFailed": 9,
+    "parseRate": 0.9167,
+    "notReusable": {
+      "type3": 74,
+      "noDescriptor": 4,
+      "noFontFile": 8,
+      "decodeFailed": 0,
+      "inspectFailed": 0
+    },
+    "failureReasons": {
+      "parse-failed": 1,
+      "no-fontfile": 8
+    },
+    "failureSamples": [
+      {
+        "family": "PingFangSC-Regular",
+        "subtype": "Type0",
+        "reason": "Unknown font format"
+      },
+      {
+        "family": "ArialMT",
+        "subtype": "TrueType"
+      },
+      {
+        "family": "Arial-BoldMT",
+        "subtype": "TrueType"
+      },
+      {
+        "family": "TimesNewRomanPSMT",
+        "subtype": "TrueType"
+      },
+      {
+        "family": "Arial-ItalicMT",
+        "subtype": "TrueType"
+      },
+      {
+        "family": "TimesNewRomanPSMT",
+        "subtype": "TrueType"
+      },
+      {
+        "family": "ArialMT",
+        "subtype": "TrueType"
+      },
+      {
+        "family": "ArialMT",
+        "subtype": "TrueType"
+      }
+    ],
+    "bySubtype": {
+      "Type0/TrueType": {
+        "programs": 65,
+        "parsed": 65,
+        "parseRate": 1,
+        "failureReasons": {}
+      },
+      "Type0/CFF": {
+        "programs": 3,
+        "parsed": 2,
+        "parseRate": 0.6667,
+        "failureReasons": {
+          "parse-failed": 1
+        }
+      },
+      "TrueType": {
+        "programs": 40,
+        "parsed": 32,
+        "parseRate": 0.8,
+        "failureReasons": {
+          "no-fontfile": 8
+        }
+      }
+    },
+    "formats": {
+      "truetype": 97,
+      "opentype": 2
+    },
+    "withToUnicode": 77,
+    "identityCidToGid": 67,
+    "restrictedEmbedding": 0,
+    "parseFailedWithToUnicode": 1,
+    "cmapDeadButCidAlive": {
+      "count": 19,
+      "note": "Program parses but carries no ASCII cmap, while /ToUnicode knows the characters: wave 1 sees zero coverage here, wave 2 can still edit them.",
+      "families": [
+        "HelveticaNeue (Type0, glyphs=200)",
+        "HelveticaNeue-Bold (Type0, glyphs=97)",
+        "HelveticaNeue (Type0, glyphs=200)",
+        "HelveticaNeue-Bold (Type0, glyphs=92)",
+        "HelveticaNeue (Type0, glyphs=585)",
+        "HelveticaNeue-Bold (Type0, glyphs=65)",
+        "HelveticaNeue-Bold (Type0, glyphs=65)",
+        "HelveticaNeue-Bold (Type0, glyphs=184)",
+        "HelveticaNeue-Bold (Type0, glyphs=30)",
+        "HelveticaNeue (Type0, glyphs=200)"
+      ]
+    },
+    "noCmapAndNoToUnicode": {
+      "count": 24,
+      "note": "Parsed, more than 4 glyphs, no ASCII by either path: either a genuinely exotic subset or a program whose glyphs are unreachable without the original CMap. Not reusable by any planned path.",
+      "families": [
+        "GeezaPro-Bold (Type0, glyphs=956)",
+        "GeezaPro (Type0, glyphs=905)",
+        "AlNile (Type0, glyphs=165)",
+        "Roboto-Medium (Type0, glyphs=165)",
+        "Roboto-Medium (Type0, glyphs=123)",
+        "Roboto-Regular (Type0, glyphs=125)",
+        "ProductSans-Regular (Type0, glyphs=109)",
+        "Roboto-Medium (Type0, glyphs=125)",
+        "Roboto-Medium (Type0, glyphs=125)",
+        "Roboto-Regular (Type0, glyphs=127)"
+      ]
+    }
+  },
+  "paths": {
+    "cmap": {
+      "coverage": {
+        "base62": {
+          "n": 99,
+          "mean": 0.3001,
+          "median": 0.0645,
+          "p10": 0,
+          "p90": 1
+        },
+        "letters": {
+          "n": 99,
+          "mean": 0.2941,
+          "median": 0.0577,
+          "p10": 0,
+          "p90": 1
+        },
+        "bySubtype": {
+          "Type0/TrueType": {
+            "n": 65,
+            "mean": 0.1876,
+            "median": 0,
+            "p10": 0,
+            "p90": 0.7032
+          },
+          "TrueType": {
+            "n": 32,
+            "mean": 0.5474,
+            "median": 0.5242,
+            "p10": 0.0484,
+            "p90": 1
+          },
+          "Type0/CFF": {
+            "n": 2,
+            "mean": 0,
+            "median": 0,
+            "p10": 0,
+            "p90": 0
+          }
+        }
+      },
+      "scenarios": [
+        {
+          "key": "singleAsciiChar",
+          "label": "replace 1 character with an arbitrary letter or digit",
+          "stringsTested": 62,
+          "editInstances": 11532,
+          "meanOverPrograms": 0.1597,
+          "occurrenceWeighted": 0.3502,
+          "distribution": {
+            "n": 186,
+            "mean": 0.1597,
+            "median": 0,
+            "p10": 0,
+            "p90": 0.7742
+          },
+          "bySubtype": {
+            "Type0/TrueType": {
+              "n": 65,
+              "mean": 0.1876,
+              "median": 0,
+              "p10": 0,
+              "p90": 0.7032
+            },
+            "Type3": {
+              "n": 74,
+              "mean": 0,
+              "median": 0,
+              "p10": 0,
+              "p90": 0
+            },
+            "Type0/CFF": {
+              "n": 3,
+              "mean": 0,
+              "median": 0,
+              "p10": 0,
+              "p90": 0
+            },
+            "TrueType": {
+              "n": 40,
+              "mean": 0.4379,
+              "median": 0.3226,
+              "p10": 0,
+              "p90": 1
+            },
+            "Type1": {
+              "n": 4,
+              "mean": 0,
+              "median": 0,
+              "p10": 0,
+              "p90": 0
+            }
+          }
+        },
+        {
+          "key": "wordAscii",
+          "label": "replace a whole word, ASCII",
+          "stringsTested": 10,
+          "editInstances": 1860,
+          "meanOverPrograms": 0.1355,
+          "occurrenceWeighted": 0.3363,
+          "distribution": {
+            "n": 186,
+            "mean": 0.1355,
+            "median": 0,
+            "p10": 0,
+            "p90": 0.9
+          },
+          "bySubtype": {
+            "Type0/TrueType": {
+              "n": 65,
+              "mean": 0.1492,
+              "median": 0,
+              "p10": 0,
+              "p90": 0.6
+            },
+            "Type3": {
+              "n": 74,
+              "mean": 0,
+              "median": 0,
+              "p10": 0,
+              "p90": 0
+            },
+            "Type0/CFF": {
+              "n": 3,
+              "mean": 0,
+              "median": 0,
+              "p10": 0,
+              "p90": 0
+            },
+            "TrueType": {
+              "n": 40,
+              "mean": 0.3875,
+              "median": 0.1,
+              "p10": 0,
+              "p90": 1
+            },
+            "Type1": {
+              "n": 4,
+              "mean": 0,
+              "median": 0,
+              "p10": 0,
+              "p90": 0
+            }
+          }
+        },
+        {
+          "key": "wordLatvian",
+          "label": "replace a whole word, Latvian diacritics",
+          "stringsTested": 8,
+          "editInstances": 1488,
+          "meanOverPrograms": 0.1142,
+          "occurrenceWeighted": 0.2476,
+          "distribution": {
+            "n": 186,
+            "mean": 0.1142,
+            "median": 0,
+            "p10": 0,
+            "p90": 0.5
+          },
+          "bySubtype": {
+            "Type0/TrueType": {
+              "n": 65,
+              "mean": 0.1192,
+              "median": 0,
+              "p10": 0,
+              "p90": 0.5
+            },
+            "Type3": {
+              "n": 74,
+              "mean": 0,
+              "median": 0,
+              "p10": 0,
+              "p90": 0
+            },
+            "Type0/CFF": {
+              "n": 3,
+              "mean": 0,
+              "median": 0,
+              "p10": 0,
+              "p90": 0
+            },
+            "TrueType": {
+              "n": 40,
+              "mean": 0.3375,
+              "median": 0,
+              "p10": 0,
+              "p90": 1
+            },
+            "Type1": {
+              "n": 4,
+              "mean": 0,
+              "median": 0,
+              "p10": 0,
+              "p90": 0
+            }
+          }
+        },
+        {
+          "key": "wordCyrillic",
+          "label": "type non-Latin text (Cyrillic)",
+          "stringsTested": 5,
+          "editInstances": 930,
+          "meanOverPrograms": 0.0656,
+          "occurrenceWeighted": 0.1773,
+          "distribution": {
+            "n": 186,
+            "mean": 0.0656,
+            "median": 0,
+            "p10": 0,
+            "p90": 0
+          },
+          "bySubtype": {
+            "Type0/TrueType": {
+              "n": 65,
+              "mean": 0.0338,
+              "median": 0,
+              "p10": 0,
+              "p90": 0
+            },
+            "Type3": {
+              "n": 74,
+              "mean": 0,
+              "median": 0,
+              "p10": 0,
+              "p90": 0
+            },
+            "Type0/CFF": {
+              "n": 3,
+              "mean": 0,
+              "median": 0,
+              "p10": 0,
+              "p90": 0
+            },
+            "TrueType": {
+              "n": 40,
+              "mean": 0.25,
+              "median": 0,
+              "p10": 0,
+              "p90": 1
+            },
+            "Type1": {
+              "n": 4,
+              "mean": 0,
+              "median": 0,
+              "p10": 0,
+              "p90": 0
+            }
+          }
+        }
+      ],
+      "productivePrograms": 56
+    },
+    "cid": {
+      "coverage": {
+        "base62": {
+          "n": 99,
+          "mean": 0.2434,
+          "median": 0.0645,
+          "p10": 0,
+          "p90": 0.8452
+        },
+        "letters": {
+          "n": 99,
+          "mean": 0.2418,
+          "median": 0,
+          "p10": 0,
+          "p90": 0.8538
+        },
+        "bySubtype": {
+          "Type0/TrueType": {
+            "n": 65,
+            "mean": 0.2583,
+            "median": 0.1935,
+            "p10": 0,
+            "p90": 0.7194
+          },
+          "TrueType": {
+            "n": 32,
+            "mean": 0.2283,
+            "median": 0,
+            "p10": 0,
+            "p90": 1
+          },
+          "Type0/CFF": {
+            "n": 2,
+            "mean": 0,
+            "median": 0,
+            "p10": 0,
+            "p90": 0
+          }
+        }
+      },
+      "scenarios": [
+        {
+          "key": "singleAsciiChar",
+          "label": "replace 1 character with an arbitrary letter or digit",
+          "stringsTested": 62,
+          "editInstances": 11532,
+          "meanOverPrograms": 0.1296,
+          "occurrenceWeighted": 0.2882,
+          "distribution": {
+            "n": 186,
+            "mean": 0.1296,
+            "median": 0,
+            "p10": 0,
+            "p90": 0.4597
+          },
+          "bySubtype": {
+            "Type0/TrueType": {
+              "n": 65,
+              "mean": 0.2583,
+              "median": 0.1935,
+              "p10": 0,
+              "p90": 0.7194
+            },
+            "Type3": {
+              "n": 74,
+              "mean": 0,
+              "median": 0,
+              "p10": 0,
+              "p90": 0
+            },
+            "Type0/CFF": {
+              "n": 3,
+              "mean": 0,
+              "median": 0,
+              "p10": 0,
+              "p90": 0
+            },
+            "TrueType": {
+              "n": 40,
+              "mean": 0.1827,
+              "median": 0,
+              "p10": 0,
+              "p90": 1
+            },
+            "Type1": {
+              "n": 4,
+              "mean": 0,
+              "median": 0,
+              "p10": 0,
+              "p90": 0
+            }
+          }
+        },
+        {
+          "key": "wordAscii",
+          "label": "replace a whole word, ASCII",
+          "stringsTested": 10,
+          "editInstances": 1860,
+          "meanOverPrograms": 0.0941,
+          "occurrenceWeighted": 0.2683,
+          "distribution": {
+            "n": 186,
+            "mean": 0.0941,
+            "median": 0,
+            "p10": 0,
+            "p90": 0.3
+          },
+          "bySubtype": {
+            "Type0/TrueType": {
+              "n": 65,
+              "mean": 0.16,
+              "median": 0,
+              "p10": 0,
+              "p90": 0.6
+            },
+            "Type3": {
+              "n": 74,
+              "mean": 0,
+              "median": 0,
+              "p10": 0,
+              "p90": 0
+            },
+            "Type0/CFF": {
+              "n": 3,
+              "mean": 0,
+              "median": 0,
+              "p10": 0,
+              "p90": 0
+            },
+            "TrueType": {
+              "n": 40,
+              "mean": 0.1775,
+              "median": 0,
+              "p10": 0,
+              "p90": 1
+            },
+            "Type1": {
+              "n": 4,
+              "mean": 0,
+              "median": 0,
+              "p10": 0,
+              "p90": 0
+            }
+          }
+        },
+        {
+          "key": "wordLatvian",
+          "label": "replace a whole word, Latvian diacritics",
+          "stringsTested": 8,
+          "editInstances": 1488,
+          "meanOverPrograms": 0.0692,
+          "occurrenceWeighted": 0.157,
+          "distribution": {
+            "n": 186,
+            "mean": 0.0692,
+            "median": 0,
+            "p10": 0,
+            "p90": 0.25
+          },
+          "bySubtype": {
+            "Type0/TrueType": {
+              "n": 65,
+              "mean": 0.1115,
+              "median": 0,
+              "p10": 0,
+              "p90": 0.5
+            },
+            "Type3": {
+              "n": 74,
+              "mean": 0,
+              "median": 0,
+              "p10": 0,
+              "p90": 0
+            },
+            "Type0/CFF": {
+              "n": 3,
+              "mean": 0,
+              "median": 0,
+              "p10": 0,
+              "p90": 0
+            },
+            "TrueType": {
+              "n": 40,
+              "mean": 0.1406,
+              "median": 0,
+              "p10": 0,
+              "p90": 0.65
+            },
+            "Type1": {
+              "n": 4,
+              "mean": 0,
+              "median": 0,
+              "p10": 0,
+              "p90": 0
+            }
+          }
+        },
+        {
+          "key": "wordCyrillic",
+          "label": "type non-Latin text (Cyrillic)",
+          "stringsTested": 5,
+          "editInstances": 930,
+          "meanOverPrograms": 0.0495,
+          "occurrenceWeighted": 0.1436,
+          "distribution": {
+            "n": 186,
+            "mean": 0.0495,
+            "median": 0,
+            "p10": 0,
+            "p90": 0
+          },
+          "bySubtype": {
+            "Type0/TrueType": {
+              "n": 65,
+              "mean": 0.1323,
+              "median": 0,
+              "p10": 0,
+              "p90": 0.84
+            },
+            "Type3": {
+              "n": 74,
+              "mean": 0,
+              "median": 0,
+              "p10": 0,
+              "p90": 0
+            },
+            "Type0/CFF": {
+              "n": 3,
+              "mean": 0,
+              "median": 0,
+              "p10": 0,
+              "p90": 0
+            },
+            "TrueType": {
+              "n": 40,
+              "mean": 0.015,
+              "median": 0,
+              "p10": 0,
+              "p90": 0
+            },
+            "Type1": {
+              "n": 4,
+              "mean": 0,
+              "median": 0,
+              "p10": 0,
+              "p90": 0
+            }
+          }
+        }
+      ],
+      "productivePrograms": 51
+    }
+  },
+  "ceilingIfBothPaths": [
+    {
+      "key": "singleAsciiChar",
+      "meanOverPrograms": 0.1983,
+      "distribution": {
+        "n": 186,
+        "mean": 0.1983,
+        "median": 0,
+        "p10": 0,
+        "p90": 0.8226
+      }
+    },
+    {
+      "key": "wordAscii",
+      "meanOverPrograms": 0.1559,
+      "distribution": {
+        "n": 186,
+        "mean": 0.1559,
+        "median": 0,
+        "p10": 0,
+        "p90": 0.9
+      }
+    },
+    {
+      "key": "wordLatvian",
+      "meanOverPrograms": 0.1223,
+      "distribution": {
+        "n": 186,
+        "mean": 0.1223,
+        "median": 0,
+        "p10": 0,
+        "p90": 0.5
+      }
+    },
+    {
+      "key": "wordCyrillic",
+      "meanOverPrograms": 0.1,
+      "distribution": {
+        "n": 186,
+        "mean": 0.1,
+        "median": 0,
+        "p10": 0,
+        "p90": 0.4
+      }
+    }
+  ],
+  "documentLevel": {
+    "note": "Mean over documents that contain text of: success for the edit of the font carrying most of that document. Scans are excluded (nothing to edit before OCR).",
+    "documentsWithText": 25,
+    "documentsWithoutText": 5,
+    "byPath": [
+      {
+        "mode": "cmap",
+        "documents": 25,
+        "singleAsciiChar": 0.2413,
+        "wordAscii": 0.204,
+        "wordLatvian": 0.215,
+        "wordCyrillic": 0.08,
+        "documentsWithAnyReusableFont": 0.88
+      },
+      {
+        "mode": "cid",
+        "documents": 25,
+        "singleAsciiChar": 0.2135,
+        "wordAscii": 0.132,
+        "wordLatvian": 0.125,
+        "wordCyrillic": 0.096,
+        "documentsWithAnyReusableFont": 0.72
+      }
+    ],
+    "documentsWithEmbeddedDominantFont": {
+      "note": "Subset of the above where the dominant font is embedded, i.e. where the current fallback visibly changes the typeface.",
+      "documents": 16,
+      "byPath": [
+        {
+          "mode": "cmap",
+          "singleAsciiChar": 0.377,
+          "wordAscii": 0.3188,
+          "wordLatvian": 0.3359,
+          "wordCyrillic": 0.125
+        },
+        {
+          "mode": "cid",
+          "singleAsciiChar": 0.3337,
+          "wordAscii": 0.2063,
+          "wordLatvian": 0.1953,
+          "wordCyrillic": 0.15
+        }
+      ],
+      "ceilingIfBothPaths": {
+        "singleAsciiChar": 0.4627,
+        "wordAscii": 0.3563,
+        "wordLatvian": 0.3438,
+        "wordCyrillic": 0.2125
+      }
+    },
+    "ceilingIfBothPaths": {
+      "singleAsciiChar": 0.2961,
+      "wordAscii": 0.228,
+      "wordLatvian": 0.22,
+      "wordCyrillic": 0.136
+    }
+  },
+  "byCategory": {
+    "broken": {
+      "files": 3,
+      "documentsWithText": 2,
+      "programs": 17,
+      "parsed": 17,
+      "medianCoverage": {
+        "cmap": 0,
+        "cid": 0.3871
+      },
+      "editSuccess": {
+        "singleAsciiChar": {
+          "cmap": 0.1708,
+          "cid": 0.3748,
+          "best": 0.3899
+        },
+        "wordLatvian": {
+          "cmap": 0.0956,
+          "cid": 0.1397,
+          "best": 0.1397
+        }
+      },
+      "documentLevel": {
+        "singleAsciiChar": {
+          "cmap": 0.2339,
+          "cid": 0.3952,
+          "best": 0.3952
+        },
+        "wordLatvian": {
+          "cmap": 0.25,
+          "cid": 0.25,
+          "best": 0.25
+        }
+      }
+    },
+    "cjk": {
+      "files": 2,
+      "documentsWithText": 2,
+      "programs": 42,
+      "parsed": 1,
+      "medianCoverage": {
+        "cmap": 0.0806,
+        "cid": 0
+      },
+      "editSuccess": {
+        "singleAsciiChar": {
+          "cmap": 0.0806,
+          "cid": 0,
+          "best": 0.0806
+        },
+        "wordLatvian": {
+          "cmap": 0,
+          "cid": 0,
+          "best": 0
+        }
+      },
+      "documentLevel": {
+        "singleAsciiChar": {
+          "cmap": 0,
+          "cid": 0,
+          "best": 0
+        },
+        "wordLatvian": {
+          "cmap": 0,
+          "cid": 0,
+          "best": 0
+        }
+      }
+    },
+    "html-print": {
+      "files": 5,
+      "documentsWithText": 5,
+      "programs": 74,
+      "parsed": 40,
+      "medianCoverage": {
+        "cmap": 0,
+        "cid": 0.2097
+      },
+      "editSuccess": {
+        "singleAsciiChar": {
+          "cmap": 0.1681,
+          "cid": 0.2673,
+          "best": 0.2738
+        },
+        "wordLatvian": {
+          "cmap": 0.0844,
+          "cid": 0.1062,
+          "best": 0.1062
+        }
+      },
+      "documentLevel": {
+        "singleAsciiChar": {
+          "cmap": 0.3258,
+          "cid": 0.3903,
+          "best": 0.3903
+        },
+        "wordLatvian": {
+          "cmap": 0.2,
+          "cid": 0.2,
+          "best": 0.2
+        }
+      }
+    },
+    "linearized": {
+      "files": 3,
+      "documentsWithText": 3,
+      "programs": 32,
+      "parsed": 32,
+      "medianCoverage": {
+        "cmap": 0.0645,
+        "cid": 0.0565
+      },
+      "editSuccess": {
+        "singleAsciiChar": {
+          "cmap": 0.2767,
+          "cid": 0.2349,
+          "best": 0.369
+        },
+        "wordLatvian": {
+          "cmap": 0.207,
+          "cid": 0.1055,
+          "best": 0.2266
+        }
+      },
+      "documentLevel": {
+        "singleAsciiChar": {
+          "cmap": 0.4892,
+          "cid": 0.7204,
+          "best": 0.7312
+        },
+        "wordLatvian": {
+          "cmap": 0.5,
+          "cid": 0.4167,
+          "best": 0.5417
+        }
+      }
+    },
+    "office": {
+      "files": 4,
+      "documentsWithText": 4,
+      "programs": 28,
+      "parsed": 20,
+      "medianCoverage": {
+        "cmap": 0.5161,
+        "cid": 0
+      },
+      "editSuccess": {
+        "singleAsciiChar": {
+          "cmap": 0.4919,
+          "cid": 0.1282,
+          "best": 0.4919
+        },
+        "wordLatvian": {
+          "cmap": 0.325,
+          "cid": 0.1,
+          "best": 0.325
+        }
+      },
+      "documentLevel": {
+        "singleAsciiChar": {
+          "cmap": 0.4032,
+          "cid": 0.1089,
+          "best": 0.4032
+        },
+        "wordLatvian": {
+          "cmap": 0.375,
+          "cid": 0.0938,
+          "best": 0.375
+        }
+      }
+    },
+    "own-output": {
+      "files": 1,
+      "documentsWithText": 1,
+      "programs": 4,
+      "parsed": 0,
+      "medianCoverage": {
+        "cmap": null,
+        "cid": null
+      },
+      "editSuccess": {
+        "singleAsciiChar": {
+          "cmap": null,
+          "cid": null,
+          "best": null
+        },
+        "wordLatvian": {
+          "cmap": null,
+          "cid": null,
+          "best": null
+        }
+      },
+      "documentLevel": {
+        "singleAsciiChar": {
+          "cmap": 0,
+          "cid": 0,
+          "best": 0
+        },
+        "wordLatvian": {
+          "cmap": 0,
+          "cid": 0,
+          "best": 0
+        }
+      }
+    },
+    "rtl": {
+      "files": 2,
+      "documentsWithText": 2,
+      "programs": 6,
+      "parsed": 6,
+      "medianCoverage": {
+        "cmap": 0.0242,
+        "cid": 0
+      },
+      "editSuccess": {
+        "singleAsciiChar": {
+          "cmap": 0.043,
+          "cid": 0.0081,
+          "best": 0.043
+        },
+        "wordLatvian": {
+          "cmap": 0,
+          "cid": 0,
+          "best": 0
+        }
+      },
+      "documentLevel": {
+        "singleAsciiChar": {
+          "cmap": 0.0242,
+          "cid": 0,
+          "best": 0.0242
+        },
+        "wordLatvian": {
+          "cmap": 0,
+          "cid": 0,
+          "best": 0
+        }
+      }
+    },
+    "scan": {
+      "files": 3,
+      "documentsWithText": 0,
+      "programs": 0,
+      "parsed": 0,
+      "medianCoverage": {
+        "cmap": null,
+        "cid": null
+      },
+      "editSuccess": {
+        "singleAsciiChar": {
+          "cmap": null,
+          "cid": null,
+          "best": null
+        },
+        "wordLatvian": {
+          "cmap": null,
+          "cid": null,
+          "best": null
+        }
+      },
+      "documentLevel": {
+        "singleAsciiChar": {
+          "cmap": null,
+          "cid": null,
+          "best": null
+        },
+        "wordLatvian": {
+          "cmap": null,
+          "cid": null,
+          "best": null
+        }
+      }
+    },
+    "signed": {
+      "files": 2,
+      "documentsWithText": 1,
+      "programs": 4,
+      "parsed": 4,
+      "medianCoverage": {
+        "cmap": 0.371,
+        "cid": 0.0726
+      },
+      "editSuccess": {
+        "singleAsciiChar": {
+          "cmap": 0.4073,
+          "cid": 0.1331,
+          "best": 0.4073
+        },
+        "wordLatvian": {
+          "cmap": 0.3438,
+          "cid": 0.0938,
+          "best": 0.3438
+        }
+      },
+      "documentLevel": {
+        "singleAsciiChar": {
+          "cmap": 0.8065,
+          "cid": 0,
+          "best": 0.8065
+        },
+        "wordLatvian": {
+          "cmap": 0.875,
+          "cid": 0,
+          "best": 0.875
+        }
+      }
+    },
+    "type1": {
+      "files": 5,
+      "documentsWithText": 5,
+      "programs": 12,
+      "parsed": 8,
+      "medianCoverage": {
+        "cmap": 1,
+        "cid": 1
+      },
+      "editSuccess": {
+        "singleAsciiChar": {
+          "cmap": 0.6411,
+          "cid": 0.6875,
+          "best": 0.7036
+        },
+        "wordLatvian": {
+          "cmap": 0.625,
+          "cid": 0.5781,
+          "best": 0.6406
+        }
+      },
+      "documentLevel": {
+        "singleAsciiChar": {
+          "cmap": 0,
+          "cid": 0,
+          "best": 0
+        },
+        "wordLatvian": {
+          "cmap": 0,
+          "cid": 0,
+          "best": 0
+        }
+      }
+    }
+  },
+  "documents": [
+    {
+      "file": "gen-broken-font.pdf",
+      "size": 143635,
+      "pages": 1,
+      "loadError": null,
+      "encrypted": false,
+      "fonts": 6,
+      "parsed": 6,
+      "topFont": {
+        "family": "TimesNewRomanPSMT",
+        "subtype": "Type0",
+        "program": "parsed",
+        "occurrences": 3,
+        "editSuccess": {
+          "singleAsciiChar": {
+            "cmap": 0.46774193548387094,
+            "cid": 0.46774193548387094,
+            "best": 0.46774193548387094
+          },
+          "wordLatvian": {
+            "cmap": 0.5,
+            "cid": 0.5,
+            "best": 0.5
+          }
+        }
+      }
+    },
+    {
+      "file": "gen-broken-truncated.pdf",
+      "size": 1522638,
+      "pages": 0,
+      "loadError": "Failed to parse PDF document (line:4213 col:96 offset=1391549): Failed to parse invalid PDF object",
+      "encrypted": false,
+      "fonts": 0,
+      "parsed": 0,
+      "topFont": null
+    },
+    {
+      "file": "gen-broken-xref.pdf",
+      "size": 108477,
+      "pages": 1,
+      "loadError": null,
+      "encrypted": false,
+      "fonts": 11,
+      "parsed": 11,
+      "topFont": {
+        "family": "HelveticaNeue-Bold",
+        "subtype": "Type0",
+        "program": "parsed",
+        "occurrences": 6,
+        "editSuccess": {
+          "singleAsciiChar": {
+            "cmap": 0,
+            "cid": 0.3225806451612903,
+            "best": 0.3225806451612903
+          },
+          "wordLatvian": {
+            "cmap": 0,
+            "cid": 0,
+            "best": 0
+          }
+        }
+      }
+    },
+    {
+      "file": "gen-cjk-chrome.pdf",
+      "size": 140597,
+      "pages": 1,
+      "loadError": null,
+      "encrypted": false,
+      "fonts": 40,
+      "parsed": 0,
+      "topFont": {
+        "family": "",
+        "subtype": "Type3",
+        "program": "type3",
+        "occurrences": 40,
+        "editSuccess": {
+          "singleAsciiChar": {
+            "cmap": 0,
+            "cid": 0,
+            "best": 0
+          },
+          "wordLatvian": {
+            "cmap": 0,
+            "cid": 0,
+            "best": 0
+          }
+        }
+      }
+    },
+    {
+      "file": "gen-cjk-ja-cupsfilter.pdf",
+      "size": 15185,
+      "pages": 1,
+      "loadError": null,
+      "encrypted": false,
+      "fonts": 2,
+      "parsed": 1,
+      "topFont": {
+        "family": "PingFangSC-Regular",
+        "subtype": "Type0",
+        "program": "parse-failed",
+        "occurrences": 1,
+        "editSuccess": {
+          "singleAsciiChar": {
+            "cmap": 0,
+            "cid": 0,
+            "best": 0
+          },
+          "wordLatvian": {
+            "cmap": 0,
+            "cid": 0,
+            "best": 0
+          }
+        }
+      }
+    },
+    {
+      "file": "gen-html-office.pdf",
+      "size": 143635,
+      "pages": 1,
+      "loadError": null,
+      "encrypted": false,
+      "fonts": 6,
+      "parsed": 6,
+      "topFont": {
+        "family": "TimesNewRomanPSMT",
+        "subtype": "Type0",
+        "program": "parsed",
+        "occurrences": 3,
+        "editSuccess": {
+          "singleAsciiChar": {
+            "cmap": 0.46774193548387094,
+            "cid": 0.46774193548387094,
+            "best": 0.46774193548387094
+          },
+          "wordLatvian": {
+            "cmap": 0.5,
+            "cid": 0.5,
+            "best": 0.5
+          }
+        }
+      }
+    },
+    {
+      "file": "gen-linearized-qpdf.pdf",
+      "size": 144824,
+      "pages": 1,
+      "loadError": null,
+      "encrypted": false,
+      "fonts": 6,
+      "parsed": 6,
+      "topFont": {
+        "family": "TimesNewRomanPSMT",
+        "subtype": "Type0",
+        "program": "parsed",
+        "occurrences": 3,
+        "editSuccess": {
+          "singleAsciiChar": {
+            "cmap": 0.46774193548387094,
+            "cid": 0.46774193548387094,
+            "best": 0.46774193548387094
+          },
+          "wordLatvian": {
+            "cmap": 0.5,
+            "cid": 0.5,
+            "best": 0.5
+          }
+        }
+      }
+    },
+    {
+      "file": "gen-rtl-ar-chrome.pdf",
+      "size": 21622,
+      "pages": 1,
+      "loadError": null,
+      "encrypted": false,
+      "fonts": 4,
+      "parsed": 4,
+      "topFont": {
+        "family": "GeezaPro-Bold",
+        "subtype": "Type0",
+        "program": "parsed",
+        "occurrences": 1,
+        "editSuccess": {
+          "singleAsciiChar": {
+            "cmap": 0,
+            "cid": 0,
+            "best": 0
+          },
+          "wordLatvian": {
+            "cmap": 0,
+            "cid": 0,
+            "best": 0
+          }
+        }
+      }
+    },
+    {
+      "file": "gen-rtl-ar-cupsfilter.pdf",
+      "size": 20531,
+      "pages": 1,
+      "loadError": null,
+      "encrypted": false,
+      "fonts": 2,
+      "parsed": 2,
+      "topFont": {
+        "family": "Monaco",
+        "subtype": "TrueType",
+        "program": "parsed",
+        "occurrences": 1,
+        "editSuccess": {
+          "singleAsciiChar": {
+            "cmap": 0.04838709677419355,
+            "cid": 0,
+            "best": 0.04838709677419355
+          },
+          "wordLatvian": {
+            "cmap": 0,
+            "cid": 0,
+            "best": 0
+          }
+        }
+      }
+    },
+    {
+      "file": "gen-type1-base14.pdf",
+      "size": 2857,
+      "pages": 2,
+      "loadError": null,
+      "encrypted": false,
+      "fonts": 8,
+      "parsed": 0,
+      "topFont": {
+        "family": "Helvetica",
+        "subtype": "Type1",
+        "program": "no-descriptor",
+        "occurrences": 2,
+        "editSuccess": {
+          "singleAsciiChar": {
+            "cmap": 0,
+            "cid": 0,
+            "best": 0
+          },
+          "wordLatvian": {
+            "cmap": 0,
+            "cid": 0,
+            "best": 0
+          }
+        }
+      }
+    },
+    {
+      "file": "html-skia-onepager.pdf",
+      "size": 108477,
+      "pages": 1,
+      "loadError": null,
+      "encrypted": false,
+      "fonts": 11,
+      "parsed": 11,
+      "topFont": {
+        "family": "HelveticaNeue-Bold",
+        "subtype": "Type0",
+        "program": "parsed",
+        "occurrences": 6,
+        "editSuccess": {
+          "singleAsciiChar": {
+            "cmap": 0,
+            "cid": 0.3225806451612903,
+            "best": 0.3225806451612903
+          },
+          "wordLatvian": {
+            "cmap": 0,
+            "cid": 0,
+            "best": 0
+          }
+        }
+      }
+    },
+    {
+      "file": "html-skia-type3.pdf",
+      "size": 1027224,
+      "pages": 4,
+      "loadError": null,
+      "encrypted": false,
+      "fonts": 59,
+      "parsed": 25,
+      "topFont": {
+        "family": "",
+        "subtype": "Type3",
+        "program": "type3",
+        "occurrences": 34,
+        "editSuccess": {
+          "singleAsciiChar": {
+            "cmap": 0,
+            "cid": 0,
+            "best": 0
+          },
+          "wordLatvian": {
+            "cmap": 0,
+            "cid": 0,
+            "best": 0
+          }
+        }
+      }
+    },
+    {
+      "file": "html-weasy-checklist.pdf",
+      "size": 2768434,
+      "pages": 18,
+      "loadError": null,
+      "encrypted": false,
+      "fonts": 144,
+      "parsed": 144,
+      "topFont": {
+        "family": "Helvetica-Bold",
+        "subtype": "Type0",
+        "program": "parsed",
+        "occurrences": 18,
+        "editSuccess": {
+          "singleAsciiChar": {
+            "cmap": 0.8709677419354839,
+            "cid": 0.8709677419354839,
+            "best": 0.8709677419354839
+          },
+          "wordLatvian": {
+            "cmap": 0.5,
+            "cid": 0.5,
+            "best": 0.5
+          }
+        }
+      }
+    },
+    {
+      "file": "html-weasy-notice.pdf",
+      "size": 22932,
+      "pages": 1,
+      "loadError": null,
+      "encrypted": false,
+      "fonts": 3,
+      "parsed": 3,
+      "topFont": {
+        "family": "Arial-Black,-Heavy",
+        "subtype": "Type0",
+        "program": "parsed",
+        "occurrences": 1,
+        "editSuccess": {
+          "singleAsciiChar": {
+            "cmap": 0.2903225806451613,
+            "cid": 0.2903225806451613,
+            "best": 0.2903225806451613
+          },
+          "wordLatvian": {
+            "cmap": 0,
+            "cid": 0,
+            "best": 0
+          }
+        }
+      }
+    },
+    {
+      "file": "linearized-guide-ru.pdf",
+      "size": 2676589,
+      "pages": 24,
+      "loadError": null,
+      "encrypted": false,
+      "fonts": 141,
+      "parsed": 141,
+      "topFont": {
+        "family": "Tahoma",
+        "subtype": "Type0",
+        "program": "parsed",
+        "occurrences": 24,
+        "editSuccess": {
+          "singleAsciiChar": {
+            "cmap": 0,
+            "cid": 0.7258064516129032,
+            "best": 0.7258064516129032
+          },
+          "wordLatvian": {
+            "cmap": 0,
+            "cid": 0.125,
+            "best": 0.125
+          }
+        }
+      }
+    },
+    {
+      "file": "linearized-vf7.pdf",
+      "size": 2498697,
+      "pages": 48,
+      "loadError": null,
+      "encrypted": false,
+      "fonts": 137,
+      "parsed": 137,
+      "topFont": {
+        "family": "ArialMT",
+        "subtype": "TrueType",
+        "program": "parsed",
+        "occurrences": 74,
+        "editSuccess": {
+          "singleAsciiChar": {
+            "cmap": 1,
+            "cid": 0.967741935483871,
+            "best": 1
+          },
+          "wordLatvian": {
+            "cmap": 1,
+            "cid": 0.625,
+            "best": 1
+          }
+        }
+      }
+    },
+    {
+      "file": "office-install-guide.pdf",
+      "size": 3663948,
+      "pages": 52,
+      "loadError": null,
+      "encrypted": false,
+      "fonts": 246,
+      "parsed": 149,
+      "topFont": {
+        "family": "ArialMT",
+        "subtype": "TrueType",
+        "program": "no-fontfile",
+        "occurrences": 77,
+        "editSuccess": {
+          "singleAsciiChar": {
+            "cmap": 0,
+            "cid": 0,
+            "best": 0
+          },
+          "wordLatvian": {
+            "cmap": 0,
+            "cid": 0,
+            "best": 0
+          }
+        }
+      }
+    },
+    {
+      "file": "office-invoice-devexpress.pdf",
+      "size": 115954,
+      "pages": 1,
+      "loadError": null,
+      "encrypted": false,
+      "fonts": 6,
+      "parsed": 5,
+      "topFont": {
+        "family": "Cambria",
+        "subtype": "TrueType",
+        "program": "parsed",
+        "occurrences": 2,
+        "editSuccess": {
+          "singleAsciiChar": {
+            "cmap": 0,
+            "cid": 0,
+            "best": 0
+          },
+          "wordLatvian": {
+            "cmap": 0,
+            "cid": 0,
+            "best": 0
+          }
+        }
+      }
+    },
+    {
+      "file": "office-invoice-ulcoin.pdf",
+      "size": 133322,
+      "pages": 1,
+      "loadError": null,
+      "encrypted": false,
+      "fonts": 6,
+      "parsed": 3,
+      "topFont": {
+        "family": "ArialMT",
+        "subtype": "Type0",
+        "program": "parsed",
+        "occurrences": 4,
+        "editSuccess": {
+          "singleAsciiChar": {
+            "cmap": 0.6935483870967742,
+            "cid": 0.43548387096774194,
+            "best": 0.6935483870967742
+          },
+          "wordLatvian": {
+            "cmap": 0.875,
+            "cid": 0.375,
+            "best": 0.875
+          }
+        }
+      }
+    },
+    {
+      "file": "office-quick-manual.pdf",
+      "size": 228270,
+      "pages": 5,
+      "loadError": null,
+      "encrypted": false,
+      "fonts": 16,
+      "parsed": 16,
+      "topFont": {
+        "family": "Calibri",
+        "subtype": "TrueType",
+        "program": "parsed",
+        "occurrences": 7,
+        "editSuccess": {
+          "singleAsciiChar": {
+            "cmap": 0.9193548387096774,
+            "cid": 0,
+            "best": 0.9193548387096774
+          },
+          "wordLatvian": {
+            "cmap": 0.625,
+            "cid": 0,
+            "best": 0.625
+          }
+        }
+      }
+    },
+    {
+      "file": "own-studio-reedit.pdf",
+      "size": 91038,
+      "pages": 1,
+      "loadError": null,
+      "encrypted": false,
+      "fonts": 4,
+      "parsed": 0,
+      "topFont": {
+        "family": "",
+        "subtype": "Type3",
+        "program": "type3",
+        "occurrences": 4,
+        "editSuccess": {
+          "singleAsciiChar": {
+            "cmap": 0,
+            "cid": 0,
+            "best": 0
+          },
+          "wordLatvian": {
+            "cmap": 0,
+            "cid": 0,
+            "best": 0
+          }
+        }
+      }
+    },
+    {
+      "file": "scan-manual-nofonts.pdf",
+      "size": 96730,
+      "pages": 0,
+      "loadError": "Failed to parse PDF document (line:634 col:124 offset=96730): No PDF header found",
+      "encrypted": false,
+      "fonts": 0,
+      "parsed": 0,
+      "topFont": null
+    },
+    {
+      "file": "scan-menu-198.pdf",
+      "size": 1514080,
+      "pages": 198,
+      "loadError": null,
+      "encrypted": false,
+      "fonts": 0,
+      "parsed": 0,
+      "topFont": null
+    },
+    {
+      "file": "scan-receipt.pdf",
+      "size": 56000,
+      "pages": 1,
+      "loadError": null,
+      "encrypted": false,
+      "fonts": 0,
+      "parsed": 0,
+      "topFont": null
+    },
+    {
+      "file": "signed-rpt0580.pdf",
+      "size": 179367,
+      "pages": 1,
+      "loadError": null,
+      "encrypted": false,
+      "fonts": 7,
+      "parsed": 7,
+      "topFont": {
+        "family": "TimesNewRomanPSMT",
+        "subtype": "TrueType",
+        "program": "parsed",
+        "occurrences": 2,
+        "editSuccess": {
+          "singleAsciiChar": {
+            "cmap": 0.8064516129032258,
+            "cid": 0,
+            "best": 0.8064516129032258
+          },
+          "wordLatvian": {
+            "cmap": 0.875,
+            "cid": 0,
+            "best": 0.875
+          }
+        }
+      }
+    },
+    {
+      "file": "signed-wc001.pdf",
+      "size": 120946,
+      "pages": 2,
+      "loadError": null,
+      "encrypted": true,
+      "fonts": 0,
+      "parsed": 0,
+      "topFont": null
+    },
+    {
+      "file": "type1-reportlab-checklist.pdf",
+      "size": 129735,
+      "pages": 2,
+      "loadError": null,
+      "encrypted": false,
+      "fonts": 10,
+      "parsed": 8,
+      "topFont": {
+        "family": "Helvetica",
+        "subtype": "Type1",
+        "program": "no-descriptor",
+        "occurrences": 2,
+        "editSuccess": {
+          "singleAsciiChar": {
+            "cmap": 0,
+            "cid": 0,
+            "best": 0
+          },
+          "wordLatvian": {
+            "cmap": 0,
+            "cid": 0,
+            "best": 0
+          }
+        }
+      }
+    },
+    {
+      "file": "type1-reportlab-journal.pdf",
+      "size": 101864,
+      "pages": 15,
+      "loadError": null,
+      "encrypted": false,
+      "fonts": 45,
+      "parsed": 30,
+      "topFont": {
+        "family": "Helvetica",
+        "subtype": "Type1",
+        "program": "no-descriptor",
+        "occurrences": 15,
+        "editSuccess": {
+          "singleAsciiChar": {
+            "cmap": 0,
+            "cid": 0,
+            "best": 0
+          },
+          "wordLatvian": {
+            "cmap": 0,
+            "cid": 0,
+            "best": 0
+          }
+        }
+      }
+    },
+    {
+      "file": "type1-standard-notembedded.pdf",
+      "size": 68320,
+      "pages": 1,
+      "loadError": null,
+      "encrypted": false,
+      "fonts": 3,
+      "parsed": 2,
+      "topFont": {
+        "family": "Helvetica",
+        "subtype": "Type1",
+        "program": "no-descriptor",
+        "occurrences": 1,
+        "editSuccess": {
+          "singleAsciiChar": {
+            "cmap": 0,
+            "cid": 0,
+            "best": 0
+          },
+          "wordLatvian": {
+            "cmap": 0,
+            "cid": 0,
+            "best": 0
+          }
+        }
+      }
+    },
+    {
+      "file": "type1-standard-printable.pdf",
+      "size": 65640,
+      "pages": 1,
+      "loadError": null,
+      "encrypted": false,
+      "fonts": 3,
+      "parsed": 2,
+      "topFont": {
+        "family": "Helvetica",
+        "subtype": "Type1",
+        "program": "no-descriptor",
+        "occurrences": 1,
+        "editSuccess": {
+          "singleAsciiChar": {
+            "cmap": 0,
+            "cid": 0,
+            "best": 0
+          },
+          "wordLatvian": {
+            "cmap": 0,
+            "cid": 0,
+            "best": 0
+          }
+        }
+      }
+    }
+  ]
+}
