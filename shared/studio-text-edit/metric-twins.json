@@ -26,7 +26,7 @@
         "greek"
       ],
       "measured": {
-        "wordsWithin1pct": 0.924,
+        "wordsWithin1pct": 0.929,
         "wordMedianDrift": 0.0,
         "note": "Arial/Helvetica: metric match confirmed"
       }

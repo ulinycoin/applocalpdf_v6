@@ -135,6 +135,8 @@ const ENTRIES = [
   // --- office: Word / Excel / DevExpress exports -----------------------------------------------
   { id: 'office-install-guide', category: 'office', kind: 'copy', from: `${HOME}/Desktop/KLEEMANN /kleemann_genius20/1592300081_Genius 20 Installation guide EN ver 1.01.pdf` },
   { id: 'office-quick-manual', category: 'office', kind: 'copy', from: `${HOME}/Desktop/KLEEMANN /kleemann_genius20/5HL-201_Helpy_2W-TL_Quick_Manual_EN.pdf` },
+  { id: 'office-oms-manual', category: 'office', kind: 'copy', from: `${HOME}/Desktop/KLEEMANN /kleemann_genius20/1718168250_OMS installation Manual.pdf` },
+  { id: 'office-helpy-guide-en', category: 'office', kind: 'copy', from: `${HOME}/Desktop/KLEEMANN /kleemann_genius20/Guidarapida_Helpy_2W-TL_EN_7.pdf` },
   { id: 'office-invoice-devexpress', category: 'office', kind: 'copy', from: `${HOME}/Desktop/ul-coin SIA/Rekeni/Gramatvede/Rekins 2023_0210-001.pdf` },
   { id: 'office-invoice-ulcoin', category: 'office', kind: 'copy', from: `${HOME}/Desktop/ul-coin SIA/Rekeni/UL-COIN BA-23-450..pdf` },
 
@@ -166,8 +168,10 @@ const ENTRIES = [
   { id: 'gen-rtl-ar-cupsfilter', category: 'rtl', kind: 'cupsfilter', text: ARABIC_TEXT },
 
   // --- signed -----------------------------------------------------------------------------------
-  { id: 'signed-wc001', category: 'signed', kind: 'copy', from: `${HOME}/Desktop/фотки/20241018WC001.pdf` },
-  { id: 'signed-rpt0580', category: 'signed', kind: 'copy', from: `${HOME}/Downloads/RPT_0580_par pieteik.izsk.RP_proces.ties_ar rezol_lēmumu_1.pdf` },
+  // Deliberately empty. The only signed PDFs on this machine are personal documents (a signed
+  // contract and an institution's decision addressed to the founder), and copying those into the
+  // project tree is not worth it: fonts in signed files are ordinary embedded subsets.
+  // Reproduce the category with pyhanko-signed synthetic files when wave 3 needs /Sig for real.
 
   // --- linearized -------------------------------------------------------------------------------
   { id: 'linearized-guide-ru', category: 'linearized', kind: 'copy', from: `${HOME}/Desktop/KLEEMANN /kleemann_genius20/Guidarapida_Helpy 2W-V_KL_RU.pdf` },
