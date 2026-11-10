@@ -288,6 +288,7 @@ function inspectFont(ctx, fontDict, resourceName, fontRef, cache) {
   const cacheKey = `${fileRef.ref?.objectNumber ?? 'direct'}:${fileRef.key}`;
   const cached = cache.get(cacheKey);
   if (cached) {
+    entry.fontkitFont = cached.fontkitFont;
     entry.program = cached.program;
     entry.programError = cached.programError;
     entry.programSha = cached.programSha;
@@ -334,6 +335,9 @@ function inspectFont(ctx, fontDict, resourceName, fontRef, cache) {
   try {
     const font = fontkit.create(Buffer.from(decoded.bytes));
     entry.program = 'parsed';
+    // Layout comparisons (scripts/measure-metric-twins.mjs) need the live font object; it is not
+    // serialised and never reaches the baseline JSON.
+    entry.fontkitFont = font;
     entry.numGlyphs = font.numGlyphs;
     entry.fsType = readFsType(font);
     entry.modes.cmap.coverage62 = coverageOfFont(font, BASE62);

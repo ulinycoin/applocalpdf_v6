@@ -67,3 +67,8 @@ graphify-out/
 
 # Studio script fonts are copied from node_modules by scripts/copy-studio-fonts.mjs
 public/fonts/noto-sans-*.woff
+public/fonts/arimo-*.woff
+public/fonts/tinos-*.woff
+public/fonts/cousine-*.woff
+public/fonts/carlito-*.woff
+public/fonts/caladea-*.woff

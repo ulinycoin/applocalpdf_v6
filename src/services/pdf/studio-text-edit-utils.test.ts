@@ -52,7 +52,7 @@ test('resolveTypographyFromElement prefers the real font name for an untouched l
   // The editor seeds sora/normal from the generic hint; the stream says Times-Bold.
   assert.deepEqual(
     resolveTypographyFromElement(element, 'TimesNewRomanPS-BoldMT'),
-    { fontFamily: 'times', fontWeight: 'bold', fontStyle: 'normal' },
+    { fontFamily: 'times', fontWeight: 'bold', fontStyle: 'normal', familyCustomized: false },
   );
 });
 
@@ -64,7 +64,7 @@ test('resolveTypographyFromElement keeps a family the user changed', () => {
   });
   assert.deepEqual(
     resolveTypographyFromElement(element, 'Helvetica'),
-    { fontFamily: 'mono', fontWeight: 'normal', fontStyle: 'normal' },
+    { fontFamily: 'mono', fontWeight: 'normal', fontStyle: 'normal', familyCustomized: true },
   );
 });
 
@@ -72,7 +72,7 @@ test('resolveTypographyFromElement uses the element for new overlay text', () =>
   const element = textElement({ fontFamily: 'times', fontWeight: 'bold' });
   assert.deepEqual(
     resolveTypographyFromElement(element),
-    { fontFamily: 'times', fontWeight: 'bold', fontStyle: 'normal' },
+    { fontFamily: 'times', fontWeight: 'bold', fontStyle: 'normal', familyCustomized: false },
   );
 });
 

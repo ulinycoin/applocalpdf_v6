@@ -56,3 +56,13 @@ export {
   planTextSegments,
   type SegmentedTextRun,
 } from './segmented-text';
+export {
+  METRIC_TWIN_PROBE_TEXT,
+  metricTwinAssetFile,
+  metricTwinAssetFiles,
+  metricTwinSubsetsFor,
+  metricTwins,
+  normalizePdfFontName,
+  resolveMetricTwin,
+  type MetricTwin,
+} from './metric-twin';

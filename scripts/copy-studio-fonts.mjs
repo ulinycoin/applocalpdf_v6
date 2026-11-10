@@ -14,6 +14,10 @@
  * `@fontsource/noto-sans-hebrew`, v5.3.0) and the script picks them up from there. Anything that is
  * still uncovered — notably CJK, whose smallest complete face is ~9.6 MB — stays raster text.
  *
+ * Metric twins (Arimo/Tinos/Cousine/Carlito/Caladea) are copied the same way, and their file list is
+ * enumerated from the package instead of hardcoded: Caladea ships no Cyrillic slice, and a hardcoded
+ * matrix would silently claim files that do not exist.
+ *
  * The script never touches the network: the committed assets are the source of truth.
  */
 
@@ -62,3 +66,28 @@ for (const { subset, fontPackage } of subsets) {
 }
 
 console.log(`[studio-fonts] copied ${copied} Noto subset(s) to public/fonts`);
+
+/**
+ * Metric-compatible stand-ins: `fonts/<family>-<subset>-<weight>-<style>.woff`. Only the slices and
+ * variants that actually ship are copied — the applier treats a missing file as "no twin" and falls
+ * back to the previous behaviour, so a gap here costs glyph fidelity, never correctness.
+ */
+const twinFamilies = ['arimo', 'tinos', 'cousine', 'carlito', 'caladea'];
+const twinSlices = /-(latin|latin-ext|cyrillic|greek)-(400|700)-(normal|italic)\.woff$/u;
+
+let twins = 0;
+for (const family of twinFamilies) {
+  const filesDir = path.join(fontsourceDir, family, 'files');
+  if (!fs.existsSync(filesDir)) {
+    // Not installed (a checkout without dev dependencies): the previously copied files stay.
+    continue;
+  }
+  for (const name of fs.readdirSync(filesDir)) {
+    if (!name.startsWith(`${family}-`) || !twinSlices.test(name)) {
+      continue;
+    }
+    fs.copyFileSync(path.join(filesDir, name), path.join(targetDir, name));
+    twins += 1;
+  }
+}
+console.log(`[studio-fonts] copied ${twins} metric-twin file(s) to public/fonts`);

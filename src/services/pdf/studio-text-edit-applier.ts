@@ -30,10 +30,13 @@ import {
   resolveSourceFontInfo,
   resolveTargetRect,
   resolveTypographyFromElement,
+  resolveMetricTwin,
+  metricTwinAssetFiles,
   resolveWidgetPlacement,
   resolveFontSizeFromElement,
   inferTypographyFromBaseFont,
   textElementMovedFromOriginal as hasTextElementMovedFromOriginal,
+  type MetricTwin,
   type SourceFontInfo,
   type StreamOperatorRef,
 } from './text-edit';
@@ -756,6 +759,39 @@ export async function applyStudioTextEditsToPdfBytes(params: {
     return embedded;
   };
 
+  /**
+   * Metric-compatible stand-ins, fetched on demand: a document that edits Calibri text downloads one
+   * Carlito slice (~15-25 KB), not the whole family catalogue. A missing file is not an error — the
+   * coverage gate simply never sees that candidate.
+   */
+  const twinFontCache = new Map<string, PDFFont>();
+  const getTwinFonts = async (
+    twin: MetricTwin,
+    weight: 'normal' | 'bold',
+    style: 'normal' | 'italic',
+    text: string,
+  ): Promise<PDFFont[]> => {
+    const fonts: PDFFont[] = [];
+    for (const file of metricTwinAssetFiles(twin, weight, style, text)) {
+      const cached = twinFontCache.get(file);
+      if (cached) {
+        fonts.push(cached);
+        continue;
+      }
+      try {
+        const resp = await fetch(resolvePublicAssetUrl(file));
+        if (!resp.ok) {
+          continue;
+        }
+        const bytes = new Uint8Array(await resp.arrayBuffer());
+        const font = await pdf.embedFont(bytes, { subset: true });
+        twinFontCache.set(file, font);
+        fonts.push(font);
+      } catch { /* skip this slice */ }
+    }
+    return fonts;
+  };
+
   const getStandardFont = async (family: WorkerStudioFontFamilyId, weight: 'normal' | 'bold', style: 'normal' | 'italic') => {
     const fontName = getPdfFontName(family, weight, style);
     const key = String(fontName);
@@ -818,6 +854,7 @@ export async function applyStudioTextEditsToPdfBytes(params: {
     weight: 'normal' | 'bold',
     style: 'normal' | 'italic',
     text: string,
+    twin?: MetricTwin,
   ): Promise<PDFFont[]> => {
     const needsExtended = !canEncodeAsLatin1(text);
     const candidates: PDFFont[] = [];
@@ -826,6 +863,14 @@ export async function applyStudioTextEditsToPdfBytes(params: {
         candidates.push(font);
       }
     };
+
+    // The document's own typeface, stood in for by a metrically identical face. Everything below is
+    // the old chain, kept as the fallback when the twin does not cover the text.
+    if (twin) {
+      for (const font of await getTwinFonts(twin, weight, style, text)) {
+        addUnique(font);
+      }
+    }
 
     if (!needsExtended) {
       addUnique(await getStandardFont(family, weight, style));
@@ -869,9 +914,10 @@ export async function applyStudioTextEditsToPdfBytes(params: {
     weight: 'normal' | 'bold';
     style: 'normal' | 'italic';
     text: string;
+    twin?: MetricTwin;
   }): Promise<{ font: PDFFont; text: string }> => {
     const needsExtended = !canEncodeAsLatin1(params.text);
-    const candidates = await getPreferredFontCandidates(params.family, params.weight, params.style, params.text);
+    const candidates = await getPreferredFontCandidates(params.family, params.weight, params.style, params.text, params.twin);
     const covering = pickCoveringFont(candidates, params.text);
     if (covering) {
       return { font: covering, text: params.text };
@@ -909,12 +955,42 @@ export async function applyStudioTextEditsToPdfBytes(params: {
     weight: 'normal' | 'bold';
     style: 'normal' | 'italic';
     text: string;
+    twin?: MetricTwin;
   }): Promise<{
     runs: PlannedTextRun[];
     text: string;
     planSubstring: (value: string) => PlannedTextRun[];
   }> => {
-    const candidates = await getPreferredFontCandidates(params.family, params.weight, params.style, params.text);
+    /**
+     * A twin is split by script (latin, latin-ext, cyrillic), and no single slice covers a string that
+     * mixes ASCII with `ē` — while Roboto covers it, so the ordinary chain would pick Roboto and lose
+     * the document's own face. Runs from two slices of the same family keep the metrics, so the twin
+     * is planned grapheme by grapheme first and only a string it cannot cover at all falls through.
+     */
+    if (params.twin) {
+      const twinFonts = await getTwinFonts(params.twin, params.weight, params.style, params.text);
+      if (twinFonts.length > 0) {
+        const twinPlan = planTextSegments({
+          text: params.text,
+          fonts: twinFonts,
+          canRender: (font, value) => countMissingGlyphs(font, value) === 0,
+        });
+        if (twinPlan.every((run) => run.font)) {
+          const runs = twinPlan.map((run) => ({ text: run.text, font: run.font! }));
+          return {
+            runs,
+            text: runs.map((run) => run.text).join(''),
+            planSubstring: (value) => planTextSegments({
+              text: value,
+              fonts: twinFonts,
+              canRender: (font, grapheme) => countMissingGlyphs(font, grapheme) === 0,
+            }).map((run) => ({ text: run.text, font: run.font ?? twinFonts[0] })),
+          };
+        }
+      }
+    }
+
+    const candidates = await getPreferredFontCandidates(params.family, params.weight, params.style, params.text, params.twin);
     const covering = pickCoveringFont(candidates, params.text);
     if (covering) {
       return {
@@ -1107,12 +1183,23 @@ export async function applyStudioTextEditsToPdfBytes(params: {
     const line = sanitizeInlineText(element.text || ' ');
     // Prefer the real PostScript name of the run being replaced over the generic family pdf.js
     // reports, so an overlay keeps the document's own typeface.
-    const typography = resolveTypographyFromElement(element, sourceFontByElementId.get(element.id)?.baseFont);
+    const sourceBaseFont = sourceFontByElementId.get(element.id)?.baseFont;
+    const typography = resolveTypographyFromElement(element, sourceBaseFont);
+    /**
+     * Only when the user kept the document's family and the run is not going to be patched in place:
+     * a simple-Latin `Tj` is rewritten with the font it already has, so embedding a stand-in for it
+     * would add a subset to the file and change nothing on the page.
+     */
+    const sourceFont = sourceFontByElementId.get(element.id);
+    const sourceTwin = typography.familyCustomized || sourceFont?.simpleLatin
+      ? undefined
+      : resolveMetricTwin(sourceBaseFont);
     const textPlan = await resolveTextPlan({
       family: typography.fontFamily,
       weight: typography.fontWeight,
       style: typography.fontStyle,
       text: line,
+      twin: sourceTwin,
     });
     const textToDraw = textPlan.text || ' ';
     const font = textPlan.runs[0]?.font ?? await getStandardFont(typography.fontFamily, typography.fontWeight, typography.fontStyle);

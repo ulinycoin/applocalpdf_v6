@@ -1,0 +1,131 @@
+{
+  "$comment": "Metric-compatible OFL replacements for the faces PDF producers actually embed. Reusing the embedded contours is capped at roughly half of real edits (see .agent/tasks.md, 2026-11-11), so the visible defect — Calibri becoming Helvetica — is fixed by drawing with a face whose advance widths are identical instead. `patterns` are matched against the normalised PostScript name (subset prefix stripped, lowercase, non-alphanumerics removed), longest pattern first.",
+  "version": 1,
+  "assetPackage": "@fontsource",
+  "families": [
+    {
+      "id": "arimo",
+      "label": "Arimo",
+      "metricFor": [
+        "Arial",
+        "ArialMT",
+        "Arial-BoldMT",
+        "Helvetica",
+        "HelveticaNeue",
+        "Liberation Sans"
+      ],
+      "patterns": [
+        "arial",
+        "helvetica",
+        "liberationsans"
+      ],
+      "subsets": [
+        "latin",
+        "latin-ext",
+        "cyrillic",
+        "greek"
+      ],
+      "measured": {
+        "wordsWithin1pct": 0.924,
+        "wordMedianDrift": 0.0,
+        "note": "Arial/Helvetica: metric match confirmed"
+      }
+    },
+    {
+      "id": "tinos",
+      "label": "Tinos",
+      "metricFor": [
+        "Times New Roman",
+        "TimesNewRomanPSMT",
+        "Times",
+        "Liberation Serif"
+      ],
+      "patterns": [
+        "times",
+        "tinos",
+        "liberationserif"
+      ],
+      "subsets": [
+        "latin",
+        "latin-ext",
+        "cyrillic",
+        "greek"
+      ],
+      "measured": {
+        "wordsWithin1pct": 1.0,
+        "wordMedianDrift": 0.0,
+        "note": "Times New Roman: metric match confirmed"
+      }
+    },
+    {
+      "id": "cousine",
+      "label": "Cousine",
+      "metricFor": [
+        "Courier New",
+        "CourierNewPSMT",
+        "Courier",
+        "Liberation Mono"
+      ],
+      "patterns": [
+        "courier",
+        "cousine",
+        "liberationmono"
+      ],
+      "subsets": [
+        "latin",
+        "latin-ext",
+        "cyrillic",
+        "greek"
+      ],
+      "measured": {
+        "wordsWithin1pct": 1.0,
+        "wordMedianDrift": 0.0,
+        "note": "Courier New: metric match confirmed (only 1 program in the corpus)"
+      }
+    },
+    {
+      "id": "carlito",
+      "label": "Carlito",
+      "metricFor": [
+        "Calibri",
+        "Calibri-Bold"
+      ],
+      "patterns": [
+        "calibri",
+        "carlito"
+      ],
+      "subsets": [
+        "latin",
+        "latin-ext",
+        "cyrillic",
+        "greek"
+      ],
+      "measured": {
+        "wordsWithin1pct": 1.0,
+        "wordMedianDrift": 0.0,
+        "note": "Calibri: metric match confirmed"
+      }
+    },
+    {
+      "id": "caladea",
+      "label": "Caladea",
+      "metricFor": [
+        "Cambria",
+        "Cambria-Bold"
+      ],
+      "patterns": [
+        "cambria",
+        "caladea"
+      ],
+      "subsets": [
+        "latin",
+        "latin-ext"
+      ],
+      "measured": {
+        "wordsWithin1pct": 0.0,
+        "wordMedianDrift": 0.0455,
+        "note": "Cambria: shapes match, metrics do NOT (+4.6% median, +12% p90, digits up to +35%) — layout may shift, kept because the alternative (Times) is no better and looks further off"
+      }
+    }
+  ]
+}

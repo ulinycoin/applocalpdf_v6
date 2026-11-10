@@ -6,6 +6,11 @@ interface ResolvedTypography {
   fontFamily: WorkerStudioFontFamilyId;
   fontWeight: 'normal' | 'bold';
   fontStyle: 'normal' | 'italic';
+  /**
+   * True when the user picked a family different from the one the source run implies. Only a family
+   * choice overrides the document's own face; a weight or italic tweak still belongs to that face.
+   */
+  familyCustomized: boolean;
 }
 
 function inferTypographyFromSource(element: WorkerStudioTextEditElement): ResolvedTypography {
@@ -16,7 +21,7 @@ function inferTypographyFromSource(element: WorkerStudioTextEditElement): Resolv
     element.sourceFontName,
     element.sourceFontFamilyHint,
   );
-  return { fontFamily, fontWeight, fontStyle };
+  return { fontFamily, fontWeight, fontStyle, familyCustomized: false };
 }
 
 function hasSourceTypography(element: WorkerStudioTextEditElement): boolean {
@@ -40,6 +45,7 @@ export function resolveTypographyFromElement(
       fontFamily: element.fontFamily,
       fontWeight: element.fontWeight,
       fontStyle: element.fontStyle,
+      familyCustomized: false,
     };
   }
 
@@ -52,10 +58,11 @@ export function resolveTypographyFromElement(
       fontFamily: element.fontFamily,
       fontWeight: element.fontWeight,
       fontStyle: element.fontStyle,
+      familyCustomized: element.fontFamily !== fromHints.fontFamily,
     };
   }
 
-  return inferTypographyFromBaseFont(sourceBaseFont) ?? fromHints;
+  return { ...(inferTypographyFromBaseFont(sourceBaseFont) ?? fromHints), familyCustomized: false };
 }
 
 /** Size in points the user actually asked for, falling back to the size of the source run. */
