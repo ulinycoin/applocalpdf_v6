@@ -1,6 +1,17 @@
 import { describe, test } from 'node:test';
 import * as assert from 'node:assert';
-import { PRO_LIFETIME_PRICE_USD, PRO_YEARLY_PRICE_USD, resolvePrimaryOffer } from './checkout-offers';
+import {
+  BFCM_DISCOUNT_CODE,
+  BFCM_ENDS_AT_MS,
+  BFCM_STARTS_AT_MS,
+  PRO_LIFETIME_PRICE_USD,
+  PRO_YEARLY_PRICE_USD,
+  appendCheckoutQuery,
+  applyBfcmDiscount,
+  getPrimaryPaidOffer,
+  isBfcmActive,
+  resolvePrimaryOffer,
+} from './checkout-offers';
 
 const LIFETIME_URL = 'https://localpdf.lemonsqueezy.com/checkout/buy/lifetime-variant-slug';
 const YEARLY_URL = 'https://localpdf.lemonsqueezy.com/checkout/buy/yearly-variant-slug';
@@ -34,5 +45,71 @@ describe('checkout-offers', () => {
     const offer = resolvePrimaryOffer('', YEARLY_URL);
     assert.notStrictEqual(offer?.variant, 'monthly');
     assert.doesNotMatch(offer?.label ?? '', /\/mo\b/);
+  });
+});
+
+describe('BFCM campaign window', () => {
+  test('is closed one millisecond before the window opens', () => {
+    assert.strictEqual(isBfcmActive(BFCM_STARTS_AT_MS - 1), false);
+    assert.strictEqual(isBfcmActive(BFCM_STARTS_AT_MS), true);
+  });
+
+  test('is closed at the advertised end and stays closed', () => {
+    assert.strictEqual(isBfcmActive(BFCM_ENDS_AT_MS - 1), true);
+    assert.strictEqual(isBfcmActive(BFCM_ENDS_AT_MS), false);
+    assert.strictEqual(isBfcmActive(Date.parse('2026-12-05T00:00:00Z')), false);
+  });
+
+  test('window opens on 11 Nov and covers all of Black Friday weekend', () => {
+    assert.strictEqual(isBfcmActive(Date.parse('2026-11-10T21:59:00Z')), false);
+    assert.strictEqual(isBfcmActive(Date.parse('2026-11-11T00:01:00+02:00')), true);
+    assert.strictEqual(isBfcmActive(Date.parse('2026-11-27T12:00:00Z')), true);
+    assert.strictEqual(isBfcmActive(Date.parse('2026-11-30T12:00:00Z')), true);
+  });
+});
+
+describe('applyBfcmDiscount', () => {
+  const inWindow = BFCM_STARTS_AT_MS + 1000;
+
+  test('adds the code to the lifetime link during the window', () => {
+    const url = applyBfcmDiscount(LIFETIME_URL, 'lifetime', inWindow);
+    assert.strictEqual(url, `${LIFETIME_URL}?checkout[discount_code]=${BFCM_DISCOUNT_CODE}`);
+  });
+
+  test('keeps an existing query string intact', () => {
+    const withQuery = `${LIFETIME_URL}?checkout[custom][distinct_id]=abc`;
+    const url = applyBfcmDiscount(withQuery, 'lifetime', inWindow);
+    assert.strictEqual(url, `${withQuery}&checkout[discount_code]=${BFCM_DISCOUNT_CODE}`);
+  });
+
+  test('never touches the yearly anchor', () => {
+    assert.strictEqual(applyBfcmDiscount(YEARLY_URL, 'yearly', inWindow), YEARLY_URL);
+  });
+
+  test('leaves links untouched outside the window', () => {
+    assert.strictEqual(applyBfcmDiscount(LIFETIME_URL, 'lifetime', BFCM_ENDS_AT_MS), LIFETIME_URL);
+    assert.strictEqual(applyBfcmDiscount(LIFETIME_URL, 'lifetime', BFCM_STARTS_AT_MS - 1), LIFETIME_URL);
+  });
+
+  test('tolerates empty urls', () => {
+    assert.strictEqual(appendCheckoutQuery('', 'a=b'), '');
+    assert.strictEqual(applyBfcmDiscount('', 'lifetime', inWindow), '');
+  });
+});
+
+describe('getPrimaryPaidOffer during the campaign', () => {
+  test('prefills the code and shows the discounted price once the window opens', () => {
+    const offer = getPrimaryPaidOffer(BFCM_STARTS_AT_MS + 1000);
+    assert.strictEqual(offer?.variant, 'lifetime');
+    assert.strictEqual(offer?.discounted, true);
+    assert.match(offer?.url ?? '', new RegExp(`checkout\\[discount_code\\]=${BFCM_DISCOUNT_CODE}`));
+    assert.match(offer?.label ?? '', /\$9\.50/);
+  });
+
+  test('sells at the regular price outside the window', () => {
+    const offer = getPrimaryPaidOffer(BFCM_ENDS_AT_MS + 1000);
+    assert.strictEqual(offer?.discounted, false);
+    assert.doesNotMatch(offer?.label ?? '', /\$9\.50/);
+    assert.match(offer?.label ?? '', new RegExp(`\\$${PRO_LIFETIME_PRICE_USD}`));
   });
 });

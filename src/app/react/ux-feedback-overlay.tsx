@@ -5,6 +5,7 @@ import { openCheckout } from './billing';
 import { trackMonetizationEvent } from './monetization-telemetry';
 import { getTrialState } from '../platform/trial-manager';
 import { getPrimaryPaidOffer } from '../platform/checkout-offers';
+import { BfcmBanner } from './bfcm-banner';
 
 interface UiToastItem {
   id: string;
@@ -165,6 +166,7 @@ export function UxFeedbackOverlay() {
                     ? 'You have full Pro access during your trial. Buy once to keep it after the trial ends.'
                     : 'Every tool is already free. One payment removes the limits: unlimited downloads, workspaces and larger files.'}
                 </p>
+                <BfcmBanner placement="post_run" />
               </div>
             </div>
             <div className="ux-upsell-actions">

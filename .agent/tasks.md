@@ -1,6 +1,30 @@
 # Active Tasks
 
-Last updated: 2026-10-27
+Last updated: 2026-11-10
+
+## Сессия 2026-11-10 — Black Friday 2026: публичный код без сбора email
+
+Триггер — план BFCM v3 (`~/Desktop/bfcm-review/localpdf-bfcm-plan-2026-11-10-v3.md`) после ревью трёх моделей. От захвата email отказались: 22 клика по CTA в месяц → ~4 за окно, реалистично 3–15 адресов, а код всё равно публичный, значит поле ничего не разблокирует. Осталась скидка + полоса с ней.
+
+### Сделано
+
+1. **LemonSqueezy.** `A4MDE2NA` (published 100% off, без expiry, без привязки к товарам) **удалён**: API не поддерживает update — ни `PATCH` с `expires_at`, ни с `status` не проходят (500), в доках есть только create/retrieve/list/delete. Создан `BFCM50` (id 1248842): 50%, variant 2143549 (Pro Lifetime), `max_redemptions=100`, окно 2026-11-10T22:00Z → 2026-12-01T00:00Z (11.11 00:00 — конец ноября по Риге).
+2. **`checkout-offers.ts`.** `isBfcmActive()`, `applyBfcmDiscount(url, variant, nowMs)` (только lifetime), `hasDiscountCode()`, `appendCheckoutQuery()`, `discounted` в `PaidOffer`. `getPrimaryPaidOffer()` во время окна отдаёт цену `$9.50 (was $19)`.
+3. **Показ в трёх местах.** `bfcm-banner.tsx` — полоса с событием `bfcm_banner_shown`; вставлена в `PaywallModal` (над CTA) и `ux-feedback-overlay` (пост-ран апсейл). На `/pricing` блок, зачёркнутая цена и label кнопки переключаются через `[data-bfcm-active]`, код дописывается **в обработчике клика**: страница статическая, билд-тайм подстановка оставила бы скидку живой после окна.
+4. **Телеметрия.** `bfcm_banner_shown` в типизированный union, `discountApplied` в `checkout_opened` (считается из URL в `openCheckout`, не из вызова — не может разойтись).
+
+### Проверено
+
+- e2e механизма вживую: временный код `BFCMPROBE` с окном «сейчас» → чекаут `…?checkout[discount_code]=…` отдаёт `discount_failed_attempts: 0`, сумма **950** вместо 1900; код удалён, `BFCM50` не активен до 22:00Z и сейчас даёт `discount_failed_attempts: 1` — то есть до окна предзаполнение безвредно.
+- `test-mode` копию создать через API нельзя (`test_mode` не пишется в create, код вышел живым) — удалена.
+- `npm test` 493/493, `npm run build`, `npm run build:web` (82 страницы), `npm run audit:workerization:strict` — exit 0.
+- ESLint: 0 ошибок в изменённых файлах; общий `npm run lint` красный на `zapier/*.js` (было до правки).
+
+### Открыто
+
+- Пуш и деплой — только по явному OK фаундера. До 11.11 полоса не показывается ни на сайте, ни в приложении (окно по дате).
+- Живой смоук ($9.50 реальной картой) не делался: деньги. Достаточно первой реальной продажи — она попадёт в `purchase_completed` из вебхука.
+- `A4MDE2NA` больше не существует. Если нужен подарочный код — создавать заново, с лимитом и привязкой к variant.
 
 ## Сессия 2026-10-27 (2) — copy/paste между воркспейсами и Ctrl+Z
 

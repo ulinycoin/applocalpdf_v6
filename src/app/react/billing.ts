@@ -1,4 +1,5 @@
 import { trackMonetizationEvent } from './monetization-telemetry';
+import { hasDiscountCode } from '../platform/checkout-offers';
 
 const DEFAULT_BILLING_PATH = '/pricing';
 
@@ -65,6 +66,7 @@ export function openCheckout(checkoutUrl: string | undefined, options?: {
     userState: options?.userState ?? 'local',
     hadPriorSuccessfulRun: options?.hadPriorSuccessfulRun,
     flowId: options?.flowId,
+    discountApplied: hasDiscountCode(safeCheckoutUrl),
   });
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

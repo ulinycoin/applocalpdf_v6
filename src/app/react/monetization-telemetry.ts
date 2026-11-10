@@ -22,6 +22,8 @@ export type MonetizationEventName =
   | 'billing_device_activated'
   | 'billing_device_deactivated'
   | 'billing_device_limit_reached'
+  // Campaign banner impressions: the denominator for "did anyone actually see the offer".
+  | 'bfcm_banner_shown'
   // A share link is a distribution action, not a download; it needs its own name so the download
   // funnel stays clean.
   | 'app_file_shared';
@@ -37,6 +39,10 @@ export interface MonetizationEventProps {
   route?: string;
   userState?: 'anonymous' | 'signed_in' | 'local';
   hadPriorSuccessfulRun?: boolean;
+  /** True when the buy link carried a campaign discount code. */
+  discountApplied?: boolean;
+  /** Where a campaign banner was rendered: pricing | paywall | post_run. */
+  placement?: string;
   reason?: string;
   status?: string;
   flowId?: string;

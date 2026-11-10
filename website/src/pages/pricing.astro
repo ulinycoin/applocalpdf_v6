@@ -1,6 +1,8 @@
 ---
 import MarketingLayout from '../layouts/MarketingLayout.astro';
 import {
+  BFCM_DISCOUNT_CODE,
+  BFCM_PRICE_USD,
   getLifetimeCheckoutUrl,
   getYearlyCheckoutUrl,
   PRO_LIFETIME_PRICE_USD,
@@ -86,6 +88,14 @@ const pricingSchema = {
         </p>
       </header>
 
+      <section class="bfcm-strip" aria-label="Black Friday offer">
+        <span class="bfcm-strip-label">Black Friday</span>
+        <p class="bfcm-strip-text">
+          <strong>50% off</strong> Pro Lifetime — ${BFCM_PRICE_USD.toFixed(2)} instead of ${PRO_LIFETIME_PRICE_USD}, until Nov 30.
+          Code <code class="bfcm-strip-code">{BFCM_DISCOUNT_CODE}</code> is applied at checkout.
+        </p>
+      </section>
+
       <section class="plans-grid" aria-label="Pricing plans">
         <article class="plan-card">
           <div class="plan-copy">
@@ -107,7 +117,10 @@ const pricingSchema = {
           <div class="featured-badge">Pay once</div>
           <div class="plan-copy">
             <p class="plan-kicker">Pro Lifetime</p>
-            <h2>${PRO_LIFETIME_PRICE_USD}</h2>
+            <h2 class="plan-price">
+              <span class="bfcm-price-regular">${PRO_LIFETIME_PRICE_USD}</span>
+              <span class="bfcm-price-sale">${BFCM_PRICE_USD.toFixed(2)} <s class="bfcm-was">${PRO_LIFETIME_PRICE_USD}</s></span>
+            </h2>
             <p class="plan-period">one time · no renewal</p>
             <p class="plan-summary">Buy once and drop the limits. Nothing renews, nothing to cancel.</p>
           </div>
@@ -123,7 +136,8 @@ const pricingSchema = {
               class="plan-link plan-link-primary"
               data-checkout-url={lifetimeCheckoutUrl}
             >
-              Get Pro Lifetime — ${PRO_LIFETIME_PRICE_USD}
+              <span class="bfcm-label-regular">Get Pro Lifetime — ${PRO_LIFETIME_PRICE_USD}</span>
+              <span class="bfcm-label-sale">Get Pro Lifetime — ${BFCM_PRICE_USD.toFixed(2)}</span>
             </button>
             <button
               id="buy-pro-yearly"
@@ -175,6 +189,7 @@ const pricingSchema = {
 <script>
   import { openCheckout, resolveCheckoutUrl } from '../../../src/app/react/billing';
   import { BillingService } from '../../../src/app/platform/billing-service';
+  import { applyBfcmDiscount, isBfcmActive } from '../../../src/app/platform/checkout-offers';
 
   const billingService = new BillingService('v6_subscription_jwt', import.meta.env.VITE_PUBLIC_JWT_KEY);
 
@@ -182,8 +197,11 @@ const pricingSchema = {
     const btn = document.getElementById(buttonId);
     if (!btn) return;
 
-    const checkoutUrl = resolveCheckoutUrl(btn.getAttribute('data-checkout-url') ?? undefined);
+    const baseCheckoutUrl = resolveCheckoutUrl(btn.getAttribute('data-checkout-url') ?? undefined);
     btn.addEventListener('click', () => {
+      // The campaign code is appended at click time: this page is static, so baking it at build
+      // time would keep the discount live after the window closed.
+      const checkoutUrl = baseCheckoutUrl ? applyBfcmDiscount(baseCheckoutUrl, variant) : null;
       if (checkoutUrl) {
         openCheckout(checkoutUrl, {
           source: 'pricing_page',
@@ -266,6 +284,16 @@ const pricingSchema = {
       void restoreLicense();
     }
   });
+
+  if (isBfcmActive()) {
+    const shell = document.querySelector('.pricing-shell');
+    shell?.setAttribute('data-bfcm-active', '');
+    (window as any).posthog?.capture?.('bfcm_banner_shown', {
+      source: 'bfcm',
+      placement: 'pricing',
+      route: '/pricing',
+    });
+  }
 </script>
 
 <style>
@@ -520,5 +548,70 @@ const pricingSchema = {
   }
   .status-message.error {
     color: #b91c1c;
+  }
+
+  /* Black Friday 2026: everything below stays hidden unless the campaign window is open at runtime,
+     because this page is static and is not rebuilt when the campaign starts or ends. */
+  .bfcm-strip,
+  .bfcm-price-sale,
+  .bfcm-label-sale {
+    display: none;
+  }
+  .pricing-shell[data-bfcm-active] .bfcm-strip {
+    display: flex;
+  }
+  .pricing-shell[data-bfcm-active] .bfcm-price-regular,
+  .pricing-shell[data-bfcm-active] .bfcm-label-regular {
+    display: none;
+  }
+  .pricing-shell[data-bfcm-active] .bfcm-price-sale,
+  .pricing-shell[data-bfcm-active] .bfcm-label-sale {
+    display: inline;
+  }
+
+  .bfcm-strip {
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin: 0 auto 8px;
+    max-width: 760px;
+    padding: 12px 18px;
+    border-radius: 18px;
+    border: 1px solid rgba(37, 99, 235, 0.28);
+    background: rgba(37, 99, 235, 0.08);
+    color: #0f172a;
+  }
+  .bfcm-strip-label {
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: #2563eb;
+    color: #fff;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+  .bfcm-strip-text {
+    margin: 0;
+    font-size: 16px;
+    line-height: 1.5;
+    color: #1e293b;
+  }
+  .bfcm-strip-code {
+    padding: 2px 8px;
+    border-radius: 8px;
+    border: 1px dashed rgba(37, 99, 235, 0.5);
+    background: rgba(255, 255, 255, 0.7);
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 14px;
+    font-weight: 700;
+  }
+  .bfcm-was {
+    margin-left: 6px;
+    font-size: 0.55em;
+    font-weight: 600;
+    opacity: 0.6;
   }
 </style>

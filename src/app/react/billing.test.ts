@@ -109,7 +109,18 @@ describe('billing helpers', () => {
         hadPriorSuccessfulRun: undefined,
         flowId: undefined,
         route: undefined,
+        discountApplied: false,
       }]);
+    });
+
+    test('flags the checkout event when the buy link carries a campaign code', () => {
+      const captureSpy = window.posthog?.capture as any;
+      openCheckout(
+        'https://store.lemonsqueezy.com/checkout/buy/123?checkout[discount_code]=BFCM50',
+        { source: 'paywall_modal', plan: 'pro', variant: 'lifetime' },
+      );
+      assert.strictEqual(captureSpy.mock.calls.length, 1);
+      assert.strictEqual(captureSpy.mock.calls[0].arguments[1].discountApplied, true);
     });
 
     test('uses LemonSqueezy overlay if available', () => {

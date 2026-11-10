@@ -1,6 +1,7 @@
 import { trackMonetizationEvent } from './monetization-telemetry';
 import { openCheckout } from './billing';
 import { getPrimaryPaidOffer } from '../platform/checkout-offers';
+import { BfcmBanner } from './bfcm-banner';
 
 interface PaywallModalProps {
   toolId: string;
@@ -86,6 +87,8 @@ export function PaywallModal({ toolId, toolName, reason, details, onClose }: Pay
             ))}
           </ul>
         </div>
+
+        <BfcmBanner placement="paywall" />
 
         <button className="btn-primary paywall-cta" onClick={handleUpgrade}>
           <span className="btn-inline">
