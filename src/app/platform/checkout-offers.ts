@@ -42,10 +42,16 @@ export function getYearlyCheckoutUrl(): string | null {
  * discount that the store does not honour.
  */
 export const BFCM_DISCOUNT_CODE = 'BFCM50';
-/** 11 Nov 2026 00:00 Europe/Riga. */
-export const BFCM_STARTS_AT_MS = Date.parse('2026-11-10T22:00:00Z');
-/** End of November; LemonSqueezy expires the code at the same instant. */
-export const BFCM_ENDS_AT_MS = Date.parse('2026-12-01T00:00:00Z');
+/**
+ * Opens mid-day 10 Nov UTC: Tokyo has already turned 11 Nov, US shoppers still get the whole day.
+ * A Riga-midnight start would show the offer to nobody in either market at the hour it mattered.
+ */
+export const BFCM_STARTS_AT_MS = Date.parse('2026-11-10T16:00:00Z');
+/**
+ * Runs to the end of 30 Nov in both top markets: 00:00 PST / 03:00 EST on 1 Dec, 17:00 in Tokyo.
+ * A UTC-midnight end would kill US Cyber Monday at 16:00 Pacific — the peak evening of the event.
+ */
+export const BFCM_ENDS_AT_MS = Date.parse('2026-12-01T08:00:00Z');
 export const BFCM_PRICE_USD = PRO_LIFETIME_PRICE_USD / 2;
 
 export function isBfcmActive(nowMs: number = Date.now()): boolean {

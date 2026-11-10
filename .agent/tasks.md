@@ -8,14 +8,15 @@ Last updated: 2026-11-10
 
 ### Сделано
 
-1. **LemonSqueezy.** `A4MDE2NA` (published 100% off, без expiry, без привязки к товарам) **удалён**: API не поддерживает update — ни `PATCH` с `expires_at`, ни с `status` не проходят (500), в доках есть только create/retrieve/list/delete. Создан `BFCM50` (id 1248842): 50%, variant 2143549 (Pro Lifetime), `max_redemptions=100`, окно 2026-11-10T22:00Z → 2026-12-01T00:00Z (11.11 00:00 — конец ноября по Риге).
+1. **LemonSqueezy.** `A4MDE2NA` (published 100% off, без expiry, без привязки к товарам) **удалён**: API не поддерживает update — ни `PATCH` с `expires_at`, ни с `status` не проходят (500), в доках есть только create/retrieve/list/delete. Создан `BFCM50` (id 1248931): 50%, variant 2143549 (Pro Lifetime), `max_redemptions=100`, окно `2026-11-10T16:00Z → 2026-12-01T08:00Z`.
+   Окно пересчитано под реальные рынки (Япония + США — основной трафик): старт в тот момент, когда в Токио уже 11.11, а в США ещё весь день; конец — 00:00 PST 1 декабря, то есть весь вечер Cyber Monday 30.11 в США живой. Прежние 22:00Z→01.12 00:00Z убивали США в 16:00 по Pacific.
 2. **`checkout-offers.ts`.** `isBfcmActive()`, `applyBfcmDiscount(url, variant, nowMs)` (только lifetime), `hasDiscountCode()`, `appendCheckoutQuery()`, `discounted` в `PaidOffer`. `getPrimaryPaidOffer()` во время окна отдаёт цену `$9.50 (was $19)`.
 3. **Показ в трёх местах.** `bfcm-banner.tsx` — полоса с событием `bfcm_banner_shown`; вставлена в `PaywallModal` (над CTA) и `ux-feedback-overlay` (пост-ран апсейл). На `/pricing` блок, зачёркнутая цена и label кнопки переключаются через `[data-bfcm-active]`, код дописывается **в обработчике клика**: страница статическая, билд-тайм подстановка оставила бы скидку живой после окна.
 4. **Телеметрия.** `bfcm_banner_shown` в типизированный union, `discountApplied` в `checkout_opened` (считается из URL в `openCheckout`, не из вызова — не может разойтись).
 
 ### Проверено
 
-- e2e механизма вживую: временный код `BFCMPROBE` с окном «сейчас» → чекаут `…?checkout[discount_code]=…` отдаёт `discount_failed_attempts: 0`, сумма **950** вместо 1900; код удалён, `BFCM50` не активен до 22:00Z и сейчас даёт `discount_failed_attempts: 1` — то есть до окна предзаполнение безвредно.
+- e2e механизма вживую: временный код `BFCMPROBE` с окном «сейчас» → чекаут `…?checkout[discount_code]=…` отдаёт `discount_failed_attempts: 0`, сумма **950** вместо 1900; код удалён. После пересчёта окна сам `BFCM50` на живом чекауте даёт `discount_failed_attempts: 0` и 950.
 - `test-mode` копию создать через API нельзя (`test_mode` не пишется в create, код вышел живым) — удалена.
 - `npm test` 493/493, `npm run build`, `npm run build:web` (82 страницы), `npm run audit:workerization:strict` — exit 0.
 - ESLint: 0 ошибок в изменённых файлах; общий `npm run lint` красный на `zapier/*.js` (было до правки).

@@ -60,11 +60,19 @@ describe('BFCM campaign window', () => {
     assert.strictEqual(isBfcmActive(Date.parse('2026-12-05T00:00:00Z')), false);
   });
 
-  test('window opens on 11 Nov and covers all of Black Friday weekend', () => {
-    assert.strictEqual(isBfcmActive(Date.parse('2026-11-10T21:59:00Z')), false);
-    assert.strictEqual(isBfcmActive(Date.parse('2026-11-11T00:01:00+02:00')), true);
+  test('window opens while Tokyo is already on 11 Nov and covers all of Black Friday weekend', () => {
+    assert.strictEqual(isBfcmActive(Date.parse('2026-11-10T15:59:00Z')), false);
+    // 01:00 on 11 Nov in Tokyo — the biggest traffic market is awake before the US window opens.
+    assert.strictEqual(isBfcmActive(Date.parse('2026-11-10T16:01:00Z')), true);
     assert.strictEqual(isBfcmActive(Date.parse('2026-11-27T12:00:00Z')), true);
     assert.strictEqual(isBfcmActive(Date.parse('2026-11-30T12:00:00Z')), true);
+  });
+
+  test('the last hours of 30 Nov in the US are still inside the window', () => {
+    // 23:59 on 30 Nov in New York (05:00Z) and in Los Angeles (08:00Z minus a minute).
+    assert.strictEqual(isBfcmActive(Date.parse('2026-12-01T04:59:00Z')), true);
+    assert.strictEqual(isBfcmActive(Date.parse('2026-12-01T07:59:00Z')), true);
+    assert.strictEqual(isBfcmActive(Date.parse('2026-12-01T08:00:00Z')), false);
   });
 });
 
