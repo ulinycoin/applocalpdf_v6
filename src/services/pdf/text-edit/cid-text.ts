@@ -415,3 +415,126 @@ export function encodeCidText(info: CidFontInfo, text: string): EncodedCidText {
   }
   return { cids, missing, widthsFromProgram };
 }
+
+/**
+ * A font whose glyphs can be addressed by the codes the file already uses — the two shapes that
+ * matter in practice: Identity-H composites (two-byte CIDs) and Type3 (one-byte codes into CharProcs).
+ *
+ * Type3 is how browsers print CJK: Chrome emits one Type3 font per batch of glyphs, each with its own
+ * `/Widths` and `/ToUnicode`, so a Japanese or Chinese character that already appears in the document
+ * can be typed again without touching the font at all.
+ */
+export interface CodeFontInfo {
+  resourceName: string;
+  baseFont?: string;
+  kind: 'identity-cid' | 'type3';
+  codeBytes: 1 | 2;
+  toUnicode: ReadonlyMap<number, string>;
+  charToCode: ReadonlyMap<number, number>;
+  /** Hex string operand for `Tj`, plus the characters the font cannot address. */
+  encode(text: string): { hex: string; missing: string[] };
+}
+
+/** Absent `/Widths` entries fall back to `/DW`, which would space the new text wrong. */
+function widthLookupForIdentity(info: CidFontInfo): (code: number) => boolean {
+  return (code) => info.widths.has(code) || info.defaultWidth === programWidth(info.font, code);
+}
+
+async function readIdentityCodeFont(
+  pdf: PDFDocument,
+  resources: PDFDict | undefined,
+  resourceName: string,
+): Promise<CodeFontInfo | undefined> {
+  const info = await readCidFontInfo(pdf, resources, resourceName);
+  if (!info || !info.identityCidToGid) {
+    return undefined;
+  }
+  const hasWidth = widthLookupForIdentity(info);
+  return {
+    resourceName: info.resourceName,
+    baseFont: info.baseFont,
+    kind: 'identity-cid',
+    codeBytes: 2,
+    toUnicode: info.toUnicode,
+    charToCode: info.charToCid,
+    encode(text: string) {
+      const codes: number[] = [];
+      const missing: string[] = [];
+      for (const character of text) {
+        const code = info.charToCid.get(character.codePointAt(0)!);
+        if (code === undefined || (info.numGlyphs !== undefined && code >= info.numGlyphs) || !hasWidth(code)) {
+          missing.push(character);
+          continue;
+        }
+        codes.push(code);
+      }
+      return { hex: cidHexString(codes).slice(1, -1), missing };
+    },
+  };
+}
+
+async function readType3CodeFont(
+  pdf: PDFDocument,
+  resources: PDFDict | undefined,
+  resourceName: string,
+): Promise<CodeFontInfo | undefined> {
+  const ctx = pdf.context;
+  const fonts = resources ? asDict(ctx, resources.get(PDFName.of('Font'))) : undefined;
+  const fontDict = fonts ? asDict(ctx, fonts.get(PDFName.of(resourceName))) : undefined;
+  if (!fontDict || fontDict.get(PDFName.of('Subtype'))?.toString() !== '/Type3') {
+    return undefined;
+  }
+  if (!fontDict.get(PDFName.of('CharProcs'))) {
+    return undefined;
+  }
+  const firstChar = toNumber(resolve(ctx, fontDict.get(PDFName.of('FirstChar')))) ?? 0;
+  const widthsArray = asArray(ctx, fontDict.get(PDFName.of('Widths')));
+  if (!widthsArray) {
+    return undefined;
+  }
+  const widthValues = widthsArray.asArray().map((entry) => toNumber(resolve(ctx, entry)));
+  const hasWidth = (code: number): boolean => {
+    const offset = code - firstChar;
+    return offset >= 0 && offset < widthValues.length && widthValues[offset] !== undefined;
+  };
+
+  const source = await streamText(ctx, fontDict.get(PDFName.of('ToUnicode')));
+  if (!source) {
+    return undefined;
+  }
+  const { cidToText, textToCid } = parseToUnicodeMap(source);
+  return {
+    resourceName,
+    baseFont: fontDict.get(PDFName.of('BaseFont'))?.toString().replace(/^\//u, ''),
+    kind: 'type3',
+    codeBytes: 1,
+    toUnicode: cidToText,
+    charToCode: textToCid,
+    encode(text: string) {
+      const codes: number[] = [];
+      const missing: string[] = [];
+      for (const character of text) {
+        const code = textToCid.get(character.codePointAt(0)!);
+        if (code === undefined || !hasWidth(code) || code > 255) {
+          missing.push(character);
+          continue;
+        }
+        codes.push(code);
+      }
+      return { hex: codes.map((code) => code.toString(16).toUpperCase().padStart(2, '0')).join(''), missing };
+    },
+  };
+}
+
+/**
+ * Reads whichever code-addressed font the page has under this name. `undefined` means the caller must
+ * fall back: a font this module cannot address (CFF composites, broken dictionaries, missing widths).
+ */
+export async function readCodeFont(
+  pdf: PDFDocument,
+  resources: PDFDict | undefined,
+  resourceName: string,
+): Promise<CodeFontInfo | undefined> {
+  return (await readIdentityCodeFont(pdf, resources, resourceName))
+    ?? (await readType3CodeFont(pdf, resources, resourceName));
+}

@@ -2372,3 +2372,55 @@ for (const [script, sample] of [['arabic', 'مرحبا بالعالم'], ['hebre
   });
 }
 
+
+test('a Type3 run is patched with its own codes instead of being replaced', async () => {
+  // Browser-printed CJK and the demo fixture use Type3 fonts: there is no font program to embed and
+  // no metric twin, but every glyph the document already shows has a code in its own `/ToUnicode`.
+  const sourceBytes = await readFixturePdfBytes('documents', 'studio-reedit-demo.pdf');
+  const layer = await extractTextLayerForPreview(sourceBytes, 1, 2);
+  const span = layer.spans.find((candidate) => candidate.text === 'Privacy-First PDF Processing');
+  assert.ok(span, 'expected the privacy heading span in the demo fixture');
+  assert.ok(span.pageHeightPt && span.pageHeightPt > 0);
+  const sourceSize = span.fontSizeRatio * span.pageHeightPt;
+
+  const result = await applyStudioTextEditsToPdfBytes({
+    sourceBytes,
+    pageIndex: 0,
+    elements: [asReplacement({
+      id: 'code-reuse-type3',
+      type: 'text',
+      x: span.xRatio,
+      y: span.yRatio,
+      w: span.widthRatio,
+      h: span.heightRatio,
+      // Same characters, different order: the point is that the codes come from the font, not a
+      // Latin-1 literal, and the run keeps its own typeface.
+      text: 'PDF Processing Privacy-First',
+      color: '#000000',
+      fontSize: sourceSize,
+      fontFamily: 'sora',
+      fontWeight: 'normal',
+      fontStyle: 'normal',
+      textAlign: 'left',
+      lineHeight: 1.2,
+      letterSpacing: 0,
+      opacity: 1,
+      sourceFontName: span.fontName,
+      sourceFontFamilyHint: span.fontFamilyHint,
+      sourceFontSizeRatio: span.fontSizeRatio,
+    })],
+  });
+
+  assert.equal(result.trueReplaceApplied, true, 'the run must be patched in place');
+  assert.equal(result.trueReplaceFallbackReason, undefined);
+
+  // The operand is a hex code string, not a literal: that is what "drawn in the source font" means.
+  const stream = await readFirstPageContentStream(result.outputBytes);
+  assert.match(stream, /<[0-9A-F]{2,}> Tj/u, 'expected a hex operand written with the font codes');
+  assert.doesNotMatch(stream, /\(PDF Processing Privacy-First\) Tj/u);
+
+  const after = await extractTextLayerForPreview(result.outputBytes, 1, 2);
+  const matches = dedupeStackedTextLayerSpans(after.spans).filter((candidate) => /Privacy-First|PDF Processing/u.test(candidate.text));
+  assert.equal(matches.length, 1, 'one replacement, not a patched copy plus an overlay');
+  assert.equal(matches[0]?.text, 'PDF Processing Privacy-First');
+});

@@ -1,4 +1,4 @@
-import { PDFDocument, StandardFonts, degrees, rgb, type PDFFont } from 'pdf-lib';
+import { PDFDict, PDFDocument, PDFName, StandardFonts, degrees, rgb, type PDFFont } from 'pdf-lib';
 import fontkit from '@pdf-lib/fontkit';
 import type {
   WorkerStudioEditElement,
@@ -32,6 +32,7 @@ import {
   resolveTypographyFromElement,
   resolveMetricTwin,
   metricTwinAssetFiles,
+  readCodeFont,
   resolveWidgetPlacement,
   resolveFontSizeFromElement,
   inferTypographyFromBaseFont,
@@ -493,7 +494,7 @@ function formatPdfNumber(value: number): string {
   return Number(value.toFixed(3)).toString();
 }
 
-function tryPatchStreamOperator(params: {
+async function tryPatchStreamOperator(params: {
   state: PageStreamState;
   text: string;
   targetXRatio: number;
@@ -506,6 +507,13 @@ function tryPatchStreamOperator(params: {
   persist?: boolean;
   /** Text runs are only patched in place when the source font encodes Latin-1 literals. */
   requireSimpleFont?: boolean;
+  /**
+   * The replacement for a font that addresses glyphs by its own codes. Kept separate from `text`
+   * because a Latin-1 literal is empty for exactly those cases (non-Latin-1 input, a moved box).
+   */
+  codeText?: string;
+  /** A size change cannot be patched in place for code-addressed fonts: `Tf` is not the seen size. */
+  sizeChanged?: boolean;
   /** Explicit size in points when the user changed it; the run inherits the stream size otherwise. */
   fontSizeOverride?: number;
   /** Explicit fill colour (hex) when the user picked one; the run keeps the stream colour otherwise. */
@@ -519,13 +527,15 @@ function tryPatchStreamOperator(params: {
     fontWeight: 'normal' | 'bold';
     fontStyle: 'normal' | 'italic';
   };
-}): {
+}): Promise<{
   applied: boolean;
   reason?: string;
   patchedOperator?: StreamOperatorRef;
   candidate?: StreamOperatorRef;
   sourceFont?: SourceFontInfo;
-} {
+  /** The in-place patch wrote the font's own codes, so `text` was drawn in the source face. */
+  codeReuseApplied?: boolean;
+}> {
   const { state, text } = params;
   const persist = params.persist !== false;
   const { resolved, decodedByStream, PDFName, page } = state;
@@ -568,16 +578,45 @@ function tryPatchStreamOperator(params: {
 
   const candidate: StreamOperatorRef = { streamIndex: target.streamIndex, operator: target.operator };
   const sourceFont = resolveSourceFontInfo({ pdf: state.pdf, page, operator: target.operator });
+  /**
+   * Composite (Type0/Identity-H) and Type3 fonts address glyphs by their own codes, so a Latin-1
+   * literal written into them renders as wrong glyphs or blanks. They can still be patched in place
+   * when the replacement is expressible in *their* codes — taken from the file's own `/ToUnicode`,
+   * which also keeps the run extractable. That is what makes Cyrillic, Arabic and the Type3 fonts
+   * browsers emit for CJK reusable instead of being redrawn in a substitute face.
+   */
+  let codeOperand: string | undefined;
   if (params.requireSimpleFont && !sourceFont.simpleLatin) {
-    // Composite (Type0/Identity-H) and Type3 fonts address glyphs by their own codes, so a
-    // Latin-1 literal written into them renders as wrong glyphs or blanks. Report the run so the
-    // caller can erase it and draw the replacement instead.
-    return {
-      applied: false,
-      reason: sourceFont.composite ? 'SOURCE_FONT_COMPOSITE' : 'SOURCE_FONT_UNSUPPORTED',
-      candidate,
-      sourceFont,
-    };
+    const resourceName = target.operator.fontResourceName?.replace(/^\//u, '');
+    const requestedText = params.codeText ?? '';
+    if (requestedText.trim().length > 0 && !params.sizeChanged) {
+      const resources = (() => {
+        try {
+          return page.node.lookup(PDFName.of('Resources')) as PDFDict | undefined;
+        } catch {
+          return undefined;
+        }
+      })();
+      const codeFont = resourceName ? await readCodeFont(state.pdf, resources, resourceName) : undefined;
+      const encoded = codeFont ? codeFont.encode(requestedText) : undefined;
+      if (!codeFont || !encoded || encoded.missing.length > 0) {
+        return {
+          applied: false,
+          reason: sourceFont.composite ? 'SOURCE_FONT_COMPOSITE' : 'SOURCE_FONT_UNSUPPORTED',
+          candidate,
+          sourceFont,
+        };
+      }
+      codeOperand = encoded.hex;
+    } else {
+      // Nothing to encode: the caller only wants this run gone (it is redrawn elsewhere).
+      return {
+        applied: false,
+        reason: sourceFont.composite ? 'SOURCE_FONT_COMPOSITE' : 'SOURCE_FONT_UNSUPPORTED',
+        candidate,
+        sourceFont,
+      };
+    }
   }
 
   const appearanceOps: string[] = [];
@@ -628,7 +667,10 @@ function tryPatchStreamOperator(params: {
     }
   }
 
-  const replacement = [...appearanceOps, `(${escapePdfLiteralString(text)}) Tj`, ...restoreOps].join(' ');
+  const operand = codeOperand !== undefined
+    ? `<${codeOperand}> Tj`
+    : `(${escapePdfLiteralString(text)}) Tj`;
+  const replacement = [...appearanceOps, operand, ...restoreOps].join(' ');
   const updatedContent = `${streamTarget.content.slice(0, target.operator.start)}${replacement}${streamTarget.content.slice(target.operator.end)}`;
 
   // Update the in-memory decoded content so subsequent patches in the same pass see the change.
@@ -652,6 +694,7 @@ function tryPatchStreamOperator(params: {
     patchedOperator: candidate,
     candidate,
     sourceFont,
+    codeReuseApplied: codeOperand !== undefined,
   };
 }
 
@@ -1053,7 +1096,10 @@ export async function applyStudioTextEditsToPdfBytes(params: {
   // treated both the same way and silently dropped user whiteouts.
   const linkedBackgroundByRectId = collectLinkedBackgroundOwners(elements);
 
-  applyTrueReplaceToTextElements(elements, streamState);
+  // Must be awaited: the overlay pass below skips runs listed in `consumedTextIds`, and those are
+  // filled while patching. Running both concurrently drew the replacement twice — once patched in
+  // place, once as an overlay.
+  await applyTrueReplaceToTextElements(elements, streamState);
   params.signal?.throwIfAborted();
 
   for (const element of elements) {
@@ -1112,10 +1158,17 @@ export async function applyStudioTextEditsToPdfBytes(params: {
       }
 
       const isNonLatin1 = !canEncodeAsLatin1(sanitizedText);
+      /**
+       * Non-Latin-1 text is no longer excluded for code-addressed fonts: a composite or Type3 run is
+       * patched when its own codes cover the characters (checked where the font is known). A *size*
+       * change still forbids that path — the run's nominal `Tf` is not the size the reader sees (a
+       * text matrix scale sits on top, e.g. the demo fixture draws 18pt at 15pt), so writing the
+       * requested size there would silently rescale the line; those edits keep the overlay path.
+       */
       const patchText = movedFromOriginal || isNonLatin1 ? '' : sanitizedText;
       const requestedSize = resolveRequestedFontSizeFromElement(target, pageHeight);
 
-      const result = tryPatchStreamOperator({
+      const result = await tryPatchStreamOperator({
         state: streamState,
         text: patchText,
         targetXRatio: targetRect.x,
@@ -1127,6 +1180,8 @@ export async function applyStudioTextEditsToPdfBytes(params: {
         pageHeight: geometry.mediaHeight,
         persist: !textEditV2,
         requireSimpleFont: true,
+        codeText: movedFromOriginal ? '' : sanitizedText,
+        sizeChanged: requestedSize.changedFromSource,
         fontSizeOverride: requestedSize.changedFromSource ? requestedSize.fontSize : undefined,
         colorOverride: target.colorUserSet ? target.color : undefined,
         requestedTypographyFor: (sourceBaseFont) => resolveTypographyFromElement(target, sourceBaseFont),
@@ -1138,7 +1193,7 @@ export async function applyStudioTextEditsToPdfBytes(params: {
         if (result.patchedOperator) {
           modifiedStreamIndices.add(result.patchedOperator.streamIndex);
         }
-        if (!movedFromOriginal && !isNonLatin1) {
+        if (!movedFromOriginal && (!isNonLatin1 || result.codeReuseApplied)) {
           consumedTextIds.add(target.id);
         }
         trueReplaceApplied = true;
@@ -1158,7 +1213,9 @@ export async function applyStudioTextEditsToPdfBytes(params: {
           anchorOperator: result.patchedOperator?.operator ?? result.candidate?.operator,
           fontSizeRatio: target.sourceFontSizeRatio,
         });
-        const shouldPreservePatch = result.applied && !movedFromOriginal && !isNonLatin1;
+        // A code-reuse patch writes non-Latin-1 text in place, so the run must survive the redaction
+        // pass exactly like a Latin-1 patch does; otherwise the pass erases what was just written.
+        const shouldPreservePatch = result.applied && !movedFromOriginal && (!isNonLatin1 || result.codeReuseApplied);
         const operatorsToRedact = shouldPreservePatch && result.patchedOperator
           ? operatorsInRect.filter((item) => !matchesPatchedOperator(item, result.patchedOperator))
           : operatorsInRect;

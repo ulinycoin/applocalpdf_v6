@@ -66,3 +66,7 @@ export {
   resolveMetricTwin,
   type MetricTwin,
 } from './metric-twin';
+export {
+  readCodeFont,
+  type CodeFontInfo,
+} from './cid-text';
