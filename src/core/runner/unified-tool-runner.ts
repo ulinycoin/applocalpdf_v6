@@ -15,6 +15,26 @@ import type { WorkerOrchestrator } from '../workers/worker-orchestrator';
 type AccessDeniedResult = Extract<RunnerExecuteResult, { type: 'TOOL_ACCESS_DENIED' }>;
 type PageCountFallbackMode = 'off' | 'limited' | 'on';
 
+/**
+ * Execution-wise ceiling shared by every plan. A browser tab cannot hold an arbitrarily large PDF,
+ * so this number is a technical guard, not a paywall — the business model puts the wall on
+ * downloads, and a free user must be able to process the file they already opened.
+ *
+ * The per-plan `maxFileSize` in a plugin definition keeps only its Pro value as the tool's own
+ * ceiling; the Free value is gone. A file above this constant is refused for everyone, and only a
+ * Pro ceiling above this constant (compress, delete pages, extract images, share: 500 MB) still
+ * buys a larger file.
+ */
+export const SAFETY_MAX_FILE_SIZE_BYTES = 250 * 1024 * 1024;
+
+/** The size at which the tool refuses the file outright for this plan. */
+export function maxFileSizeForPlan(
+  limits: { free: number; pro: number },
+  plan: 'basic' | 'pro',
+): number {
+  return plan === 'pro' ? limits.pro : Math.min(limits.pro, SAFETY_MAX_FILE_SIZE_BYTES);
+}
+
 export class UnifiedToolRunner {
   private pageCountTimeoutMs: number;
   private firstPageCountTimeoutMs: number;
@@ -231,14 +251,21 @@ export class UnifiedToolRunner {
       stage: 'CHECK_FILE_LIMITS_DONE',
     });
     if (fileLimitsCheck) {
+      const { denial } = fileLimitsCheck;
       this.telemetry.track({
         type: 'TOOL_RUN_DENIED',
         runId,
         toolId,
-        reason: fileLimitsCheck.reason,
+        reason: denial.reason,
       });
-      this.publishUpsell(runId, toolId, fileLimitsCheck.details ?? fileLimitsCheck.reason);
-      return fileLimitsCheck;
+      const message = denial.details ?? denial.reason;
+      if (fileLimitsCheck.upsell) {
+        this.publishUpsell(runId, toolId, message);
+      } else {
+        // Nothing to sell: the limit is the browser's, so say it plainly instead of opening a paywall.
+        this.publishErrorToast(runId, toolId, message);
+      }
+      return denial;
     }
 
     return null;
@@ -287,12 +314,13 @@ export class UnifiedToolRunner {
     plan: 'basic' | 'pro',
     runId: string,
     toolId: string,
-  ): Promise<AccessDeniedResult | null> {
+  ): Promise<{ denial: AccessDeniedResult; upsell: boolean } | null> {
     if (!limits) {
       return null;
     }
 
-    const maxFileSize = limits.maxFileSize ? (plan === 'pro' ? limits.maxFileSize.pro : limits.maxFileSize.free) : null;
+    const maxFileSize = limits.maxFileSize ? maxFileSizeForPlan(limits.maxFileSize, plan) : null;
+    const proMaxFileSize = limits.maxFileSize?.pro ?? null;
     const maxPagesPerFile = limits.maxPagesPerFile
       ? (plan === 'pro' ? limits.maxPagesPerFile.pro : limits.maxPagesPerFile.free)
       : null;
@@ -318,10 +346,20 @@ export class UnifiedToolRunner {
           durationMs: Date.now() - startedAt,
         });
         if (size > maxFileSize) {
+          // A Pro ceiling above the safety limit is the only case where paying actually buys a
+          // bigger file; otherwise the refusal is technical and must not be sold as an upgrade.
+          const upgradeHelps = plan !== 'pro' && proMaxFileSize !== null && proMaxFileSize > maxFileSize;
+          const sizeMb = Math.ceil(size / (1024 * 1024));
+          const capMb = Math.round(maxFileSize / (1024 * 1024));
           return {
-            type: 'TOOL_ACCESS_DENIED',
-            reason: 'LIMIT_EXCEEDED',
-            details: `File ${fileId} exceeds maxFileSize`,
+            denial: {
+              type: 'TOOL_ACCESS_DENIED',
+              reason: 'LIMIT_EXCEEDED',
+              details: upgradeHelps
+                ? `This file is ${sizeMb} MB. Free handles up to ${capMb} MB, Pro up to ${Math.round(proMaxFileSize! / (1024 * 1024))} MB.`
+                : `This file is ${sizeMb} MB — larger than a browser tab can process safely (${capMb} MB limit).`,
+            },
+            upsell: upgradeHelps,
           };
         }
       }
@@ -344,9 +382,12 @@ export class UnifiedToolRunner {
         });
         if (pageCount > maxPagesPerFile) {
           return {
-            type: 'TOOL_ACCESS_DENIED',
-            reason: 'LIMIT_EXCEEDED',
-            details: `File ${fileId} exceeds maxPagesPerFile`,
+            denial: {
+              type: 'TOOL_ACCESS_DENIED',
+              reason: 'LIMIT_EXCEEDED',
+              details: `File ${fileId} exceeds maxPagesPerFile`,
+            },
+            upsell: true,
           };
         }
       }

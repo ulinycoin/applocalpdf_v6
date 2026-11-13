@@ -3,7 +3,7 @@ import test from 'node:test';
 import { GlobalRegistry } from '../registry/global-registry';
 import type { RunnerTelemetryEvent, TelemetrySink } from '../telemetry/telemetry';
 import type { IFileEntry, IFileSystem, IToolDefinition, IWorkerCommand, IWorkerEvent } from '../types/contracts';
-import { UnifiedToolRunner } from './unified-tool-runner';
+import { SAFETY_MAX_FILE_SIZE_BYTES, UnifiedToolRunner, maxFileSizeForPlan } from './unified-tool-runner';
 import { createValidPdfBlob } from '../../shared/test/create-valid-pdf';
 import { getDefaultEntitlementsForPlan } from '../../app/platform/billing-contract';
 
@@ -115,11 +115,12 @@ test('UnifiedToolRunner returns TOOL_ACCESS_DENIED when entitlement is missing',
   assert.equal(result.reason, 'ENTITLEMENT_REQUIRED');
 });
 
-test('UnifiedToolRunner returns TOOL_ACCESS_DENIED when maxFileSize is exceeded', async () => {
+test('a Free file under the tool ceiling is processed instead of being sold an upgrade', async () => {
   const registry = new GlobalRegistry();
   registry.register(tool);
 
   const fs = new InMemoryFileSystem();
+  // The old money gate refused this: Free was capped at 2 bytes while the tool itself handles 10.
   fs.seed('f1', new Blob([new Uint8Array([1, 2, 3])]));
 
   const runner = new UnifiedToolRunner(
@@ -140,8 +141,54 @@ test('UnifiedToolRunner returns TOOL_ACCESS_DENIED when maxFileSize is exceeded'
     { userId: 'u1', plan: 'basic', entitlements: ['pdf.merge'] },
   );
 
+  assert.equal(result.type, 'TOOL_RESULT');
+});
+
+test('a file above the tool ceiling is refused with a technical message, not a paywall', async () => {
+  const registry = new GlobalRegistry();
+  registry.register(tool);
+
+  const fs = new InMemoryFileSystem();
+  fs.seed('f1', new Blob([new Uint8Array(11)]));
+
+  const events: RunnerTelemetryEvent[] = [];
+  const sink: TelemetrySink = { track: (event) => events.push(event) };
+  const runner = new UnifiedToolRunner(
+    registry,
+    {
+      dispatch: async (command: IWorkerCommand): Promise<IWorkerEvent> => ({
+        id: command.id,
+        type: 'EVENT',
+        payload: { type: 'RESULT', payload: { outputIds: ['out'] } },
+      }),
+    },
+    fs,
+    sink,
+  );
+
+  const result = await runner.execute(
+    'merge-pdf',
+    { inputIds: ['f1'] },
+    { userId: 'u1', plan: 'basic', entitlements: ['pdf.merge'] },
+  );
+
   assert.equal(result.type, 'TOOL_ACCESS_DENIED');
   assert.equal(result.reason, 'LIMIT_EXCEEDED');
+  assert.match(result.type === 'TOOL_ACCESS_DENIED' ? result.details ?? '' : '', /process safely/u);
+  // Pro cannot do this either, so the refusal must not open the upgrade overlay.
+  assert.equal(events.some((event) => event.type === 'UI_UPSELL_SHOWN'), false);
+  const toast = events.find((event) => event.type === 'UI_TOAST_SHOWN');
+  assert.ok(toast && toast.type === 'UI_TOAST_SHOWN' && toast.level === 'error');
+});
+
+test('maxFileSizeForPlan lifts Free to the tool ceiling and keeps Pro above the safety cap', () => {
+  const megabyte = 1024 * 1024;
+  assert.equal(maxFileSizeForPlan({ free: 50 * megabyte, pro: 500 * megabyte }, 'basic'), SAFETY_MAX_FILE_SIZE_BYTES);
+  // A tool whose own ceiling is below the safety limit gives Free that whole ceiling.
+  assert.equal(maxFileSizeForPlan({ free: 10 * megabyte, pro: 150 * megabyte }, 'basic'), 150 * megabyte);
+  assert.equal(maxFileSizeForPlan({ free: 50 * megabyte, pro: 500 * megabyte }, 'pro'), 500 * megabyte);
+  // A runaway definition cannot raise the safety limit, but Pro also never exceeds its own ceiling.
+  assert.equal(maxFileSizeForPlan({ free: 1, pro: Number.POSITIVE_INFINITY }, 'basic'), SAFETY_MAX_FILE_SIZE_BYTES);
 });
 
 test('UnifiedToolRunner dispatches worker and returns TOOL_RESULT', async () => {
