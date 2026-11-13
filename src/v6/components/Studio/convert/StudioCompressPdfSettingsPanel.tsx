@@ -10,9 +10,9 @@ const QUALITY_OPTIONS: Array<{
   label: string;
   hint: string;
 }> = [
-  { value: 'low', label: 'Low compression', hint: 'Higher quality, larger file size.' },
-  { value: 'medium', label: 'Balanced', hint: 'Good default for most documents.' },
-  { value: 'high', label: 'High compression', hint: 'Smaller file size, more aggressive optimization.' },
+  { value: 'low', label: 'Light', hint: 'No quality loss — re-saves the file structure only.' },
+  { value: 'medium', label: 'Balanced', hint: 'Downsamples large JPEG photos. Text stays text.' },
+  { value: 'high', label: 'Strong', hint: 'Downsamples large JPEG photos harder. Text stays text.' },
 ];
 
 export function StudioCompressPdfSettingsPanel({

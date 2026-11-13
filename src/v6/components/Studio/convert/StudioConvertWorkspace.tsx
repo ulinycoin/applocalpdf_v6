@@ -473,9 +473,9 @@ export function StudioConvertWorkspace({ onClose, initialTool }: StudioConvertWo
                   <div className="cvt-card-body">
                     <div className="cvt-seg" style={{ flexDirection: 'column', gap: 6 }}>
                       {([
-                        { value: 'low', label: 'Low compression', hint: 'Higher quality, larger file size' },
-                        { value: 'medium', label: 'Balanced', hint: 'Good default for most documents' },
-                        { value: 'high', label: 'High compression', hint: 'Smaller file, more aggressive' },
+                        { value: 'low', label: 'Light', hint: 'No quality loss — re-saves the structure only' },
+                        { value: 'medium', label: 'Balanced', hint: 'Large JPEG photos are downsampled' },
+                        { value: 'high', label: 'Strong', hint: 'Large JPEG photos, downsampled harder' },
                       ] as const).map((opt) => (
                         <button
                           key={opt.value}
