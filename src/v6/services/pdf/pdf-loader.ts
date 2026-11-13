@@ -1,8 +1,11 @@
+import { installByteArrayToHex } from './pdfjs-compat';
+
 let pdfJsPromise: Promise<typeof import('pdfjs-dist')> | null = null;
 let pdfLibPromise: Promise<typeof import('pdf-lib')> | null = null;
 let pdfJsWorkerInitialized = false;
 
 export async function getPdfJs(): Promise<typeof import('pdfjs-dist')> {
+  installByteArrayToHex();
   if (!pdfJsPromise) {
     pdfJsPromise = import('pdfjs-dist');
   }

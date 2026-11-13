@@ -16,6 +16,7 @@ import { pauseTileRendering, resumeTileRendering } from '../../studio/thumbnail/
 import { StudioTimeline } from './branching/StudioTimeline';
 import type { StudioReturnContext, StudioToolRouteState } from '../../studio/navigation/studio-tool-context';
 import { getPdfJs, getPdfLib } from '../../services/pdf/pdf-loader';
+import { PASSWORD_PROTECTED_MESSAGE, isPasswordProtectedPdfError, workspaceQuotaRefusal } from '../../studio/import/import-guards';
 import { StudioDialog } from './StudioDialog';
 import { canAddDocumentToStudio, canCreateWorkspace, canUseDocumentWithPageCount, freePageLimitMessage } from '../../../app/platform/plan-limits';
 import { showStudioPaywall } from '../../../app/react/studio-paywall';
@@ -992,13 +993,38 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
 
                     // 1. Save to VFS
                     const pdfjs = await getPdfJs();
+                    // The VFS would refuse this write with a quota error; say which file and which
+                    // limit before spending the read, and never tell an empty canvas to "close some
+                    // documents".
+                    const quotaRefusal = workspaceQuotaRefusal({
+                        fileSize: file.size,
+                        usedBytes: runtime.vfs.getQuotaUsage().totalBytes,
+                        limitBytes: runtime.vfs.getQuotaPolicy().maxTotalBytes,
+                    });
+                    if (quotaRefusal) {
+                        notifyStudioError(quotaRefusal);
+                        continue;
+                    }
                     const entry = await runtime.vfs.write(file);
                     writtenFileId = entry.id;
                     const buffer = await file.arrayBuffer();
 
                     // 2. Load PDF once
                     const loadingTask = pdfjs.getDocument({ data: new Uint8Array(buffer) });
-                    const pdf = await loadingTask.promise;
+                    let pdf: Awaited<typeof loadingTask.promise>;
+                    try {
+                        pdf = await loadingTask.promise;
+                    } catch (error) {
+                        if (!isPasswordProtectedPdfError(error)) {
+                            throw error;
+                        }
+                        // pdf.js says "No password given"; the user needs to know what to do about it.
+                        await loadingTask.destroy().catch(() => undefined);
+                        await runtime.vfs.delete(entry.id).catch(() => undefined);
+                        writtenFileId = null;
+                        notifyStudioError(PASSWORD_PROTECTED_MESSAGE);
+                        continue;
+                    }
                     const numPages = pdf.numPages;
 
                     const documentCheck = canAddDocumentToStudio(billingContext, documents.length + committedDocs.length, numPages);

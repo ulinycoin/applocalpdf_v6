@@ -1,5 +1,6 @@
 import type { PlatformRuntime } from '../../app/platform/create-platform';
 import type { IWorkerCommand } from '../../core/public/contracts';
+import { installByteArrayToHex } from '../services/pdf/pdfjs-compat';
 
 type PreviewKind = 'pdf' | 'image' | 'file';
 
@@ -110,6 +111,9 @@ async function loadPdfJs(): Promise<PdfJsLike | null> {
         return null;
       }
       try {
+        // The legacy build runs pdf.js on this thread (`disableWorker`), so its fingerprint call
+        // needs the same compatibility method the worker build may already provide.
+        installByteArrayToHex();
         const pdfjs = (await import('pdfjs-dist/legacy/build/pdf.mjs')) as unknown as PdfJsLike;
         if (pdfjs.GlobalWorkerOptions && !pdfjs.GlobalWorkerOptions.workerSrc) {
           const workerSrcMod = (await import('pdfjs-dist/legacy/build/pdf.worker.min.mjs?url')) as { default?: string };

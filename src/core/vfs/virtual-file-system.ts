@@ -80,6 +80,11 @@ export class VirtualFileSystem {
     };
   }
 
+  /** The policy this instance was created with, so callers can explain a refusal in bytes. */
+  getQuotaPolicy(): Readonly<VfsQuotaPolicy> {
+    return this.quota;
+  }
+
   private ensureQuota(incomingBytes: number, isTemp: boolean): void {
     if (this.quota.maxTotalBytes !== undefined && this.totalBytes + incomingBytes > this.quota.maxTotalBytes) {
       throw new VfsQuotaExceededError('VFS total quota exceeded');
