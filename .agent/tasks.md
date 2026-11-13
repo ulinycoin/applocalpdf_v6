@@ -1,6 +1,30 @@
 # Active Tasks
 
-Last updated: 2026-11-13
+Last updated: 2026-11-14
+
+## Сессия 2026-11-13 (5) — защищённые PDF открываются в Studio (qpdf-wasm)
+
+Триггер — 6 человек за 14 дней, которые загружали PDF с паролем и получали «No password given». Решение: не объяснять, а открывать.
+
+### Сделано
+
+1. **`@jspawn/qpdf-wasm` 0.0.2** (Apache-2.0, wasm 1.2 МБ) — единственная проверенная сборка qpdf без pthreads (вариант `qpdf-wasm@0.1.0` требует `Worker`/`SharedArrayBuffer` и COOP/COEP). Грузится лениво: пользователь, который не открывает защищённый файл, не скачивает ни wasm, ни 52 КБ скрипта.
+2. **Дешифровка в воркере.** Новый command `DECRYPT_PDF` → `PDF_DECRYPTED`: qpdf-wasm работает в `worker-runtime`, канвас не блокируется (аудит `main-thread-forbidden` снова 0). Основной поток только читает расшифрованную копию и удаляет воркерный файл, чтобы не хранить дубль.
+3. **Загрузка wasm без бандлера.** Пакет — Emscripten-UMD: при сборке в ESM он не находит свой `exports` и молча не инициализируется (проверено: чанки грузятся 200, wasm не запрашивается). Поэтому `qpdf.js` и `qpdf.wasm` отдаются как ассеты: в окне — `<script>` с `globalThis.exports`, в module worker — динамический `import()` того же файла. Оба пути проверены.
+4. **Диалог пароля** (`use-protected-pdf-prompt` + `password-dialog`): остаётся открытым при неверном пароле («Wrong password. Try again.»), при отмене показывается прежняя инструкция, при успехе Studio импортирует расшифрованную копию.
+
+### Проверено
+
+- `npm test` — **535/535 pass** (+6: 4 на движок, 2 на воркер-обвязку).
+- `npm run build`; `npm run audit:workerization:strict` — exit 0, `main-thread-forbidden: 0`.
+- **Браузерный смоук (Playwright на preview-сборке):** загрузка `locked.pdf` → диалог; неверный пароль → «Wrong password. Try again.»; `secret` → диалог закрывается, в канвасе 1 страница с «LOCKED REPORT» (скриншот `.tmp/password-opened.png`, в git не попадает). Ошибки в консоли — только 404 от Vercel Analytics на preview.
+- Не проверялось в проде до пуша.
+
+### Осталось / решения
+
+- **Protect по-прежнему теряет имена полей AcroForm** (pdf-lib-plus-encrypt) — отдельная задача; qpdf-wasm теперь есть, можно перевести Protect на него же.
+- Tool-пути `unlock-pdf`/`protect-pdf` в браузере всё ещё идут через Node-движок (unlock не выведен в UI, protect — через форк).
+
 
 ## Сессия 2026-11-13 (4) — вход в Studio: пароль, квота, `toHex`
 
