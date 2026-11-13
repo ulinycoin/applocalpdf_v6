@@ -360,6 +360,46 @@ test('PostHogTelemetrySink sends text editing telemetry without any document tex
   }
 });
 
+test('PostHogTelemetrySink reports which font path carried a text edit', () => {
+  const calls: Array<{ event: string; properties?: Record<string, unknown> }> = [];
+  const globalWindow = globalThis as any;
+  const originalWindow = globalWindow.window;
+  globalWindow.window = {
+    posthog: {
+      capture: (event: string, properties?: Record<string, unknown>) => {
+        calls.push({ event, properties });
+      },
+    },
+  };
+
+  try {
+    const sink = new PostHogTelemetrySink();
+    sink.track({
+      type: 'STUDIO_TEXT_EDIT_FONT_PATH',
+      runId: 'run-1',
+      toolId: 'studio.edit.text',
+      fileId: 'file-1',
+      pageIndex: 2,
+      paths: {
+        patchedLiteral: 0,
+        patchedCodes: 1,
+        metricTwin: 2,
+        substituted: 0,
+        transliterated: 0,
+        rasterized: 0,
+      },
+    });
+
+    assert.equal(calls[0]?.event, 'studio_text_edit_font_path');
+    assert.equal(calls[0]?.properties?.patched_codes, 1);
+    assert.equal(calls[0]?.properties?.metric_twin, 2);
+    assert.equal(calls[0]?.properties?.substituted, 0);
+    assert.equal(calls[0]?.properties?.page_index, 2);
+  } finally {
+    globalWindow.window = originalWindow;
+  }
+});
+
 test('PostHogTelemetrySink reports a refused download with the outcome fields the funnel needs', () => {
   const calls: Array<{ event: string; properties?: Record<string, unknown> }> = [];
   const globalWindow = globalThis as any;

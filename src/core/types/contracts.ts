@@ -312,6 +312,7 @@ export type WorkerEventPayload =
       overflowDetected: boolean;
       trueReplaceApplied: boolean;
       trueReplaceFallbackReason?: string;
+      fontPaths?: StudioFontPathCounts;
       redactVerify?: {
         passed: boolean;
         checks: string[];
@@ -339,6 +340,21 @@ export type RunnerProgressEvent = {
   progress: number;
   detail?: ToolProgressDetail;
 };
+
+/**
+ * Where the glyphs of an applied text edit actually came from, counted per drawn run. The point is
+ * to know whether the document's own typeface survived the edit: `patchedLiteral`/`patchedCodes`
+ * rewrite the run in its own font in place, `metricTwin` draws a metrically identical stand-in,
+ * `substituted` falls back to Roboto/Noto/standard-14 — and those are visible changes.
+ */
+export interface StudioFontPathCounts {
+  patchedLiteral: number;
+  patchedCodes: number;
+  metricTwin: number;
+  substituted: number;
+  transliterated: number;
+  rasterized: number;
+}
 
 export type RunnerTelemetryEvent =
   | { type: 'TOOL_RUN_STARTED', runId: string; toolId: string; inputCount: number; totalInputSize?: number }
@@ -394,6 +410,16 @@ export type RunnerTelemetryEvent =
     charsDelta: number;
     lines: number;
     multiline: boolean;
+  }
+  // Emitted once per saved page, from the apply result — the commit above happens in the editor,
+  // before the PDF exists, so it cannot know which face the glyphs ended up in.
+  | {
+    type: 'STUDIO_TEXT_EDIT_FONT_PATH';
+    runId: string;
+    toolId: string;
+    fileId: string;
+    pageIndex: number;
+    paths: StudioFontPathCounts;
   }
   | { type: 'APP_SESSION_ATTRIBUTED'; flowId: string; entryUrl: string; entryPath: string; referrer: string; referringDomain: string; utmSource?: string; utmMedium?: string; utmCampaign?: string }
   | { type: 'APP_FILE_UPLOADED'; flowId: string; toolId: string; fileCount: number; mimeCategory: string; totalBytes: number; source: 'wizard' | 'studio' }

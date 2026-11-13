@@ -3,7 +3,8 @@ import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { inflateSync } from 'node:zlib';
 import test from 'node:test';
-import { PDFDocument, PDFName, PDFRawStream, StandardFonts } from 'pdf-lib';
+import { PDFDict, PDFDocument, PDFName, PDFRawStream, StandardFonts } from 'pdf-lib';
+import fontkit from '@pdf-lib/fontkit';
 import { applyStudioTextEditsToPdfBytes } from './studio-text-edit-applier';
 import { parsePdfTextOperators } from './pdf-content-stream-parser';
 import { extractEmbeddedPdfText } from './pdf-text-extractor';
@@ -367,6 +368,8 @@ test('applyStudioTextEditsToPdfBytes true-replaces a single Tj line when determi
   assert.doesNotMatch(text, /OLD TOKEN/u);
   assert.equal(result.trueReplaceApplied, true);
   assert.equal(result.trueReplaceFallbackReason, undefined);
+  assert.equal(result.fontPaths?.patchedLiteral, 1, 'a Latin-1 run keeps the document own font');
+  assert.equal(result.fontPaths?.patchedCodes, 0);
 });
 
 
@@ -1193,6 +1196,11 @@ test('composite fonts are not patched: the run is erased and redrawn instead', a
 
   assert.equal(result.trueReplaceApplied, false);
   assert.equal(result.trueReplaceFallbackReason, 'SOURCE_FONT_COMPOSITE');
+  // Characters missing from the subset are redrawn in a substitute face — the visible defect the
+  // telemetry has to make countable.
+  assert.equal(result.fontPaths?.substituted, 1);
+  assert.equal(result.fontPaths?.metricTwin, 0);
+  assert.equal(result.fontPaths?.patchedCodes, 0);
   const text = (await extractEmbeddedPdfText(toPdfBlob(result.outputBytes)))?.text ?? '';
   assert.match(text, /Privacy-First patched Processing/u);
   assert.doesNotMatch(text, /Privacy-First PDF Processing/u, 'Type3 glyph codes must not receive Latin-1 text');
@@ -2413,6 +2421,9 @@ test('a Type3 run is patched with its own codes instead of being replaced', asyn
 
   assert.equal(result.trueReplaceApplied, true, 'the run must be patched in place');
   assert.equal(result.trueReplaceFallbackReason, undefined);
+  assert.equal(result.fontPaths?.patchedCodes, 1, 'the run was rewritten in the font own codes');
+  assert.equal(result.fontPaths?.patchedLiteral, 0);
+  assert.equal(result.fontPaths?.substituted, 0);
 
   // The operand is a hex code string, not a literal: that is what "drawn in the source font" means.
   const stream = await readFirstPageContentStream(result.outputBytes);
@@ -2423,4 +2434,76 @@ test('a Type3 run is patched with its own codes instead of being replaced', asyn
   const matches = dedupeStackedTextLayerSpans(after.spans).filter((candidate) => /Privacy-First|PDF Processing/u.test(candidate.text));
   assert.equal(matches.length, 1, 'one replacement, not a patched copy plus an overlay');
   assert.equal(matches[0]?.text, 'PDF Processing Privacy-First');
+});
+
+test('a composite run the codes cannot carry is drawn in the metric twin and reported as such', async () => {
+  // A document that names a face whose metric twin ships with us. The program is the twin's own
+  // bytes: what is under test is the path choice, not the shapes.
+  const woffBytes = await readFile(join(process.cwd(), 'public', 'fonts', 'caladea-latin-400-normal.woff'));
+  const built = await PDFDocument.create();
+  built.registerFontkit(fontkit);
+  const embedded = await built.embedFont(new Uint8Array(woffBytes), { subset: true });
+  built.addPage([612, 792]).drawText('CONTRACT TOTAL', { x: 60, y: 700, size: 18, font: embedded });
+
+  const renamed = await PDFDocument.load(new Uint8Array(await built.save()));
+  const resources = renamed.getPage(0).node.lookup(PDFName.of('Resources')) as PDFDict | undefined;
+  assert.ok(resources, 'expected page resources');
+  const fontDict = resources.lookup(PDFName.of('Font')) as PDFDict;
+  for (const [, fontRef] of fontDict.entries()) {
+    const dict = renamed.context.lookup(fontRef) as PDFDict;
+    dict.set(PDFName.of('BaseFont'), PDFName.of('Calibri'));
+  }
+  const sourceBytes = new Uint8Array(await renamed.save());
+
+  const layer = await extractTextLayerForPreview(sourceBytes, 1, 2);
+  const span = layer.spans.find((entry) => entry.text.trim() === 'CONTRACT TOTAL');
+  assert.ok(span, 'expected the drawn line');
+  assert.ok(span.pageHeightPt && span.pageHeightPt > 0);
+
+  const realFetch = globalThis.fetch;
+  globalThis.fetch = (async (input: unknown) => {
+    // Any shipped face: Calibri resolves to Carlito, so the exact file is the applier's choice.
+    const url = String(input);
+    const file = url.split('/fonts/').pop();
+    if (file && file.endsWith('.woff')) {
+      try {
+        return new Response(new Uint8Array(await readFile(join(process.cwd(), 'public', 'fonts', file))), { status: 200 });
+      } catch { /* fall through to 404 */ }
+    }
+    return new Response('', { status: 404 });
+  }) as typeof fetch;
+  try {
+    const result = await applyStudioTextEditsToPdfBytes({
+      sourceBytes,
+      pageIndex: 0,
+      elements: [asReplacement({
+        id: 'twin-edit',
+        type: 'text',
+        x: span.xRatio,
+        y: span.yRatio,
+        w: span.widthRatio + 0.05,
+        h: span.heightRatio + 0.01,
+        text: 'CONTRACT TOTAL',
+        color: '#000000',
+        // A size change forbids the in-place code patch, so this run takes the overlay path.
+        fontSize: (span.fontSizeRatio * span.pageHeightPt) + 2,
+        fontFamily: 'sora',
+        fontWeight: 'normal',
+        fontStyle: 'normal',
+        textAlign: 'left',
+        lineHeight: 1.2,
+        letterSpacing: 0,
+        opacity: 1,
+        sourceFontName: 'Calibri',
+        sourceFontFamilyHint: 'Calibri',
+        sourceFontSizeRatio: span.fontSizeRatio,
+      })],
+    });
+
+    assert.equal(result.trueReplaceFallbackReason, 'SOURCE_FONT_COMPOSITE');
+    assert.equal(result.fontPaths?.metricTwin, 1, 'the metrically identical stand-in carried the run');
+    assert.equal(result.fontPaths?.substituted, 0, 'a twin exists, so no substitute face may be used');
+  } finally {
+    globalThis.fetch = realFetch;
+  }
 });

@@ -207,6 +207,21 @@ export class PostHogTelemetrySink implements TelemetrySink {
           multiline: event.multiline,
         });
         break;
+      case 'STUDIO_TEXT_EDIT_FONT_PATH':
+        // Flat properties, not a nested object: `paths.metricTwin` is what the dashboards filter on.
+        posthogCapture('studio_text_edit_font_path', {
+          run_id: event.runId,
+          tool_id: event.toolId,
+          file_id: event.fileId,
+          page_index: event.pageIndex,
+          patched_literal: event.paths.patchedLiteral,
+          patched_codes: event.paths.patchedCodes,
+          metric_twin: event.paths.metricTwin,
+          substituted: event.paths.substituted,
+          transliterated: event.paths.transliterated,
+          rasterized: event.paths.rasterized,
+        });
+        break;
       case 'STUDIO_EDIT_SAVE_ACTION':
         posthogCapture('app_studio_save', {
           tool_id: event.toolId,

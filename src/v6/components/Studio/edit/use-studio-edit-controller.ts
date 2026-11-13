@@ -658,6 +658,19 @@ export function useStudioEditController(ui: any) {
                             code: `STUDIO_TRUE_REPLACE_FALLBACK_${finalEvent.payload.payload.trueReplaceFallbackReason}`, message: 'True replace fallback path used',
                         });
                     }
+                    // Which face the glyphs ended up in, per run. Without this the twin/CID work is
+                    // invisible in production: a successful save looks identical on every path.
+                    const fontPaths = finalEvent.payload.payload.fontPaths;
+                    if (fontPaths && Object.values(fontPaths).some((count) => count > 0)) {
+                        runtime.telemetry.track({
+                            type: 'STUDIO_TEXT_EDIT_FONT_PATH',
+                            runId,
+                            toolId: 'studio.edit.text',
+                            fileId: target.page.fileId,
+                            pageIndex: target.page.pageIndex,
+                            paths: fontPaths,
+                        });
+                    }
                     const redactPayload = finalEvent.payload.payload.redactVerify;
                     if (redactPayload) {
                         const nextVerify = parseWorkerRedactVerify(redactPayload, runId);

@@ -9,6 +9,7 @@ import type {
   WorkerStudioImageEditElement,
   WorkerStudioFormFieldEditElement,
   WorkerStudioWatermarkEditElement,
+  StudioFontPathCounts,
 } from '../../core/types/contracts';
 import { parsePdfTextOperators } from './pdf-content-stream-parser';
 import { decodePageStreamToLatin1 } from './pdf-content-stream-decode';
@@ -766,6 +767,7 @@ export async function applyStudioTextEditsToPdfBytes(params: {
   overflowDetected: boolean;
   trueReplaceApplied: boolean;
   trueReplaceFallbackReason?: string;
+  fontPaths: StudioFontPathCounts;
   formFieldErrors?: string[];
 }> {
   const pdf = await PDFDocument.load(params.sourceBytes);
@@ -808,6 +810,9 @@ export async function applyStudioTextEditsToPdfBytes(params: {
    * coverage gate simply never sees that candidate.
    */
   const twinFontCache = new Map<string, PDFFont>();
+  // Identity, not name: the telemetry below asks "was this run drawn by a stand-in?" and a font
+  // object is the only thing that answers it without guessing from the family name.
+  const twinFontObjects = new Set<PDFFont>();
   const getTwinFonts = async (
     twin: MetricTwin,
     weight: 'normal' | 'bold',
@@ -829,6 +834,7 @@ export async function applyStudioTextEditsToPdfBytes(params: {
         const bytes = new Uint8Array(await resp.arrayBuffer());
         const font = await pdf.embedFont(bytes, { subset: true });
         twinFontCache.set(file, font);
+        twinFontObjects.add(font);
         fonts.push(font);
       } catch { /* skip this slice */ }
     }
@@ -1082,6 +1088,16 @@ export async function applyStudioTextEditsToPdfBytes(params: {
   const formFieldErrors: string[] = [];
   const consumedTextIds = new Set<string>();
   const sourceFontByElementId = new Map<string, SourceFontInfo>();
+  // Counted per drawn run, so "did this edit keep the document's own face?" is answerable from
+  // production data instead of from a manual probe on a corpus.
+  const fontPaths: StudioFontPathCounts = {
+    patchedLiteral: 0,
+    patchedCodes: 0,
+    metricTwin: 0,
+    substituted: 0,
+    transliterated: 0,
+    rasterized: 0,
+  };
 
   const streamState = await loadPageStreamState(pdf, params.pageIndex);
 
@@ -1115,6 +1131,7 @@ export async function applyStudioTextEditsToPdfBytes(params: {
     overflowDetected,
     trueReplaceApplied,
     trueReplaceFallbackReason,
+    fontPaths,
     formFieldErrors: formFieldErrors.length > 0 ? formFieldErrors : undefined,
   };
 
@@ -1195,6 +1212,13 @@ export async function applyStudioTextEditsToPdfBytes(params: {
         }
         if (!movedFromOriginal && (!isNonLatin1 || result.codeReuseApplied)) {
           consumedTextIds.add(target.id);
+          // The run now carries the replacement in its own font. A moved box only erases here and is
+          // redrawn by the overlay below, so it is counted there, not as an in-place patch.
+          if (result.codeReuseApplied) {
+            fontPaths.patchedCodes += 1;
+          } else {
+            fontPaths.patchedLiteral += 1;
+          }
         }
         trueReplaceApplied = true;
         trueReplaceFallbackReason = undefined;
@@ -1403,11 +1427,19 @@ export async function applyStudioTextEditsToPdfBytes(params: {
               ...(uprightRotation ? { rotate: degrees(uprightRotation) } : {}),
             });
             displayX += raster.widthPt + (tracking * run.rasterText.length);
+            fontPaths.rasterized += 1;
             continue;
           }
         }
         // No canvas in this runtime: degrade only these characters, not the whole sentence.
         const fallbackText = run.rasterText ? (replaceUnsupportedChars(run.rasterText) || '?') : run.text;
+        if (run.rasterText) {
+          fontPaths.transliterated += 1;
+        } else if (twinFontObjects.has(run.font)) {
+          fontPaths.metricTwin += 1;
+        } else {
+          fontPaths.substituted += 1;
+        }
         const anchor = toUserRatioPoint(displayX, displayY);
         page.drawText(fallbackText, {
           x: anchor.x,
