@@ -278,6 +278,8 @@ export type WorkerCommandPayload =
   | { type: 'GET_PDF_TEXT_LAYER'; payload: { fileId: string; pageNumber: number; bytes?: Uint8Array } }
   | { type: 'GET_PDF_IMAGE_CANDIDATES'; payload: { fileId: string; pageNumber: number; bytes?: Uint8Array } }
   | { type: 'APPLY_STUDIO_TEXT_EDITS'; payload: { fileId: string; pageIndex: number; elements: WorkerStudioEditElement[] } }
+  // Opening a locked document: qpdf runs in the worker, so the wasm engine never blocks the canvas.
+  | { type: 'DECRYPT_PDF'; payload: { fileId: string; password: string } }
   | { type: 'READ_FILE'; payload: { fileId: string } };
 
 export interface IWorkerCommand {
@@ -320,6 +322,7 @@ export type WorkerEventPayload =
       };
     };
   }
+  | { type: 'PDF_DECRYPTED'; payload: { fileId: string; outputId: string } }
   | { type: 'ERROR'; payload: { message: string; code?: string } };
 
 export interface IWorkerEvent {

@@ -4,6 +4,7 @@ import { resolveSpanFontInfo } from '../../services/pdf/studio-text-layer-fonts'
 import { getPdfPageCountFromBytes } from '../pdf/page-count';
 import { extractTextLayerForPreview } from '../../services/pdf/pdf-text-layer-extractor';
 import { scanPdfImageCandidatesFromBlob } from '../../services/pdf/pdf-image-extractor';
+import { createQpdfWasmEngine } from '../../services/pdf/qpdf-wasm-engine';
 import { applyStudioTextEditsToPdfBytes } from '../../services/pdf/studio-text-edit-applier';
 import { normalizeAndValidateStudioEditRequest } from '../../services/pdf/studio-text-edit-validation';
 import { toProtectInputError } from '../../services/pdf/protect-error-messages';
@@ -231,6 +232,20 @@ export async function executeWorkerCommand(
             redactVerify,
           },
         },
+      };
+    }
+
+    if (command.payload.type === 'DECRYPT_PDF') {
+      const { fileId, password } = command.payload.payload;
+      const entry = await deps.fs.read(fileId);
+      const sourceBlob = await entry.getBlob();
+      // qpdf is wasm: it runs here, not on the canvas thread, and the original file stays untouched.
+      const decrypted = await createQpdfWasmEngine().decrypt(sourceBlob, { password });
+      const output = await deps.fs.write(decrypted);
+      return {
+        id: command.id,
+        type: 'EVENT',
+        payload: { type: 'PDF_DECRYPTED', payload: { fileId, outputId: output.id } },
       };
     }
 

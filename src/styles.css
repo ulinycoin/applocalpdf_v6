@@ -4494,6 +4494,19 @@ textarea:focus-visible {
   font: inherit;
 }
 
+.studio-password-file {
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-dim);
+  word-break: break-all;
+}
+
+.studio-download-modal-error {
+  margin: 0;
+  font-size: 12px;
+  color: #b42318;
+}
+
 .studio-download-modal-input::placeholder {
   color: var(--text-dim);
 }

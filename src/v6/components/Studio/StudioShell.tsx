@@ -17,6 +17,8 @@ import { StudioTimeline } from './branching/StudioTimeline';
 import type { StudioReturnContext, StudioToolRouteState } from '../../studio/navigation/studio-tool-context';
 import { getPdfJs, getPdfLib } from '../../services/pdf/pdf-loader';
 import { PASSWORD_PROTECTED_MESSAGE, isPasswordProtectedPdfError, workspaceQuotaRefusal } from '../../studio/import/import-guards';
+import { useProtectedPdfPrompt } from '../../studio/import/use-protected-pdf-prompt';
+import { decryptPdfInWorker } from '../../studio/import/decrypt-in-worker';
 import { StudioDialog } from './StudioDialog';
 import { canAddDocumentToStudio, canCreateWorkspace, canUseDocumentWithPageCount, freePageLimitMessage } from '../../../app/platform/plan-limits';
 import { showStudioPaywall } from '../../../app/react/studio-paywall';
@@ -281,6 +283,20 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
     const location = useLocation();
     const navigate = useNavigate();
     const { runtime } = usePlatform();
+    // Set only while the password dialog is open for this file, so the dialog's decrypt callback
+    // knows which stored document to unlock.
+    const pendingUnlockFileIdRef = useRef<string | null>(null);
+    const decryptPendingFile = useCallback(
+        (_file: File, password: string) => {
+            const fileId = pendingUnlockFileIdRef.current;
+            if (!fileId) {
+                return Promise.reject(new Error('No document is waiting to be unlocked.'));
+            }
+            return decryptPdfInWorker(runtime, fileId, password);
+        },
+        [runtime],
+    );
+    const protectedPdfPrompt = useProtectedPdfPrompt(decryptPendingFile);
     const [billingContext, setBillingContext] = useState(() => runtime.billing.getContext());
 
     useEffect(() => {
@@ -1005,7 +1021,7 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
                         notifyStudioError(quotaRefusal);
                         continue;
                     }
-                    const entry = await runtime.vfs.write(file);
+                    let entry = await runtime.vfs.write(file);
                     writtenFileId = entry.id;
                     const buffer = await file.arrayBuffer();
 
@@ -1018,12 +1034,25 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
                         if (!isPasswordProtectedPdfError(error)) {
                             throw error;
                         }
-                        // pdf.js says "No password given"; the user needs to know what to do about it.
+                        // pdf.js says "No password given": ask for the password and import a decrypted
+                        // copy instead of sending the user away with a library error.
                         await loadingTask.destroy().catch(() => undefined);
+                        pendingUnlockFileIdRef.current = entry.id;
+                        const unlocked = await protectedPdfPrompt.ask(file).finally(() => {
+                            pendingUnlockFileIdRef.current = null;
+                        });
+                        if (!unlocked) {
+                            await runtime.vfs.delete(entry.id).catch(() => undefined);
+                            writtenFileId = null;
+                            notifyStudioError(PASSWORD_PROTECTED_MESSAGE);
+                            continue;
+                        }
+                        const unlockedFile = new File([unlocked], file.name, { type: 'application/pdf' });
+                        pdf = await pdfjs.getDocument({ data: new Uint8Array(await unlockedFile.arrayBuffer()) }).promise;
+                        file = unlockedFile;
                         await runtime.vfs.delete(entry.id).catch(() => undefined);
-                        writtenFileId = null;
-                        notifyStudioError(PASSWORD_PROTECTED_MESSAGE);
-                        continue;
+                        entry = await runtime.vfs.write(unlockedFile);
+                        writtenFileId = entry.id;
                     }
                     const numPages = pdf.numPages;
 
@@ -1139,7 +1168,7 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
             fitToDocuments([...documents, ...positionedDocs]);
             void createCheckpoint(runtime.vfs, 'upload', `Uploaded ${positionedDocs.length} ${positionedDocs.length === 1 ? 'file' : 'files'}`);
         }
-    }, [addDocument, appendPages, canvasDimensions.width, createCheckpoint, documents, fitToDocuments, layoutGridColumns, notifyStudioError, onFilesDropped, runtime.telemetry, runtime.vfs]);
+    }, [addDocument, appendPages, canvasDimensions.width, createCheckpoint, documents, fitToDocuments, layoutGridColumns, notifyStudioError, onFilesDropped, protectedPdfPrompt.ask, runtime.telemetry, runtime.vfs]);
 
     const handleDrop = useCallback(async (e: React.DragEvent) => {
         e.preventDefault();
@@ -1925,6 +1954,7 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
                 </div>,
                 document.body
             )}
+            {protectedPdfPrompt.element}
             {paywallReason && (
                 <PaywallModal
                     toolId="studio"
