@@ -1,5 +1,5 @@
 {
-  "/": "2026-10-06",
+  "/": "2026-11-20",
   "/about": "2026-08-01",
   "/compare": "2026-10-01",
   "/compare/localpdf-vs-ilovepdf": "2026-10-01",
@@ -20,10 +20,10 @@
   "/features/sign-pdf": "2026-10-06",
   "/features/split-pdf": "2026-10-05",
   "/how-local-pdf-processing-works": "2026-10-05",
-  "/ja": "2026-10-06",
+  "/ja": "2026-11-20",
   "/localpdf": "2026-10-01",
   "/pdf-tools-without-upload": "2026-10-05",
-  "/pricing": "2026-10-04",
+  "/pricing": "2026-11-10",
   "/privacy": "2026-10-01",
   "/private-pdf-editor": "2026-10-06",
   "/refund-policy": "2026-09-24",
@@ -33,5 +33,5 @@
   "/use-cases/hr-sensitive-documents": "2026-10-01",
   "/use-cases/internal-operations": "2026-10-01",
   "/use-cases/lawyers": "2026-10-01",
-  "/zh": "2026-10-06"
+  "/zh": "2026-11-20"
 }

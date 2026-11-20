@@ -4,6 +4,11 @@ import { featurePages } from '../data/featurePages';
 import { getAppUrl } from '../utils/app-url';
 import { CATEGORIES, ICONS } from '../data/tools';
 import { JA_TOOL_LABELS } from '../data/tool-labels';
+import { FREE_DAILY_FILE_LIMIT } from '../../../src/app/platform/daily-file-quota';
+import { PRO_LIFETIME_PRICE_USD, PRO_YEARLY_PRICE_USD } from '../../../src/app/platform/checkout-offers';
+import { getPlanLimits } from '../../../src/app/platform/plan-limits';
+
+const FREE_WORKSPACE_LIMIT = getPlanLimits('basic').maxWorkspaces;
 
 function getToolHref(toolId: string): string {
   const mapping: Record<string, string> = {
@@ -40,7 +45,7 @@ const title = 'ブラウザで動く個人向けPDFエディタ — 編集、結
 const description = '文書はブラウザ内で処理され、アップロードされません。PDFの編集、結合、分割、圧縮、OCR、変換をオフラインでも無料で利用できます。';
 const canonical = 'https://localpdf.online/ja';
 const image = 'https://localpdf.online/logos/localpdf-social-1200x630.png';
-const imageAlt = 'LocalPDF — private PDF editor that runs entirely in your browser';
+const imageAlt = 'LocalPDF — private PDF editor, files processed in your browser';
 const appUrl = getAppUrl(undefined, { upload: '1' });
 
 const homepageFaqs = [
@@ -54,7 +59,7 @@ const homepageFaqs = [
   },
   {
     question: 'LocalPDFは本当に無料ですか？何か裏がありますか？',
-    answer: 'すべてのPDFツールが無料で使えます。無料枠ではワークスペース3つ、ダウンロードは1日3回までです。Proは買い切り$19（または年額$39.99）で、サブスクリプションは不要です。最新の価格は料金ページをご確認ください。',
+    answer: `すべてのPDFツールが無料で使えます。無料枠ではワークスペース${FREE_WORKSPACE_LIMIT}つ、ダウンロードは1日${FREE_DAILY_FILE_LIMIT}回までです。Proは買い切り$${PRO_LIFETIME_PRICE_USD}（または年額$${PRO_YEARLY_PRICE_USD}）で、サブスクリプションは不要です。最新の価格は料金ページをご確認ください。`,
   },
   {
     question: 'SmallpdfやAdobe Acrobatと何が違いますか？',

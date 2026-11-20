@@ -5,7 +5,7 @@
  * tool is ordinary web software — hosting, analytics, billing, license validation — and the
  * copy must say so. Every page that makes a local-processing claim should use one of these
  * strings instead of writing its own absolute, so marketing and the privacy policy cannot drift
- * apart again. `npm run audit:seo-copy` fails the build when an unsupported absolute reappears.
+ * apart again. `npm run audit:seo` fails the build when an unsupported absolute reappears.
  */
 
 /** Hero-size badge. Safe on its own because it names the file, not the whole site. */

@@ -1,6 +1,19 @@
 # Active Tasks
 
-Last updated: 2026-11-14
+Last updated: 2026-11-20
+
+## Сессия 2026-11-20 — лендинг: цифры из констант, канон в `imageAlt`, lastmod
+
+Взята только денежная/фактическая часть аудита лендинга; косметика (тире, eyebrow, глифы) отклонена.
+
+1. **FAQ-ответ про цену больше не хардкодит числа** в `index.astro:64`, `ja.astro:59`, `zh.astro:59`: `FREE_WORKSPACE_LIMIT` (`getPlanLimits('basic').maxWorkspaces`), `FREE_DAILY_FILE_LIMIT`, `PRO_LIFETIME_PRICE_USD`, `PRO_YEARLY_PRICE_USD`. Отрендерено теми же значениями (3 / 3 / $19 / $39.99) — проверено в `dist/{index,ja,zh}.html` и в JSON-LD (5/5, 4/4, 4/4 блоков парсятся).
+2. **`imageAlt` ×3** приведён к канону `privacy-claims.ts`: `…files processed in your browser` вместо `runs entirely in your browser` (`og:image:alt`).
+3. **`npm run seo:lastmod`**: `/pricing` 2026-10-04 → **2026-11-10** (страница менялась коммитом BFCM 2026-11-10); `/`, `/ja`, `/zh` → 2026-11-20. Stale-предупреждение аудита ушло.
+4. **`privacy-claims.ts:10`**: `audit:seo-copy` → `audit:seo` (такого скрипта не было).
+
+Проверено: `npm run build` (website, 82 страницы), `node scripts/seo-audit.mjs` → passed, 83 страницы в copy-аудите.
+
+Найдено попутно, не чинилось: `route-sources.json` для `/`, `/ja`, `/zh` не содержит `src/app/platform/*`, поэтому смена цены или лимита в коде не сдвинет lastmod лендинга. Также `seo-audit.mjs` сканирует блог, и regex `runs entirely|100% private` (если добавлять) завалит 10 строк в 7 статьях — правило нужно скоупить.
 
 ## Сессия 2026-11-14 — Compress перестал быть пустышкой
 
