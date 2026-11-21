@@ -332,6 +332,7 @@ export function WizardShell({ toolId, context, ioAdapter, limitService }: Wizard
       telemetry: runtime.telemetry,
       plan: runtime.billing.getContext().plan,
       surface: 'wizard' as const,
+      exit: 'wizard' as const,
       toolId,
       runId: uiRunId,
     };

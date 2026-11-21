@@ -15,7 +15,7 @@ import { trackMonetizationEvent } from './monetization-telemetry';
 import { clearDownloadAllowance, downloadErrorCode, recordDownloadOutcome, refundDownloadAllowance } from '../platform/download-exit';
 import { getDeviceInstanceName } from '../platform/device-identity';
 import { DailyDownloadCounter } from './daily-download-counter';
-import { useStudioExportOffer } from './use-studio-export-offer';
+import { useStudioExportOfferState } from './studio-export-offer-context';
 import { StudioExportOfferBanner } from './studio-export-offer-banner';
 
 type LicenseDevice = { id: string; name: string; createdAt: string };
@@ -64,7 +64,7 @@ function canExportAsSourceFile(pages: PageItem[]): { fileId: string } | null {
 
 export function StudioTopNav({ telemetryEnabled, onToggleTelemetry, telemetryOpen }: StudioTopNavProps) {
   const { runtime } = usePlatform();
-  const studioExportOffer = useStudioExportOffer();
+  const studioExportOffer = useStudioExportOfferState();
   const [isDownloadModalOpen, setIsDownloadModalOpen] = useState(false);
   const [downloadFileName, setDownloadFileName] = useState('');
   const [downloadTargetDocumentId, setDownloadTargetDocumentId] = useState<string | null>(null);
@@ -418,6 +418,7 @@ export function StudioTopNav({ telemetryEnabled, onToggleTelemetry, telemetryOpe
       telemetry: runtime.telemetry,
       plan: billingContext.plan,
       surface: 'studio' as const,
+      exit: 'studio_top_nav' as const,
       toolId: 'studio',
     };
 
@@ -459,6 +460,7 @@ export function StudioTopNav({ telemetryEnabled, onToggleTelemetry, telemetryOpe
       telemetry: runtime.telemetry,
       plan: billingContext.plan,
       surface: 'studio' as const,
+      exit: 'studio_top_nav' as const,
       toolId: 'studio.edit.redact',
       runId: redactVerify.runId || crypto.randomUUID(),
     };

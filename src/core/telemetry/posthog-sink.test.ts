@@ -46,6 +46,7 @@ test('PostHogTelemetrySink forwards app analytics events to PostHog', () => {
       runId: 'run-1',
       toolId: 'merge-pdf',
       surface: 'studio',
+      exit: 'studio_top_nav',
       outcome: 'success',
       requested: 1,
       outputCount: 1,
@@ -98,6 +99,7 @@ test('PostHogTelemetrySink forwards app analytics events to PostHog', () => {
           run_id: 'run-1',
           tool_id: 'merge-pdf',
           surface: 'studio',
+          exit: 'studio_top_nav',
           outcome: 'success',
           output_count: 1,
           requested: 1,
@@ -421,6 +423,7 @@ test('PostHogTelemetrySink reports a refused download with the outcome fields th
       runId: 'run-1',
       toolId: 'merge-pdf',
       surface: 'wizard',
+      exit: 'wizard',
       outcome: 'denied',
       requested: 2,
       reason: 'daily_download_limit',
@@ -436,6 +439,7 @@ test('PostHogTelemetrySink reports a refused download with the outcome fields th
           run_id: 'run-1',
           tool_id: 'merge-pdf',
           surface: 'wizard',
+          exit: 'wizard',
           outcome: 'denied',
           output_count: undefined,
           requested: 2,
@@ -466,13 +470,13 @@ test('PostHogTelemetrySink survives the pre-SDK array shim and a missing reporte
     globalWindow.window = { posthog: { push: () => {} } };
     const shimmed = new PostHogTelemetrySink();
     assert.doesNotThrow(() => {
-      shimmed.track({ type: 'OUTPUT_DOWNLOADED', flowId: 'flow-1', toolId: 'studio', surface: 'studio', outcome: 'success' });
+      shimmed.track({ type: 'OUTPUT_DOWNLOADED', flowId: 'flow-1', toolId: 'studio', surface: 'studio', exit: 'studio_top_nav', outcome: 'success' });
     });
 
     globalWindow.window = {};
     const missing = new PostHogTelemetrySink();
     assert.doesNotThrow(() => {
-      missing.track({ type: 'OUTPUT_DOWNLOADED', flowId: 'flow-1', toolId: 'studio', surface: 'studio', outcome: 'success' });
+      missing.track({ type: 'OUTPUT_DOWNLOADED', flowId: 'flow-1', toolId: 'studio', surface: 'studio', exit: 'studio_top_nav', outcome: 'success' });
     });
   } finally {
     if (originalWindow === undefined) {
@@ -502,6 +506,7 @@ test('a throwing reporter cannot break the caller', () => {
         flowId: 'flow-1',
         toolId: 'studio',
         surface: 'studio',
+        exit: 'studio_top_nav',
         outcome: 'success',
         requested: 1,
         outputCount: 1,

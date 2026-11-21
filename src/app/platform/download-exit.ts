@@ -11,17 +11,22 @@
  * (`outputCount`), `denied` = attempts the quota refused. A batch that asks for more files than the
  * allowance covers is refused as a whole and delivers nothing, so a partial download never happens.
  */
-import type { TelemetrySink } from '../../core/public';
+import type { RunnerTelemetryEvent, TelemetrySink } from '../../core/public';
 import { checkDailyFileQuota, refundDailyFileQuota } from './daily-file-quota';
 import { requestDailyDownloadAllowance } from '../react/studio-paywall';
 import { getOrCreateFlowId } from './browser-context';
 
 export type DownloadSurface = 'wizard' | 'studio';
 
+/** The exit points the contract knows about; derived from the event so the two cannot drift apart. */
+export type DownloadExit = Extract<RunnerTelemetryEvent, { type: 'OUTPUT_DOWNLOADED' }>['exit'];
+
 export interface DownloadExitContext {
   telemetry: TelemetrySink;
   plan: string;
   surface: DownloadSurface;
+  /** Named by the caller on purpose: a new exit point must not inherit another one's funnel numbers. */
+  exit: DownloadExit;
   toolId: string;
   runId?: string;
 }
@@ -40,6 +45,7 @@ function downloadEventBase(context: DownloadExitContext) {
     runId: context.runId,
     toolId: context.toolId,
     surface: context.surface,
+    exit: context.exit,
   };
 }
 

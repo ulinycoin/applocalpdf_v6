@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { usePlatform } from '../../../../app/react/platform-context';
+import { useStudioExportOfferState } from '../../../../app/react/studio-export-offer-context';
 
 import { defaultFilePreviewService } from '../../../preview/preview-service';
 import { PipelineRunner } from '../../../studio/pipeline/PipelineRunner';
@@ -166,6 +167,7 @@ function maybePdfName(fileName: string): boolean {
 
 export function useStudioConvertController(initialToolOverride?: StudioConvertToolId) {
   const { runtime } = usePlatform();
+  const { showOffer } = useStudioExportOfferState();
   const billingPlan = useSyncExternalStore(
     (onChange) => runtime.billing.subscribe(onChange),
     () => runtime.billing.getContext().plan,
@@ -816,6 +818,7 @@ export function useStudioConvertController(initialToolOverride?: StudioConvertTo
       telemetry: runtime.telemetry,
       plan: billingPlan,
       surface: 'studio' as const,
+      exit: 'convert_panel' as const,
       toolId: 'studio.convert',
     };
     if (!clearDownloadAllowance(exitContext, 1)) {
@@ -824,11 +827,12 @@ export function useStudioConvertController(initialToolOverride?: StudioConvertTo
     try {
       await downloadFileById(runtime, outputId, name);
       recordDownloadOutcome(exitContext, 'success', 1, 1);
+      showOffer();
     } catch (error) {
       recordDownloadOutcome(exitContext, 'failure', 1, 0, downloadErrorCode(error));
       refundDownloadAllowance(1, 0);
     }
-  }, [billingPlan, runtime]);
+  }, [billingPlan, runtime, showOffer]);
 
   // Extracted so the quota is decided once, before any bytes leave the app, and the outcome measured once after.
   const deliverConvertOutputs = useCallback(async () => {
@@ -889,6 +893,7 @@ export function useStudioConvertController(initialToolOverride?: StudioConvertTo
       telemetry: runtime.telemetry,
       plan: billingPlan,
       surface: 'studio' as const,
+      exit: 'convert_panel' as const,
       toolId: 'studio.convert',
     };
 
@@ -899,11 +904,12 @@ export function useStudioConvertController(initialToolOverride?: StudioConvertTo
     try {
       await deliverConvertOutputs();
       recordDownloadOutcome(exitContext, 'success', requested, requested);
+      showOffer();
     } catch (error) {
       recordDownloadOutcome(exitContext, 'failure', requested, 0, downloadErrorCode(error));
       refundDownloadAllowance(requested, 0);
     }
-  }, [activeTool, ocrResult, outputIds, runtime, billingPlan, deliverConvertOutputs]);
+  }, [activeTool, ocrResult, outputIds, runtime, billingPlan, deliverConvertOutputs, showOffer]);
 
   const navigateBack = useCallback(() => {
     setInteractionMode('convert');

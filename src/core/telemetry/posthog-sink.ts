@@ -98,6 +98,7 @@ export class PostHogTelemetrySink implements TelemetrySink {
           run_id: event.runId,
           tool_id: event.toolId,
           surface: event.surface,
+          exit: event.exit,
           outcome: event.outcome,
           output_count: event.outputCount,
           requested: event.requested,

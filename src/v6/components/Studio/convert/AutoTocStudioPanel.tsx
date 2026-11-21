@@ -6,6 +6,7 @@ import { requestTocParse, type TocParseResult } from '../../../../plugins/auto-t
 import type { HeaderNode } from '../../../../plugins/auto-toc/logic/index';
 import { clearDownloadAllowance, downloadErrorCode, recordDownloadOutcome, refundDownloadAllowance } from '../../../../app/platform/download-exit';
 import { toUserMessage } from '../../../../app/react/tool-execution-messages';
+import { useStudioExportOfferState } from '../../../../app/react/studio-export-offer-context';
 
 import latinUrl from '@fontsource/noto-sans/files/noto-sans-latin-400-normal.woff?url';
 import latinExtUrl from '@fontsource/noto-sans/files/noto-sans-latin-ext-400-normal.woff?url';
@@ -29,6 +30,7 @@ interface AutoTocStudioPanelProps {
 type Phase = 'config' | 'parsing' | 'review' | 'applying' | 'result';
 
 export function AutoTocStudioPanel({ onClose, inputFileId, fileName, runtime }: AutoTocStudioPanelProps) {
+    const { showOffer } = useStudioExportOfferState();
     const [phase, setPhase] = useState<Phase>('config');
     const [parseResult, setParseResult] = useState<TocParseResult | null>(null);
     const [headers, setHeaders] = useState<HeaderNode[]>([]);
@@ -272,6 +274,7 @@ export function AutoTocStudioPanel({ onClose, inputFileId, fileName, runtime }: 
                                                 telemetry: runtime.telemetry,
                                                 plan: runtime.billing.getContext().plan,
                                                 surface: 'studio' as const,
+                                                exit: 'auto_toc' as const,
                                                 toolId: 'auto-toc',
                                             };
                                             if (!clearDownloadAllowance(exitContext, 1)) {
@@ -285,6 +288,7 @@ export function AutoTocStudioPanel({ onClose, inputFileId, fileName, runtime }: 
                                                 anchor.click();
                                                 document.body.removeChild(anchor);
                                                 recordDownloadOutcome(exitContext, 'success', 1, 1);
+                                                showOffer();
                                             } catch (error) {
                                                 recordDownloadOutcome(exitContext, 'failure', 1, 0, downloadErrorCode(error));
                                                 refundDownloadAllowance(1, 0);

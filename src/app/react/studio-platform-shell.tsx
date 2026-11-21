@@ -5,6 +5,7 @@ import { ToolRoutes } from './tool-routes';
 import { UxFeedbackOverlay } from './ux-feedback-overlay';
 import { TelemetryPanel } from './telemetry-panel';
 import { StudioTopNav } from './studio-top-nav';
+import { StudioExportOfferProvider } from './studio-export-offer-provider';
 import { APP_BASE_PATH } from '../../../shared/app-routes';
 import { posthogCapture } from '../../core/public';
 
@@ -35,22 +36,24 @@ export function StudioPlatformShell() {
     <BrowserRouter basename={APP_BASE_PATH} future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <PageViewTracker />
       <PlatformProvider>
-        <UxFeedbackOverlay />
-        <div className="studio-app-layout">
-          <StudioTopNav
-            telemetryEnabled={telemetryEnabled}
-            telemetryOpen={telemetryOpen}
-            onToggleTelemetry={() => setTelemetryOpen((value) => !value)}
-          />
-          {telemetryEnabled && telemetryOpen && (
-            <section className="studio-telemetry-panel" aria-label="Telemetry panel">
-              <TelemetryPanel />
-            </section>
-          )}
-          <main className="studio-main-shell">
-            <ToolRoutes />
-          </main>
-        </div>
+        <StudioExportOfferProvider>
+          <UxFeedbackOverlay />
+          <div className="studio-app-layout">
+            <StudioTopNav
+              telemetryEnabled={telemetryEnabled}
+              telemetryOpen={telemetryOpen}
+              onToggleTelemetry={() => setTelemetryOpen((value) => !value)}
+            />
+            {telemetryEnabled && telemetryOpen && (
+              <section className="studio-telemetry-panel" aria-label="Telemetry panel">
+                <TelemetryPanel />
+              </section>
+            )}
+            <main className="studio-main-shell">
+              <ToolRoutes />
+            </main>
+          </div>
+        </StudioExportOfferProvider>
       </PlatformProvider>
     </BrowserRouter>
   );

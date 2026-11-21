@@ -1,9 +1,11 @@
 import type { PlatformRuntime } from './create-platform';
-import { clearDownloadAllowance, recordDownloadOutcome, refundDownloadAllowance, type DownloadSurface } from './download-exit';
+import { clearDownloadAllowance, recordDownloadOutcome, refundDownloadAllowance, type DownloadExit, type DownloadSurface } from './download-exit';
 
 export interface DownloadOutputsOptions {
   baseName?: string;
   surface?: DownloadSurface;
+  /** Required: a helper cannot know which exit point is calling it, and guessing would pollute the funnel. */
+  exit: DownloadExit;
   toolId?: string;
   runId?: string;
 }
@@ -33,7 +35,7 @@ function extensionFromMime(mime: string): string {
 export async function downloadOutputFiles(
   runtime: PlatformRuntime,
   outputIds: string[],
-  options: DownloadOutputsOptions = {},
+  options: DownloadOutputsOptions,
 ): Promise<number> {
   if (typeof document === 'undefined') {
     throw new Error('Download is available only in browser runtime');
@@ -47,6 +49,7 @@ export async function downloadOutputFiles(
     telemetry: runtime.telemetry,
     plan: runtime.billing.getContext().plan,
     surface: options.surface ?? ('studio' as DownloadSurface),
+    exit: options.exit,
     toolId: options.toolId ?? 'studio',
     runId: options.runId,
   };

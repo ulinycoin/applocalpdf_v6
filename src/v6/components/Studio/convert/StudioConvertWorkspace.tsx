@@ -5,6 +5,7 @@ import { trackMonetizationEvent, trackPaywallShown } from '../../../../app/react
 import { openCheckout } from '../../../../app/react/billing';
 import { getPrimaryPaidOffer } from '../../../../app/platform/checkout-offers';
 import { usePlatform } from '../../../../app/react/platform-context';
+import { useStudioExportOfferState } from '../../../../app/react/studio-export-offer-context';
 import { clearDownloadAllowance, downloadErrorCode, recordDownloadOutcome, refundDownloadAllowance } from '../../../../app/platform/download-exit';
 import { createZipBlob } from '../../../utils/zip';
 
@@ -122,6 +123,7 @@ function OcrPaywallOverlay({
 
 export function StudioConvertWorkspace({ onClose, initialTool }: StudioConvertWorkspaceProps = {}) {
   const { runtime } = usePlatform();
+  const { showOffer } = useStudioExportOfferState();
   const ctrl = useStudioConvertController(initialTool as import('./use-studio-convert-controller').StudioConvertToolId | undefined);
 
   const meta = useMemo(() => (ctrl.activeTool ? (TOOL_META[ctrl.activeTool] ?? TOOL_META['ocr-pdf']) : TOOL_META['ocr-pdf']), [ctrl.activeTool]);
@@ -207,6 +209,7 @@ export function StudioConvertWorkspace({ onClose, initialTool }: StudioConvertWo
       telemetry: runtime.telemetry,
       plan: ctrl.isPro ? 'pro' : 'basic',
       surface: 'studio' as const,
+      exit: 'convert_panel' as const,
       toolId: 'studio.convert.zip',
     };
     if (!clearDownloadAllowance(exitContext, requested)) return;
@@ -227,11 +230,12 @@ export function StudioConvertWorkspace({ onClose, initialTool }: StudioConvertWo
       document.body.removeChild(anchor);
       URL.revokeObjectURL(url);
       recordDownloadOutcome(exitContext, 'success', requested, requested);
+      showOffer();
     } catch (error) {
       recordDownloadOutcome(exitContext, 'failure', requested, 0, downloadErrorCode(error));
       refundDownloadAllowance(requested, 0);
     }
-  }, [ctrl.outputIds, ctrl.compressResultSummary, ctrl.activeDocument, ctrl.isPro, runtime]);
+  }, [ctrl.outputIds, ctrl.compressResultSummary, ctrl.activeDocument, ctrl.isPro, runtime, showOffer]);
 
   const alsoTry = ALSO_TRY.filter((item) => item.tool !== ctrl.activeTool);
 

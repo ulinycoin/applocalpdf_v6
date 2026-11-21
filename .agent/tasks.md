@@ -1,6 +1,48 @@
 # Active Tasks
 
-Last updated: 2026-11-20
+Last updated: 2026-11-21
+
+## Сессия 2026-11-21 (3) — оффер после скачивания из панелей Studio
+
+Продолжение пункта октябрьского отчёта «подключить `showOffer()` к Studio-выходам»: телеметрия `exit` уже делим поток, но сам оффер показывался только после экспорта из верхнего нава.
+
+1. **Один экземпляр оффера на всю Studio.** `studio-export-offer-provider.tsx` (+ контекст и хук в `studio-export-offer-context.ts`) поднят в `StudioPlatformShell` над навом и `ToolRoutes`. Баннер остался в наве (тот же CSS, z-index 900 над полноэкранной панелью), а `showOffer` теперь доступен панелям. Дефолт контекста — no-op: компонент вне провайдера не ломает скачивание.
+2. **Вызовы после успешной выдачи файла:** ZIP из панели конвертера (`StudioConvertWorkspace.handleDownloadZip`), одиночные и пакетные скачивания конвертера (`use-studio-convert-controller`: `downloadSingleResult` и общий путь), панель Auto-TOC. Везде — после `recordDownloadOutcome(..., 'success')`, то есть файл уже у пользователя.
+3. **Квалификация не менялась:** `decideStudioExportOffer` (план, 2+ документа, раз в сессию) остаётся единственным правилом; wizard и share не тронуты. `/pdf-mcp-server` по решению владельца не трогали.
+4. **E2E:** новый тест в `download-exit.spec.ts` — два документа → Compress в панели → скачивание → баннер виден; затем trial-клик по кнопке Download после показа баннера, чтобы поймать регрессию «баннер перекрыл панель».
+
+**Проверено:** `npm test` — **539/539 pass**, `npm run build` (tsc + vite), `npm run audit:workerization:strict` — exit 0, `main-thread-forbidden: 0`; `npx playwright test e2e/download-exit.spec.ts` — **4/4 passed** (2.6 мин, на `build:all`), включая новый тест панели. ESLint — 0 ошибок, новых предупреждений нет (6 — существовавшие: unused props, hook deps).
+
+**Ограничение:** e2e проверяет панель конвертера; Auto-TOC вызывается тем же хуком, но отдельным тестом не покрыт (его панель требует файла с заголовками).
+
+**Состояние git:** незакоммичено поверх `586adce`; `main` впереди `origin/main` на 2 коммита (20.11), пуш не делался.
+
+## Сессия 2026-11-21 (2) — `exit` в `app_output_downloaded`: точки выхода разделены
+
+Пункт октябрьского отчёта: у всех 156 октябрьских скачиваний `surface='studio'`, разбить по точкам выхода было нельзя, поэтому непонятно, где показывать оффер.
+
+1. **Контракт** (`src/core/types/contracts.ts`): у `OUTPUT_DOWNLOADED` появилось обязательное `exit: 'studio_top_nav' | 'convert_panel' | 'auto_toc' | 'wizard'`. Тип `DownloadExit` выведен из самого события (`Extract<RunnerTelemetryEvent, …>`), поэтому контракт и контекст не разъедутся.
+2. **Почему обязательное:** `DownloadExitContext` требует `exit`, `downloadOutputFiles()` — тоже (убран дефолт `= {}`). Новый путь скачивания не может молча унаследовать чужие цифры: вызов без `exit` не собирается.
+3. **Разметка (8 контекстов в 6 файлах):** экспорт из верхнего нава и сертификат редактирования → `studio_top_nav`; ZIP и одиночные скачивания конвертера (`StudioConvertWorkspace`, `use-studio-convert-controller`) → `convert_panel`; панель Auto-TOC → `auto_toc`; `WizardShell` и OCR-страница (через `downloadOutputFiles`) → `wizard`. Все Studio-поверхности сохранили `surface: 'studio'` — старые дашборды не ломаются, новое поле только делит их.
+4. **PostHog** (`posthog-sink.ts`): свойство `exit` в `app_output_downloaded`.
+5. **Тесты:** `download-exit.test.ts` — новый тест прогоняет все четыре значения и проверяет, что каждое доходит до события; обновлены ожидания sink (5 событий) и контекст-хелпер. e2e `download-exit.spec.ts` — wizard-путь проверяет `exit: 'wizard'` (success и denied), Studio-экспорт — `exit: 'studio_top_nav'`.
+
+**Проверено:** `npm test` — **539/539 pass** (+1), `npm run build`, `npm run audit:workerization:strict` — exit 0, `main-thread-forbidden: 0`; `npx playwright test e2e/download-exit.spec.ts` — **3/3 passed** (1.7 мин, на сборке `build:all`). ESLint по изменённым файлам — 0 ошибок; 9 предупреждений (`any`, hook deps, неиспользуемые props) — не в добавленных строках.
+
+**Дальше:** подключить `showOffer()` к Studio-выходам, которые дают квалифицированные (2+ документа) скачивания — отдельная задача; поведение оффера в этой правке не менялось.
+
+**Состояние git:** всё незакоммичено поверх `586adce`; `main` впереди `origin/main` на 2 коммита (20.11), пуш не делался.
+
+## Сессия 2026-11-21 — отладочные логи оффера после экспорта убраны
+
+Пункт из открытого списка октябрьского отчёта: `console.log('[dbg] …')` в `use-studio-export-offer.ts` печатал в консоль прода причину решения оффера и значение ключа `localpdf_paywall_seen:studio:export_success`.
+
+1. Удалены оба лога; `trackPaywallShown()` вызывается без временной переменной — возвращаемое значение (признак «уже трекалось в этой сессии») нигде не использовалось, кроме лога.
+2. Поведение оффера не менялось: те же гейты (`workspaceCount`, plan, `alreadyShownThisSession`), та же телеметрия `paywall_shown`, тот же баннер.
+
+**Проверено:** `npm test` — **538/538 pass**, `npm run build` (tsc + vite) — ok, `npm run audit:workerization:strict` — exit 0, `main-thread-forbidden: 0`, ESLint по изменённому файлу — 0.
+
+**Состояние git:** `main` = `586adce`, впереди `origin/main` на 2 коммита (20.11) — по решению владельца не пушились. Эта правка тоже не закоммичена (коммитит владелец).
 
 ## Сессия 2026-11-20 — лендинг: цифры из констант, канон в `imageAlt`, lastmod
 

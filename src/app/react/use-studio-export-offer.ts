@@ -70,8 +70,7 @@ export function useStudioExportOffer(): StudioExportOfferBannerState {
     setVisible(true);
     // Same funnel name the monetization dashboards already read, with the new source so this test stays
     // separable from the legacy `upsell_overlay` impressions.
-    console.log('[dbg] showing', decision.reason, 'key', (() => { try { return window.sessionStorage.getItem('localpdf_paywall_seen:studio:export_success'); } catch { return 'err'; } })());
-    const trackedResult = trackPaywallShown({
+    trackPaywallShown({
       source: STUDIO_EXPORT_OFFER_SOURCE,
       toolId: 'studio',
       trigger: 'export_success',
@@ -79,7 +78,6 @@ export function useStudioExportOffer(): StudioExportOfferBannerState {
       userState: 'local',
       hadPriorSuccessfulRun: true,
     });
-    console.log('[dbg] tracked', trackedResult);
   }, [runtime, workspaceCount]);
 
   const dismiss = useCallback(() => {

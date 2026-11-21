@@ -59,6 +59,7 @@ interface DownloadEvent {
   type: string;
   outcome?: string;
   surface?: string;
+  exit?: string;
   toolId?: string;
   requested?: number;
   outputCount?: number;
@@ -151,6 +152,7 @@ test.describe('download exit contract', () => {
       const successes = await downloadExits(page, 'success');
       expect(successes.length).toBe(3);
       expect(successes[0].surface).toBe('wizard');
+      expect(successes[0].exit).toBe('wizard');
       expect(successes[0].toolId).toBe('excel-to-pdf');
 
       // The fourth attempt is refused by the same gate Studio uses, and the refusal is measured.
@@ -161,6 +163,7 @@ test.describe('download exit contract', () => {
       const denied = await downloadExits(page, 'denied');
       expect(denied.length).toBe(1);
       expect(denied[0].surface).toBe('wizard');
+      expect(denied[0].exit).toBe('wizard');
       expect(denied[0].reason).toBe('daily_download_limit');
       expect(denied[0].requested).toBe(1);
     } finally {
@@ -232,8 +235,44 @@ test.describe('post-export offer', () => {
         const api = (window as unknown as { __LOCALPDF_V6_TEST_API?: { getTelemetrySnapshot: () => Array<{ type: string; outcome?: string }> } }).__LOCALPDF_V6_TEST_API;
         return api?.getTelemetrySnapshot().filter((event) => event.type === 'OUTPUT_DOWNLOADED' && event.outcome === 'success').length ?? 0;
       }), { timeout: 15_000 }).toBeGreaterThan(0);
+
+      // The Studio top-bar export must name itself, otherwise its numbers merge with the convert panel.
+      const studioExits = await downloadExits(page, 'success');
+      expect(studioExits.at(-1)?.exit).toBe('studio_top_nav');
     } finally {
       removeFile(only);
+    }
+  });
+
+  test('a qualified download from a Studio tool panel shows the offer', async ({ page }) => {
+    const first = await createPdf('panel-one');
+    const second = await createPdf('panel-two');
+    await installPosthogStub(page);
+
+    try {
+      await page.goto('/app/studio');
+      await page.locator('input[type="file"]').first().setInputFiles([first, second]);
+      await expect.poll(async () => await workspaceCount(page), { timeout: 90_000 }).toBe(2);
+
+      // The convert panel used to be a silent exit: the file left the app and the offer never knew.
+      await page.getByRole('button', { name: 'Compress', exact: true }).click();
+      const runButton = page.getByRole('button', { name: 'Compress PDF', exact: true });
+      await expect(runButton).toBeVisible({ timeout: 30_000 });
+      await runButton.click();
+
+      const outputRow = page.locator('.cvt-output-row');
+      await expect(outputRow).toBeVisible({ timeout: 120_000 });
+      const downloadButton = outputRow.getByRole('button', { name: 'Download', exact: true });
+      await downloadButton.click();
+
+      await expect(page.getByTestId('studio-export-offer')).toBeVisible({ timeout: 15_000 });
+
+      // The banner renders above the full-screen panel, so it must not cover the row it followed: a trial
+      // click fails if the button is covered, which is exactly the regression to catch before it ships.
+      await downloadButton.click({ trial: true });
+    } finally {
+      removeFile(first);
+      removeFile(second);
     }
   });
 });

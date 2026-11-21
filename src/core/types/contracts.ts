@@ -435,6 +435,9 @@ export type RunnerTelemetryEvent =
     runId?: string;
     toolId: string;
     surface: 'wizard' | 'studio';
+    /** Which exit point handed the file over. The offer and the funnel are read per exit point, so a new
+     *  download path must name itself instead of inheriting another point's numbers. */
+    exit: 'studio_top_nav' | 'convert_panel' | 'auto_toc' | 'wizard';
     outcome: 'success' | 'failure' | 'denied';
     /** The quota unit: one file the user receives. `requested` is what the caller asked for, `outputCount` what was handed over. */
     outputCount?: number;

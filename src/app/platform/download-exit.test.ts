@@ -7,6 +7,7 @@ import {
   downloadErrorCode,
   recordDownloadOutcome,
   refundDownloadAllowance,
+  type DownloadExit,
   type DownloadExitContext,
 } from './download-exit';
 
@@ -30,7 +31,11 @@ function installStorageStub(): void {
   } as unknown as Storage;
 }
 
-function context(surface: 'wizard' | 'studio', plan = 'basic'): { ctx: DownloadExitContext; events: RunnerTelemetryEvent[] } {
+function context(
+  surface: 'wizard' | 'studio',
+  plan = 'basic',
+  exit: DownloadExit = surface === 'wizard' ? 'wizard' : 'studio_top_nav',
+): { ctx: DownloadExitContext; events: RunnerTelemetryEvent[] } {
   const events: RunnerTelemetryEvent[] = [];
   return {
     events,
@@ -38,6 +43,7 @@ function context(surface: 'wizard' | 'studio', plan = 'basic'): { ctx: DownloadE
       telemetry: { track: (event: RunnerTelemetryEvent) => { events.push(event); } },
       plan,
       surface,
+      exit,
       toolId: 'merge-pdf',
       runId: 'run-1',
     },
@@ -63,6 +69,18 @@ test('a free wizard download consumes the daily allowance and reports success', 
   );
 });
 
+test('each download path names its exit point so the funnel can split them', () => {
+  installStorageStub();
+  resetDailyFileQuota();
+  const exits: DownloadExit[] = ['studio_top_nav', 'convert_panel', 'auto_toc', 'wizard'];
+
+  for (const exit of exits) {
+    const { ctx, events } = context(exit === 'wizard' ? 'wizard' : 'studio', 'pro', exit);
+    recordDownloadOutcome(ctx, 'success', 1, 1);
+    assert.equal(downloads(events)[0].exit, exit);
+  }
+});
+
 test('a refused attempt reports the denial with the remaining allowance and delivers nothing', () => {
   installStorageStub();
   resetDailyFileQuota();
@@ -84,6 +102,7 @@ test('a refused attempt reports the denial with the remaining allowance and deli
     runId: 'run-1',
     toolId: 'merge-pdf',
     surface: 'studio',
+    exit: 'studio_top_nav',
     outcome: 'denied',
     requested: 1,
     reason: 'daily_download_limit',
