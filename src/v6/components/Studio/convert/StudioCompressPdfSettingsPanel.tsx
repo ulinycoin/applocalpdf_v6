@@ -2,7 +2,7 @@ import type { StudioCompressPdfSettings } from './use-studio-convert-controller'
 
 interface StudioCompressPdfSettingsPanelProps {
   settings: StudioCompressPdfSettings;
-  onChange: (next: StudioCompressPdfSettings) => void;
+  onChange: (next: Partial<StudioCompressPdfSettings>) => void;
 }
 
 const QUALITY_OPTIONS: Array<{

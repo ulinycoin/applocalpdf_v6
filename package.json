@@ -39,7 +39,8 @@
     "audit:seo": "node scripts/seo-audit.mjs",
     "seo:lastmod": "node scripts/gen-lastmod-manifest.mjs && node scripts/gen-video-manifest.mjs",
     "seo:video": "node scripts/gen-video-manifest.mjs",
-    "pretest": "node scripts/copy-studio-fonts.mjs"
+    "pretest": "node scripts/copy-studio-fonts.mjs",
+    "measure:compress": "node scripts/measure-compress.mjs"
   },
   "dependencies": {
     "@astrojs/mdx": "^5.0.0",

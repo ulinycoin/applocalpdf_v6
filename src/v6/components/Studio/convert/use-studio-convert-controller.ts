@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore
 import { useLocation, useNavigate } from 'react-router-dom';
 import { usePlatform } from '../../../../app/react/platform-context';
 import { useStudioExportOfferState } from '../../../../app/react/studio-export-offer-context';
+import { targetBytesFromMb } from './compress-target';
 
 import { defaultFilePreviewService } from '../../../preview/preview-service';
 import { PipelineRunner } from '../../../studio/pipeline/PipelineRunner';
@@ -43,7 +44,10 @@ export interface StudioExtractImagesSettings {
 
 export interface StudioCompressPdfSettings {
   quality: 'low' | 'medium' | 'high';
+  /** Free-text megabytes from the panel; empty means "no target, use the preset". */
+  targetMb: string;
 }
+
 
 interface StudioConvertPageRef {
   docId: string;
@@ -213,9 +217,14 @@ export function useStudioConvertController(initialToolOverride?: StudioConvertTo
     includeInlineImages: true,
     dedupe: true,
   });
-  const [compressPdfSettings, setCompressPdfSettings] = useState<StudioCompressPdfSettings>({
+  const [compressPdfSettings, setCompressPdfSettingsState] = useState<StudioCompressPdfSettings>({
     quality: 'medium',
+    targetMb: '',
   });
+  // Patch-shaped on purpose: the panel changes one control at a time and must not have to resend the rest.
+  const setCompressPdfSettings = useCallback((patch: Partial<StudioCompressPdfSettings>) => {
+    setCompressPdfSettingsState((current) => ({ ...current, ...patch }));
+  }, []);
   const [selectedPageIds, setSelectedPageIds] = useState<string[]>([]);
   const [thumbnailOverrides, setThumbnailOverrides] = useState<Record<string, string>>({});
   const [zoomLevel, setZoomLevel] = useState(() => clampZoom(studioViewScale || 1));
@@ -645,6 +654,7 @@ export function useStudioConvertController(initialToolOverride?: StudioConvertTo
           : activeTool === 'compress-pdf'
             ? {
               quality: compressPdfSettings.quality,
+              targetBytes: targetBytesFromMb(compressPdfSettings.targetMb),
             }
           : {
             format: extractImagesSettings.format,
@@ -805,6 +815,7 @@ export function useStudioConvertController(initialToolOverride?: StudioConvertTo
     pdfToJpgSettings.dpi,
     pdfToJpgSettings.quality,
     compressPdfSettings.quality,
+    compressPdfSettings.targetMb,
     resetWorkspace,
     runtime.runner,
     runtime.telemetry,

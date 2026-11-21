@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import { LinearIcon } from '../../icons/linear-icon';
 import { useStudioConvertController } from './use-studio-convert-controller';
+import { targetBytesFromMb } from './compress-target';
 import { trackMonetizationEvent, trackPaywallShown } from '../../../../app/react/monetization-telemetry';
 import { openCheckout } from '../../../../app/react/billing';
 import { getPrimaryPaidOffer } from '../../../../app/platform/checkout-offers';
@@ -155,6 +156,7 @@ export function StudioConvertWorkspace({ onClose, initialTool }: StudioConvertWo
   const compressSavedPercent = ctrl.compressResultSummary && ctrl.compressResultSummary.inputBytes > 0
     ? Math.max(0, Math.round((compressSavedBytes / ctrl.compressResultSummary.inputBytes) * 100))
     : 0;
+  const compressTargetBytes = targetBytesFromMb(ctrl.compressPdfSettings.targetMb);
 
   // File size tracking for compress PDF tool
   const [fileSizeBytes, setFileSizeBytes] = useState<number | null>(null);
@@ -493,6 +495,24 @@ export function StudioConvertWorkspace({ onClose, initialTool }: StudioConvertWo
                         </button>
                       ))}
                     </div>
+                    <div className="cvt-field" style={{ marginTop: 12 }}>
+                      <div className="cvt-field-label">Target size (optional)</div>
+                      <input
+                        type="number"
+                        className="cvt-select"
+                        min={0.1}
+                        step={0.1}
+                        inputMode="decimal"
+                        placeholder="e.g. 10"
+                        aria-label="Target size in megabytes"
+                        value={ctrl.compressPdfSettings.targetMb}
+                        onChange={(e) => ctrl.setCompressPdfSettings({ targetMb: e.target.value })}
+                        style={{ width: 110 }}
+                      />
+                      <div style={{ fontSize: 12, opacity: 0.75, marginTop: 4 }}>
+                        MB. Overrides the preset: quality drops until the file fits.
+                      </div>
+                    </div>
                   </div>
                 </div>
               )}
@@ -757,6 +777,16 @@ export function StudioConvertWorkspace({ onClose, initialTool }: StudioConvertWo
                       Saved {ctrl.formatBytes(compressSavedBytes)} ({compressSavedPercent}%)
                       · {ctrl.formatBytes(ctrl.compressResultSummary.inputBytes)} → {ctrl.formatBytes(ctrl.compressResultSummary.outputBytes)}
                     </div>
+                    {compressTargetBytes && ctrl.compressResultSummary.outputBytes <= compressTargetBytes && (
+                      <div className="cvt-result-sub" style={{ marginTop: 6 }}>
+                        Fits the {ctrl.formatBytes(compressTargetBytes)} target.
+                      </div>
+                    )}
+                    {compressTargetBytes && ctrl.compressResultSummary.outputBytes > compressTargetBytes && (
+                      <div className="cvt-result-sub" style={{ marginTop: 6, color: 'var(--text-muted)' }}>
+                        This is the smallest local result for this file — the {ctrl.formatBytes(compressTargetBytes)} target was not reached.
+                      </div>
+                    )}
                   </div>
                   <div className="cvt-output-row">
                     <div className="cvt-output-icon">
