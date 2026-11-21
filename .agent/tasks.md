@@ -2,6 +2,16 @@
 
 Last updated: 2026-11-22
 
+## Сессия 2026-11-22 (2) — рейл Studio: Compress наверх, CONVERT перед EDIT
+
+Триггер — Compress стоял 12-й иконкой: после PAGES и всех семи EDIT-инструментов, внутри CONVERT предпоследним.
+
+1. **Секция CONVERT поднята выше EDIT.** Порядок рейла теперь PAGES → CONVERT → EDIT → INSPECT. PAGES остаётся первой как контекстные действия над страницами; конвертеры — это то, за чем приходят с поиска и из лендингов (OCR-страница дала 346→464 показа за октябрь).
+2. **Внутри CONVERT порядок по замеренной частоте:** Compress → OCR → PDF to JPG → TOC → Extract Images. Compress — самый запускаемый инструмент (42/107 в апрельском срезе, 142 чел./30 дней), OCR — главный апгрейд-триггер и самый крупный SEO-вход, PDF to JPG — второй по запускам; TOC (4 запуска, блокирует >5 страниц) и Extract Images (3 запуска) ушли вниз.
+3. **Мобильная шторка не разъехалась:** она рендерит тот же `StudioToolList`, порядок общий.
+
+**Проверено:** порядок в живом браузере (dev-сервер, Playwright): `PAGES: Merge | Split | Delete`, `CONVERT: Compress | OCR | PDF to JPG | TOC | Extract Images`, `EDIT: Text | Annotate | Sign | Whiteout | Watermark | Forms | Protect`, `INSPECT: PDF Info`. `npm test` — 553/553, `npm run build`, `npm run audit:workerization:strict` — exit 0, ESLint 0 ошибок (3 существовавших предупреждения в файле).
+
 ## Сессия 2026-11-22 — Compress: Flate-сканы, перекодирование JPEG без даунскейла, замер
 
 Триггер — стратегия «продажи + качество»: самый востребованный инструмент — `compress-pdf` (77 запусков в срезе growth plan, 42/107 в апрельском, 142 чел./30 дней; успех 95.2%). Аудит движка показал, что он сжимал только `DCTDecode` и пропускал Flate — то есть именно сканы, ради которых Compress и открывают.

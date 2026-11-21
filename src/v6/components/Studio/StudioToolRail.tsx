@@ -48,11 +48,16 @@ const EDIT_TOOLS: RailToolItem[] = [
     { tool: 'protect', icon: 'lock', label: 'Protect', description: 'Encrypt PDF with passwords and restrict permissions' },
 ];
 
+/**
+ * Ordered by measured usage, not by history: Compress is the most-run tool (42/107 launches in the
+ * April snapshot, 142 people/30 days in the November one), OCR is the strongest upgrade trigger and
+ * the biggest SEO landing, PDF to JPG follows. TOC and Extract Images are rare and sit last.
+ */
 const CONVERT_TOOLS: RailToolItem[] = [
-    { tool: 'ocr-pdf', icon: 'ocr', label: 'OCR', description: 'Recognize text in scanned PDFs and make them searchable' },
-    { tool: 'auto-toc', icon: 'edit', label: 'TOC', description: 'Auto-detect headings and generate an interactive table of contents with bookmarks' },
-    { tool: 'pdf-to-jpg', icon: 'image', label: 'PDF to JPG', description: 'Convert PDF pages to JPEG images' },
     { tool: 'compress-pdf', icon: 'compress', label: 'Compress', description: 'Reduce PDF file size while maintaining quality' },
+    { tool: 'ocr-pdf', icon: 'ocr', label: 'OCR', description: 'Recognize text in scanned PDFs and make them searchable' },
+    { tool: 'pdf-to-jpg', icon: 'image', label: 'PDF to JPG', description: 'Convert PDF pages to JPEG images' },
+    { tool: 'auto-toc', icon: 'edit', label: 'TOC', description: 'Auto-detect headings and generate an interactive table of contents with bookmarks' },
     { tool: 'extract-images', icon: 'image', label: 'Extract Images', description: 'Extract all embedded images from PDF document' },
 ];
 
@@ -213,8 +218,8 @@ function StudioToolList({
                 <div className="studio-tool-rail-scope studio-tool-rail-collapsible-text">{scopeLabel}</div>
             </div>
             <div className="studio-tool-rail-section">
-                <div className="studio-tool-rail-section-label studio-tool-rail-collapsible-text">EDIT</div>
-                {EDIT_TOOLS.map((item) => (
+                <div className="studio-tool-rail-section-label studio-tool-rail-collapsible-text">CONVERT</div>
+                {CONVERT_TOOLS.map((item) => (
                     <RailButton
                         key={item.tool}
                         tool={item.tool}
@@ -229,8 +234,8 @@ function StudioToolList({
             </div>
 
             <div className="studio-tool-rail-section">
-                <div className="studio-tool-rail-section-label studio-tool-rail-collapsible-text">CONVERT</div>
-                {CONVERT_TOOLS.map((item) => (
+                <div className="studio-tool-rail-section-label studio-tool-rail-collapsible-text">EDIT</div>
+                {EDIT_TOOLS.map((item) => (
                     <RailButton
                         key={item.tool}
                         tool={item.tool}
