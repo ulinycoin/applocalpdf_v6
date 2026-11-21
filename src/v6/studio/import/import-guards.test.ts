@@ -1,10 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import {
-  PASSWORD_PROTECTED_MESSAGE,
-  isPasswordProtectedPdfError,
-  workspaceQuotaRefusal,
-} from './import-guards';
+import { PASSWORD_PROTECTED_MESSAGE, importFailureMessage, isPasswordProtectedPdfError, workspaceQuotaRefusal } from './import-guards';
 
 const megabyte = 1024 * 1024;
 
@@ -46,4 +42,15 @@ test('an occupied workspace reports both numbers', () => {
 
 test('without a configured limit nothing is refused', () => {
   assert.equal(workspaceQuotaRefusal({ fileSize: Number.MAX_SAFE_INTEGER, usedBytes: 0 }), null);
+});
+
+test('a module load failure is reported as a reload instruction, not raw browser text', () => {
+  const raw = new TypeError('Failed to load module script: Expected a JavaScript module script but the server responded with a MIME type of "text/html".');
+  assert.match(importFailureMessage(raw), /Reload the page/i);
+  assert.match(importFailureMessage(new Error('importing a module script failed: http://127.0.0.1:3001/app/node_modules/pdfjs-dist/build/pdf.worker.min.mjs')), /Reload the page/i);
+});
+
+test('a real file problem keeps its own message', () => {
+  assert.equal(importFailureMessage(new Error('Invalid PDF structure')), 'Invalid PDF structure');
+  assert.equal(importFailureMessage(undefined), 'Failed to load file into Studio.');
 });

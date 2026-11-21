@@ -46,3 +46,18 @@ export function workspaceQuotaRefusal(params: {
   const used = usedBytes > 0 ? `, ${formatMegabytes(usedBytes)} already in use` : '';
   return `This file is ${formatMegabytes(fileSize)} — larger than the workspace can hold (${formatMegabytes(limitBytes)} total${used}). Try a smaller file.`;
 }
+
+/**
+ * A failed module/worker load is an environment problem (dev server restarted, stale chunk), not a
+ * problem with the user's file. Raw browser text ("Failed to load module script: Expected a JavaScript
+ * module script…") was shown verbatim in a toast and told the user nothing actionable.
+ */
+const ENGINE_LOAD_FAILURE = /failed to load module script|mime type of|pdf\.worker|importing a module script failed/iu;
+
+export function importFailureMessage(error: unknown): string {
+  const raw = error instanceof Error ? error.message : String(error ?? '');
+  if (ENGINE_LOAD_FAILURE.test(raw)) {
+    return 'The local PDF engine failed to load. Reload the page and try again — your files never left this device.';
+  }
+  return raw || 'Failed to load file into Studio.';
+}

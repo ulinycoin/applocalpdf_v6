@@ -16,7 +16,7 @@ import { pauseTileRendering, resumeTileRendering } from '../../studio/thumbnail/
 import { StudioTimeline } from './branching/StudioTimeline';
 import type { StudioReturnContext, StudioToolRouteState } from '../../studio/navigation/studio-tool-context';
 import { getPdfJs, getPdfLib } from '../../services/pdf/pdf-loader';
-import { PASSWORD_PROTECTED_MESSAGE, isPasswordProtectedPdfError, workspaceQuotaRefusal } from '../../studio/import/import-guards';
+import { PASSWORD_PROTECTED_MESSAGE, importFailureMessage, isPasswordProtectedPdfError, workspaceQuotaRefusal } from '../../studio/import/import-guards';
 import { useProtectedPdfPrompt } from '../../studio/import/use-protected-pdf-prompt';
 import { decryptPdfInWorker } from '../../studio/import/decrypt-in-worker';
 import { StudioDialog } from './StudioDialog';
@@ -1139,8 +1139,7 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
                     if (isVfsQuotaExceededError(error)) {
                         notifyStudioError('Storage quota exceeded. Close some documents or clear the workspace and try again.');
                     } else {
-                        const message = error instanceof Error ? error.message : 'Failed to load file into Studio.';
-                        notifyStudioError(message);
+                        notifyStudioError(importFailureMessage(error));
                     }
                 }
             }
