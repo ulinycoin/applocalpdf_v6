@@ -17,7 +17,13 @@ Last updated: 2026-11-21
 
 **Выпущено 2026-11-21:** коммит `4371b55` запушен в `origin/main` (fast-forward, без force). Деплой Vercel проверен по факту: в чанках прода есть `convert_panel`, `exit` и `studio_top_nav` (в старом коде их не было), `/pdf-mcp-server` → **404**. MCP-страница из пуша исключена: коммит `586adce` сохранён локальной веткой `wip/pdf-mcp-server-page` и не пушился.
 
-**Baseline PostHog не снят:** personal API key в `~/.hermes/.env` протух (`401 authentication_failed`), ключ без `query:read` отдаёт `403 permission_denied`, ключ с нужным скоупом не выдали. Деньги за 30 дней (LemonSqueezy, отсечка 2026-11-21T21:47Z): 1 заказ, $9.50 (subtotal $19), последняя покупка 16.11, возвратов 0.
+**Baseline перед выпуском (Аналитик, PostHog отсечка 2026-11-21T22:01Z, LemonSqueezy 22:03Z):**
+- `app_output_downloaded` 30д: **412 success / 26 denied / 3 failure** (273 / 14 / 1 чел.); 14д: 211 / 8 / 0.
+- По `tool_id` (30д, success): `studio` (верхний нав) **316 соб.**, `studio.convert` **94**, `studio.convert.zip` 1, `auto-toc` 1. `surface` всегда `studio`. То есть новая точка выхода (панель конвертера) — ~23% успешных скачиваний, Auto-TOC — 1 событие.
+- Воронка (30д): `paywall_shown` 135 соб. / 123 чел., из них `studio_export_moment` 38; `paywall_cta_clicked` 4; `checkout_opened` 11/10; `purchase_completed` 0. 14д: shown 66, export_moment 26, cta 2, checkout 7.
+- Деньги (30д): 1 заказ, $9.50 total (subtotal $19, lifetime variant 2143549, скидка BFCM 50%), последняя покупка 2026-11-16, возвратов 0.
+- Свойство `exit` в событиях: **0** — последнее скачивание было 2026-11-21T20:48Z, до деплоя (~21:44Z). Первые события с `exit` появятся с первым скачиванием после выпуска; окно сравнения — 1–2 недели.
+- Файл baseline Аналитика: `~/.dsh/bot/workspace/localpdf_baseline.md`.
 
 ## Сессия 2026-11-21 (2) — `exit` в `app_output_downloaded`: точки выхода разделены
 
