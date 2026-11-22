@@ -20,7 +20,9 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: 'npm run build:all && npx serve dist -l 4173',
+    // The SPA lives in `dist/app/index.html` and `serve` resolves `-c` against the served
+    // directory, hence `../e2e/serve.json`; without the rewrite every `/app/*` route 404s.
+    command: 'npm run build:all && npx serve dist -c ../e2e/serve.json -l 4173',
     url: baseURL,
     reuseExistingServer: !process.env.CI,
     // `build:all` (tsc + vite + astro) takes ~4-5 min on slower machines; the old 180s ceiling made
