@@ -20,6 +20,8 @@ export interface ToolContext {
     elements: EditElement[];
     applyElements: (next: EditElement[]) => void;
     textLayerSpans: TextLayerSpan[];
+    /** Colour of the rendered page at a ratio point, used to hide an overlay-replaced run. */
+    samplePageBackground?: (xRatio: number, yRatio: number) => string | null;
     isSelectMode: boolean;
     textSelectionMode: 'line' | 'word';
     textInteractionMode: 'edit' | 'move';

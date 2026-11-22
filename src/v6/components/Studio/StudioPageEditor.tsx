@@ -96,6 +96,7 @@ export interface StudioPageEditorProps {
         repeatGapY: number;
     };
     textLayerSpans: TextLayerSpan[];
+    samplePageBackground?: (xRatio: number, yRatio: number) => string | null;
     onFinish?: () => void;
     onDiscard?: () => void;
 }
@@ -160,6 +161,7 @@ export const StudioPageEditor = forwardRef<StudioPageEditorHandle, StudioPageEdi
         repeatGapY: 0.16,
     },
     textLayerSpans,
+    samplePageBackground,
     onFinish: _onFinish,
     onDiscard: _onDiscard
 }: StudioPageEditorProps, ref) {
@@ -236,6 +238,7 @@ export const StudioPageEditor = forwardRef<StudioPageEditorHandle, StudioPageEdi
         elements,
         applyElements,
         textLayerSpans,
+        samplePageBackground,
         isSelectMode,
         textSelectionMode,
         textInteractionMode,

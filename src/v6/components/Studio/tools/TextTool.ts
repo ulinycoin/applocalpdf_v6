@@ -10,6 +10,7 @@ import { inferSourceTextStyle } from '../../../../../shared/studio-text-edit/inf
 import { buildOriginalRect } from '../../../../../shared/studio-text-edit/original-rect';
 import { clamp01 } from '../../../utils/studio-edit-math';
 import { findNearestTextSpan } from '../inline-text-utils';
+import { pickCoverColor } from './text-cover-color';
 import { snapOverlayTextToBaselines } from '../text-baseline-snap';
 
 const DEFAULT_PAGE_HEIGHT_PT = 842;
@@ -128,6 +129,39 @@ export const TextTool: IEditorTool = {
   },
 };
 
+/**
+ * Samples the page just outside the run's box: the four sides are enough to survive a neighbour
+ * glyph or a rule line at one side, and the majority colour wins.
+ */
+function sampleExistingTextBackground(
+  ctx: ToolContext,
+  left: number,
+  top: number,
+  width: number,
+  height: number,
+): string | null {
+  const sample = ctx.samplePageBackground;
+  if (!sample) {
+    return null;
+  }
+  // Two rings: the near one is outside the glyphs, the far one clears adjacent rules and lines.
+  const near = 0.004;
+  const far = Math.max(0.012, height * 0.6);
+  const points: Array<[number, number]> = [
+    [left - near, top + height / 2],
+    [left + width + near, top + height / 2],
+    [left + width / 2, top - near],
+    [left + width / 2, top + height + near],
+    [left - far, top + height / 2],
+    [left + width + far, top + height / 2],
+    [left + width / 2, top - far],
+    [left + width / 2, top + height + far],
+  ];
+  return pickCoverColor(points.map(([x, y]) => (
+    x >= 0 && x <= 1 && y >= 0 && y <= 1 ? sample(x, y) : null
+  )));
+}
+
 function selectTextSpanForEditing(ctx: ToolContext, clickedSpan: TextLayerSpan) {
   let mergedLine = null;
   if (ctx.textSelectionMode === 'word') {
@@ -176,10 +210,11 @@ function selectTextSpanForEditing(ctx: ToolContext, clickedSpan: TextLayerSpan) 
   const textId = crypto.randomUUID();
   const { padX, padY } = textBackgroundPad(w, h);
   // Editing existing PDF glyphs always needs an opaque cover. Transparent is the
-  // default for *new* overlay text, but here it would leave the original visible.
-  const whiteoutFill = isOpaqueBackground(ctx.textStyle.backgroundColor)
-    ? ctx.textStyle.backgroundColor
-    : '#ffffff';
+  // default for *new* overlay text, but here it would leave the original visible. The fill follows
+  // the page around the run, so a coloured background does not get a white patch.
+  const sampledBackground = sampleExistingTextBackground(ctx, left, top, w, h);
+  const whiteoutFill = sampledBackground
+    ?? (isOpaqueBackground(ctx.textStyle.backgroundColor) ? ctx.textStyle.backgroundColor : '#ffffff');
 
   const whiteout: RectElement = {
     id: `${textId}_bg`,

@@ -165,6 +165,28 @@ test('TextTool stores originalRect when selecting existing text span', () => {
   });
 });
 
+test('TextTool paints the cover with the page colour instead of white', () => {
+  const ctx = createContext({
+    textLayerSpans: [{
+      id: 'span-1',
+      text: 'Hello',
+      xRatio: 0.1,
+      yRatio: 0.2,
+      widthRatio: 0.12,
+      heightRatio: 0.03,
+      fontSizeRatio: 0.02,
+      fontName: 'Helvetica',
+    }],
+    samplePageBackground: () => '#0d2e47',
+  });
+
+  TextTool.onPointerDown(ctx, {} as any, { x: 0.11, y: 0.21 });
+
+  const whiteout = ctx.elements.find((element) => element.type === 'rect');
+  assert.ok(whiteout);
+  assert.equal((whiteout as { fill?: string }).fill, '#0d2e47');
+});
+
 test('TextTool opens editor for new text even in move interaction mode', () => {
   const started: string[] = [];
   const states: string[] = [];

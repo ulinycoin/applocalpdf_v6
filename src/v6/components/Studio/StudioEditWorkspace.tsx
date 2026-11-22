@@ -42,6 +42,7 @@ export function StudioEditWorkspace({ onClose }: StudioEditWorkspaceProps = {}) 
     const { runtime } = usePlatform();
     const zoom = useStudioEditZoom(ctrl.runId || 'unknown', 1);
     const imageRef = useRef<HTMLImageElement | null>(null);
+    const pageImageCanvasRef = useRef<{ src: string; canvas: HTMLCanvasElement } | null>(null);
     const surfaceRef = useRef<HTMLDivElement | null>(null);
     const editorRef = useRef<StudioPageEditorHandle | null>(null);
     const autoFitPreviewKeyRef = useRef<string | null>(null);
@@ -121,6 +122,47 @@ export function StudioEditWorkspace({ onClose }: StudioEditWorkspaceProps = {}) 
 
     const tileUrl = ctrl.preview?.page.thumbnailUrl ?? null;
     const pageImageSrc = sharpPageUrl ?? tileUrl;
+
+    /**
+     * Reads the rendered page colour under a ratio point. The cover that hides original glyphs should
+     * match the page, otherwise an overlay edit on a coloured background paints a white patch (and a
+     * white source text becomes invisible). The canvas is cached per image URL; the page image is a
+     * blob URL, so drawing it is not tainted.
+     */
+    const samplePageBackground = useCallback((xRatio: number, yRatio: number): string | null => {
+        const image = imageRef.current;
+        if (!image || !image.complete || image.naturalWidth === 0 || !pageImageSrc) {
+            return null;
+        }
+        let cached = pageImageCanvasRef.current;
+        if (!cached || cached.src !== pageImageSrc) {
+            const canvas = document.createElement('canvas');
+            canvas.width = image.naturalWidth;
+            canvas.height = image.naturalHeight;
+            const context = canvas.getContext('2d', { willReadFrequently: true });
+            if (!context) {
+                return null;
+            }
+            try {
+                context.drawImage(image, 0, 0, canvas.width, canvas.height);
+            } catch {
+                return null;
+            }
+            cached = { src: pageImageSrc, canvas };
+            pageImageCanvasRef.current = cached;
+        }
+        const context = cached.canvas.getContext('2d', { willReadFrequently: true });
+        if (!context) {
+            return null;
+        }
+        const x = Math.min(Math.max(Math.round(xRatio * cached.canvas.width), 0), cached.canvas.width - 1);
+        const y = Math.min(Math.max(Math.round(yRatio * cached.canvas.height), 0), cached.canvas.height - 1);
+        const pixel = context.getImageData(x, y, 1, 1).data;
+        if (pixel[3] === 0) {
+            return null;
+        }
+        return `#${[pixel[0], pixel[1], pixel[2]].map((value) => value.toString(16).padStart(2, '0')).join('')}`;
+    }, [pageImageSrc]);
 
     useEffect(() => {
         const url = pageImageSrc;
@@ -734,6 +776,7 @@ export function StudioEditWorkspace({ onClose }: StudioEditWorkspaceProps = {}) 
                                     activeTool={ctrl.tool}
                                     onActiveToolChange={ctrl.setTool}
                                     textLayerSpans={ctrl.textLayerSpans}
+                                    samplePageBackground={samplePageBackground}
                                     isSelectMode={ctrl.isSelectMode}
                                     setIsSelectMode={ctrl.setIsSelectMode}
                                     textSelectionMode={ctrl.textSelectionMode}
