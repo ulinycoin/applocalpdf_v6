@@ -123,7 +123,7 @@ test('glyph width and the declared /W agree for a CID the document already uses'
  * and no TrueType program, so the file itself is the only source of codes.
  */
 async function readCffCompositeInfo(): Promise<CidFontInfo> {
-  const bytes = await readFile(join(process.cwd(), 'test', 'fixtures', 'font-corpus', 'gen-cjk-ja-cupsfilter.pdf'));
+  const bytes = await readFile(join(process.cwd(), 'test', 'fixtures', 'pdfs', 'fonts', 'cff-pingfang-ja.pdf'));
   const pdf = await PDFDocument.load(bytes, { updateMetadata: false });
   const resources = pdf.getPages()[0].node.lookup(PDFName.of('Resources'), PDFDict);
   assert.ok(resources, 'expected page resources');
@@ -155,7 +155,8 @@ test('a CFF composite is addressable by its own CIDs without a charset lookup', 
 
 /**
  * A real CIDFontType2 whose `/W` deliberately omits the characters it can type, exactly like the
- * fonts in `test/fixtures/font-corpus` where a subset's `/W` covers only part of its subset.
+ * fonts in `test/fixtures/font-corpus` (not committed; the corpus is generated locally) where a
+ * subset's `/W` covers only part of its subset.
  * `dwShift` moves `/DW` off the glyph's true advance.
  */
 async function readCodeFontWithWidthGap(

@@ -32,6 +32,10 @@ Last updated: 2026-11-22
 - e2e на свежем `dist`: CFF + overlay — 2 passed (12.4 с); весь `test:e2e:studio-edit` — **15 passed** (1.0 мин).
 - Попутно починено: закоммиченный `playwright.config.ts` поднимал `npx serve dist -l 4173` без SPA-rewrite, поэтому свежий прогон отдавал 404 на `/app/studio` (SPA лежит в `dist/app/index.html`). Добавлен `e2e/serve.json` (`/app/** → /app/index.html`), команда webServer — `serve dist -c ../e2e/serve.json`; проверено: `/app/studio` и `/app/assets/*` отдают 200, спека `studio-edit-text-save` — 3 passed.
 
+### CI-регрессия после пуша (найдена и исправлена)
+
+CFF-тесты читали `test/fixtures/font-corpus/gen-cjk-ja-cupsfilter.pdf`, а сам корпус в `.gitignore` — в CI файла нет, джоба `test-and-build` покраснела (2 fail: `cid-text` и applier). Фикстура скопирована в отслеживаемый `test/fixtures/pdfs/fonts/cff-pingfang-ja.pdf` (15 185 Б, PingFang CFF), пути в обоих тестах и в e2e обновлены. Проверено с временно убранным корпусом: 67/67 по этим двум файлам, полный `npm test` — 577/577, build и аудит зелёные, CFF e2e — 1 passed.
+
 ### Осталось
 
 - CJK-глифы вне subset по-прежнему уходят в растр — по записанному решению (JP 5,04 МБ / 125 сабсетов, SC 17,77 МБ > лимита ~5 МБ). Кандидат без ассета: невидимый текстовый слой с glyph-less шрифтом и `/ToUnicode` поверх PNG (как в OCR searchable PDF) — сделает растеризованные правки искомыми.

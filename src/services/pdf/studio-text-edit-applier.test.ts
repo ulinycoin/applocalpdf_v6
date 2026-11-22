@@ -2444,8 +2444,9 @@ test('a CFF composite run is patched with its own CIDs', async () => {
     process.cwd(),
     'test',
     'fixtures',
-    'font-corpus',
-    'gen-cjk-ja-cupsfilter.pdf',
+    'pdfs',
+    'fonts',
+    'cff-pingfang-ja.pdf',
   )));
   const layer = await extractTextLayerForPreview(sourceBytes, 1, 2);
   const span = layer.spans.find((candidate) => candidate.text.includes('テキストを測定します'));

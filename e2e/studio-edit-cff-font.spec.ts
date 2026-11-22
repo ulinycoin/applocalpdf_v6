@@ -24,7 +24,7 @@ test('a CFF PingFang run is edited in the document own font', async ({ page }) =
   test.setTimeout(180_000);
   await enableStudioTestApi(page);
 
-  await uploadPdf(page, 'test/fixtures/font-corpus/gen-cjk-ja-cupsfilter.pdf');
+  await uploadPdf(page, 'test/fixtures/pdfs/fonts/cff-pingfang-ja.pdf');
   const beforeFileId = await selectFirstPage(page, 30_000);
   await openEditTool(page, 'Text');
   await waitForTextLayer(page, 20_000);
