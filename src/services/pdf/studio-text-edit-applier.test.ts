@@ -3,7 +3,7 @@ import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { inflateSync } from 'node:zlib';
 import test from 'node:test';
-import { PDFDict, PDFDocument, PDFName, PDFRawStream, StandardFonts } from 'pdf-lib';
+import { PDFArray, PDFDict, PDFDocument, PDFName, PDFNumber, PDFRawStream, StandardFonts } from 'pdf-lib';
 import fontkit from '@pdf-lib/fontkit';
 import { applyStudioTextEditsToPdfBytes } from './studio-text-edit-applier';
 import { parsePdfTextOperators } from './pdf-content-stream-parser';
@@ -13,6 +13,7 @@ import { dedupeStackedTextLayerSpans } from './text-edit/span-filter';
 import { mergeTextLine } from '../../v6/components/Studio/inline-text-utils';
 import { inferSourceTextStyle } from './studio-text-edit-utils';
 import { inferTypographyFromBaseFont, resolvePageGeometry, resolveSourceFontInfo } from './text-edit';
+import { glyphWidth, readCidFontInfo } from './text-edit/cid-text';
 import type { WorkerStudioFontFamilyId, WorkerStudioTextEditElement } from '../../core/types/contracts';
 
 /**
@@ -2436,6 +2437,59 @@ test('a Type3 run is patched with its own codes instead of being replaced', asyn
   assert.equal(matches[0]?.text, 'PDF Processing Privacy-First');
 });
 
+test('a CFF composite run is patched with its own CIDs', async () => {
+  // PingFang from macOS print: Identity-H, CIDFontType0, /W empty, no TrueType program. The subset
+  // still maps every character it contains through /ToUnicode, so the run can be rewritten in place.
+  const sourceBytes = new Uint8Array(await readFile(join(
+    process.cwd(),
+    'test',
+    'fixtures',
+    'font-corpus',
+    'gen-cjk-ja-cupsfilter.pdf',
+  )));
+  const layer = await extractTextLayerForPreview(sourceBytes, 1, 2);
+  const span = layer.spans.find((candidate) => candidate.text.includes('テキストを測定します'));
+  assert.ok(span, 'expected the second Japanese line in the fixture');
+  const replacement = 'テキストを測定します。編集可能な';
+
+  const result = await applyStudioTextEditsToPdfBytes({
+    sourceBytes,
+    pageIndex: 0,
+    elements: [asReplacement({
+      id: 'code-reuse-cff',
+      type: 'text',
+      x: span.xRatio,
+      y: span.yRatio,
+      w: span.widthRatio,
+      h: span.heightRatio,
+      text: replacement,
+      color: '#000000',
+      fontSize: span.fontSizeRatio * (span.pageHeightPt ?? 842),
+      fontFamily: 'sora',
+      fontWeight: 'normal',
+      fontStyle: 'normal',
+      textAlign: 'left',
+      lineHeight: 1.2,
+      letterSpacing: 0,
+      opacity: 1,
+      sourceFontName: span.fontName,
+      sourceFontFamilyHint: span.fontFamilyHint,
+      sourceFontSizeRatio: span.fontSizeRatio,
+    })],
+  });
+
+  assert.equal(result.trueReplaceApplied, true, 'the CFF run must be patched in place');
+  assert.equal(result.fontPaths?.patchedCodes, 1, 'the run was rewritten in the font own CIDs');
+  assert.equal(result.fontPaths?.substituted, 0);
+  assert.equal(result.fontPaths?.rasterized, 0);
+
+  const stream = await readFirstPageContentStream(result.outputBytes);
+  assert.match(stream, /<[0-9A-F]{4,}> Tj/u, 'expected CIDs, not a literal or an image');
+
+  const extracted = (await extractEmbeddedPdfText(toPdfBlob(result.outputBytes)))?.text ?? '';
+  assert.ok(extracted.includes(replacement), `the new Japanese text must stay searchable, got ${JSON.stringify(extracted)}`);
+});
+
 test('a composite run the codes cannot carry is drawn in the metric twin and reported as such', async () => {
   // A document that names a face whose metric twin ships with us. The program is the twin's own
   // bytes: what is under test is the path choice, not the shapes.
@@ -2506,4 +2560,123 @@ test('a composite run the codes cannot carry is drawn in the metric twin and rep
   } finally {
     globalThis.fetch = realFetch;
   }
+});
+
+
+/**
+ * A pdf-lib composite font whose `/W` omits the characters it can type — the shape found in ten
+ * corpus documents (`.agent/tasks.md`, 2026-11-22). `dwShift` moves `/DW` off the glyph advance.
+ */
+async function createCompositeWithWidthGap(text: string, dwShift = 0): Promise<Uint8Array> {
+  const doc = await PDFDocument.create();
+  doc.registerFontkit(fontkit);
+  const page = doc.addPage([612, 792]);
+  const font = await doc.embedFont(
+    await readFile(join(process.cwd(), 'public', 'fonts', 'Roboto-Regular.ttf')),
+    { subset: true },
+  );
+  page.drawText(text, { x: 72, y: 700, size: 24, font });
+
+  const reloaded = await PDFDocument.load(await doc.save(), { updateMetadata: false });
+  const resources = reloaded.getPages()[0].node.lookup(PDFName.of('Resources'), PDFDict);
+  assert.ok(resources, 'expected page resources');
+  const fonts = resources.lookup(PDFName.of('Font'), PDFDict);
+  const resourceName = fonts.keys()[0].asString().replace(/^\//u, '');
+  const fontDict = fonts.lookup(PDFName.of(resourceName), PDFDict);
+  const descendant = fontDict.lookup(PDFName.of('DescendantFonts'), PDFArray).lookup(0, PDFDict);
+
+  const info = await readCidFontInfo(reloaded, resources, resourceName);
+  assert.ok(info?.font, 'expected a parsed CIDFontType2 program');
+  const cid = info.charToCid.get(text.codePointAt(0)!)!;
+  const width = glyphWidth(info.font, cid);
+  assert.ok(width !== undefined, 'the program supplies the advance');
+
+  const context = reloaded.context;
+  descendant.set(PDFName.of('DW'), PDFNumber.of(width + dwShift));
+  descendant.set(
+    PDFName.of('W'),
+    context.obj([PDFNumber.of(cid === 0 ? 1 : 0), context.obj([PDFNumber.of(100)])]),
+  );
+  const bytes = await reloaded.save();
+  const stable = new Uint8Array(bytes.byteLength);
+  stable.set(bytes);
+  return stable;
+}
+
+test('a composite run missing from /W is patched in place when /DW is the true advance', async () => {
+  const sourceBytes = await createCompositeWithWidthGap('2026');
+  const anchor = await getFirstTextOperatorAnchor(sourceBytes);
+  assert.ok(anchor, 'expected the composite text run');
+
+  const result = await applyStudioTextEditsToPdfBytes({
+    sourceBytes,
+    pageIndex: 0,
+    elements: [asReplacement({
+      id: 'cid-gap-edit',
+      type: 'text',
+      x: anchor.xRatio,
+      y: anchor.yRatio,
+      w: 0.5,
+      h: 0.08,
+      // Every glyph is a digit from the subset, and `/DW` equals their advance, so the viewer
+      // positions the replacement exactly like the original text.
+      text: '2062',
+      color: '#000000',
+      fontSize: 24,
+      fontFamily: 'roboto',
+      fontWeight: 'normal',
+      fontStyle: 'normal',
+      textAlign: 'left',
+      lineHeight: 1.2,
+      letterSpacing: 0,
+      opacity: 1,
+      sourceFontName: 'Roboto',
+      sourceFontSizeRatio: 24 / 792,
+    })],
+  });
+
+  assert.equal(result.trueReplaceApplied, true);
+  assert.equal(result.fontPaths?.patchedCodes, 1, 'the document own CID font carries the edit');
+  assert.equal(result.fontPaths?.substituted, 0);
+  const text = (await extractEmbeddedPdfText(toPdfBlob(result.outputBytes)))?.text ?? '';
+  assert.match(text, /2062/u);
+  assert.doesNotMatch(text, /2026/u, 'the old run is replaced, not hidden');
+});
+
+test('a composite run stays on the overlay path when /DW cannot position the glyph', async () => {
+  const sourceBytes = await createCompositeWithWidthGap('2026', 1);
+  const anchor = await getFirstTextOperatorAnchor(sourceBytes);
+  assert.ok(anchor, 'expected the composite text run');
+
+  const result = await applyStudioTextEditsToPdfBytes({
+    sourceBytes,
+    pageIndex: 0,
+    elements: [asReplacement({
+      id: 'cid-gap-miss',
+      type: 'text',
+      x: anchor.xRatio,
+      y: anchor.yRatio,
+      w: 0.5,
+      h: 0.08,
+      text: '2062',
+      color: '#000000',
+      fontSize: 24,
+      fontFamily: 'roboto',
+      fontWeight: 'normal',
+      fontStyle: 'normal',
+      textAlign: 'left',
+      lineHeight: 1.2,
+      letterSpacing: 0,
+      opacity: 1,
+      sourceFontName: 'Roboto',
+      sourceFontSizeRatio: 24 / 792,
+    })],
+  });
+
+  assert.equal(result.trueReplaceApplied, false);
+  assert.equal(result.trueReplaceFallbackReason, 'SOURCE_FONT_COMPOSITE');
+  assert.equal(result.fontPaths?.patchedCodes, 0);
+  const text = (await extractEmbeddedPdfText(toPdfBlob(result.outputBytes)))?.text ?? '';
+  assert.match(text, /2062/u);
+  assert.doesNotMatch(text, /2026/u, 'the rejected run is erased before the overlay');
 });

@@ -21,9 +21,11 @@ export interface CidFontInfo {
   resourceName: string;
   baseFont?: string;
   descendantSubtype?: string;
-  /** `/Identity` means glyph id = CID, so a program cmap lookup yields a CID directly. */
+  /** `/Identity` (or CFF's implicit CID addressing) means the written code is the CID itself. */
   identityCidToGid: boolean;
   defaultWidth: number;
+  /** `/W` lists no CID at all, so the file's own width model is `/DW` for every glyph. */
+  usesDefaultWidthForAll: boolean;
   /** CID -> advance width in 1/1000 em, from the font's `/W`. */
   widths: ReadonlyMap<number, number>;
   /** CID -> the text it stands for, from the font's `/ToUnicode` (single characters only). */
@@ -222,8 +224,13 @@ async function streamText(ctx: PDFDocument['context'], ref: unknown): Promise<st
 
 /**
  * Everything needed to type new text in a page's existing composite font, or `undefined` when the
- * font is not an Identity-H `CIDFontType2` (CFF/CIDFontType0 resolves glyphs through its own charset,
- * which this module does not implement).
+ * font is not an Identity-H composite.
+ *
+ * CFF (`CIDFontType0`, e.g. PingFang from macOS print) is supported on the same terms as TrueType:
+ * the content stream already writes CIDs and `/ToUnicode` maps a character to its CID, so no
+ * CID→GID charset lookup is needed to draw it. The only difference is the glyph-existence check —
+ * a CFF subset cannot be checked through `/CIDToGIDMap`, and `/ToUnicode` is built from the glyphs
+ * the subset carries, so it is the check that matters.
  */
 export async function readCidFontInfo(
   pdf: PDFDocument,
@@ -252,15 +259,23 @@ export async function readCidFontInfo(
     return undefined;
   }
   const descendantSubtype = descendant.get(PDFName.of('Subtype'))?.toString().replace(/^\//u, '');
-  if (descendantSubtype !== 'CIDFontType2') {
+  const isCff = descendantSubtype === 'CIDFontType0';
+  if (descendantSubtype !== 'CIDFontType2' && !isCff) {
     return undefined;
   }
   const cidToGid = descendant.get(PDFName.of('CIDToGIDMap'))?.toString();
 
   // The embedded program supplies two facts the PDF does not state: how many glyphs exist (a CID
-  // beyond that is a blank) and the advance width of a CID that `/W` never listed.
+  // beyond that is a blank) and the advance width of a CID that `/W` never listed. A CFF program
+  // has neither a TrueType glyph table nor a CIDToGIDMap we can compare against, and the CIDs in the
+  // stream are already valid — so it is not parsed here.
   const descriptor = asDict(ctx, descendant.get(PDFName.of('FontDescriptor')));
-  const { font, numGlyphs } = await readProgram(ctx, descriptor);
+  if (isCff && !descriptor?.get(PDFName.of('FontFile3'))) {
+    return undefined;
+  }
+  const { font, numGlyphs } = isCff
+    ? { font: undefined, numGlyphs: undefined }
+    : await readProgram(ctx, descriptor);
 
   const widthsArray = asArray(ctx, descendant.get(PDFName.of('W')));
   const widths = widthsArray
@@ -276,8 +291,9 @@ export async function readCidFontInfo(
     resourceName,
     baseFont: fontDict.get(PDFName.of('BaseFont'))?.toString().replace(/^\//u, ''),
     descendantSubtype,
-    identityCidToGid: cidToGid === '/Identity' || cidToGid === undefined,
+    identityCidToGid: isCff || cidToGid === '/Identity' || cidToGid === undefined,
     defaultWidth: toNumber(ctx.lookup(descendant.get(PDFName.of('DW')) as never)) ?? 1000,
+    usesDefaultWidthForAll: widths.size === 0,
     widths,
     toUnicode: cidToText,
     charToCid: textToCid,
@@ -407,7 +423,9 @@ export function encodeCidText(info: CidFontInfo, text: string): EncodedCidText {
     }
     cids.push(cid);
     if (!info.widths.has(cid)) {
-      const width = programWidth(info.font, codePoint) ?? glyphWidth(info.font, cid);
+      // Under Identity the CID *is* the glyph id; a code-point lookup only works when the subset
+      // happens to carry a cmap, which most subsets do not.
+      const width = glyphWidth(info.font, cid);
       if (width !== undefined) {
         widthsFromProgram.push({ cid, width });
       }
@@ -435,9 +453,21 @@ export interface CodeFontInfo {
   encode(text: string): { hex: string; missing: string[] };
 }
 
-/** Absent `/Widths` entries fall back to `/DW`, which would space the new text wrong. */
+/**
+ * A CID may be written when its width is known: `/W` lists it, or the file declares no `/W` at all
+ * and every glyph is positioned by `/DW` (common in CFF subsets; the original text follows the same
+ * rule). A CID missing from a non-empty `/W` may still be written when the glyph's own advance is
+ * exactly `/DW`: the viewer then positions it by the same width the document already uses.
+ *
+ * The advance must be read by *glyph id* (`glyphWidth`), not by code point (`programWidth`): an
+ * Identity CID is a glyph id, and a subset usually has no character map at all, so a code-point
+ * lookup reports "no width" for glyphs that are in fact present and correctly sized. A CID whose
+ * advance differs from `/DW` stays rejected — writing it would space the run wrong.
+ */
 function widthLookupForIdentity(info: CidFontInfo): (code: number) => boolean {
-  return (code) => info.widths.has(code) || info.defaultWidth === programWidth(info.font, code);
+  return (code) => info.widths.has(code)
+    || info.usesDefaultWidthForAll
+    || info.defaultWidth === glyphWidth(info.font, code);
 }
 
 async function readIdentityCodeFont(

@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import test from 'node:test';
-import { PDFDict, PDFDocument, PDFName, PDFNumber } from 'pdf-lib';
+import { PDFArray, PDFDict, PDFDocument, PDFName, PDFNumber } from 'pdf-lib';
 import fontkit from '@pdf-lib/fontkit';
 import {
   cidHexString,
@@ -12,7 +12,9 @@ import {
   glyphWidth,
   programWidth,
   readCidFontInfo,
+  readCodeFont,
   type CidFontInfo,
+  type CodeFontInfo,
 } from './cid-text';
 
 test('cidHexString writes two bytes per CID, upper case', () => {
@@ -114,4 +116,106 @@ test('glyph width and the declared /W agree for a CID the document already uses'
   assert.equal(Math.abs((info.widths.get(cid) ?? 0) - width) <= 1, true, 'declared width matches the program');
   // A subset usually has no cmap, so the code-point lookup cannot be the source of widths.
   assert.equal(programWidth(info.font, 'R'.codePointAt(0)!), undefined);
+});
+
+/**
+ * A real CFF composite: PingFang from macOS print. It has an empty `/W` (every advance is `/DW`)
+ * and no TrueType program, so the file itself is the only source of codes.
+ */
+async function readCffCompositeInfo(): Promise<CidFontInfo> {
+  const bytes = await readFile(join(process.cwd(), 'test', 'fixtures', 'font-corpus', 'gen-cjk-ja-cupsfilter.pdf'));
+  const pdf = await PDFDocument.load(bytes, { updateMetadata: false });
+  const resources = pdf.getPages()[0].node.lookup(PDFName.of('Resources'), PDFDict);
+  assert.ok(resources, 'expected page resources');
+  const fonts = resources.lookup(PDFName.of('Font'), PDFDict);
+  for (const [name] of fonts.entries()) {
+    const resourceName = name.asString().replace(/^\//u, '');
+    const info = await readCidFontInfo(pdf, resources, resourceName);
+    if (info?.descendantSubtype === 'CIDFontType0') {
+      return info;
+    }
+  }
+  throw new Error('expected a CIDFontType0 font in the fixture');
+}
+
+test('a CFF composite is addressable by its own CIDs without a charset lookup', async () => {
+  const info = await readCffCompositeInfo();
+  assert.equal(info.descendantSubtype, 'CIDFontType0');
+  assert.equal(info.identityCidToGid, true, 'the written code is the CID');
+  assert.equal(info.usesDefaultWidthForAll, true, 'the fixture declares /W [] and relies on /DW');
+  assert.ok(info.toUnicode.size > 0, 'ToUnicode is what maps a character to its CID');
+
+  const drawn = encodeCidText(info, 'テキスト');
+  assert.deepEqual(drawn.missing, []);
+  assert.equal(drawn.cids.length, [...'テキスト'].length);
+
+  // A character outside the subset must stay missing, not silently become .notdef.
+  assert.deepEqual(encodeCidText(info, '日本語').missing, ['日']);
+});
+
+/**
+ * A real CIDFontType2 whose `/W` deliberately omits the characters it can type, exactly like the
+ * fonts in `test/fixtures/font-corpus` where a subset's `/W` covers only part of its subset.
+ * `dwShift` moves `/DW` off the glyph's true advance.
+ */
+async function readCodeFontWithWidthGap(
+  characters: string,
+  dwShift = 0,
+): Promise<{ codeFont: CodeFontInfo; cids: number[] } | undefined> {
+  const doc = await PDFDocument.create();
+  doc.registerFontkit(fontkit);
+  const page = doc.addPage([595, 842]);
+  const font = await doc.embedFont(
+    await readFile(join(process.cwd(), 'public', 'fonts', 'Roboto-Regular.ttf')),
+    { subset: true },
+  );
+  page.drawText(characters, { x: 40, y: 760, size: 12, font });
+
+  const reloaded = await PDFDocument.load(await doc.save(), { updateMetadata: false });
+  const resources = reloaded.getPages()[0].node.lookup(PDFName.of('Resources'), PDFDict);
+  assert.ok(resources, 'expected page resources');
+  const fonts = resources.lookup(PDFName.of('Font'), PDFDict);
+  const resourceName = fonts.keys()[0].asString().replace(/^\//u, '');
+  const fontDict = fonts.lookup(PDFName.of(resourceName), PDFDict);
+  const descendant = fontDict.lookup(PDFName.of('DescendantFonts'), PDFArray).lookup(0, PDFDict);
+
+  const info = await readCidFontInfo(reloaded, resources, resourceName);
+  assert.ok(info?.font, 'expected a parsed CIDFontType2 program');
+  const cids = [...characters].map((character) => info.charToCid.get(character.codePointAt(0)!)!);
+  const width = glyphWidth(info.font, cids[0]!);
+  assert.ok(width !== undefined, 'the program supplies the advance');
+
+  // `/W` still exists (so `/DW` is not the font-wide rule) but no longer lists these CIDs.
+  const context = reloaded.context;
+  descendant.set(PDFName.of('DW'), PDFNumber.of(width + dwShift));
+  descendant.set(
+    PDFName.of('W'),
+    context.obj([PDFNumber.of(cids[0] === 0 ? 1 : 0), context.obj([PDFNumber.of(100)])]),
+  );
+
+  const codeFont = await readCodeFont(reloaded, resources, resourceName);
+  return codeFont ? { codeFont, cids } : undefined;
+}
+
+test('a CID missing from /W stays writable when the glyph advance equals /DW', async () => {
+  const fixture = await readCodeFontWithWidthGap('2026');
+  assert.ok(fixture, 'expected an Identity-H code font');
+
+  // "2062" uses only glyphs the subset already has; every one of them misses /W and is positioned
+  // by /DW, which is exactly the glyph's own advance — so the run cannot drift.
+  const encoded = fixture.codeFont.encode('2062');
+  assert.deepEqual(encoded.missing, []);
+  assert.equal(
+    encoded.hex,
+    cidHexString([...'2062'].map((character) => fixture.codeFont.charToCode.get(character.codePointAt(0)!)!)).slice(1, -1),
+  );
+});
+
+test('a CID missing from /W is rejected when its advance differs from /DW', async () => {
+  const fixture = await readCodeFontWithWidthGap('2026', 1);
+  assert.ok(fixture, 'expected an Identity-H code font');
+
+  // Writing it anyway would advance the viewer by /DW, i.e. one unit off per glyph; the caller has
+  // to fall back instead of building a visibly mis-spaced line.
+  assert.deepEqual(fixture.codeFont.encode('2062').missing, [...'2062']);
 });
