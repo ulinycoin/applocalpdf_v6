@@ -36,7 +36,7 @@ Last updated: 2026-11-22
 
 - CJK-глифы вне subset по-прежнему уходят в растр — по записанному решению (JP 5,04 МБ / 125 сабсетов, SC 17,77 МБ > лимита ~5 МБ). Кандидат без ассета: невидимый текстовый слой с glyph-less шрифтом и `/ToUnicode` поверх PNG (как в OCR searchable PDF) — сделает растеризованные правки искомыми.
 
-**Git:** не закоммичено (CFF + подложка + ширины).
+**Git:** `8f2a5c8` (подложка), `dc3a539` (CFF + ширины), `cc3a30f` (e2e serve) — запушено в `origin/main`. Прод подтверждён по бандлу: `/app` отдаёт `index-kwRkEOJc.js`, `StudioEditWorkspace-ILjIG2-J.js` содержит `samplePageBackground`, `verify-service-wQ5YHaZ5.js` — `CIDFontType0`.
 
 ## Сессия 2026-11-22 (7) — правка текста: CFF/PingFang правится исходным шрифтом
 
