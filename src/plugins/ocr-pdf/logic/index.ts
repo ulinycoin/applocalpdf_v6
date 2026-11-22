@@ -3,10 +3,10 @@ import { createOcrEngine, type OcrWord } from '../../../services/ocr/ocr-engine'
 import { OcrPipelineError } from '../../../services/ocr/ocr-errors';
 import { buildFontSupportProfile } from '../../../services/ocr/font-profile';
 import {
-  SCRIPT_PROBE_LANGUAGES,
   detectDocumentLanguage,
-  isWeakAutoProbe,
+  isClearlyBetterScriptReading,
   pickScriptProbeWinner,
+  scriptProbesForProbe,
   selectAutoOcrLanguagePack,
   type ScriptProbeLanguage,
   type SupportedOcrLanguage,
@@ -42,57 +42,7 @@ interface OcrChunkResult {
   usedLanguage: string;
   languageFallbackUsed: boolean;
   words: OcrWord[];
-}
-
-async function imageSizeFromBlob(blob: Blob): Promise<{ width: number; height: number } | null> {
-  if (typeof createImageBitmap === 'function') {
-    try {
-      const bitmap = await createImageBitmap(blob);
-      const size = { width: bitmap.width, height: bitmap.height };
-      bitmap.close();
-      return size;
-    } catch {
-      return null;
-    }
-  }
-  if (typeof Image !== 'undefined' && typeof URL !== 'undefined') {
-    const url = URL.createObjectURL(blob);
-    try {
-      const size = await new Promise<{ width: number; height: number }>((resolve, reject) => {
-        const image = new Image();
-        image.onload = () => resolve({ width: image.naturalWidth, height: image.naturalHeight });
-        image.onerror = () => reject(new Error('Failed to decode image'));
-        image.src = url;
-      });
-      return size;
-    } catch {
-      return null;
-    } finally {
-      URL.revokeObjectURL(url);
-    }
-  }
-  return null;
-}
-
-async function remapWordsToRenderBlob(words: OcrWord[], ocrBlob: Blob, renderBlob: Blob): Promise<OcrWord[]> {
-  const [ocrSize, renderSize] = await Promise.all([imageSizeFromBlob(ocrBlob), imageSizeFromBlob(renderBlob)]);
-  if (!ocrSize || !renderSize || ocrSize.width <= 0 || ocrSize.height <= 0) {
-    return words;
-  }
-  if (ocrSize.width === renderSize.width && ocrSize.height === renderSize.height) {
-    return words;
-  }
-  const scaleX = renderSize.width / ocrSize.width;
-  const scaleY = renderSize.height / ocrSize.height;
-  return words.map((word) => ({
-    ...word,
-    bbox: {
-      x0: word.bbox.x0 * scaleX,
-      y0: word.bbox.y0 * scaleY,
-      x1: word.bbox.x1 * scaleX,
-      y1: word.bbox.y1 * scaleY,
-    },
-  }));
+  pdfBytes?: Uint8Array;
 }
 
 const SUPPORTED_LANGUAGES: SupportedOcrLanguage[] = ['eng', 'rus', 'ukr', 'deu', 'fra', 'spa', 'ita', 'por', 'jpn', 'chi_sim', 'hin', 'ara'];
@@ -238,21 +188,29 @@ export const run: ToolLogicFunction = async ({ inputIds, options: runOptions, fs
   const ocr = await createOcrEngine();
 
   try {
+    const wantSearchablePdf = options.outputFormat === 'searchable-pdf';
     const recognizeChunk = async (input: Blob, language: string): Promise<OcrChunkResult> => {
-      const recognized = await ocr.recognize(input, { language, detectLanguage: true });
+      const recognized = await ocr.recognize(input, {
+        language,
+        detectLanguage: true,
+        withPdf: wantSearchablePdf,
+      });
       return {
         text: recognized.text,
         confidence: recognized.confidence,
         usedLanguage: recognized.usedLanguage,
         languageFallbackUsed: recognized.languageFallbackUsed,
         words: recognized.words,
+        pdfBytes: recognized.pdfBytes,
       };
     };
 
     /**
-     * Auto mode probes with English first because it is the cheapest and the most common. If that
-     * reading is blind (Japanese/Chinese/Arabic pages come back as a few Latin fragments at low
-     * confidence), the script models get one page each and the one whose own characters dominate wins.
+     * Auto mode probes with English first because it is the cheapest and the most common. A blind
+     * reading (Japanese/Chinese/Arabic pages come back as a few Latin fragments at low confidence)
+     * gets every script model; a readable-but-unsure Latin reading gets only the Cyrillic probe,
+     * because Cyrillic scans look like Latin at a plausible confidence ("СЧЕТ" -> "CHET", ~67).
+     * A script probe replaces the English reading only when it is clearly more confident.
      */
     const resolveAutoLanguagePack = async (image: Blob, initialPack: string) => {
       const probe = await recognizeChunk(image, initialPack);
@@ -260,11 +218,12 @@ export const run: ToolLogicFunction = async ({ inputIds, options: runOptions, fs
         selectAutoOcrLanguagePack(detectDocumentLanguage(probe.text)),
         probe.text,
       );
-      if (!isWeakAutoProbe(probe)) {
+      const probeLanguages = scriptProbesForProbe(probe);
+      if (probeLanguages.length === 0) {
         return { probe, pack: fallbackPack, winner: null as null | { result: OcrChunkResult } };
       }
       const candidates: Array<{ language: ScriptProbeLanguage; text: string; confidence?: number | null }> = [];
-      for (const language of SCRIPT_PROBE_LANGUAGES) {
+      for (const language of probeLanguages) {
         try {
           const result = await recognizeChunk(image, language);
           candidates.push({ language, text: result.text, confidence: result.confidence });
@@ -273,10 +232,11 @@ export const run: ToolLogicFunction = async ({ inputIds, options: runOptions, fs
         }
       }
       const winner = pickScriptProbeWinner(candidates);
-      if (!winner) {
+      const winnerCandidate = winner ? candidates.find((candidate) => candidate.language === winner) : undefined;
+      if (!winner || !winnerCandidate || !isClearlyBetterScriptReading(winnerCandidate, probe)) {
         return { probe, pack: fallbackPack, winner: null as null | { result: OcrChunkResult } };
       }
-      const winnerPack = enrichAutoLanguagePack(winner, candidates.find((c) => c.language === winner)?.text ?? '');
+      const winnerPack = enrichAutoLanguagePack(winner, winnerCandidate.text);
       const winnerResult = await recognizeChunk(image, winnerPack);
       return { probe, pack: winnerResult.usedLanguage || winner, winner: { result: winnerResult } };
     };
@@ -303,7 +263,7 @@ export const run: ToolLogicFunction = async ({ inputIds, options: runOptions, fs
       const usedLanguages = new Set<string>();
       let languageFallbackUsed = false;
       let languageDetection = detectDocumentLanguage('');
-      let pageLayers: Array<{ imageBlob: Blob; words: OcrChunkResult['words'] }> = [];
+      let pageLayers: Array<{ imageBlob: Blob; textPdfBytes?: Uint8Array }> = [];
       let pageAnalysis: PageAnalysis[] = [];
       let usedEmbeddedText = false;
 
@@ -351,7 +311,8 @@ export const run: ToolLogicFunction = async ({ inputIds, options: runOptions, fs
           };
           const preprocessProfile = ocrPreprocessProfile(options.mode);
           const pageResults: OcrChunkResult[] = [];
-          const pageImages: Blob[] = [];
+          // Page images are only kept for a searchable PDF; a TXT/JSON run would otherwise pin every
+          // rendered page in worker memory for nothing.
           const pageRenderImages: Blob[] = [];
           let probeLanguageResolved = false;
           let lowConfidenceRetriesThisDoc = 0;
@@ -361,8 +322,9 @@ export const run: ToolLogicFunction = async ({ inputIds, options: runOptions, fs
             updateFileProgress(24 + (pageIndex / Math.max(1, totalPages)) * 14);
 
             const ocrImage = await preprocessImageForOcr(sourceImage, preprocessProfile);
-            pageRenderImages.push(sourceImage);
-            pageImages.push(ocrImage);
+            if (wantSearchablePdf) {
+              pageRenderImages.push(sourceImage);
+            }
 
             let pageResult: OcrChunkResult;
             if (options.languageMode === 'auto' && !probeLanguageResolved) {
@@ -382,7 +344,6 @@ export const run: ToolLogicFunction = async ({ inputIds, options: runOptions, fs
 
             if (
               options.mode === 'accurate'
-              && totalPages > 1
               && isLowConfidence(pageResult)
               && lowConfidenceRetriesThisDoc < LOW_CONFIDENCE_MAX_RETRY_PAGES
             ) {
@@ -393,7 +354,6 @@ export const run: ToolLogicFunction = async ({ inputIds, options: runOptions, fs
               const newScore = scoreResult(retried);
               if (newScore >= oldScore + 2 || (!isLowConfidence(retried) && isLowConfidence(pageResult))) {
                 pageResult = retried;
-                pageImages[pageImages.length - 1] = aggressiveBlob;
               }
               lowConfidenceRetryApplied = true;
               lowConfidenceRetriesThisDoc += 1;
@@ -430,13 +390,12 @@ export const run: ToolLogicFunction = async ({ inputIds, options: runOptions, fs
           } else {
             pageAnalysis = analyzePages(pageResults.map((item) => ({ text: item.text, words: item.words })), options);
             recognizedText = pageAnalysis.map((item) => item.text).join('\n\n');
-            const remappedLayers: Array<{ imageBlob: Blob; words: OcrWord[] }> = [];
-            for (let idx = 0; idx < pageRenderImages.length; idx += 1) {
-              const recognizedWords = pageResults[idx]?.words ?? [];
-              const remappedWords = await remapWordsToRenderBlob(recognizedWords, pageImages[idx], pageRenderImages[idx]);
-              remappedLayers.push({ imageBlob: pageRenderImages[idx], words: remappedWords });
+            if (wantSearchablePdf) {
+              pageLayers = pageRenderImages.map((imageBlob, idx) => ({
+                imageBlob,
+                textPdfBytes: pageResults[idx]?.pdfBytes,
+              }));
             }
-            pageLayers = remappedLayers;
             languageDetection = detectDocumentLanguage(recognizedText);
             for (const item of pageResults) {
               usedLanguages.add(item.usedLanguage);
@@ -449,11 +408,11 @@ export const run: ToolLogicFunction = async ({ inputIds, options: runOptions, fs
         }
       } else {
         const preparedBlob = await preprocessImageForOcr(blob, ocrPreprocessProfile(options.mode));
-        const imageRenderBlob =
-          blob.type === 'image/png' || blob.type === 'image/jpeg' || blob.type === 'image/jpg'
+        const imageRenderBlob = wantSearchablePdf
+          ? blob.type === 'image/png' || blob.type === 'image/jpeg' || blob.type === 'image/jpg'
             ? blob
-            : preparedBlob;
-        let finalWordsOcrBlob = preparedBlob;
+            : preparedBlob
+          : null;
         updateFileProgress(24);
         if (options.languageMode === 'auto') {
           const resolved = await resolveAutoLanguagePack(preparedBlob, initialLanguagePack);
@@ -472,7 +431,6 @@ export const run: ToolLogicFunction = async ({ inputIds, options: runOptions, fs
             const retried = await recognizeChunk(aggressiveBlob, finalLanguagePack);
             if (scoreResult(retried) >= scoreResult(finalResult) + 2 || (!isLowConfidence(retried) && isLowConfidence(finalResult))) {
               finalResult = retried;
-              finalWordsOcrBlob = aggressiveBlob;
             }
             lowConfidenceRetryApplied = true;
             lowConfidenceRetryCount = 1;
@@ -482,8 +440,9 @@ export const run: ToolLogicFunction = async ({ inputIds, options: runOptions, fs
           updateFileProgress(80);
           pageAnalysis = analyzePages([{ text: finalResult.text, words: finalResult.words }], options);
           recognizedText = pageAnalysis[0]?.text ?? finalResult.text;
-          const remappedWords = await remapWordsToRenderBlob(finalResult.words, finalWordsOcrBlob, imageRenderBlob);
-          pageLayers = [{ imageBlob: imageRenderBlob, words: remappedWords }];
+          pageLayers = imageRenderBlob
+            ? [{ imageBlob: imageRenderBlob, textPdfBytes: finalResult.pdfBytes }]
+            : [];
           languageDetection = detectDocumentLanguage(recognizedText);
           usedLanguages.add(finalResult.usedLanguage);
           if (typeof finalResult.confidence === 'number') {
@@ -497,7 +456,6 @@ export const run: ToolLogicFunction = async ({ inputIds, options: runOptions, fs
             const retried = await recognizeChunk(aggressiveBlob, initialLanguagePack);
             if (scoreResult(retried) >= scoreResult(recognized) + 2 || (!isLowConfidence(retried) && isLowConfidence(recognized))) {
               recognized = retried;
-              finalWordsOcrBlob = aggressiveBlob;
             }
             lowConfidenceRetryApplied = true;
             lowConfidenceRetryCount = 1;
@@ -507,8 +465,9 @@ export const run: ToolLogicFunction = async ({ inputIds, options: runOptions, fs
           updateFileProgress(80);
           pageAnalysis = analyzePages([{ text: recognized.text, words: recognized.words }], options);
           recognizedText = pageAnalysis[0]?.text ?? recognized.text;
-          const remappedWords = await remapWordsToRenderBlob(recognized.words, finalWordsOcrBlob, imageRenderBlob);
-          pageLayers = [{ imageBlob: imageRenderBlob, words: remappedWords }];
+          pageLayers = imageRenderBlob
+            ? [{ imageBlob: imageRenderBlob, textPdfBytes: recognized.pdfBytes }]
+            : [];
           languageDetection = detectDocumentLanguage(recognizedText);
           usedLanguages.add(recognized.usedLanguage);
           if (typeof recognized.confidence === 'number') {
@@ -573,6 +532,9 @@ export const run: ToolLogicFunction = async ({ inputIds, options: runOptions, fs
           }
           if (pageLayers.length === 0) {
             throw new Error('Cannot create Searchable PDF: no page layers available from OCR');
+          }
+          if (pageLayers.every((page) => !page.textPdfBytes)) {
+            throw new Error('Cannot create Searchable PDF: OCR produced no text layer for this document');
           }
           try {
             return await buildSearchablePdfFromImages(pageLayers);

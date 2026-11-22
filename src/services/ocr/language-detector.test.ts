@@ -1,6 +1,14 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { detectDocumentLanguage, isWeakAutoProbe, pickScriptProbeWinner, scriptShare, selectAutoOcrLanguagePack } from './language-detector';
+import {
+  detectDocumentLanguage,
+  isClearlyBetterScriptReading,
+  isWeakAutoProbe,
+  pickScriptProbeWinner,
+  scriptProbesForProbe,
+  scriptShare,
+  selectAutoOcrLanguagePack,
+} from './language-detector';
 
 test('detectDocumentLanguage identifies English text', () => {
   const result = detectDocumentLanguage('This is a sample invoice and the payment is due for the customer.');
@@ -70,4 +78,32 @@ test('script probes prefer the model whose own characters dominate', () => {
     { language: 'chi_sim', text: 'customer name', confidence: 80 },
     { language: 'ara', text: 'paid in full', confidence: 75 },
   ]), null);
+});
+
+test('a readable Latin reading of a Cyrillic scan gets the Russian probe', () => {
+  // "СЧЕТ НА ОПЛАТУ" read by the English model: Latin look-alikes with a plausible confidence.
+  assert.deepEqual(scriptProbesForProbe({ text: 'CHET HA OINMNATY Ne 2026-11', confidence: 67 }), ['rus']);
+  assert.deepEqual(scriptProbesForProbe({ text: 'INVOICE 2026-11 Total amount: 23.00 USD', confidence: 95 }), []);
+  const blind = scriptProbesForProbe({ text: 'ERE aHeBI= t= FI TT,', confidence: 18 });
+  assert.ok(blind.includes('rus'));
+  assert.ok(blind.includes('jpn'));
+});
+
+test('a Cyrillic probe replaces the Latin reading only when it is clearly better', () => {
+  const russianRead = { text: 'СЧЕТ НА ОПЛАТУ № 2026-11 ООО Ромашка', confidence: 95 };
+  const latinLookAlike = { text: 'CHET HA OINMNATY Ne 2026-11 OOO Pomaluka', confidence: 67 };
+  assert.equal(isClearlyBetterScriptReading(russianRead, latinLookAlike), true);
+
+  // The Russian model reads an English page as Cyrillic look-alikes at ~68; that must not win.
+  const cyrillicJunk = { text: '!М№О1КСЕ 2026-11 То!а! атоитп!', confidence: 68 };
+  assert.equal(isClearlyBetterScriptReading(cyrillicJunk, { text: 'INVOICE 2026-11 Total amount: 23.00 USD', confidence: 95 }), false);
+});
+
+test('kana decides Japanese even when a Han-only reading is more confident', () => {
+  const winner = pickScriptProbeWinner([
+    { language: 'jpn', text: '請求書 合計金額は二十三ドルです。', confidence: 70 },
+    { language: 'chi_sim', text: '請求書 合計金額 ニ 十 三 ドル です', confidence: 92 },
+    { language: 'ara', text: 'invoice 123', confidence: 90 },
+  ]);
+  assert.equal(winner, 'jpn');
 });

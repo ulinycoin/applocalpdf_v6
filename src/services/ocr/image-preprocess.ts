@@ -218,14 +218,12 @@ export async function preprocessImageForOcr(
     const imageData = ctx.getImageData(0, 0, targetWidth, targetHeight);
     const data = imageData.data;
     const gray = new Uint8ClampedArray(targetWidth * targetHeight);
-    const histogram = new Uint32Array(256);
 
     let avgLuma = 0;
     for (let i = 0, p = 0; i < data.length; i += 4, p += 1) {
       const luma = computeLuma(data[i], data[i + 1], data[i + 2]);
       avgLuma += luma;
       gray[p] = luma;
-      histogram[Math.round(luma)] += 1;
     }
     avgLuma /= Math.max(1, gray.length);
 
@@ -234,6 +232,13 @@ export async function preprocessImageForOcr(
       for (let i = 0; i < gray.length; i += 1) {
         gray[i] = 255 - gray[i];
       }
+    }
+
+    // Build the histogram after inversion: percentiles taken from the original dark pixels would
+    // stretch the inverted image with cutoffs from the other end of the range.
+    const histogram = new Uint32Array(256);
+    for (let i = 0; i < gray.length; i += 1) {
+      histogram[gray[i]] += 1;
     }
 
     // Auto-levels by percentile stretch to improve low-contrast scans.

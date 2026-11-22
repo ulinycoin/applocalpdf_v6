@@ -158,14 +158,25 @@ export function detectDocumentLanguage(text: string): LanguageDetectionResult {
 }
 
 /** Scripts worth a dedicated probe when the English pass produces nothing readable. */
-export const SCRIPT_PROBE_LANGUAGES = ['jpn', 'chi_sim', 'ara'] as const;
+export const SCRIPT_PROBE_LANGUAGES = ['jpn', 'chi_sim', 'ara', 'rus'] as const;
 export type ScriptProbeLanguage = typeof SCRIPT_PROBE_LANGUAGES[number];
 
 const SCRIPT_CHAR = {
   jpn: /[\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Han}]/gu,
   chi_sim: /\p{Script=Han}/gu,
   ara: /\p{Script=Arabic}/gu,
+  rus: /\p{Script=Cyrillic}/gu,
 } as const;
+
+const KANA_CHAR = /[\p{Script=Hiragana}\p{Script=Katakana}]/u;
+
+/**
+ * A clean Latin reading needs no extra models. Cyrillic scans are the trap: the English model reads
+ * them as Latin look-alikes with a confidence in the 60s-70s ("СЧЕТ" -> "CHET"), so they look readable
+ * instead of blind. Below this confidence a Russian probe is worth its model load; above it the page is
+ * genuinely Latin (the same check rejects Cyrillic junk read off an English page).
+ */
+const AMBIGUOUS_LATIN_CONFIDENCE = 85;
 
 /** Share of the text that belongs to the script this language is written in (0..1). */
 export function scriptShare(text: string, language: ScriptProbeLanguage): number {
@@ -193,17 +204,52 @@ export function isWeakAutoProbe(result: { text: string; confidence?: number | nu
 }
 
 /**
+ * Which script models are worth one page each for this reading. A blind English pass gets the full
+ * script set; a readable but not confident Latin pass gets only the Cyrillic check, because that is
+ * the one script the English model can mistake for Latin with a plausible confidence.
+ */
+export function scriptProbesForProbe(result: { text: string; confidence?: number | null }): ScriptProbeLanguage[] {
+  if (isWeakAutoProbe(result)) {
+    return [...SCRIPT_PROBE_LANGUAGES];
+  }
+  if (typeof result.confidence === 'number' && result.confidence < AMBIGUOUS_LATIN_CONFIDENCE) {
+    return ['rus'];
+  }
+  return [];
+}
+
+/**
+ * A script probe may only replace the English reading when it is clearly more confident. Comparing
+ * confidence absolute values is not enough: on an English page the Russian model happily produces
+ * Cyrillic look-alikes (confidence ~68) while the English model is at ~95.
+ */
+export function isClearlyBetterScriptReading(
+  candidate: { confidence?: number | null },
+  probe: { text: string; confidence?: number | null },
+): boolean {
+  const candidateConfidence = typeof candidate.confidence === 'number' ? candidate.confidence : 0;
+  const baseline = typeof probe.confidence === 'number' ? probe.confidence : 0;
+  if (isWeakAutoProbe(probe)) {
+    return candidateConfidence >= Math.max(60, baseline + 20);
+  }
+  return candidateConfidence >= baseline + 15;
+}
+
+/**
  * Picks the script model whose own characters dominate its output. Confidence alone cannot decide:
  * a garbage English reading of a Japanese page can be more "confident" than a correct Japanese one.
+ * Kana is decisive for Japanese — a Han-only Chinese reading must not override a kana reading.
  */
 export function pickScriptProbeWinner(
   candidates: ReadonlyArray<{ language: ScriptProbeLanguage; text: string; confidence?: number | null }>,
 ): ScriptProbeLanguage | null {
+  const kanaCandidates = candidates.filter((candidate) => KANA_CHAR.test(candidate.text));
+  const pool = kanaCandidates.length > 0 ? kanaCandidates : candidates;
   let best: ScriptProbeLanguage | null = null;
   let bestScore = 0;
-  for (const candidate of candidates) {
+  for (const candidate of pool) {
     const share = scriptShare(candidate.text, candidate.language);
-    if (share < 0.2) {
+    if (share < 0.35) {
       continue;
     }
     const score = share * 0.7 + (candidate.confidence ?? 0) / 100 * 0.3;

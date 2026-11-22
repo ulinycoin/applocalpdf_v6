@@ -9,11 +9,19 @@ export interface OcrResult {
   languageFallbackUsed: boolean;
   detectedLanguage?: LanguageDetectionResult;
   words: OcrWord[];
+  /**
+   * Single-page searchable PDF produced by Tesseract itself. Its glyph-less font carries a ToUnicode
+   * map for every recognized character, so the text layer works for Cyrillic, CJK and Arabic — a
+   * pdf-lib overlay with the bundled Latin/Cyrillic fonts silently dropped the rest.
+   */
+  pdfBytes?: Uint8Array;
 }
 
 export interface OcrRecognizeOptions {
   language?: string;
   detectLanguage?: boolean;
+  /** Ask for Tesseract's single-page searchable PDF alongside the text. */
+  withPdf?: boolean;
 }
 
 export interface OcrWord {
@@ -43,6 +51,7 @@ interface TesseractResult {
     text?: string;
     confidence?: number;
     words?: TesseractWord[];
+    pdf?: number[];
   };
 }
 
@@ -197,9 +206,11 @@ class TesseractOcrEngine implements OcrEngine {
     return worker;
   }
 
-  private async runRecognize(blob: Blob, language: string): Promise<OcrResult> {
+  private async runRecognize(blob: Blob, language: string, withPdf: boolean): Promise<OcrResult> {
     const worker = await this.getWorker(language);
-    const result = await worker.recognize(blob);
+    const result = withPdf
+      ? await worker.recognize(blob, { pdfTextOnly: true }, { pdf: true })
+      : await worker.recognize(blob);
     return {
       text: result.data?.text ?? '',
       confidence: typeof result.data?.confidence === 'number' ? Number(result.data.confidence.toFixed(2)) : null,
@@ -207,6 +218,7 @@ class TesseractOcrEngine implements OcrEngine {
       usedLanguage: language,
       languageFallbackUsed: false,
       words: normalizeWords(result.data?.words),
+      pdfBytes: result.data?.pdf ? Uint8Array.from(result.data.pdf) : undefined,
     };
   }
 
@@ -222,7 +234,7 @@ class TesseractOcrEngine implements OcrEngine {
     for (let i = 0; i < fallbackChain.length; i += 1) {
       const candidateLanguage = fallbackChain[i]!;
       try {
-        const result = await this.runRecognize(blob, candidateLanguage);
+        const result = await this.runRecognize(blob, candidateLanguage, options.withPdf === true);
         if (options.detectLanguage) {
           result.detectedLanguage = detectDocumentLanguage(result.text);
         }
