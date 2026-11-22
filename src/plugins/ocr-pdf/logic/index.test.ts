@@ -83,3 +83,16 @@ test('ocr-pdf logic rejects searchable-pdf format when no page layers available'
 
 // Image-input path is excluded from unit tests because tesseract.js resolves
 // vendor worker paths that only exist in the browser build. Integration-tested via e2e.
+
+import { enrichAutoLanguagePack } from './index';
+
+test('a Japanese reading is not polluted with the Chinese model by its kanji', () => {
+  const pack = enrichAutoLanguagePack('jpn', 'これは日本語の請求書です。合計金額は二十三ドルです。');
+  assert.equal(pack, 'jpn');
+  assert.equal(enrichAutoLanguagePack('jpn+eng', 'これは Invoice です'), 'jpn+eng');
+});
+
+test('kanji without kana still selects Chinese, and Latin labels add English', () => {
+  assert.equal(enrichAutoLanguagePack('chi_sim', '这是一份中文测试文档'), 'chi_sim');
+  assert.equal(enrichAutoLanguagePack('chi_sim', 'Invoice 发票金额'), 'chi_sim+eng');
+});

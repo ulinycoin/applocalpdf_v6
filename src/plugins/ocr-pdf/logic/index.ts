@@ -2,7 +2,15 @@ import type { IFileSystem, ToolLogicFunction, ToolProgressDetail } from '../../.
 import { createOcrEngine, type OcrWord } from '../../../services/ocr/ocr-engine';
 import { OcrPipelineError } from '../../../services/ocr/ocr-errors';
 import { buildFontSupportProfile } from '../../../services/ocr/font-profile';
-import { detectDocumentLanguage, selectAutoOcrLanguagePack, type SupportedOcrLanguage } from '../../../services/ocr/language-detector';
+import {
+  SCRIPT_PROBE_LANGUAGES,
+  detectDocumentLanguage,
+  isWeakAutoProbe,
+  pickScriptProbeWinner,
+  selectAutoOcrLanguagePack,
+  type ScriptProbeLanguage,
+  type SupportedOcrLanguage,
+} from '../../../services/ocr/language-detector';
 import { detectTablesFromWords, renderDetectedTablesAsMarkdown, type DetectedTable } from '../../../services/ocr/table-detector';
 import { buildSearchablePdfFromImages } from '../../../services/ocr/searchable-pdf';
 import { preprocessImageForOcr, type OcrPreprocessProfile } from '../../../services/ocr/image-preprocess';
@@ -129,7 +137,7 @@ function normalizeLanguagePack(raw: string | undefined): string {
   return unique.join('+');
 }
 
-function enrichAutoLanguagePack(languagePack: string, sampleText: string): string {
+export function enrichAutoLanguagePack(languagePack: string, sampleText: string): string {
   const tokens = new Set(languagePack.split('+').map((t) => t.trim()).filter(Boolean));
   if (/\p{Script=Latin}/u.test(sampleText)) {
     tokens.add('eng');
@@ -138,9 +146,11 @@ function enrichAutoLanguagePack(languagePack: string, sampleText: string): strin
     tokens.add('rus');
   }
   if (/\p{Script=Hiragana}|\p{Script=Katakana}/u.test(sampleText)) {
+    // Kana decides the language. Japanese text also contains Han, and adding Chinese to the pack made
+    // tesseract read kana as Chinese characters ("これは" -> "乙札伊"), which is the bug this guard stops.
     tokens.add('jpn');
-  }
-  if (/\p{Script=Han}/u.test(sampleText)) {
+    tokens.delete('chi_sim');
+  } else if (/\p{Script=Han}/u.test(sampleText)) {
     tokens.add('chi_sim');
   }
   if (/\p{Script=Devanagari}/u.test(sampleText)) {
@@ -239,6 +249,38 @@ export const run: ToolLogicFunction = async ({ inputIds, options: runOptions, fs
       };
     };
 
+    /**
+     * Auto mode probes with English first because it is the cheapest and the most common. If that
+     * reading is blind (Japanese/Chinese/Arabic pages come back as a few Latin fragments at low
+     * confidence), the script models get one page each and the one whose own characters dominate wins.
+     */
+    const resolveAutoLanguagePack = async (image: Blob, initialPack: string) => {
+      const probe = await recognizeChunk(image, initialPack);
+      const fallbackPack = enrichAutoLanguagePack(
+        selectAutoOcrLanguagePack(detectDocumentLanguage(probe.text)),
+        probe.text,
+      );
+      if (!isWeakAutoProbe(probe)) {
+        return { probe, pack: fallbackPack, winner: null as null | { result: OcrChunkResult } };
+      }
+      const candidates: Array<{ language: ScriptProbeLanguage; text: string; confidence?: number | null }> = [];
+      for (const language of SCRIPT_PROBE_LANGUAGES) {
+        try {
+          const result = await recognizeChunk(image, language);
+          candidates.push({ language, text: result.text, confidence: result.confidence });
+        } catch {
+          // A model that cannot load must not stop the run: the English result remains usable.
+        }
+      }
+      const winner = pickScriptProbeWinner(candidates);
+      if (!winner) {
+        return { probe, pack: fallbackPack, winner: null as null | { result: OcrChunkResult } };
+      }
+      const winnerPack = enrichAutoLanguagePack(winner, candidates.find((c) => c.language === winner)?.text ?? '');
+      const winnerResult = await recognizeChunk(image, winnerPack);
+      return { probe, pack: winnerResult.usedLanguage || winner, winner: { result: winnerResult } };
+    };
+
     for (let i = 0; i < inputIds.length; i += 1) {
       const updateFileProgress = (localPercent: number, detail?: ToolProgressDetail): void => {
         emitFileProgress(emitProgress, i, inputIds.length, localPercent, detail);
@@ -324,15 +366,15 @@ export const run: ToolLogicFunction = async ({ inputIds, options: runOptions, fs
 
             let pageResult: OcrChunkResult;
             if (options.languageMode === 'auto' && !probeLanguageResolved) {
-              const probe = await recognizeChunk(ocrImage, initialLanguagePack);
-              const probeDetection = detectDocumentLanguage(probe.text);
-              const suggestedPack = enrichAutoLanguagePack(selectAutoOcrLanguagePack(probeDetection), probe.text);
-              finalLanguagePack = suggestedPack;
-              autoSecondPassApplied = suggestedPack !== initialLanguagePack;
+              const resolved = await resolveAutoLanguagePack(ocrImage, initialLanguagePack);
+              finalLanguagePack = resolved.pack;
+              autoSecondPassApplied = resolved.pack !== initialLanguagePack;
               probeLanguageResolved = true;
-              pageResult = suggestedPack !== initialLanguagePack
-                ? await recognizeChunk(ocrImage, suggestedPack)
-                : probe;
+              pageResult = resolved.winner
+                ? resolved.winner.result
+                : resolved.pack !== initialLanguagePack
+                  ? await recognizeChunk(ocrImage, resolved.pack)
+                  : resolved.probe;
             } else {
               const languagePack = options.languageMode === 'auto' ? finalLanguagePack : initialLanguagePack;
               pageResult = await recognizeChunk(ocrImage, languagePack);
@@ -414,14 +456,15 @@ export const run: ToolLogicFunction = async ({ inputIds, options: runOptions, fs
         let finalWordsOcrBlob = preparedBlob;
         updateFileProgress(24);
         if (options.languageMode === 'auto') {
-          const probe = await recognizeChunk(preparedBlob, initialLanguagePack);
+          const resolved = await resolveAutoLanguagePack(preparedBlob, initialLanguagePack);
           updateFileProgress(48);
-          const probeDetection = detectDocumentLanguage(probe.text);
-          finalLanguagePack = enrichAutoLanguagePack(selectAutoOcrLanguagePack(probeDetection), probe.text);
+          finalLanguagePack = resolved.pack;
 
-          let finalResult = finalLanguagePack !== initialLanguagePack
-            ? await recognizeChunk(preparedBlob, finalLanguagePack)
-            : probe;
+          let finalResult = resolved.winner
+            ? resolved.winner.result
+            : resolved.pack !== initialLanguagePack
+              ? await recognizeChunk(preparedBlob, resolved.pack)
+              : resolved.probe;
           autoSecondPassApplied = finalLanguagePack !== initialLanguagePack;
 
           if (options.mode === 'accurate' && isLowConfidence(finalResult)) {

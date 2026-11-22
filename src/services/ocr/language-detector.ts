@@ -157,6 +157,64 @@ export function detectDocumentLanguage(text: string): LanguageDetectionResult {
   };
 }
 
+/** Scripts worth a dedicated probe when the English pass produces nothing readable. */
+export const SCRIPT_PROBE_LANGUAGES = ['jpn', 'chi_sim', 'ara'] as const;
+export type ScriptProbeLanguage = typeof SCRIPT_PROBE_LANGUAGES[number];
+
+const SCRIPT_CHAR = {
+  jpn: /[\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Han}]/gu,
+  chi_sim: /\p{Script=Han}/gu,
+  ara: /\p{Script=Arabic}/gu,
+} as const;
+
+/** Share of the text that belongs to the script this language is written in (0..1). */
+export function scriptShare(text: string, language: ScriptProbeLanguage): number {
+  const letters = text.match(/\p{L}/gu)?.length ?? 0;
+  if (letters === 0) {
+    return 0;
+  }
+  const own = text.match(SCRIPT_CHAR[language])?.length ?? 0;
+  return Math.min(1, own / letters);
+}
+
+/**
+ * Does the cheap English probe actually see text? A Japanese/Chinese/Arabic page read with `eng`
+ * comes back as a few Latin fragments at low confidence — that is the signal to try script models.
+ */
+export function isWeakAutoProbe(result: { text: string; confidence?: number | null }): boolean {
+  const text = result.text.trim();
+  if (text.length < 12) {
+    return true;
+  }
+  if ((text.match(/\p{L}/gu)?.length ?? 0) < 8) {
+    return true;
+  }
+  return typeof result.confidence === 'number' && result.confidence < 45;
+}
+
+/**
+ * Picks the script model whose own characters dominate its output. Confidence alone cannot decide:
+ * a garbage English reading of a Japanese page can be more "confident" than a correct Japanese one.
+ */
+export function pickScriptProbeWinner(
+  candidates: ReadonlyArray<{ language: ScriptProbeLanguage; text: string; confidence?: number | null }>,
+): ScriptProbeLanguage | null {
+  let best: ScriptProbeLanguage | null = null;
+  let bestScore = 0;
+  for (const candidate of candidates) {
+    const share = scriptShare(candidate.text, candidate.language);
+    if (share < 0.2) {
+      continue;
+    }
+    const score = share * 0.7 + (candidate.confidence ?? 0) / 100 * 0.3;
+    if (score > bestScore) {
+      best = candidate.language;
+      bestScore = score;
+    }
+  }
+  return bestScore >= 0.3 ? best : null;
+}
+
 export function selectAutoOcrLanguagePack(detection: LanguageDetectionResult): string {
   const top = detection.candidates[0];
   if (!top) {

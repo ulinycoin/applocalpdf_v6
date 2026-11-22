@@ -258,6 +258,7 @@ export default function OcrPdfConfig({
               <option value="jpn">Japanese</option>
               <option value="chi_sim">Chinese (Simplified)</option>
               <option value="hin">Hindi</option>
+              <option value="ara">Arabic</option>
             </select>
 
             <span className="tool-config-label">Mode</span>
