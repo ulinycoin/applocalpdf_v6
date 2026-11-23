@@ -27,6 +27,7 @@ import {
   isStudioTextEditV2Enabled,
   matchesPatchedOperator,
   redactOperatorsInDecodedStreams,
+  drawHiddenText,
   resolveRequestedFontSizeFromElement,
   resolveSourceFontInfo,
   resolveTargetRect,
@@ -1425,6 +1426,17 @@ export async function applyStudioTextEditsToPdfBytes(params: {
               height: raster.heightPt,
               opacity: element.opacity,
               ...(uprightRotation ? { rotate: degrees(uprightRotation) } : {}),
+            });
+            // The picture is the only visible output, but a page made of pictures loses the text:
+            // an invisible layer keeps the run searchable, copyable and reachable by "find".
+            const hiddenStart = toUserRatioPoint(displayX + raster.paddingPt, displayY);
+            drawHiddenText(pdf, page, {
+              text: run.rasterText,
+              advancesPt: raster.advancesPt,
+              fontSize: renderFontSize,
+              x: hiddenStart.x,
+              y: hiddenStart.y,
+              rotationDegrees: uprightRotation,
             });
             displayX += raster.widthPt + (tracking * run.rasterText.length);
             fontPaths.rasterized += 1;

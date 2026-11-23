@@ -70,3 +70,4 @@ export {
   readCodeFont,
   type CodeFontInfo,
 } from './cid-text';
+export { drawHiddenText, type HiddenTextParams } from './hidden-text';

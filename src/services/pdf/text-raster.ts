@@ -4,7 +4,8 @@
  * CJK and Arabic faces are not shipped with the app (bundle size and font licensing), but the browser
  * can already draw those scripts through the system fonts it has. So instead of degrading a sentence
  * to `?????`, the run is painted to a canvas and embedded as an image — the same trade-off the
- * Word/Excel importers already make. The result is visible but not selectable text.
+ * Word/Excel importers already make. The applier then puts an invisible text layer over the image
+ * (`text-edit/hidden-text.ts`), so the run stays searchable and copyable.
  */
 
 const RASTER_FONT_STACK = '"Noto Sans","Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji","Segoe UI Symbol","Arial Unicode MS","Noto Sans CJK SC","Noto Sans CJK JP","Noto Sans CJK KR","PingFang SC","Hiragino Sans","Yu Gothic","Microsoft YaHei","Noto Sans Arabic","Geeza Pro","Noto Sans Devanagari","Mangal",sans-serif';
@@ -18,6 +19,10 @@ export interface RasterTextResult {
   heightPt: number;
   /** Distance from the top of the image down to the text baseline, in points. */
   baselineOffsetPt: number;
+  /** Left padding inside the image, in points; the glyphs start there, not at the edge. */
+  paddingPt: number;
+  /** Advance of every character in points, in code-point order — what the hidden text layer needs. */
+  advancesPt: number[];
 }
 
 type Canvas2D = {
@@ -93,15 +98,20 @@ export async function rasterizeTextRun(params: {
   const { canvas, context } = target;
   context.clearRect(0, 0, imageWidth, imageHeight);
   context.fillStyle = toCssColor(colorHex);
-  context.textBaseline = 'top';
   context.font = font;
-  const drawTop = Math.ceil(fontPx * 0.08);
-  context.fillText(text, padding, drawTop);
-  // Browsers expose the real ascent; the 0.88em fallback matches a typical CJK/Arabic face.
+  /**
+   * Measured *before* `textBaseline` changes: in a Chromium worker, switching the baseline to `top`
+   * rewrites `fontBoundingBoxAscent`/`Descent` as if they were relative to that baseline (48/15
+   * becomes 12/51 for a 48px face). The raster is then positioned by `baselineOffsetPt`, so a wrong
+   * ascent drops the whole picture below the line it belongs to.
+   */
   const metrics = context.measureText(text) as TextMetrics & { fontBoundingBoxAscent?: number };
   const ascentPx = typeof metrics.fontBoundingBoxAscent === 'number' && metrics.fontBoundingBoxAscent > 0
     ? metrics.fontBoundingBoxAscent
     : fontPx * 0.88;
+  context.textBaseline = 'top';
+  const drawTop = Math.ceil(fontPx * 0.08);
+  context.fillText(text, padding, drawTop);
 
   let blob: Blob | null = null;
   if (typeof OffscreenCanvas !== 'undefined' && canvas instanceof OffscreenCanvas) {
@@ -113,10 +123,22 @@ export async function rasterizeTextRun(params: {
     return null;
   }
 
+  /**
+   * Per-character advances for the invisible text layer. Browsers expose the advance of a whole
+   * string, not of a character inside it, so every character is measured on its own and the list is
+   * normalised to the string's real width — that keeps kerning losses from stretching the layer.
+   */
+  const letters = [...text];
+  const standalone = letters.map((character) => Math.max(0, probe.context.measureText(character).width || 0));
+  const standaloneTotal = standalone.reduce((sum, width) => sum + width, 0);
+  const normalise = standaloneTotal > 0 ? naturalWidth / standaloneTotal : 1;
+
   return {
     bytes: new Uint8Array(await blob.arrayBuffer()),
     widthPt: imageWidth / scale,
     heightPt: imageHeight / scale,
     baselineOffsetPt: (drawTop + ascentPx) / scale,
+    paddingPt: padding / scale,
+    advancesPt: standalone.map((width) => (width * normalise) / scale),
   };
 }

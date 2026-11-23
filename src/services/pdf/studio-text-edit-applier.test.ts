@@ -2228,6 +2228,13 @@ test('characters no shipped font can render are rasterised instead of transliter
     assert.match(stream, /\bDo\b/u, 'the rasterised run must be drawn as an image');
     const text = (await extractEmbeddedPdfText(toPdfBlob(result.outputBytes)))?.text ?? '';
     assert.doesNotMatch(text, /\?/u, 'nothing may be transliterated when a canvas is available');
+    // The run is pixels, but an invisible text layer keeps it searchable.
+    assert.equal(text, '日本語のテキスト');
+    const layer = await extractTextLayerForPreview(result.outputBytes, 1, 1);
+    assert.ok(
+      layer.spans.some((span) => span.text.includes('日本語のテキスト')),
+      'the rasterised run must be selectable again',
+    );
   } finally {
     globalWithCanvas.OffscreenCanvas = originalCanvas;
   }
