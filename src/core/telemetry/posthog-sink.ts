@@ -90,6 +90,8 @@ export class PostHogTelemetrySink implements TelemetrySink {
           mime_category: event.mimeCategory,
           total_bytes: event.totalBytes,
           source: event.source,
+          page_count: event.pageCount,
+          workspace_document_count: event.workspaceDocumentCount,
         });
         break;
       case 'OUTPUT_DOWNLOADED':
@@ -105,6 +107,8 @@ export class PostHogTelemetrySink implements TelemetrySink {
           error_code: event.errorCode,
           reason: event.reason,
           remaining: event.remaining,
+          document_page_count: event.documentPageCount,
+          workspace_document_count: event.workspaceDocumentCount,
           unit: 'file',
         });
         break;

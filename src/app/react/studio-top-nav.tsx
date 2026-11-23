@@ -420,6 +420,8 @@ export function StudioTopNav({ telemetryEnabled, onToggleTelemetry, telemetryOpe
       surface: 'studio' as const,
       exit: 'studio_top_nav' as const,
       toolId: 'studio',
+      documentPageCount: targetDocument.pages.length,
+      workspaceDocumentCount: documents.length,
     };
 
     if (!clearDownloadAllowance(exitContext, 1)) {

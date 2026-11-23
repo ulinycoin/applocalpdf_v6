@@ -425,7 +425,21 @@ export type RunnerTelemetryEvent =
     paths: StudioFontPathCounts;
   }
   | { type: 'APP_SESSION_ATTRIBUTED'; flowId: string; entryUrl: string; entryPath: string; referrer: string; referringDomain: string; utmSource?: string; utmMedium?: string; utmCampaign?: string }
-  | { type: 'APP_FILE_UPLOADED'; flowId: string; toolId: string; fileCount: number; mimeCategory: string; totalBytes: number; source: 'wizard' | 'studio' }
+  // `pageCount` is the size of what the user brought, which decides whether the page-level tools are even
+  // relevant; `workspaceDocumentCount` is how many documents were open right after the upload, the only
+  // direct signal that the multi-document canvas is in play. Both stay optional: the wizard surface
+  // imports files without rendering pages, so it genuinely does not know.
+  | {
+    type: 'APP_FILE_UPLOADED';
+    flowId: string;
+    toolId: string;
+    fileCount: number;
+    mimeCategory: string;
+    totalBytes: number;
+    source: 'wizard' | 'studio';
+    pageCount?: number;
+    workspaceDocumentCount?: number;
+  }
   | { type: 'TOOL_RUN_ABANDONED'; flowId: string; runId?: string; toolId: string; reason: 'pagehide' | 'visibility_hidden' | 'navigation' | 'cancel' }
   // One download exit point, one event: every path that hands a file to the user reports here, including
   // the attempts the daily quota refused, so `succeeded / attempted` is computable per surface.
@@ -446,6 +460,11 @@ export type RunnerTelemetryEvent =
     /** Why the quota refused the attempt; present only on the `denied` outcome. */
     reason?: 'daily_download_limit';
     remaining?: number;
+    /** Size of the document that left the app, when the exit point knows it: multi-page work and
+     *  single-page work are different products, and until now the funnel could not tell them apart. */
+    documentPageCount?: number;
+    /** Documents open in the workspace at that moment; the canvas only pays off above one. */
+    workspaceDocumentCount?: number;
   }
   | { type: 'SHARED_FILE_SAVED'; flowId: string; toolId: string; surface: 'share_receive' }
   | { type: 'STUDIO_EMPTY_STATE_CTA'; runId: string; action: 'upload' }

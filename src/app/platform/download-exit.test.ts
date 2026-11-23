@@ -81,6 +81,19 @@ test('each download path names its exit point so the funnel can split them', () 
   }
 });
 
+test('a download can report the size of the document and the workspace it came from', () => {
+  installStorageStub();
+  resetDailyFileQuota();
+  const { ctx, events } = context('studio', 'pro');
+  Object.assign(ctx, { documentPageCount: 37, workspaceDocumentCount: 3 });
+
+  recordDownloadOutcome(ctx, 'success', 1, 1);
+
+  const [reported] = downloads(events);
+  assert.equal(reported.documentPageCount, 37);
+  assert.equal(reported.workspaceDocumentCount, 3);
+});
+
 test('a refused attempt reports the denial with the remaining allowance and delivers nothing', () => {
   installStorageStub();
   resetDailyFileQuota();
@@ -107,6 +120,8 @@ test('a refused attempt reports the denial with the remaining allowance and deli
     requested: 1,
     reason: 'daily_download_limit',
     remaining: 0,
+    documentPageCount: undefined,
+    workspaceDocumentCount: undefined,
   });
   // The denied attempt must not consume anything: the fourth call is the one that was refused.
   assert.equal(getDailyFileUsage(), FREE_DAILY_FILE_LIMIT);

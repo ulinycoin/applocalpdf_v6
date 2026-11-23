@@ -38,6 +38,8 @@ test('PostHogTelemetrySink forwards app analytics events to PostHog', () => {
       mimeCategory: 'pdf',
       totalBytes: 1024,
       source: 'studio',
+      pageCount: 12,
+      workspaceDocumentCount: 2,
     });
 
     sink.track({
@@ -50,6 +52,8 @@ test('PostHogTelemetrySink forwards app analytics events to PostHog', () => {
       outcome: 'success',
       requested: 1,
       outputCount: 1,
+      documentPageCount: 12,
+      workspaceDocumentCount: 2,
     });
 
     sink.track({
@@ -90,6 +94,8 @@ test('PostHogTelemetrySink forwards app analytics events to PostHog', () => {
           mime_category: 'pdf',
           total_bytes: 1024,
           source: 'studio',
+          page_count: 12,
+          workspace_document_count: 2,
         },
       },
       {
@@ -106,6 +112,8 @@ test('PostHogTelemetrySink forwards app analytics events to PostHog', () => {
           error_code: undefined,
           reason: undefined,
           remaining: undefined,
+          document_page_count: 12,
+          workspace_document_count: 2,
           unit: 'file',
         },
       },
@@ -446,6 +454,8 @@ test('PostHogTelemetrySink reports a refused download with the outcome fields th
           error_code: undefined,
           reason: 'daily_download_limit',
           remaining: 0,
+          document_page_count: undefined,
+          workspace_document_count: undefined,
           unit: 'file',
         },
       },

@@ -949,6 +949,8 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
         /** Workspaces created by this batch, in the order they were placed on the canvas. */
         const committedDocs: IStudioDocument[] = [];
         const uploadedFiles: File[] = [];
+        /** Pages this batch actually put on the canvas, across every file: the size of the user's document. */
+        let importedPageCount = 0;
         if (files.length === 0) {
             return;
         }
@@ -1123,6 +1125,7 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
                             }
                         }
                         committedPageCount += 1;
+                        importedPageCount += 1;
                     }
                     commitPendingPages();
 
@@ -1162,6 +1165,10 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
                     : (uploadedFiles[0]?.type.split('/')[0] || 'unknown'),
                 totalBytes: uploadedFiles.reduce((sum, file) => sum + file.size, 0),
                 source: 'studio',
+                // The two numbers the product decision hangs on: how big the document is, and whether the
+                // multi-document canvas is actually in play.
+                pageCount: importedPageCount,
+                workspaceDocumentCount: documents.length + positionedDocs.length,
             });
             setUploadAttention(false);
             fitToDocuments([...documents, ...positionedDocs]);

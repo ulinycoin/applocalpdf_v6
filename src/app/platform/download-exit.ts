@@ -29,6 +29,11 @@ export interface DownloadExitContext {
   exit: DownloadExit;
   toolId: string;
   runId?: string;
+  /** Size of the document being handed over, when the caller knows it. Multi-page work and single-page
+   *  work convert differently, and the funnel cannot see that without this. */
+  documentPageCount?: number;
+  /** Documents open in the workspace at that moment: the canvas only pays off above one document. */
+  workspaceDocumentCount?: number;
 }
 
 export type DownloadOutcome = 'success' | 'failure';
@@ -46,6 +51,8 @@ function downloadEventBase(context: DownloadExitContext) {
     toolId: context.toolId,
     surface: context.surface,
     exit: context.exit,
+    documentPageCount: context.documentPageCount,
+    workspaceDocumentCount: context.workspaceDocumentCount,
   };
 }
 
