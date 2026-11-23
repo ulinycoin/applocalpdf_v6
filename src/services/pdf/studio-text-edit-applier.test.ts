@@ -2173,19 +2173,23 @@ class StubOffscreenCanvas {
   private fontValue = '';
   constructor(public width: number, public height: number) {}
   getContext(): unknown {
-    const canvas = this;
-    return {
-      set font(value: string) { canvas.fontValue = value; },
-      get font() { return canvas.fontValue; },
+    // Arrow closures read the instance without aliasing `this`, which the lint rules forbid.
+    const measure = (text: string) => {
+      const px = Number(/([\d.]+)px/u.exec(this.fontValue)?.[1] ?? '0');
+      return { width: text.length * px * 0.5, fontBoundingBoxAscent: px * 0.8 };
+    };
+    return Object.defineProperties({
       fillStyle: '#000000',
       textBaseline: 'top',
       clearRect: () => undefined,
-      measureText: (text: string) => {
-        const px = Number(/([\d.]+)px/u.exec(canvas.fontValue)?.[1] ?? '0');
-        return { width: text.length * px * 0.5, fontBoundingBoxAscent: px * 0.8 };
-      },
+      measureText: measure,
       fillText: (text: string) => { StubOffscreenCanvas.drawn.push(text); },
-    };
+    }, {
+      font: {
+        get: () => this.fontValue,
+        set: (value: string) => { this.fontValue = value; },
+      },
+    });
   }
   async convertToBlob(): Promise<Blob> {
     return new Blob([Buffer.from(RASTER_STUB_PNG, 'base64')], { type: 'image/png' });
@@ -2335,7 +2339,11 @@ test('a form value no shipped face can encode still exports the document', async
  * `?????`, so the extracted layer proves the glyphs are embedded rather than painted.
  */
 for (const [script, sample] of [['arabic', 'مرحبا بالعالم'], ['hebrew', 'שלום עולם']] as const) {
-  test(`${script} text is embedded as text and survives extraction`, async () => {
+  test(`${script} text is painted with a searchable layer instead of a mirrored run`, async () => {
+    const globalWithCanvas = globalThis as unknown as { OffscreenCanvas?: unknown };
+    const originalCanvas = globalWithCanvas.OffscreenCanvas;
+    globalWithCanvas.OffscreenCanvas = StubOffscreenCanvas;
+    StubOffscreenCanvas.drawn = [];
     const restoreFetch = serveStudioSubsetsOnly();
     try {
       const result = await applyStudioTextEditsToPdfBytes({
@@ -2361,33 +2369,91 @@ for (const [script, sample] of [['arabic', 'مرحبا بالعالم'], ['hebre
         }],
       });
 
+      // pdf-lib writes glyphs left to right, so a shaped RTL run written as text comes out mirrored.
+      // The canvas shapes and orders it; search is deliberately not faked until a bidi pass exists,
+      // because every reader normalises the stream differently.
+      assert.deepEqual(StubOffscreenCanvas.drawn, [sample]);
       const stream = await readFirstPageContentStream(result.outputBytes);
-      assert.doesNotMatch(stream, /\bDo\b/u, 'the run must be drawn as text, not embedded as an image');
-      const codes = glyphCodesOf(stream);
-      assert.ok(codes.length > 0, `no glyphs written for ${sample}`);
-      assert.equal(
-        codes.filter((code) => code === '0000').length,
-        0,
-        `characters of ${sample} must not fall back to .notdef`,
-      );
+      assert.match(stream, /\bDo\b/u, 'the run must be drawn as an image');
+      assert.doesNotMatch(stream, /GlyphlessText/u, 'an RTL run gets no searchable layer yet');
+      assert.equal(result.fontPaths?.rasterized, 1);
+      assert.equal(result.fontPaths?.substituted, 0);
 
       const extracted = (await extractEmbeddedPdfText(toPdfBlob(result.outputBytes)))?.text ?? '';
-      assert.ok(
-        extracted.includes(sample),
-        `${script} text must stay searchable, got ${JSON.stringify(extracted)}`,
-      );
-
-      const layer = await extractTextLayerForPreview(result.outputBytes, 1, 1);
-      assert.ok(
-        layer.spans.some((span) => span.text.includes(sample)),
-        `the text layer must carry ${script} text, got ${JSON.stringify(layer.spans.map((span) => span.text))}`,
-      );
+      assert.doesNotMatch(extracted, /\?/u, 'nothing may be transliterated when a canvas is available');
+      assert.equal(extracted.trim(), '', 'the run is a picture, not text');
     } finally {
       restoreFetch();
+      globalWithCanvas.OffscreenCanvas = originalCanvas;
     }
   });
 }
 
+test('an Arabic run is never patched by its own codes', async () => {
+  const sourceBytes = new Uint8Array(await readFile(join(
+    process.cwd(),
+    'test',
+    'fixtures',
+    'pdfs',
+    'fonts',
+    'rtl-arabic-chrome.pdf',
+  )));
+  const layer = await extractTextLayerForPreview(sourceBytes, 1, 2);
+  const span = layer.spans.find((candidate) => candidate.text.includes('عنوان'));
+  assert.ok(span, 'expected the Arabic heading span');
+  assert.ok(span.pageHeightPt && span.pageHeightPt > 0);
+
+  const globalWithCanvas = globalThis as unknown as { OffscreenCanvas?: unknown };
+  const originalCanvas = globalWithCanvas.OffscreenCanvas;
+  globalWithCanvas.OffscreenCanvas = StubOffscreenCanvas;
+  StubOffscreenCanvas.drawn = [];
+  const restoreFetch = serveStudioSubsetsOnly();
+  try {
+    const result = await applyStudioTextEditsToPdfBytes({
+      sourceBytes,
+      pageIndex: 0,
+      elements: [asReplacement({
+        id: 'arabic-run',
+        type: 'text',
+        x: span.xRatio,
+        y: span.yRatio,
+        w: span.widthRatio + 0.02,
+        h: span.heightRatio + 0.01,
+        text: span.text,
+        color: '#000000',
+        fontSize: span.fontSizeRatio * span.pageHeightPt,
+        fontFamily: 'sora',
+        fontWeight: 'normal',
+        fontStyle: 'normal',
+        textAlign: 'left',
+        lineHeight: 1.2,
+        letterSpacing: 0,
+        opacity: 1,
+        sourceFontName: span.fontName,
+        sourceFontFamilyHint: span.fontFamilyHint,
+        sourceFontSizeRatio: span.fontSizeRatio,
+      })],
+    });
+
+    // A shaped RTL run lives in the stream in visual order; rewriting it with logical-order codes
+    // draws a mirrored, unjoined line (verified on the fixture before this guard existed).
+    assert.equal(result.trueReplaceApplied, false);
+    assert.equal(result.trueReplaceFallbackReason, 'SOURCE_FONT_RTL_SCRIPT');
+    assert.equal(result.fontPaths?.patchedCodes, 0);
+    assert.equal(result.fontPaths?.rasterized, 1);
+
+    // The line is replaced by a picture: neither the mirrored run nor the original text stays in
+    // the text layer, and nothing is transliterated to question marks.
+    assert.doesNotMatch(await readFirstPageContentStream(result.outputBytes), /GlyphlessText/u);
+    const extracted = (await extractEmbeddedPdfText(toPdfBlob(result.outputBytes)))?.text ?? '';
+    assert.ok(!extracted.includes('ةينقتلا ةقيثولا ناونع'), 'the mirrored run must not appear');
+    assert.ok(!extracted.includes(span.text), 'the original run was erased, not left as text');
+    assert.doesNotMatch(extracted, /\?/u);
+  } finally {
+    restoreFetch();
+    globalWithCanvas.OffscreenCanvas = originalCanvas;
+  }
+});
 
 test('a Type3 run is patched with its own codes instead of being replaced', async () => {
   // Browser-printed CJK and the demo fixture use Type3 fonts: there is no font program to embed and

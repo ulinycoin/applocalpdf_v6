@@ -256,6 +256,11 @@ function containsHebrew(input: string): boolean {
   return /[\u0590-\u05FF\uFB1D-\uFB4F]/u.test(input);
 }
 
+/** Right-to-left scripts whose shaped runs cannot be rewritten by their own codes (see below). */
+function containsRtlScript(input: string): boolean {
+  return containsArabic(input) || containsHebrew(input);
+}
+
 function containsCyrillic(input: string): boolean {
   return /\p{Script=Cyrillic}/u.test(input);
 }
@@ -592,6 +597,22 @@ async function tryPatchStreamOperator(params: {
     const resourceName = target.operator.fontResourceName?.replace(/^\//u, '');
     const requestedText = params.codeText ?? '';
     if (requestedText.trim().length > 0 && !params.sizeChanged) {
+      /**
+       * A shaped right-to-left run is written into the content stream in *visual* order, while
+       * `/ToUnicode` maps every glyph back to its logical character. Reusing those codes with the
+       * requested characters puts them in logical order instead, and a viewer draws that as a
+       * mirrored, unjoined line — on the Arabic fixture the same text came out as
+       * `ةينقتلا ةقيثولا ناونع`. The shipped Arabic/Hebrew face orders and shapes the run correctly,
+       * so these runs take the overlay path.
+       */
+      if (containsRtlScript(requestedText)) {
+        return {
+          applied: false,
+          reason: 'SOURCE_FONT_RTL_SCRIPT',
+          candidate,
+          sourceFont,
+        };
+      }
       const resources = (() => {
         try {
           return page.node.lookup(PDFName.of('Resources')) as PDFDict | undefined;
@@ -1012,6 +1033,20 @@ export async function applyStudioTextEditsToPdfBytes(params: {
     planSubstring: (value: string) => PlannedTextRun[];
   }> => {
     /**
+     * A right-to-left run is drawn by the browser canvas, never by an embedded face. pdf-lib emits
+     * glyphs strictly left to right, so a shaped Arabic or Hebrew string comes out mirrored, and the
+     * shipped Noto Arabic face does not render through pdf-lib/fontkit at all — rasterising its
+     * output shows an empty subset program, while the browser canvas shapes and orders the run
+     * correctly. The searchable text comes from the hidden layer drawn over the picture.
+     */
+    if (containsRtlScript(params.text)) {
+      const rasterFont = await getStandardFont('sora', 'normal', 'normal');
+      const rasterPlan = (value: string): PlannedTextRun[] => (
+        value.length > 0 ? [{ text: value, font: rasterFont, rasterText: value }] : []
+      );
+      return { runs: rasterPlan(params.text), text: params.text, planSubstring: rasterPlan };
+    }
+    /**
      * A twin is split by script (latin, latin-ext, cyrillic), and no single slice covers a string that
      * mixes ASCII with `ē` — while Roboto covers it, so the ordinary chain would pick Roboto and lose
      * the document's own face. Runs from two slices of the same family keep the metrics, so the twin
@@ -1429,8 +1464,14 @@ export async function applyStudioTextEditsToPdfBytes(params: {
             });
             // The picture is the only visible output, but a page made of pictures loses the text:
             // an invisible layer keeps the run searchable, copyable and reachable by "find".
+            //
+            // Right-to-left runs are the exception. A reader normalises the content stream with its
+            // own bidi implementation, and pdf.js (the viewer inside Studio) expects the visual order
+            // real producers write — feeding it the logical order reverses the words, while a naive
+            // visual reorder flips the digits. Until a real bidi pass is added, an Arabic or Hebrew
+            // run stays a picture: correct on the page, absent from search.
             const hiddenStart = toUserRatioPoint(displayX + raster.paddingPt, displayY);
-            drawHiddenText(pdf, page, {
+            if (!containsRtlScript(run.rasterText)) drawHiddenText(pdf, page, {
               text: run.rasterText,
               advancesPt: raster.advancesPt,
               fontSize: renderFontSize,
