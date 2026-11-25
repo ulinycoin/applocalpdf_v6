@@ -21,11 +21,38 @@ interface PdfDocumentLike {
 interface PdfJsLike {
   getDocument(params: { data: ArrayBuffer; disableWorker: boolean; verbosity?: number }): { promise: Promise<PdfDocumentLike> };
   VerbosityLevel?: { ERRORS?: number };
+  GlobalWorkerOptions?: { workerSrc?: string };
 }
 
 export interface EmbeddedPdfTextResult {
   text: string;
   pageCount: number;
+}
+
+/**
+ * Text that is a byte-level guess rather than the document's characters.
+ *
+ * The content-stream fallback below reads operator strings as latin1 bytes, because it has no font
+ * encoding or `/ToUnicode` to consult. For a subset font whose codes are not ASCII it therefore returns
+ * a constant-offset shift of the real text (`LocalPDF` -> `/ R F D O 3 ' )`), one character per item.
+ * Handing that to OCR is worse than not extracting at all: the file already has a text layer, the user
+ * gets garbage, and nothing runs the real recogniser. So the caller treats it as "no embedded text".
+ */
+export function looksMisDecodedText(text: string): boolean {
+  const body = text.replace(/\s+/gu, '');
+  if (body.length < 40) {
+    return false;
+  }
+  const controls = (body.match(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/gu) ?? []).length;
+  if (controls / body.length > 0.02) {
+    return true;
+  }
+  const tokens = text.split(/\s+/u).filter(Boolean);
+  if (tokens.length < 20) {
+    return false;
+  }
+  const singleChar = tokens.filter((token) => token.length === 1).length;
+  return singleChar / tokens.length > 0.6;
 }
 
 async function inflateIfNeeded(raw: Uint8Array): Promise<string> {
@@ -44,6 +71,29 @@ async function inflateIfNeeded(raw: Uint8Array): Promise<string> {
     }
   }
   return '';
+}
+
+/**
+ * pdf.js refuses to start without a worker URL, and inside the tool worker it throws
+ * `No "GlobalWorkerOptions.workerSrc" specified.` — the extraction then silently fell back to the
+ * byte-level parser and OCR reported shifted garbage for a file that has a perfectly good text layer.
+ * `?url` lets the bundler emit the worker asset and hand us its hashed path.
+ */
+let pdfJsWorkerConfigured = false;
+
+async function configurePdfJsWorker(pdfjs: PdfJsLike): Promise<void> {
+  if (pdfJsWorkerConfigured || !pdfjs.GlobalWorkerOptions || pdfjs.GlobalWorkerOptions.workerSrc) {
+    return;
+  }
+  try {
+    const workerModule = (await import('pdfjs-dist/legacy/build/pdf.worker.min.mjs?url')) as { default?: string };
+    if (workerModule.default) {
+      pdfjs.GlobalWorkerOptions.workerSrc = workerModule.default;
+      pdfJsWorkerConfigured = true;
+    }
+  } catch {
+    // Extraction still works in environments that do not need a worker (Node, tests).
+  }
 }
 
 async function extractEmbeddedPdfTextViaPdfLib(pdfBytes: Uint8Array): Promise<EmbeddedPdfTextResult | null> {
@@ -84,8 +134,12 @@ async function extractEmbeddedPdfTextViaPdfLib(pdfBytes: Uint8Array): Promise<Em
       pageTexts.push(chunks.join(' ').trim());
     }
 
+    const text = pageTexts.join('\n\n').trim();
+    if (looksMisDecodedText(text)) {
+      return null;
+    }
     return {
-      text: pageTexts.join('\n\n').trim(),
+      text,
       pageCount: doc.getPageCount(),
     };
   } catch {
@@ -117,6 +171,7 @@ export async function extractEmbeddedPdfText(pdfBlob: Blob): Promise<EmbeddedPdf
       return extractEmbeddedPdfTextViaPdfLib(bytes);
     }
     const verbosity = pdfjs.VerbosityLevel?.ERRORS ?? 0;
+    await configurePdfJsWorker(pdfjs);
     const doc = await pdfjs.getDocument({ data: bytes.buffer, disableWorker: true, verbosity }).promise;
 
     const pageTexts: string[] = [];
@@ -129,12 +184,9 @@ export async function extractEmbeddedPdfText(pdfBlob: Blob): Promise<EmbeddedPdf
       pageTexts.push(words.join(' '));
     }
 
-    const result = {
-      text: pageTexts.join('\n\n').trim(),
-      pageCount: doc.numPages,
-    };
-    if (result.text.length > 0) {
-      return result;
+    const text = pageTexts.join('\n\n').trim();
+    if (text.length > 0 && !looksMisDecodedText(text)) {
+      return { text, pageCount: doc.numPages };
     }
     return extractEmbeddedPdfTextViaPdfLib(bytes);
   } catch {

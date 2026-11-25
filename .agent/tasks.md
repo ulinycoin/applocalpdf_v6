@@ -2,6 +2,32 @@
 
 Last updated: 2026-11-25
 
+## Сессия 2026-11-25 (15) — OCR выдавал сдвинутую абракадабру вместо текста
+
+Триггер — владелец прислал «LocalPDF Demo Short.pdf» и написал «выдает обракадабру OCR». Воспроизвёл на проде и локально: OCR отдавал `/ R F D O 3 ' ) L V D E U R Z V H U H [ W H Q V L R Q I R U V H F X U H…` — то есть каждую букву, сдвинутую на −29 (`L`→`/`, `o`→`R`, `c`→`F`), с пробелами между символами.
+
+### Причина (не OCR, а «текстовый слой»)
+
+Файл — не скан: у него нормальный текстовый слой (MuPDF читает его без ошибок). `extractEmbeddedPdfText` сначала пробует pdf.js, а при сбое падает в запасной парсер `pdf-content-stream-parser`, который читает строки операторов как latin1-байты и не знает ни `/Encoding`, ни `/ToUnicode`. Внутри тул-воркера pdf.js не стартовал — `Error: No "GlobalWorkerOptions.workerSrc" specified.` — и вместо текста отдавался результат байтового парсера. Проверка порога (415 букв) считала его валидным текстом, поэтому tesseract даже не запускался.
+
+### Исправлено
+
+- `pdf-text-extractor.ts`: перед `getDocument` выставляется `GlobalWorkerOptions.workerSrc` через `import('pdfjs-dist/legacy/build/pdf.worker.min.mjs?url')` (тот же приём, что в `auto-toc` и `preview-service`). Внутри воркера pdf.js теперь стартует.
+- `looksMisDecodedText()`: текст с C0-контролами или >60% односимвольных токенов считается байтовым сдвигом. Такой результат не отдаётся: `extractEmbeddedPdfText` возвращает `null`, и OCR честно распознаёт страницу вместо выдачи мусора. Это страховка на случай, если pdf.js опять не загрузится.
+- Фикстура `test/fixtures/pdfs/documents/localpdf-demo-short.pdf` (91 038 Б, принт Chrome с subset-шрифтами).
+- Тесты: `src/services/pdf/pdf-text-extractor.test.ts` (4: текст читается как символы, сдвиг распознаётся, обычный текст не трогается, короткие фрагменты не судятся по пробелам); постоянный e2e `e2e/ocr-embedded-text.spec.ts` (в `test:e2e:studio-edit`): прогон OCR на фикстуре обязан содержать «LocalPDF is a browser extension» и не содержать `/ R F D O 3`.
+
+### Проверено
+
+- Локально (собранный `dist` через `serve`, Chromium): OCR того же файла → `LocalPDF is a browser extension for secure PDF processing…`, длина 551, сдвига нет; результат несёт `\u0000` на месте лигатуры «fi» — это признак, что работает именно текстовый путь pdf.js, а не tesseract.
+- `npx playwright test e2e/ocr-embedded-text.spec.ts` — **1 passed (1.7 мин)**.
+- `npm test` — **593/593** (+4); `npm run build` — ok; `npm run audit:workerization:strict` — exit 0; ESLint по изменённым — 0 ошибок (4 прежних warning).
+
+### Осталось / риски
+
+- У этого шрифта нет `/ToUnicode` для лигатуры «fi» — в тексте остаются `\u0000` вместо «fi» (в исходном файле 7 мест). Косметика, лечится только эвристикой подмены.
+- На экране результата подпись «text layer added» показывается даже когда текста нет; битые prefetch-ссылки `/app/vendor/tesseract/*.wasm` в `index.html` (503 в консоли, на работу не влияют) — не трогал.
+
 ## Сессия 2026-11-25 (14) — share-ссылка снова открывается: tmpfiles отдаёт HTML-прокладку
 
 Триггер — «нужно возобновить функцию app/share». Прод-проверка показала: отправка работает (шифрование, загрузка, QR), а **приёмная страница `/app/share` падала** с `E2EE Decryption Failed: OperationError`.
