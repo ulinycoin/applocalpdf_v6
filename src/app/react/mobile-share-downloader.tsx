@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { usePlatform } from './platform-context';
 import { getOrCreateFlowId } from '../platform/browser-context';
+import { fetchSharedPayload } from '../platform/share-download';
 
 type DecryptState = 'loading' | 'decrypting' | 'ready' | 'error';
 
@@ -33,16 +34,15 @@ export function MobileShareDownloader() {
         }
 
         setStatusMessage('Connecting to secure cloud...');
-        
-        // 2. Fetch encrypted binary payload via proxy to bypass CORS
-        const proxyUrl = `/api/download-proxy?url=${encodeURIComponent(encryptedUrl)}`;
-        const response = await fetch(proxyUrl);
-        if (!response.ok) {
-          throw new Error(`Failed to fetch file. Server returned code ${response.status}.`);
-        }
 
+        // 2. Fetch the encrypted payload. The share host answers a direct request with an HTML page now,
+        // so the resolver follows the signed link instead of handing that page to AES-GCM.
         setStatusMessage('Downloading encrypted payload...');
-        const encryptedBuffer = await response.arrayBuffer();
+        const encryptedBytes = await fetchSharedPayload(encryptedUrl);
+        const encryptedBuffer = encryptedBytes.buffer.slice(
+          encryptedBytes.byteOffset,
+          encryptedBytes.byteOffset + encryptedBytes.byteLength,
+        ) as ArrayBuffer;
 
         setStatus('decrypting');
         setStatusMessage('Decrypting file locally in browser...');
