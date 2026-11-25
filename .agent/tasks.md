@@ -20,6 +20,7 @@ Last updated: 2026-11-25
 ### Проверено
 
 - Локально (собранный `dist` через `serve`, Chromium): OCR того же файла → `LocalPDF is a browser extension for secure PDF processing…`, длина 551, сдвига нет; результат несёт `\u0000` на месте лигатуры «fi» — это признак, что работает именно текстовый путь pdf.js, а не tesseract.
+- Прод после выката `742dd9b` (CI `45587703476` — success, `/app` отдаёт `index-ZemhfRYS.js`): OCR того же файла в браузере на localpdf.online → 551 символ, `LocalPDF is a browser extension…`, сдвига нет.
 - `npx playwright test e2e/ocr-embedded-text.spec.ts` — **1 passed (1.7 мин)**.
 - `npm test` — **593/593** (+4); `npm run build` — ok; `npm run audit:workerization:strict` — exit 0; ESLint по изменённым — 0 ошибок (4 прежних warning).
 
