@@ -1,6 +1,30 @@
 # Active Tasks
 
-Last updated: 2026-11-25
+Last updated: 2026-11-26
+
+## Сессия 2026-11-26 (16) — новый конкурент pdfnolimit, лендинг редакции, честный «Convert PDF»
+
+Триггер — владелец прислал два файла «есть новые исследования по проекту» (radar от 26.11 и SEO-дайджест спроса) без отдельной задачи. Выбрал из них то, что закрывает риск. Radar ошибся в одном пункте: «в Studio редакции нет» — она есть. `Whiteout` действительно удаляет текстовые операторы под плашкой (`processRectElement` → `collectOperatorsInRect`/`collectOperatorsForRedaction` → `redactOperatorsInDecodedStreams`, `studio-text-edit-applier.ts`), а `verifyRedactedPdf` проверяет результат по четырём пунктам (`text_extract`, `metadata_xmp`, `annotations`, `raw_bytes`) и выдаёт сертификат `localpdf-certificate/v1`. Но страницы, которая это объясняет, не было — идея радара №2 осталась полезной.
+
+### Сделано
+
+- **Лендинг `/features/redact-pdf`** («Redact a PDF Locally — Delete the Text, Then Prove It»): `website/src/data/features/redact-pdf.ts`, `website/src/pages/features/redact-pdf.astro`, проводка в `shared/seo-app-targets.ts` (`'redact-pdf': 'whiteout'`), `website/src/data/featurePages.ts`, `route-sources.json`, `astro.config.mjs` (priority 0.8 + sitemap allowlist), `shared/app-routes.ts` (`'redact-pdf': APP_STUDIO_ROUTE`, иначе `seo-app-targets.test.ts` видел `/redact-pdf` вместо `/studio`). CTA ведёт в `/app/studio?upload=1&tool=whiteout`.
+- **Убрал ложное обещание PDF→Word**: карточка `pdf-to-word` удалена из `website/src/data/tools.ts`, `tools_de.ts`, `tools_ja.ts` (в `src/` нет ни строки PDF→Word; `mammoth` умеет только DOCX→PDF). `website/src/data/features/convert-pdf.ts` переписан на реальные возможности (Word→PDF, Excel→PDF, страницы PDF→JPG, извлечение картинок, картинки→PDF в канвасе), новый title/meta и прямой ответ в FAQ «Does LocalPDF convert PDF back to Word? No».
+- **Гейт-гигиена**: `eslint.config.mjs` не игнорировал `.tmp/`, из-за чего `npm run lint` падал 150 ошибками на пробных файлах прошлых сессий. Добавил `.tmp` в `ignores`.
+
+### Проверено
+
+- `npm test` — **593/593**; `npm run build` — exit 0; `npm run audit:workerization:strict` — exit 0; `npm run billing:preflight` — passed (1 warning: monthly/yearly product ids overlap `917519`); `npm run release:check:fast` — exit 0.
+- `npm run seo:lastmod` → 36 дат; `npm run build:web` → 83 страницы; `npm run audit:seo` — passed.
+- Собранный `website/dist/features/redact-pdf.html`: верный title, canonical `https://localpdf.online/features/redact-pdf`, FAQPage-схема, H1/H2 на месте, есть в `sitemap-0.xml`, CTA ведёт в `?tool=whiteout`. В `website/dist/index.html` — 0 упоминаний «PDF to Word».
+- `npm run lint` — 65 ошибок в файлах, которых сессия не касалась (`zapier/*.js` — no-undef на `console`/`require`/`module`, `src/v6/*` — `no-explicit-any`); ни одной в изменённых файлах. Это долг репозитория, а не регрессия сессии.
+
+### Осталось / риски
+
+- Коммиты локальные: `53e1cb7` (страница редакции), `cf53b32` (честный конвертер + игнор `.tmp`); пуш и деплой — по OK владельца.
+- Radar идея №1 (страница-доказательство «0 запросов» + `/compare/localpdf-vs-pdfnolimit`) не сделана. Конкурент продаёт ровно наш оффер («never sees your file»), но без самохостинга и с закрытым кодом, плюс имеет PDF→office, crop, page numbers, repair, compare — часть из этого у нас в бэклоге.
+- Из SEO-дайджеста не тронуто: retarget `/features/ocr-pdf` (кластер 85 показов, «pdf ocr online free» ↑27), немецкая страница (105 показов, 0 кликов), HR bulk-compress блок, формулировка «merge pdf without limit» против лимита 3 скачивания в сутки.
+- `npm run lint` не зелёный из-за прежнего долга (65 ошибок) — отдельная задача.
 
 ## Сессия 2026-11-25 (15) — OCR выдавал сдвинутую абракадабру вместо текста
 
