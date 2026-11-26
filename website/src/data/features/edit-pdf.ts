@@ -97,7 +97,7 @@ export const edit_pdf: FeaturePageData = {
     monetizationBlock: {
       eyebrow: 'Free vs Pro',
       title: 'Free for quick tasks. Pro for recurring PDF work.',
-      body: 'Use Edit PDF for quick changes, cover-ups, and lightweight fixes. Editing is free on every plan; the free tier includes 3 downloads per day and 3 Studio workspaces. Pro removes those limits for recurring document work.',
+      body: 'Use Edit PDF for quick changes, cover-ups, and lightweight fixes. Editing is free on every plan; the free tier includes 3 downloads per day. Studio workspaces are unlimited on every plan, so a long edit does not run into a document cap. Pro removes the download limit for recurring document work.',
       primaryCtaLabel: 'See Pro plans',
       secondaryCtaLabel: 'Open Edit PDF',
     },

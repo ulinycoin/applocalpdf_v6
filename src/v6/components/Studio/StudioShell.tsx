@@ -20,7 +20,7 @@ import { PASSWORD_PROTECTED_MESSAGE, importFailureMessage, isPasswordProtectedPd
 import { useProtectedPdfPrompt } from '../../studio/import/use-protected-pdf-prompt';
 import { decryptPdfInWorker } from '../../studio/import/decrypt-in-worker';
 import { StudioDialog } from './StudioDialog';
-import { canAddDocumentToStudio, canCreateWorkspace, canUseDocumentWithPageCount, freePageLimitMessage } from '../../../app/platform/plan-limits';
+import { canAddDocumentToStudio, canUseDocumentWithPageCount, freePageLimitMessage } from '../../../app/platform/plan-limits';
 import { showStudioPaywall } from '../../../app/react/studio-paywall';
 import { PaywallModal } from '../../../app/react/PaywallModal';
 import { useHistoryStore } from './store/history-store';
@@ -709,20 +709,6 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
     }, [documents, handleToolClick, hasFiles, hasPendingCanvasTool]);
 
     const handleNewSpace = useCallback(() => {
-        const billingContext = runtime.billing.getContext();
-        const limitCheck = canAddDocumentToStudio(billingContext, documents.length, 0);
-        if (!limitCheck.allowed) {
-            showStudioPaywall(
-                runtime.telemetry,
-                limitCheck.reason === 'workspace_limit'
-                    ? 'Free includes up to 3 workspaces. Upgrade to Pro for unlimited workspaces.'
-                    : freePageLimitMessage('open larger PDFs'),
-                import.meta.env.VITE_BILLING_URL,
-                { toolId: 'studio', trigger: limitCheck.reason === 'workspace_limit' ? 'workspace_limit_3' : 'page_limit_25' },
-            );
-            return;
-        }
-
         const maxY = documents.reduce((acc, doc) => Math.max(acc, doc.y + 120), 80);
         const nextDocId = crypto.randomUUID();
         addDocument({
@@ -969,17 +955,6 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
                 /** Pages already committed to the canvas for this file (0 means the file can still be dropped). */
                 let committedPageCount = 0;
                 try {
-                    const workspaceCheck = canCreateWorkspace(billingContext, documents.length + committedDocs.length);
-                    if (!workspaceCheck.allowed) {
-                        showStudioPaywall(
-                            runtime.telemetry,
-                            'Free includes up to 3 workspaces. Upgrade to Pro for unlimited workspaces.',
-                            import.meta.env.VITE_BILLING_URL,
-                            { toolId: 'studio', trigger: 'workspace_limit_3' },
-                        );
-                        break;
-                    }
-
                     // If it's an image, wrap it in a PDF on the fly
                     if (file.type.startsWith('image/')) {
                         const normalizedImage = await normalizeImageFileForPdf(file);
@@ -1471,20 +1446,6 @@ export function StudioShell({ onFilesDropped }: StudioShellProps) {
                     if (sourceDoc && toolResult.toolId === 'protect-pdf' && index > 0) {
                         skippedOutputIds.push(outputIds[index]);
                         continue;
-                    }
-
-                    if (!sourceDoc || toolResult.toolId !== 'protect-pdf') {
-                        const workspaceCheck = canCreateWorkspace(billingContext, documents.length + newDocs.length);
-                        if (!workspaceCheck.allowed) {
-                            showStudioPaywall(
-                                runtime.telemetry,
-                                'Free includes up to 3 workspaces. Upgrade to Pro for unlimited workspaces.',
-                                import.meta.env.VITE_BILLING_URL,
-                                { toolId: 'studio', trigger: 'workspace_limit_3' },
-                            );
-                            skippedOutputIds.push(...outputIds.slice(index));
-                            break;
-                        }
                     }
 
                     const pageCheck = canUseDocumentWithPageCount(billingContext, rebuilt.pages.length);

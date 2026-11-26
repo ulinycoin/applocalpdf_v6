@@ -1,6 +1,36 @@
 # Active Tasks
 
-Last updated: 2026-11-26
+Last updated: 2026-11-27
+
+## Сессия 2026-11-27 (17) — лимит 3 документа в канвасе снят
+
+Триггер — владелец: «это ок. что дальше? думай! нужно увеличивать трафик. больше переходов — больше шанс на продажу. бесплатные сервисы — в чем смысл? содержание и разработка ресурса за свой счет», затем по карточке выбрал вариант «перевести стену на выгрузку» и ответил «сними лимит 3 документа. и что ты подразумеваешь под локальным AI?».
+
+### Данные, на которых принято решение (PostHog, 90 дней)
+
+- Уникальные: 6734 посетителя → 734 скачавших → 554 видели paywall (8.2%) → 23 открыли checkout (4.2% от плативших стену) → 3 активации Pro (13% от checkout). Это ~$60–120 за квартал, то есть ~$15–20 на 1000 посетителей.
+- Самый частый триггер стены за квартал — workspace-лимит: 165 бесплатных пользователей упёрлись в 4-й документ (`reason` "Free includes up to 3 workspaces…": 205 показов / 165 юзеров в `app_upsell_shown`, 175/165 в `paywall_shown`; `multi_document_workspace` ещё 70/70). Для сравнения: скачивания — 31/20, текстовые прогоны — 29/18, OCR — 8/7.
+- То есть стена срабатывала до результата и раньше всех остальных, хотя бизнес-модель — «платит тот, кто выносит файлы».
+
+### Сделано
+
+- `src/app/platform/plan-limits.ts`: `BASIC_PLAN_LIMITS.maxWorkspaces` → `Number.POSITIVE_INFINITY`; `canCreateWorkspace`/`canAddDocumentToStudio` сохранены по сигнатурам и теперь всегда разрешают, `workspace_limit` остаётся в `LimitCheckReason` как тип.
+- `src/v6/components/Studio/StudioShell.tsx`: убраны все три блокировки — в `handleNewSpace` (paywall `workspace_limit_3`), в цикле импорта файлов (`break` после `canCreateWorkspace`) и в цикле экспорта (`skippedOutputIds`). Проверки страниц (`canUseDocumentWithPageCount`, `freePageLimitMessage`) остались.
+- Копирайт приведён к правде: `website/src/pages/pricing.astro` (schema + подзаголовок + карточка Free «Unlimited Studio workspaces», у Pro «Larger files» вместо workspace), `website/src/pages/faq.astro`, `features/{compress,edit,auto-toc}-pdf.ts`, два `compare/localpdf-vs-smallpdf*.astro`.
+- Документация: `CLAUDE.md` и `.agent/context.md` — free «3 скачивания в сутки, workspace без ограничений», Pro «без лимита скачиваний + большие файлы».
+- Регресс-тест `e2e/studio-workspace-limit.spec.ts`: импорт 4 файлов в `/app/studio`, в сторе 4 документа, `.ux-upsell-modal` скрыт, текста «3 workspaces» нет. В быстрый `test:e2e:studio-edit` не добавлен — идёт в полном прогоне.
+
+### Проверено
+
+- `npm test` — **594/594**; `npm run build` — exit 0; `npm run build:web` — 83 страницы; `npm run seo:lastmod` + `npm run audit:seo` — «SEO audit passed»; `npm run audit:workerization:strict` — exit 0; `npm run billing:preflight` — passed (1 warning: monthly/yearly product ids overlap `917519`); `npm run release:check:fast` — exit 0; `npx tsc --noEmit` — чисто.
+- Собранные страницы: `website/dist/pricing.html` — 0 «3 Studio workspaces», 1 «Unlimited Studio workspaces»; `website/dist/faq.html` — 0 «workspaces (free includes 3)».
+- `npx playwright test e2e/studio-workspace-limit.spec.ts` — **1 passed (1.7 м)**: 4 файла, канвас держит 4 документа, paywall не открывается.
+
+### Осталось / риски
+
+- Вопрос владельца «что ты подразумеваешь под локальным AI?» отвечен в чате (три уровня: модель в браузере через WebGPU/WASM, мост `localpdf-mcp` к своему агенту, не-LLM локальный интеллект вроде OCR/структуры таблиц). Продуктового кода под это пока нет: в `package.json` нет `transformers`/`web-llm`/`onnxruntime`, в `src/` нет MCP.
+- Следующий шаг по выбранному варианту: вынести в Pro профессиональный артефакт и батч — сертификат редакции (`localpdf-certificate/v1`) и пакетную обработку. Это денежная логика, нужен явный OK фаундера.
+- `npm run lint` по-прежнему красный на старом долге (65 ошибок в `zapier/*.js` и `src/v6/*`), не в файлах этой сессии.
 
 ## Сессия 2026-11-26 (16) — новый конкурент pdfnolimit, лендинг редакции, честный «Convert PDF»
 

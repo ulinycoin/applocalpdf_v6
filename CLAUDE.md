@@ -19,9 +19,9 @@ drag-and-drop pages between documents — no competitor has this.
 LemonSqueezy (billing), PostHog (analytics), Vercel (deploy)
 
 **Business model:** Freemium via LemonSqueezy. **Обработка бесплатна на всех инструментах; платит тот, кто выносит файлы.**
-- Free: **все** инструменты (OCR, edit, convert, protect/unlock, redaction verify, merge, split, compress), 3 скачивания в сутки, 3 workspace в канвасе
-- Pro ($19 один раз, или $39.99/год): без лимита на скачивания и workspace + большие файлы
-- Никогда не гейтить исполнение инструмента или добавление файлов: стена живёт в `daily-file-quota.ts` (скачивания) и `plan-limits.ts` (workspace). Детали — memory `business_model.md`
+- Free: **все** инструменты (OCR, edit, convert, protect/unlock, redaction verify, merge, split, compress), 3 скачивания в сутки, workspace в канвасе без ограничений
+- Pro ($19 один раз, или $39.99/год): без лимита на скачивания + большие файлы
+- Никогда не гейтить исполнение инструмента или добавление файлов: стена живёт в `daily-file-quota.ts` (скачивания). `plan-limits.ts` больше не режет workspace — лимит документов снят 27.11.2026 (165 бесплатных пользователей натыкались на него до результата). Детали — memory `business_model.md`
 
 ---
 

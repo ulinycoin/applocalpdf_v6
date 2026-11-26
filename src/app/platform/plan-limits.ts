@@ -17,8 +17,13 @@ export interface LimitCheckResult {
 
 type PlanContext = Pick<ToolRunContext, 'plan'>;
 
+/**
+ * Free keeps every workspace: files added to the canvas never leave the browser and cost nothing,
+ * and the old 3-document cap blocked 165 free users a quarter before they saw a result. The wall
+ * lives at export (see daily-file-quota.ts), which is the moment a file actually leaves.
+ */
 const BASIC_PLAN_LIMITS: PlanLimits = {
-  maxWorkspaces: 3,
+  maxWorkspaces: Number.POSITIVE_INFINITY,
   maxPagesPerDocument: Number.POSITIVE_INFINITY,
 };
 

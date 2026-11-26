@@ -77,7 +77,7 @@ export const auto_toc_pdf: FeaturePageData = {
     monetizationBlock: {
       eyebrow: 'Free vs Pro',
       title: 'Free for quick tasks. Pro for recurring PDF work.',
-      body: 'Use Auto-TOC on a document of any length for free. Upgrade to Pro when PDF work becomes recurring and you want unlimited downloads and Studio workspaces.',
+      body: 'Use Auto-TOC on a document of any length for free. Upgrade to Pro when PDF work becomes recurring and you want unlimited downloads.',
       primaryCtaLabel: 'See Pro plans',
       secondaryCtaLabel: 'Open Auto-TOC',
     },

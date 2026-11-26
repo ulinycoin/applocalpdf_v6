@@ -10,7 +10,7 @@ import {
 describe('plan-limits', () => {
   test('resolves free plan limits', () => {
     const limits = getPlanLimits('basic');
-    assert.strictEqual(limits.maxWorkspaces, 3);
+    assert.strictEqual(limits.maxWorkspaces, Number.POSITIVE_INFINITY);
     assert.strictEqual(limits.maxPagesPerDocument, Number.POSITIVE_INFINITY);
   });
 
@@ -20,12 +20,17 @@ describe('plan-limits', () => {
     assert.strictEqual(limits.maxPagesPerDocument, Number.POSITIVE_INFINITY);
   });
 
-  test('blocks a fourth workspace on the free plan', () => {
+  // Workspaces are unlimited on every plan: the canvas never sends a file anywhere, and the old
+  // 3-document cap stopped free users before they had a result to pay for.
+  test('allows a fourth workspace on the free plan', () => {
     const result = canCreateWorkspace({ plan: 'basic' }, 3);
-    assert.strictEqual(result.allowed, false);
-    assert.strictEqual(result.reason, 'workspace_limit');
-    assert.strictEqual(result.limit, 3);
+    assert.strictEqual(result.allowed, true);
     assert.strictEqual(result.current, 3);
+  });
+
+  test('allows a large number of workspaces on the free plan', () => {
+    const result = canCreateWorkspace({ plan: 'basic' }, 40);
+    assert.strictEqual(result.allowed, true);
   });
 
   test('allows document import without page limits on the free plan', () => {
@@ -35,9 +40,8 @@ describe('plan-limits', () => {
     assert.strictEqual(allowedLarge.allowed, true);
   });
 
-  test('blocks document creation when workspace limit is exceeded', () => {
-    const workspaceBlocked = canAddDocumentToStudio({ plan: 'basic' }, 3, 100);
-    assert.strictEqual(workspaceBlocked.allowed, false);
-    assert.strictEqual(workspaceBlocked.reason, 'workspace_limit');
+  test('allows document creation past the old workspace cap', () => {
+    const result = canAddDocumentToStudio({ plan: 'basic' }, 3, 100);
+    assert.strictEqual(result.allowed, true);
   });
 });
