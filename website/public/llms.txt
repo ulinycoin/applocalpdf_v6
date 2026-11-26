@@ -16,6 +16,7 @@ No uploads, no server storage — all processing happens locally via WebAssembly
 - "edit or sign PDF in browser, no account" → https://localpdf.online/features/edit-pdf
 - "is LocalPDF safe / where do files go" → https://localpdf.online/security
 - "which LocalPDF is official" → https://localpdf.online/localpdf
+- "call PDF tools from an AI agent (MCP)" → https://localpdf.online/pdf-mcp-server
 
 ## Pages
 
@@ -29,9 +30,10 @@ No uploads, no server storage — all processing happens locally via WebAssembly
 - [Split PDF](https://localpdf.online/features/split-pdf) — Split and extract PDF pages
 - [Convert PDF](https://localpdf.online/features/convert-pdf) — Convert PDF to images, Word, Excel
 - [Sign PDF](https://localpdf.online/features/sign-pdf) — Add digital signatures
-- [Pricing](https://localpdf.online/pricing) — Free plan runs every tool (3 downloads/day) + optional Pro ($19 once, or $39.99/year) for unlimited downloads and workspaces
+- [Pricing](https://localpdf.online/pricing) — Free plan runs every tool (3 downloads/day) + optional Pro ($19 once, or $39.99/year) for unlimited downloads and larger files
 - [FAQ](https://localpdf.online/faq) — Frequently asked questions
 - [Blog](https://localpdf.online/blog) — PDF guides and how-tos
+- [PDF MCP Server](https://localpdf.online/pdf-mcp-server) — localpdf-mcp: seven PDF tools for AI agents, MIT, no uploads, metadata-only results
 
 ## Compare
 

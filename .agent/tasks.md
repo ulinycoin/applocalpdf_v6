@@ -2,6 +2,39 @@
 
 Last updated: 2026-11-27
 
+## Сессия 2026-11-27 (18) — localpdf-mcp: публичный репозиторий, npm 0.1.4, каталоги, страница /pdf-mcp-server
+
+Триггер — владелец: «делай пуш. открывай репо, публикуй в npm», затем «разсылай и делай страницу».
+
+### Сделано — пакет `localpdf-mcp`
+
+- Репозиторий создан публичным: `https://github.com/ulinycoin/localpdf-mcp` (до этого 404).
+- Найден и закрыт дефект публикации: первый CI упал на Node 20 — `pdfjs-dist` v6 вызывает `Promise.withResolvers`, стек внутри зависимости. `0.1.2` успела уйти в npm с этим поведением. В `0.1.3`: `src/require-node.mjs` (импортируется первым в `src/server.mjs`) выходит с кодом 78 и сообщением «[localpdf-mcp] Node 22 or newer is required, found …», `engines: {"node": ">=22"}`, матрица CI `22/24` плюс отдельная job `node20-guard`, которая проверяет именно отказ на 20.
+- README: убрано ложное «0.1.2 опубликован» (реально были 0.1.0/0.1.1) и ссылка на несуществующую страницу `/pdf-mcp-server`.
+- `0.1.4` — добавлено обязательное для реестра поле `mcpName: "io.github.ulinycoin/localpdf-mcp"`, версия поднята в `package.json`, `server.json`, README.
+- `server.json` (схема `2025-12-11`) + `.github/workflows/publish-registry.yml`: публикация в официальный MCP Registry через `mcp-publisher login github-oidc` и `publish` (OIDC доказывает владельца `io.github.ulinycoin/*`, DNS-запись не нужна). Первый прогон дал 400 «NPM package is missing required mcpName field» — это и стало причиной 0.1.4.
+- Каталоги: `npx mcp-submit --yes` с `GITHUB_TOKEN`: Issue в mcp.so `#8209`, PR в `punkpeye/awesome-mcp-servers` `#20874`. Автоматом не вышло (ограничения инструмента, не наши): Official MCP Registry и MCPCentral — «API integration pending» (реестр закрыт своим workflow), appcypher/awesome-mcp-servers — 404 на repo, Docker MCP Registry — «verify catalog entry format», Smithery — требует remote HTTP endpoint (у нас stdio). Браузерные формы PulseMCP, mcpservers.org и Claude Desktop Extensions открылись, но не заполнены — нужен человек.
+
+### Сделано — страница `/pdf-mcp-server`
+
+- Восстановлена из локальной ветки `wip/pdf-mcp-server-page` (коммит `586adce`) в текущий `main`: `website/src/pages/pdf-mcp-server.astro` (303 строки: установка для Claude Code и JSON-конфига, семь инструментов, граница «локально у нас / не локально у модели», офлайн-гейты, ограничения), поправлено «Node 20 or newer» → «Node 22 or newer».
+- Проводка: `website/astro.config.mjs` (priority 0.7 + sitemap allowlist), `website/src/data/route-sources.json`, `website/src/components/marketing/SiteFooter.astro`, `website/public/llms.txt` и `website/public/llm.txt` (секция про MCP + ответ «call PDF tools from an AI agent»).
+- Заодно убрано устаревшее после сессии 17: в `llm.txt` «3 workspaces» и «unlimited workspaces», в `llms.txt` «unlimited downloads and workspaces».
+
+### Проверено
+
+- `npm view localpdf-mcp version` → `0.1.4`, `mcpName` → `io.github.ulinycoin/localpdf-mcp`; пакет `npm test` — «12/12 checks passed».
+- Workflow `publish-registry` (run `45909881205`) — success; `https://registry.modelcontextprotocol.io/v0/servers?search=localpdf` отдаёт `io.github.ulinycoin/localpdf-mcp` версии `0.1.4` с npm-пакетом `localpdf-mcp`.
+- CI пакета — success (`45909621692`, `45908600548`); `npm view` после публикации требует 2–3 минуты на распространение.
+- Веб: `npm run seo:lastmod`, `npm run build:web` → 84 страницы, `npm run audit:seo` — passed (37 URL в sitemap); `website/dist/pdf-mcp-server.html` — title «PDF MCP Server for AI Agents — Local, Offline, Metadata-Only | LocalPDF», canonical `https://localpdf.online/pdf-mcp-server`, SoftwareApplication + FAQPage, есть в `sitemap-0.xml`.
+- `npm test` — **594/594**; `npm run release:check:fast` — exit 0; `npm run billing:preflight` — passed (1 warning: monthly/yearly product ids overlap `917519`).
+
+### Осталось / риски
+
+- Браузерные формы (PulseMCP, mcpservers.org, Claude Desktop Extensions) не отправлены — нужен ручной проход или отдельное решение.
+- `appcypher/awesome-mcp-servers` PR и Docker MCP Registry не сделаны по причинам выше.
+- Пакет `0.1.4` вышел вечером 27.11; скачивания смотреть через неделю (было 512 суммарно, из них 376 в день публикации 19.11).
+
 ## Сессия 2026-11-27 (17) — лимит 3 документа в канвасе снят
 
 Триггер — владелец: «это ок. что дальше? думай! нужно увеличивать трафик. больше переходов — больше шанс на продажу. бесплатные сервисы — в чем смысл? содержание и разработка ресурса за свой счет», затем по карточке выбрал вариант «перевести стену на выгрузку» и ответил «сними лимит 3 документа. и что ты подразумеваешь под локальным AI?».

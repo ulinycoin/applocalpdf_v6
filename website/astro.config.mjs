@@ -70,6 +70,7 @@ const sitemapPriority = {
   'https://localpdf.online/security':      { priority: 0.8,  changefreq: 'monthly' },
   'https://localpdf.online/faq':           { priority: 0.7,  changefreq: 'monthly' },
   'https://localpdf.online/private-pdf-editor':    { priority: 0.7, changefreq: 'monthly' },
+  'https://localpdf.online/pdf-mcp-server':        { priority: 0.7, changefreq: 'monthly' },
 };
 
 const sitemapAllowList = new Set([
@@ -97,6 +98,7 @@ const sitemapAllowList = new Set([
   'https://localpdf.online/pricing',
   'https://localpdf.online/private-pdf-editor',
   'https://localpdf.online/pdf-tools-without-upload',
+  'https://localpdf.online/pdf-mcp-server',
   'https://localpdf.online/refund-policy',
   'https://localpdf.online/how-local-pdf-processing-works',
   'https://localpdf.online/localpdf',

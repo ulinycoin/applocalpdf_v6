@@ -30,6 +30,7 @@ LocalPDF is a privacy-first PDF app for people who need to edit, merge, OCR, com
 - "is LocalPDF safe / where do files go" → https://localpdf.online/security
 - "which LocalPDF is official" → https://localpdf.online/localpdf
 - "split or convert PDF locally" → https://localpdf.online/features/split-pdf
+- "call PDF tools from an AI agent (MCP)" → https://localpdf.online/pdf-mcp-server
 - product overview → https://localpdf.online/
 - blog hub → https://localpdf.online/blog
 - FAQ → https://localpdf.online/faq
@@ -69,6 +70,15 @@ LocalPDF is a privacy-first PDF app for people who need to edit, merge, OCR, com
 - https://localpdf.online/features/split-pdf
 - https://localpdf.online/features/sign-pdf
 - https://localpdf.online/features/convert-pdf
+- https://localpdf.online/pdf-mcp-server
+
+## Agent interface (MCP)
+- Package: localpdf-mcp (MIT) on npm, source at github.com/ulinycoin/localpdf-mcp
+- Seven tools: pdf_inspect, pdf_merge, pdf_split, pdf_compress, pdf_extract_text, pdf_replace_text, pdf_ocr
+- Runs as a local process started by the MCP client; no network requests, no telemetry
+- Tool results are metadata (paths, sizes, sha256, counts), not document bytes or text
+- Limits: text replacement is an overlay and not redaction; compression is structural and does not recompress images; encrypted PDFs are reported but not decrypted
+- The MCP server cannot make a cloud model local: whatever the agent reads goes to its provider
 
 ## Product boundary
 - Marketing site: https://localpdf.online/
@@ -88,8 +98,8 @@ or "how it works" answer is needed. Transcripts are on the page as VideoObject `
 - Set an open password and encrypt with AES-256 → https://localpdf.online/features/protect-pdf
 
 ## Pricing
-Free plan: every tool runs free (merge, split, compress, OCR, edit, convert, protect/unlock). Limits: 3 workspaces, 3 downloads per day. Adding files and running tools is unlimited.
-Pro plan: $19 one-time, or $39.99/year. Removes the limits: unlimited downloads, unlimited workspaces, no page limits. No credit card required to start. No account required for free plan.
+Free plan: every tool runs free (merge, split, compress, OCR, edit, convert, protect/unlock). Limits: 3 downloads per day. Workspaces and file import are unlimited; running tools is free.
+Pro plan: $19 one-time, or $39.99/year. Removes the limits: unlimited downloads and larger files. Workspaces are unlimited on every plan. No credit card required to start. No account required for free plan.
 Pricing page: https://localpdf.online/pricing
 
 ## Competitive positioning

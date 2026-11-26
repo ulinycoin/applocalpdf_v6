@@ -23,6 +23,7 @@
   "/features/sign-pdf": ["src/data/features/sign-pdf.ts"],
   "/features/split-pdf": ["src/data/features/split-pdf.ts"],
   "/how-local-pdf-processing-works": ["src/pages/how-local-pdf-processing-works.astro"],
+  "/pdf-mcp-server": ["src/pages/pdf-mcp-server.astro"],
   "/ja": ["src/pages/ja.astro", "src/data/featurePages.ts"],
   "/localpdf": ["src/pages/localpdf.astro"],
   "/pdf-tools-without-upload": ["src/pages/pdf-tools-without-upload.astro"],

@@ -1,0 +1,303 @@
+---
+import MarketingLayout from '../layouts/MarketingLayout.astro';
+import { getAppUrl } from '../utils/app-url';
+import { LOCAL_PROCESSING_SCOPE } from '../data/privacy-claims';
+
+const title = 'PDF MCP Server for AI Agents — Local, Offline, Metadata-Only | LocalPDF';
+const description = 'localpdf-mcp is an open-source MCP server that merges, splits, OCRs and compresses PDFs on your machine. No uploads, no telemetry, metadata-only tool results.';
+const canonical = 'https://localpdf.online/pdf-mcp-server';
+const image = 'https://localpdf.online/logos/localpdf-social-1200x630.png';
+const appUrl = getAppUrl(undefined, { upload: '1' });
+const repoUrl = 'https://github.com/ulinycoin/localpdf-mcp';
+const npmUrl = 'https://www.npmjs.com/package/localpdf-mcp';
+
+const tools = [
+  { name: 'pdf_inspect', does: 'page count, size, encryption flag, producer', returns: 'metadata only' },
+  { name: 'pdf_merge', does: 'concatenate 2+ PDFs in order', returns: 'out path, pages, sha256' },
+  { name: 'pdf_split', does: 'each requested page into its own file', returns: 'file list with per-file sha256' },
+  { name: 'pdf_compress', does: 'structural resave with object streams', returns: 'before/after bytes, real %' },
+  { name: 'pdf_extract_text', does: 'text layer into a .txt file on disk', returns: 'per-page char counts' },
+  { name: 'pdf_replace_text', does: 'white patch plus replacement drawn on top', returns: 'matches, bbox, page' },
+  { name: 'pdf_ocr', does: 'invisible text layer for scans, local traineddata', returns: 'lines, chars, confidence' },
+];
+
+const jsonConfig = `{
+  "mcpServers": {
+    "localpdf": {
+      "command": "npx",
+      "args": ["-y", "localpdf-mcp"]
+    }
+  }
+}`;
+
+const faqs = [
+  {
+    q: 'Does the MCP server upload my PDFs?',
+    a: 'No. The server runs as a local process, makes no network requests, and only reads and writes files on your machine. Tool results carry paths, sizes, hashes and counts instead of document bytes, so the file itself never enters the model context.',
+  },
+  {
+    q: 'So my agent never sees the document?',
+    a: 'It depends on the agent, not on this server. If your agent reads the PDF and reasons about its contents, that text goes to the model provider. The server can keep the engine and the files local; it cannot keep a cloud model local.',
+  },
+  {
+    q: 'Can I use it for redaction?',
+    a: 'Not yet. pdf_replace_text draws a white patch with new text on top, so the original text layer survives and copy-paste still returns the old string. Use it for cosmetic fixes, and treat real redaction as a separate job.',
+  },
+];
+
+const schema = [
+  {
+    '@context': 'https://schema.org',
+    '@type': 'SoftwareApplication',
+    name: 'localpdf-mcp',
+    applicationCategory: 'DeveloperApplication',
+    operatingSystem: 'macOS, Linux, Windows',
+    description,
+    url: canonical,
+    downloadUrl: npmUrl,
+    codeRepository: repoUrl,
+    license: 'https://opensource.org/licenses/MIT',
+    offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
+    author: { '@type': 'Organization', name: 'LocalPDF', url: 'https://localpdf.online' },
+  },
+  {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: faqs.map((item) => ({
+      '@type': 'Question',
+      name: item.q,
+      acceptedAnswer: { '@type': 'Answer', text: item.a },
+    })),
+  },
+];
+---
+
+<MarketingLayout title={title} description={description} canonical={canonical} image={image} schema={schema}>
+  <div class="page-shell hero-shell">
+    <section class="section hero">
+      <span class="eyebrow">For AI Agents</span>
+      <h1>PDF MCP Server That Runs on Your Machine</h1>
+      <p class="section-intro">
+        <code>localpdf-mcp</code> is an open-source Model Context Protocol server with seven PDF
+        tools: inspect, merge, split, compress, extract text, replace text, and OCR. It runs as a
+        local process for Claude Code, Claude Desktop, Cursor, or any MCP client. No account, no
+        telemetry, no network requests, and no document bytes in the tool result.
+      </p>
+      <div class="cta-row">
+        <a class="btn-primary" href={npmUrl} rel="noopener">Install from npm</a>
+        <a class="btn-secondary" href={repoUrl} rel="noopener">Source on GitHub</a>
+      </div>
+      <div class="hero-trust">
+        <span class="tag">MIT licensed</span>
+        <span class="tag">Metadata-only results</span>
+        <span class="tag">Network denied in tests</span>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2 class="section-title">Install in one command</h2>
+      <p class="section-intro">
+        Node 22 or newer. The client starts the server over stdio, so there is nothing to host.
+      </p>
+      <pre><code>claude mcp add localpdf -- npx -y localpdf-mcp</code></pre>
+      <p class="section-intro">Any JSON-config client uses the same command:</p>
+      <pre><code>{jsonConfig}</code></pre>
+      <p class="section-intro">
+        OCR is an optional extra: <code>npm i tesseract.js @tesseract.js-data/eng @napi-rs/canvas</code>.
+        Without it the other six tools still work, and <code>pdf_ocr</code> returns a clear
+        dependencies-not-installed error instead of fetching anything from a CDN.
+      </p>
+    </section>
+
+    <section class="section">
+      <h2 class="section-title">Seven tools, all local</h2>
+      <div class="tool-table" role="table">
+        {tools.map((tool) => (
+          <div class="tool-row" role="row">
+            <code>{tool.name}</code>
+            <span>{tool.does}</span>
+            <span class="tool-returns">{tool.returns}</span>
+          </div>
+        ))}
+      </div>
+      <p class="section-intro">
+        Page numbers are 1-based. The input file is never overwritten, and outputs must point at a
+        different path. Scratch files live in <code>~/.localpdf-mcp/tmp</code> with mode 0700 and are
+        pruned after an hour, because <code>~/Desktop</code> and <code>~/Documents</code> may be
+        synced to iCloud Drive.
+      </p>
+    </section>
+
+    <section class="section">
+      <h2 class="section-title">What stays local, and what does not</h2>
+      <div class="faq-grid">
+        <div class="faq-card">
+          <h3>The server</h3>
+          <p>One process on your machine, started by your MCP client. No analytics, no version check, no usage reporting. Web fonts and OCR language data are pinned to files inside the package rather than fetched from a CDN.</p>
+        </div>
+        <div class="faq-card">
+          <h3>The files</h3>
+          <p>Read and written on disk with the paths you pass. Tool results return paths, sizes, sha256 digests and counts. Text comes back only with an explicit <code>inline: true</code>, and the result says so when it does.</p>
+        </div>
+        <div class="faq-card">
+          <h3>Your agent</h3>
+          <p>{LOCAL_PROCESSING_SCOPE} The same limit applies here: whatever your model reads itself goes to its provider. The engine and the files stay local; a cloud model is still a cloud model.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2 class="section-title">Offline is tested, not promised</h2>
+      <p class="section-intro">
+        Two gates run against the same suite of checks, OCR included. Both make every socket, DNS
+        lookup and fetch throw, one in-process and one at the operating-system level.
+      </p>
+      <pre><code># every network attempt throws, including inside the tesseract child process
+NODE_OPTIONS="--import ./test/deny-net.mjs" node test/smoke.mjs
+
+# the OS denies the network for the whole process tree
+sandbox-exec -p '(version 1)(allow default)(deny network*)' node test/smoke.mjs</code></pre>
+    </section>
+
+    <section class="section">
+      <h2 class="section-title">Known limitations</h2>
+      <div class="faq-grid">
+        <div class="faq-card">
+          <h3>Text replacement is an overlay</h3>
+          <p><code>pdf_replace_text</code> draws a white patch and new text on top. The original text layer survives, so search and copy-paste return the old string too. Cosmetic fixes only, not redaction.</p>
+        </div>
+        <div class="faq-card">
+          <h3>Compression is structural</h3>
+          <p><code>pdf_compress</code> resaves with object streams and does not recompress images, so text-only PDFs may barely shrink and already-optimised files can grow. The tool reports the real numbers. Image recompression ships in the <a href="/features/compress-pdf">browser app</a>.</p>
+        </div>
+        <div class="faq-card">
+          <h3>Encrypted files are reported, not opened</h3>
+          <p><code>pdf_inspect</code> flags encryption. Decryption is available in the <a href={appUrl}>Studio workspace</a>, which opens password-protected PDFs with the password you supply, and is not part of the MCP server yet.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>Questions about the PDF MCP server</h2>
+      <div class="faq-grid">
+        {faqs.map((faq) => (
+          <div class="faq-card">
+            <h3>{faq.q}</h3>
+            <p>{faq.a}</p>
+          </div>
+        ))}
+      </div>
+    </section>
+
+    <section class="section final-cta">
+      <h2 class="section-title">The same engine, with a canvas</h2>
+      <p class="section-intro">
+        The MCP server handles files an agent points at it. For drag-and-drop page moves, text
+        editing and OCR previews, open the workspace in your browser. Free for three downloads a
+        day, no account required.
+      </p>
+      <div class="cta-row">
+        <a class="btn-primary" href={appUrl}>Open LocalPDF</a>
+      </div>
+    </section>
+  </div>
+</MarketingLayout>
+
+<style>
+  .hero-shell h1 {
+    font-size: clamp(2.4rem, 4.2vw, 4rem);
+    margin-top: 18px;
+    margin-bottom: 18px;
+    max-width: 18ch;
+  }
+  .hero-trust {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 18px;
+  }
+  .tag {
+    padding: 4px 14px;
+    border-radius: 999px;
+    background: rgba(217, 235, 225, 0.6);
+    border: 1px solid var(--line);
+    font-size: 0.82rem;
+    color: #30414e;
+    font-weight: 600;
+  }
+  pre {
+    margin: 14px 0;
+    padding: 18px 20px;
+    border-radius: 16px;
+    border: 1px solid var(--line);
+    background: #1d2b33;
+    color: #eef3f1;
+    overflow-x: auto;
+    font-size: 0.86rem;
+    line-height: 1.6;
+  }
+  pre code {
+    background: none;
+    color: inherit;
+    padding: 0;
+  }
+  .tool-table {
+    display: grid;
+    gap: 2px;
+    margin-top: 18px;
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    overflow: hidden;
+  }
+  .tool-row {
+    display: grid;
+    grid-template-columns: 14rem 1fr 12rem;
+    gap: 14px;
+    align-items: baseline;
+    padding: 12px 16px;
+    background: var(--surface);
+    font-size: 0.92rem;
+  }
+  .tool-row + .tool-row {
+    border-top: 1px solid var(--line);
+  }
+  .tool-row code {
+    font-weight: 600;
+  }
+  .tool-returns {
+    color: #5a6b74;
+    font-size: 0.85rem;
+  }
+  .faq-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 18px;
+    margin-top: 20px;
+  }
+  .faq-card {
+    padding: 22px;
+    border: 1px solid var(--line);
+    border-radius: 24px;
+    background: var(--surface);
+  }
+  .faq-card h3 {
+    font-size: 1.05rem;
+    margin-bottom: 10px;
+  }
+  .faq-card p {
+    font-size: 0.95rem;
+  }
+  .final-cta {
+    text-align: center;
+    padding-bottom: 40px;
+  }
+  .final-cta .cta-row {
+    justify-content: center;
+  }
+  @media (max-width: 760px) {
+    .tool-row {
+      grid-template-columns: 1fr;
+      gap: 4px;
+    }
+  }
+</style>
