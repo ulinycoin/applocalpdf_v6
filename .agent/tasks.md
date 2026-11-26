@@ -28,6 +28,7 @@ Last updated: 2026-11-27
 - CI пакета — success (`45909621692`, `45908600548`); `npm view` после публикации требует 2–3 минуты на распространение.
 - Веб: `npm run seo:lastmod`, `npm run build:web` → 84 страницы, `npm run audit:seo` — passed (37 URL в sitemap); `website/dist/pdf-mcp-server.html` — title «PDF MCP Server for AI Agents — Local, Offline, Metadata-Only | LocalPDF», canonical `https://localpdf.online/pdf-mcp-server`, SoftwareApplication + FAQPage, есть в `sitemap-0.xml`.
 - `npm test` — **594/594**; `npm run release:check:fast` — exit 0; `npm run billing:preflight` — passed (1 warning: monthly/yearly product ids overlap `917519`).
+- Запушено: `1678e89` (страница + проводка + журнал), CI `45910005375` — success; прод `https://localpdf.online/pdf-mcp-server` → 200, title «PDF MCP Server for AI Agents — Local, Offline, Metadata-Only | LocalPDF», в `sitemap-0.xml` есть. В репозитории пакета `fb6af3a` вернул ссылку на живую страницу.
 
 ### Осталось / риски
 
