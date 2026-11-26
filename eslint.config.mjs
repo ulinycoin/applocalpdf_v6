@@ -44,6 +44,7 @@ export default tseslint.config(
       'vendor',
       'public/vendor',
       'scratch',
+      '.tmp',
       'pbn',
       'playwright-report',
       'test-results',

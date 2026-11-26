@@ -76,7 +76,6 @@ export const CATEGORIES: Category[] = [
         tools: [
             { id: 'tables-pdf', name: 'Tables Pro', desc: 'Convert Excel/CSV to structured PDF tables.', icon: 'table', hash: 'tables' },
             { id: 'ocr-pdf', name: 'Smart OCR', desc: 'Extract text from scans using Tesseract.', icon: 'scanText', hash: 'ocr' },
-            { id: 'pdf-to-word', name: 'PDF to Word', desc: 'Convert PDFs to editable DOCX files.', icon: 'fileText', hash: 'pdf-to-word' },
             { id: 'word-to-pdf', name: 'Word to PDF', desc: 'Create PDFs from Microsoft Word docs.', icon: 'fileOutput', hash: 'word-to-pdf' },
             { id: 'images-to-pdf', name: 'Images to PDF', desc: 'Convert JPG/PNG to PDF documents.', icon: 'images', hash: 'images-to-pdf' },
             { id: 'pdf-to-images', name: 'PDF to Images', desc: 'Save pages as high-quality images.', icon: 'image', hash: 'pdf-to-images' },

@@ -33,7 +33,6 @@ export const CATEGORIES_DE: Category[] = [
         tools: [
             { id: 'tables-pdf', name: 'Tabellen Pro', desc: 'Excel/CSV in strukturierte PDF-Tabellen umwandeln.', icon: 'table', hash: 'tables' },
             { id: 'ocr-pdf', name: 'Smart OCR', desc: 'Text aus Scans mit Tesseract extrahieren.', icon: 'scanText', hash: 'ocr' },
-            { id: 'pdf-to-word', name: 'PDF zu Word', desc: 'PDFs in bearbeitbare DOCX-Dateien umwandeln.', icon: 'fileText', hash: 'pdf-to-word' },
             { id: 'word-to-pdf', name: 'Word zu PDF', desc: 'PDFs aus Microsoft Word-Dokumenten erstellen.', icon: 'fileOutput', hash: 'word-to-pdf' },
             { id: 'images-to-pdf', name: 'Bilder zu PDF', desc: 'JPG/PNG in PDF-Dokumente konvertieren.', icon: 'images', hash: 'images-to-pdf' },
             { id: 'pdf-to-images', name: 'PDF zu Bilder', desc: 'Seiten als hochwertige Bilder speichern.', icon: 'image', hash: 'pdf-to-images' },

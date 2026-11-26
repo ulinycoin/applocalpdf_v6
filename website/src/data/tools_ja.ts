@@ -33,7 +33,6 @@ export const CATEGORIES_JA: Category[] = [
         tools: [
             { id: 'tables-pdf', name: '表データ変換', desc: 'Excel/CSVを構造化されたPDFの表に変換。', icon: 'table', hash: 'tables' },
             { id: 'ocr-pdf', name: 'スマートOCR', desc: 'Tesseractを使用してスキャンからテキストを抽出。', icon: 'scanText', hash: 'ocr' },
-            { id: 'pdf-to-word', name: 'PDFからWord', desc: 'PDFを編集可能なDOCXファイルに変換。', icon: 'fileText', hash: 'pdf-to-word' },
             { id: 'word-to-pdf', name: 'WordからPDF', desc: 'Word文書からPDFを作成。', icon: 'fileOutput', hash: 'word-to-pdf' },
             { id: 'images-to-pdf', name: '画像からPDF', desc: 'JPG/PNGをPDFドキュメントに変換。', icon: 'images', hash: 'images-to-pdf' },
             { id: 'pdf-to-images', name: 'PDFから画像', desc: 'ページを高品質な画像として保存。', icon: 'image', hash: 'pdf-to-images' },

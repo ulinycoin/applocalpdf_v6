@@ -7,16 +7,16 @@ import type { FeaturePageData } from '../featurePages';
  */
 export const convert_pdf: FeaturePageData = {
     slug: 'convert-pdf',
-    title: 'Convert PDF — Word, images, and format conversions',
-    metaTitle: 'Free PDF Converter — Word, Images & More | LocalPDF',
-    metaDescription: 'Convert PDF to Word, Word to PDF, and PDF to images locally. Free format conversion runs in your browser — no upload required.',
-    intro: 'Use Convert PDF when you need PDF to Word, Word to PDF, PDF to image, or image to PDF conversion without leaving the main workflow.',
+    title: 'Convert to PDF — Word, Excel, and images, without an upload',
+    metaTitle: 'Free PDF Converter — Word, Excel & Images | LocalPDF',
+    metaDescription: 'Convert Word and Excel files to PDF, and pull pages or images out of a PDF, in your browser — no upload required. Everything runs on your device.',
+    intro: 'Use Convert PDF when you need a Word or Excel file turned into a PDF, or a PDF turned into images, without uploading anything.',
     canvasTool: FEATURE_PAGE_CANVAS_TOOLS['convert-pdf'],
     eyebrow: 'Convert PDF',
     capabilities: [
-      'Handle common PDF, Word, and image conversion workflows in one place',
-      'Move between formats without leaving the product workflow',
-      'Start conversion from one clear entry point inside the app',
+      'Turn Word and Excel documents into PDF in the browser',
+      'Save PDF pages as JPG, or pull the original images out of a file',
+      'Assemble images into a PDF inside the Studio canvas',
     ],
     whyLocal: [
       'Conversion is often part of a larger document workflow, not a one-off task.',
@@ -26,13 +26,13 @@ export const convert_pdf: FeaturePageData = {
     ],
     howItWorks: [
       'Open Convert PDF.',
-      'Choose the source format and target output path inside the app flow.',
-      'Review and export the converted result.',
+      'Drop in a Word or Excel file, or open a PDF from the canvas.',
+      'Pick the output you need and export it from the same window.',
     ],
     useCases: [
-      'Convert a PDF to Word for editable reuse',
-      'Generate a PDF from a Word document before sending or signing',
-      'Move between PDF pages and image-based workflows',
+      'Turn a Word contract into a PDF before sending it',
+      'Print an Excel sheet to PDF for a clean, fixed layout',
+      'Save PDF pages as JPG for slides or a web page',
     ],
     proofTitle: 'Choose the right format and keep moving',
     proofBody: 'Conversion works best when users can pick the right path quickly and continue the broader document workflow without starting over.',
@@ -41,16 +41,16 @@ export const convert_pdf: FeaturePageData = {
     ctaNote: 'Open Convert PDF when the workflow is about moving between document formats without leaving the main LocalPDF product path.',
     quickAnswers: [
       {
-        question: 'Can I convert PDF to Word without uploading?',
-        answer: 'Yes. LocalPDF converts PDF to Word format in your browser. The document is not uploaded for the conversion.',
+        question: 'Can I convert a file to PDF without uploading it?',
+        answer: 'Yes. Word and Excel documents are turned into PDF in your browser, and PDF pages are saved as images there too. Nothing is uploaded for the conversion.',
       },
       {
-        question: 'What file formats can I convert between?',
-        answer: 'LocalPDF supports PDF to Word, Word to PDF, PDF to images (PNG/JPG), and images to PDF — all in one workspace.',
+        question: 'What conversions does LocalPDF support?',
+        answer: 'Word to PDF, Excel to PDF, PDF pages to JPG, and extraction of the original images from a PDF. Images can also be collected into a PDF in the Studio canvas.',
       },
       {
-        question: 'Is conversion quality preserved?',
-        answer: 'LocalPDF preserves the original layout and content as closely as possible. Text-based PDFs convert cleanly; image-based PDFs are handled through OCR.',
+        question: 'Does LocalPDF convert PDF back to Word?',
+        answer: 'No. PDF to Word needs a layout engine we do not run in the browser, so the site does not offer it. OCR can pull the text out of a PDF and save it as .txt or a searchable PDF.',
       },
     ],
     intentSection: {
@@ -58,16 +58,16 @@ export const convert_pdf: FeaturePageData = {
       intro: 'Conversion starts with one question: which format does the next step need? These are the paths people use most.',
       items: [
         {
-          title: 'PDF to Word and Word to PDF',
-          body: 'Use this workflow when the document needs to move between PDF and editable Word formats, whether the job starts with editing, review, or final export.',
+          title: 'Word or Excel into PDF',
+          body: 'Use this workflow when a document is finished in an office format and has to go out as a PDF that looks the same on every machine.',
         },
         {
-          title: 'PDF to PNG, PDF to JPG, and image to PDF',
-          body: 'This route also covers image-based conversion tasks, including exporting PDF pages as images or combining images into a PDF for sharing and archive work.',
+          title: 'PDF into images',
+          body: 'Save one page or the whole file as JPG, or pull the original photos and scans out of a PDF without re-rendering the page.',
         },
         {
-          title: 'Both directions stay in one workspace',
-          body: 'PDF to Word, Word to PDF, PDF to images, images to PDF — pick the format you need and keep working in the same window instead of starting over elsewhere.',
+          title: 'Images into one PDF',
+          body: 'Drop scans or photos into the Studio canvas, put them in order, and export a single document. Photos can also be dropped straight into a page.',
         },
       ],
     },
