@@ -32,6 +32,8 @@ Last updated: 2026-11-27
 
 ### Осталось / риски
 
+- Glama: страница `https://glama.ai/mcp/servers/ulinycoin/localpdf-mcp` уже существует (автоиндексация), score C, семь инструментов видны. Добавлен `Dockerfile` (`f6f237d`), чтобы их проверка собирала образ из нашего файла, а не из догадки.
+- PR в `awesome-mcp-servers` переделан: ветка `add-localpdf-mcp` форка `ulinycoin/awesome-mcp-servers` была на старом README (1 добавление / 5530 удалений) — сброшена на `upstream/main` (`27551f1`) и пересобрана с одной строкой в File Systems (алфавитно, между `tobee89/mcp-paperless-ngx` и `velyan/pdf-card-mcp`) и бейджем Glama. GitHub закрыл PR при пуше пустой ветки — переоткрыт; итог: +1/−0, head `a9338f5`.
 - Браузерные формы (PulseMCP, mcpservers.org, Claude Desktop Extensions) не отправлены — нужен ручной проход или отдельное решение.
 - `appcypher/awesome-mcp-servers` PR и Docker MCP Registry не сделаны по причинам выше.
 - Пакет `0.1.4` вышел вечером 27.11; скачивания смотреть через неделю (было 512 суммарно, из них 376 в день публикации 19.11).
