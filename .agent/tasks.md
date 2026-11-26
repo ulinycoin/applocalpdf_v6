@@ -21,7 +21,7 @@ Last updated: 2026-11-26
 
 ### Осталось / риски
 
-- Коммиты локальные: `53e1cb7` (страница редакции), `cf53b32` (честный конвертер + игнор `.tmp`); пуш и деплой — по OK владельца.
+- Запушено (`main` → `c57b8a7`): `53e1cb7` (страница редакции), `cf53b32` (честный конвертер + игнор `.tmp`), `2a2350f`, `c57b8a7` (lastmod). CI `45902279206` — success. Прод: `https://localpdf.online/features/redact-pdf` → 200, верный title, FAQPage, в `sitemap-0.xml`; на главной 0 упоминаний «PDF to Word».
 - Radar идея №1 (страница-доказательство «0 запросов» + `/compare/localpdf-vs-pdfnolimit`) не сделана. Конкурент продаёт ровно наш оффер («never sees your file»), но без самохостинга и с закрытым кодом, плюс имеет PDF→office, crop, page numbers, repair, compare — часть из этого у нас в бэклоге.
 - Из SEO-дайджеста не тронуто: retarget `/features/ocr-pdf` (кластер 85 показов, «pdf ocr online free» ↑27), немецкая страница (105 показов, 0 кликов), HR bulk-compress блок, формулировка «merge pdf without limit» против лимита 3 скачивания в сутки.
 - `npm run lint` не зелёный из-за прежнего долга (65 ошибок) — отдельная задача.
