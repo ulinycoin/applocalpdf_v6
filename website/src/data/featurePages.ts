@@ -6,6 +6,7 @@ import { edit_pdf } from './features/edit-pdf';
 import { merge_pdf } from './features/merge-pdf';
 import { ocr_pdf } from './features/ocr-pdf';
 import { protect_pdf } from './features/protect-pdf';
+import { redact_pdf } from './features/redact-pdf';
 import { sign_pdf } from './features/sign-pdf';
 import { split_pdf } from './features/split-pdf';
 
@@ -87,6 +88,7 @@ export const featurePages: FeaturePageData[] = [
   convert_pdf,
   auto_toc_pdf,
   protect_pdf,
+  redact_pdf,
 ];
 
 export function getFeaturePage(slug: string) {

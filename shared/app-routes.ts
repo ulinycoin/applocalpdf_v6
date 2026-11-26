@@ -19,6 +19,8 @@ const LEGACY_TARGET_ROUTE_MAP: Record<string, string> = {
   protect: APP_STUDIO_EDIT_ROUTE,
   /* Feature-page slug: the canvas opens the Protect tool via ?tool=, not a standalone screen. */
   'protect-pdf': APP_STUDIO_ROUTE,
+  /* Feature-page slug: redaction is the canvas Whiteout tool, opened via ?tool=whiteout. */
+  'redact-pdf': APP_STUDIO_ROUTE,
   'add-form-fields': APP_STUDIO_EDIT_ROUTE,
   'add-form-fields-pdf': APP_STUDIO_EDIT_ROUTE,
   flatten: APP_STUDIO_EDIT_ROUTE,

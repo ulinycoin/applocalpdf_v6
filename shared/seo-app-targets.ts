@@ -16,6 +16,7 @@ export const FEATURE_PAGE_CANVAS_TOOLS = {
   'convert-pdf': null,
   'auto-toc-pdf': 'auto-toc',
   'protect-pdf': 'protect',
+  'redact-pdf': 'whiteout',
 } as const satisfies Record<string, CanvasToolId | null>;
 
 export type FeaturePageSlug = keyof typeof FEATURE_PAGE_CANVAS_TOOLS;

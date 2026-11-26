@@ -19,6 +19,7 @@
   "/features/merge-pdf": ["src/data/features/merge-pdf.ts"],
   "/features/ocr-pdf": ["src/data/features/ocr-pdf.ts"],
   "/features/protect-pdf": ["src/data/features/protect-pdf.ts"],
+  "/features/redact-pdf": ["src/data/features/redact-pdf.ts"],
   "/features/sign-pdf": ["src/data/features/sign-pdf.ts"],
   "/features/split-pdf": ["src/data/features/split-pdf.ts"],
   "/how-local-pdf-processing-works": ["src/pages/how-local-pdf-processing-works.astro"],

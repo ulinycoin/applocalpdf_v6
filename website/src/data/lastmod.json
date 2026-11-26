@@ -17,6 +17,7 @@
   "/features/merge-pdf": "2026-10-06",
   "/features/ocr-pdf": "2026-10-05",
   "/features/protect-pdf": "2026-10-06",
+  "/features/redact-pdf": "2026-11-26",
   "/features/sign-pdf": "2026-10-06",
   "/features/split-pdf": "2026-10-05",
   "/how-local-pdf-processing-works": "2026-10-05",
