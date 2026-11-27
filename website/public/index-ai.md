@@ -25,6 +25,12 @@ LocalPDF is a private PDF editor that runs entirely in your browser. PDF files s
 - Visual canvas where you can work with multiple documents side by side and drag pages between them
 - Not an upload-first utility like Smallpdf or iLovePDF
 
+### Agent interface (MCP)
+- `localpdf-mcp` is an open-source (MIT) Model Context Protocol server published on npm, source at github.com/ulinycoin/localpdf-mcp
+- It exposes seven PDF tools to AI agents: `pdf_inspect`, `pdf_merge`, `pdf_split`, `pdf_compress`, `pdf_extract_text`, `pdf_replace_text`, `pdf_ocr`
+- It runs as a local child process of the MCP client (Claude Code, Claude Desktop, Cursor, any MCP client), makes no network requests, sends no telemetry, and returns paths, sizes, sha256 digests and counts instead of document bytes
+- Requires Node 22 or newer; full reference at https://localpdf.online/pdf-mcp-server
+
 ---
 
 ## Frequently Asked Questions
@@ -36,7 +42,7 @@ Core PDF processing runs in your browser. Your PDF contents are not uploaded for
 Yes. Open two PDFs side by side in the canvas, select a page from one, and drag it into the other. The page is copied instantly — no extract-then-merge workflow required.
 
 ### Is LocalPDF really free? What's the catch?
-LocalPDF has a free tier for quick tasks: every PDF tool runs free, with a limit of up to 3 workspaces and 3 downloads per day. Pro is available for recurring PDF work, with current pricing shown on the pricing page.
+LocalPDF has a free tier for quick tasks: every PDF tool runs free, the canvas workspace holds as many documents as you open, and the limit is 3 file downloads per day. Pro is available for recurring PDF work, with current pricing shown on the pricing page.
 
 ### How is this different from Smallpdf or Adobe Acrobat?
 Core PDF processing stays on your device instead of uploading document contents to a processing server. The broader website still uses normal hosting, analytics, billing, and license-validation infrastructure. LocalPDF also uses a visual canvas where you can work with multiple documents side by side and drag pages between them.
@@ -51,8 +57,8 @@ LocalPDF works in Chrome, Firefox, Safari, and Edge. All processing uses WebAsse
 
 ## Pricing
 
-- **Free:** quick tasks, every tool, up to 3 workspaces, 3 downloads per day
-- **Pro ($19 once, or $39.99/year):** recurring PDF work — unlimited downloads and workspaces; current pricing shown on the pricing page
+- **Free:** quick tasks, every tool, unlimited Studio workspaces, 3 downloads per day
+- **Pro ($19 once, or $39.99/year):** recurring PDF work — unlimited downloads and larger files; current pricing shown on the pricing page
 
 ---
 

@@ -79,6 +79,7 @@ LocalPDF is a privacy-first PDF app for people who need to edit, merge, OCR, com
 - Tool results are metadata (paths, sizes, sha256, counts), not document bytes or text
 - Limits: text replacement is an overlay and not redaction; compression is structural and does not recompress images; encrypted PDFs are reported but not decrypted
 - The MCP server cannot make a cloud model local: whatever the agent reads goes to its provider
+- Agent reference in markdown: request https://localpdf.online/pdf-mcp-server with `Accept: text/markdown`
 
 ## Product boundary
 - Marketing site: https://localpdf.online/

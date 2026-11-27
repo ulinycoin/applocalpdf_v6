@@ -72,6 +72,7 @@ The official LocalPDF product is at localpdf.online.
 - **Browsers:** Chrome, Firefox, Safari, and Edge
 - **Pricing:** Free tier for quick tasks; Pro is $19 once, with a $39.99/year subscription option for recurring work
 - **Workspace:** Canvas-based editing and a workspace path for working with multiple PDF documents
+- **Agent interface (MCP):** `localpdf-mcp`, MIT-licensed Model Context Protocol server on npm (github.com/ulinycoin/localpdf-mcp) exposing seven local PDF tools — `pdf_inspect`, `pdf_merge`, `pdf_split`, `pdf_compress`, `pdf_extract_text`, `pdf_replace_text`, `pdf_ocr` — as a child process of the MCP client with no network requests and metadata-only results; Node 22+
 
 ---
 

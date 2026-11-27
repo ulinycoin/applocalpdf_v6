@@ -2,6 +2,36 @@
 
 Last updated: 2026-11-27
 
+## Сессия 2026-11-27 (19) — /pdf-mcp-server: читаемая разметка и markdown-эталон для моделей
+
+Триггер — владелец: скриншот страницы «разметка кривая на странице» + «отправлена на индексацию страница? добавил упоминание в sitemap, llm.txt? нужно что бы модели понимали на счет mcp в проекте».
+
+### Сделано — разметка
+
+- Причина «кривой» картинки: шапка `website/src/components/marketing/SiteHeader.astro` — sticky-пилюля с `rgba(250, 247, 242, 0.84)` без блюра, поэтому при скролле текст карточек просвечивал сквозь неё и читался как наложение. Плотность 0.97 + `backdrop-filter: blur(14px)`; проверено скриншотами 1960×838 на прокрутке 1500 px (до/после) на этой и соседней странице — эффект был общий для сайта.
+- Мобильная часть страницы `website/src/pages/pdf-mcp-server.astro`: команды и JSON-конфиг — длинные однострочники в `pre`, на 390 px они обрезались в скроллбоксе. В `@media (max-width: 760px)` добавлены `white-space: pre-wrap` и `overflow-wrap: anywhere` — команда видна целиком; горизонтального оверфлоу нет (`scrollWidth` = 390).
+
+### Сделано — модели и индексация
+
+- Новый markdown-эталон `website/public/pdf-mcp-server-ai.md`: что такое `localpdf-mcp`, установка (CLI и JSON), таблица семи инструментов, границы (оверлей вместо редакции, структурная компрессия, шифрованные файлы не расшифровываются, облачную модель локальной не сделать), связь с браузерным продуктом.
+- `middleware.ts`: `/pdf-mcp-server` добавлен в `markdownAssetFor` и `matcher`, поэтому отдача markdown по `Accept: text/markdown` работает так же, как для `/` и `/localpdf`; обычным браузерам и Googlebot по-прежнему HTML (без клоакинга).
+- `website/public/llm.txt`: строка о том, как получить markdown-эталон; `website/public/index-ai.md` — новая секция «Agent interface (MCP)»; `website/public/localpdf-ai.md` — строка MCP в Technical Details.
+- Заодно исправлено устаревшее после снятия лимита workspace: `index-ai.md` обещал «up to 3 workspaces» в FAQ и Pricing — теперь «workspaces unlimited, 3 downloads per day».
+- IndexNow: `npm run indexnow:submit -- --url https://localpdf.online/pdf-mcp-server` → «Submitted 1 URL(s) to IndexNow».
+
+### Проверено
+
+- `npm run build:web` → 84 страницы; `npm run seo:lastmod` + `npm run audit:seo` → «SEO audit passed» (37 URL в sitemap, `/pdf-mcp-server` на месте, stale-lastmod исчезнет после коммита).
+- `npm test` — **594/594**; `npm run build` — exit 0; `npm run audit:workerization:strict` — exit 0; `npm run billing:preflight` — passed (1 warning: monthly/yearly product ids overlap `917519`).
+- Локальный `website/dist` на 4188: страница 200, `pdf-mcp-server-ai.md` в сборке, шапка непрозрачная, код на 390 px переносится, `scrollWidth` = 390.
+- Прод-проверка после пуша: `/pdf-mcp-server` и `curl -H 'Accept: text/markdown' https://localpdf.online/pdf-mcp-server` (должен отдать markdown), `llm.txt`/`llms.txt` с упоминанием MCP, `sitemap-0.xml`.
+
+### Осталось / риски
+
+- Markdown-эталон работает только на Vercel (edge middleware); локальный `astro dev`/статика его не отдают — проверять после деплоя.
+- Страница по-прежнему без отдельного `SoftwareApplication`-поля про MCP-инструменты в llms.txt — сейчас там только ссылка и краткая секция.
+- Индексация: IndexNow отправлен, Google/Яндекс — обычное ожидание переобхода; GSC-проверка через несколько дней.
+
 ## Сессия 2026-11-27 (18) — localpdf-mcp: публичный репозиторий, npm 0.1.4, каталоги, страница /pdf-mcp-server
 
 Триггер — владелец: «делай пуш. открывай репо, публикуй в npm», затем «разсылай и делай страницу».

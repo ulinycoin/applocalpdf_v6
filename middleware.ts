@@ -1,5 +1,5 @@
 // Vercel Edge Middleware for LocalPDF AI markdown serving
-// - Accept: text/markdown on / and /localpdf -> markdown representation
+// - Accept: text/markdown on /, /localpdf and /pdf-mcp-server -> markdown representation
 // - /localpdf + AI crawler UA -> markdown (legacy UA-based behavior)
 // - Everything else (browsers, Googlebot, etc.) -> canonical HTML (no cloaking)
 
@@ -35,12 +35,13 @@ function wantsMarkdown(request: Request): boolean {
 // Map route -> markdown asset path
 function markdownAssetFor(pathname: string): string | null {
   if (pathname === '/localpdf') return '/localpdf-ai.md';
+  if (pathname === '/pdf-mcp-server') return '/pdf-mcp-server-ai.md';
   if (pathname === '/' || pathname === '') return '/index-ai.md';
   return null;
 }
 
 export const config = {
-  matcher: ['/', '/localpdf'],
+  matcher: ['/', '/localpdf', '/pdf-mcp-server'],
 };
 
 export default async function middleware(request: Request): Promise<Response | undefined> {

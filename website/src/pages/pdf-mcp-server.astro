@@ -299,5 +299,12 @@ sandbox-exec -p '(version 1)(allow default)(deny network*)' node test/smoke.mjs<
       grid-template-columns: 1fr;
       gap: 4px;
     }
+    /* Commands and JSON config are long single lines: wrap them so mobile
+       readers see the whole command instead of a clipped scroll box. */
+    pre {
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+      padding: 14px 16px;
+    }
   }
 </style>
