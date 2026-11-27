@@ -32,23 +32,30 @@ function wantsMarkdown(request: Request): boolean {
   return accept.includes('text/markdown');
 }
 
-// Map route -> markdown asset path
+// Map route -> markdown asset path.
+// Vercel may hand the middleware either the clean URL or the file path behind
+// `cleanUrls`, so both forms are normalized before the lookup.
+function normalizeRoute(pathname: string): string {
+  return pathname.replace(/\.html$/, '').replace(/\/+$/, '') || '/';
+}
+
 function markdownAssetFor(pathname: string): string | null {
-  if (pathname === '/localpdf') return '/localpdf-ai.md';
-  if (pathname === '/pdf-mcp-server') return '/pdf-mcp-server-ai.md';
-  if (pathname === '/' || pathname === '') return '/index-ai.md';
+  const route = normalizeRoute(pathname);
+  if (route === '/localpdf') return '/localpdf-ai.md';
+  if (route === '/pdf-mcp-server') return '/pdf-mcp-server-ai.md';
+  if (route === '/') return '/index-ai.md';
   return null;
 }
 
 export const config = {
-  matcher: ['/', '/localpdf', '/pdf-mcp-server'],
+  matcher: ['/', '/localpdf', '/pdf-mcp-server', '/localpdf.html', '/pdf-mcp-server.html'],
 };
 
 export default async function middleware(request: Request): Promise<Response | undefined> {
   const url = new URL(request.url);
   const userAgent = request.headers.get('user-agent') || '';
 
-  const isLocalpdfRoute = url.pathname === '/localpdf';
+  const isLocalpdfRoute = normalizeRoute(url.pathname) === '/localpdf';
   const wantsMd = wantsMarkdown(request);
 
   // Serve markdown when:

@@ -371,6 +371,15 @@
           "value": "Content-Type, x-api-key, Authorization, X-Signature"
         }
       ]
+    },
+    {
+      "source": "/pdf-mcp-server",
+      "headers": [
+        {
+          "key": "Link",
+          "value": "</pdf-mcp-server-ai.md>; rel=\"alternate\"; type=\"text/markdown\""
+        }
+      ]
     }
   ],
   "trailingSlash": false,
