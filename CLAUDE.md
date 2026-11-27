@@ -176,3 +176,6 @@ Before marking any task done:
 - [ ] `npm run audit:workerization:strict` passes
 - [ ] No new `.DS_Store` or build artifacts staged
 - [ ] `.agent/tasks.md` updated
+- [ ] Any user-visible change has an entry in `website/src/data/changelog.ts`
+      (the `/changelog` page and `/changelog.xml` RSS both render from it), and the
+      entry is dated with the ship date rather than invented version numbers
