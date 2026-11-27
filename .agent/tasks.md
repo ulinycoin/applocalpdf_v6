@@ -24,11 +24,13 @@ Last updated: 2026-11-27
 - `npm run build:web` → 84 страницы; `npm run seo:lastmod` + `npm run audit:seo` → «SEO audit passed» (37 URL в sitemap, `/pdf-mcp-server` на месте, stale-lastmod исчезнет после коммита).
 - `npm test` — **594/594**; `npm run build` — exit 0; `npm run audit:workerization:strict` — exit 0; `npm run billing:preflight` — passed (1 warning: monthly/yearly product ids overlap `917519`).
 - Локальный `website/dist` на 4188: страница 200, `pdf-mcp-server-ai.md` в сборке, шапка непрозрачная, код на 390 px переносится, `scrollWidth` = 390.
-- Прод-проверка после пуша: `/pdf-mcp-server` и `curl -H 'Accept: text/markdown' https://localpdf.online/pdf-mcp-server` (должен отдать markdown), `llm.txt`/`llms.txt` с упоминанием MCP, `sitemap-0.xml`.
+- Пуш `147dbaa` + деплой: шапка с блюром и перенос кода на 390 px в проде (в `MarketingLayout.*.css` есть `blur(14px)`, в HTML страницы — `white-space:pre-wrap` внутри `@media (max-width:760px)`, `pdf-mcp-server-ai.md` отдаётся с типом `text/markdown`).
+- Найдено на проде: markdown для `/pdf-mcp-server` не отдавался, хотя `/` и `/localpdf` работали. Причина — `cleanUrls` в `vercel.json`: edge-middleware получает путь файла (`/pdf-mcp-server.html`), а `markdownAssetFor` сравнивал с чистым URL. Фикс `e0fe3d9`: нормализация через `normalizeRoute()` (снять `.html` и хвостовые слэши), тот же нормализованный путь для ветки AI-краулеров, `.html`-формы добавлены в `matcher`; плюс в `vercel.json` заголовок `Link: </pdf-mcp-server-ai.md>; rel="alternate"; type="text/markdown"`.
+- После деплоя `e0fe3d9`: `Accept: text/markdown` на `/`, `/localpdf`, `/pdf-mcp-server` → `text/markdown; charset=utf-8`; `Link`-заголовок на месте; CI `45944648352` и `45945407611` — success.
 
 ### Осталось / риски
 
-- Markdown-эталон работает только на Vercel (edge middleware); локальный `astro dev`/статика его не отдают — проверять после деплоя.
+- Markdown-эталон работает только на Vercel (edge middleware); локальный `astro dev`/статика его не отдают — проверять после деплоя. `cleanUrls` уже один раз сломал matcher: при добавлении новой пары «страница → .md» проверять оба варианта пути.
 - Страница по-прежнему без отдельного `SoftwareApplication`-поля про MCP-инструменты в llms.txt — сейчас там только ссылка и краткая секция.
 - Индексация: IndexNow отправлен, Google/Яндекс — обычное ожидание переобхода; GSC-проверка через несколько дней.
 
