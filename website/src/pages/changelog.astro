@@ -1,0 +1,176 @@
+---
+import MarketingLayout from '../layouts/MarketingLayout.astro';
+import { getAppUrl } from '../utils/app-url';
+import { changelog } from '../data/changelog';
+
+const title = 'Changelog — What Shipped in LocalPDF';
+const description =
+  'Every LocalPDF change that matters to users, newest first: text editing, OCR, redaction verification, sharing, limits and the local MCP server. Plain dates, no marketing.';
+const canonical = 'https://localpdf.online/changelog';
+const image = 'https://localpdf.online/logos/localpdf-social-1200x630.png';
+const appUrl = getAppUrl();
+
+const year = new Date().getFullYear();
+
+const slugify = (value: string) =>
+  value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '');
+
+const anchorFor = (entry: { date: string; title: string }) => `${entry.date}-${slugify(entry.title)}`;
+
+const formatted = (date: string) =>
+  new Date(`${date}T00:00:00Z`).toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    timeZone: 'UTC',
+  });
+
+const schema = [
+  {
+    '@context': 'https://schema.org',
+    '@type': 'CollectionPage',
+    name: title,
+    description,
+    url: canonical,
+    isPartOf: { '@type': 'WebSite', name: 'LocalPDF', url: 'https://localpdf.online/' },
+    publisher: { '@type': 'Organization', name: 'LocalPDF' },
+    mainEntity: {
+      '@type': 'ItemList',
+      itemListElement: changelog.map((entry, index) => ({
+        '@type': 'ListItem',
+        position: index + 1,
+        name: entry.title,
+        url: `${canonical}#${anchorFor(entry)}`,
+      })),
+    },
+  },
+  {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'Home', item: 'https://localpdf.online/' },
+      { '@type': 'ListItem', position: 2, name: 'Changelog', item: canonical },
+    ],
+  },
+];
+---
+
+<MarketingLayout title={title} description={description} canonical={canonical} image={image} schema={schema}>
+  <Fragment slot="head">
+    <link rel="alternate" type="application/rss+xml" title="LocalPDF changelog" href="/changelog.xml" />
+  </Fragment>
+
+  <div class="page-shell">
+    <section class="section hero">
+      <span class="eyebrow">Changelog</span>
+      <h1>What shipped in LocalPDF</h1>
+      <p class="section-intro">
+        LocalPDF is a website, so there are no releases to download — the newest version is the one already open in
+        your tab. These are the changes that matter when you use it, newest first. No version numbers that mean
+        nothing to you.
+      </p>
+      <div class="cta-row">
+        <a class="btn-primary" href={appUrl}>Open LocalPDF — free</a>
+        <a class="btn-secondary" href="/changelog.xml">RSS</a>
+        <a class="btn-secondary" href="/features">All PDF tools</a>
+      </div>
+    </section>
+
+    <section class="section">
+      <ol class="timeline">
+        {changelog.map((entry) => (
+          <li class="entry" id={anchorFor(entry)}>
+            <div class="entry-meta">
+              <time datetime={entry.date}>{formatted(entry.date)}</time>
+            </div>
+            <div class="entry-body">
+              <h2>{entry.title}</h2>
+              <p class="entry-summary">{entry.summary}</p>
+              <ul class="bullet-list">
+                {entry.items.map((item) => <li>{item}</li>)}
+              </ul>
+              {entry.links && entry.links.length > 0 && (
+                <p class="entry-links">
+                  {entry.links.map((link) => (
+                    <a class="text-link" href={link.href}>{link.label}</a>
+                  ))}
+                </p>
+              )}
+            </div>
+          </li>
+        ))}
+      </ol>
+    </section>
+
+    <section class="section">
+      <h2 class="section-title">Older changes</h2>
+      <p class="section-intro">
+        Entries before {year} live in the project journal rather than on this page. If you need the detail behind a
+        fix — which font, which file, which check — ask support and we will point you at the exact commit.
+      </p>
+      <div class="cta-row">
+        <a class="btn-secondary" href="/security">How local processing works</a>
+        <a class="btn-secondary" href="/blog">Blog</a>
+        <a class="btn-secondary" href="mailto:support@localpdf.online">Ask about a change</a>
+      </div>
+    </section>
+  </div>
+</MarketingLayout>
+
+<style>
+  .hero h1 {
+    font-size: clamp(2.6rem, 5vw, 4.4rem);
+    margin-top: 18px;
+    margin-bottom: 18px;
+  }
+  .timeline {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 22px;
+  }
+  .entry {
+    display: grid;
+    grid-template-columns: 180px minmax(0, 1fr);
+    gap: 24px;
+    padding: 24px 26px;
+    border-radius: 24px;
+    background: rgba(255, 253, 249, 0.88);
+    border: 1px solid var(--line);
+    scroll-margin-top: 120px;
+  }
+  .entry-meta time {
+    font-weight: 600;
+    font-size: 0.95rem;
+    color: var(--muted, #5a6b63);
+    white-space: nowrap;
+  }
+  .entry-body h2 {
+    font-size: 1.35rem;
+    margin: 0 0 8px;
+  }
+  .entry-summary {
+    margin: 0 0 12px;
+    color: var(--ink-2, #35463d);
+  }
+  .entry-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px;
+    margin: 12px 0 0;
+  }
+  .text-link {
+    font-weight: 600;
+  }
+  @media (max-width: 720px) {
+    .entry {
+      grid-template-columns: 1fr;
+      gap: 10px;
+      padding: 20px;
+    }
+  }
+</style>

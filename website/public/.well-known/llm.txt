@@ -12,6 +12,7 @@ LocalPDF is a privacy-first PDF app for people who need to edit, merge, OCR, com
 - Core value: local-first PDF workflows for practical document work
 - Best fit: sensitive, internal, operational, or important documents
 - Entry point: https://localpdf.online/app
+- What changed recently: https://localpdf.online/changelog (RSS: https://localpdf.online/changelog.xml)
 
 ## Core workflows
 - Edit PDF locally: change text, cover sensitive sections, add lightweight overlays
@@ -76,7 +77,7 @@ LocalPDF is a privacy-first PDF app for people who need to edit, merge, OCR, com
 - No public server-side PDF processing API is described in this marketing layer
 
 ## Pricing
-Free plan: every tool runs free (merge, split, compress, OCR, edit, convert, protect/unlock). Limits: 3 workspaces, 3 downloads per day. Adding files and running tools is unlimited.
+Free plan: every tool runs free (merge, split, compress, OCR, edit, convert, protect/unlock). Limits: 3 downloads per day; Studio workspaces and running tools are unlimited. Pro removes the download limit.
 Pro plan: $19 one-time, or $39.99/year. Removes the limits: unlimited downloads, unlimited workspaces, no page limits. No credit card required to start. No account required for free plan.
 Pricing page: https://localpdf.online/pricing
 

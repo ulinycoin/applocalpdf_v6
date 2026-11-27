@@ -118,8 +118,9 @@ still uses ordinary web infrastructure: hosting, analytics, billing, and license
 
 Q: Is LocalPDF free?
 A: Every PDF tool runs free, including OCR, editing, and conversion. The free tier limits
-workspaces (3) and downloads (3 per day), not which tools are available. Pro ($19 once, or
-$39.99/year) removes those limits. No account is required for the free plan.
+downloads (3 per day), not which tools are available or how many documents you can open —
+Studio workspaces are unlimited on every plan. Pro ($19 once, or $39.99/year) removes the
+download limit and raises file size. No account is required for the free plan.
 
 Q: Does LocalPDF work offline?
 A: Yes. After the initial page load, all PDF processing works without an internet connection.
@@ -136,6 +137,10 @@ A: Chrome, Firefox, Safari, and Edge. No installation required.
 
 Q: Can I drag pages between PDF documents?
 A: Yes. LocalPDF has a canvas workspace where you can open multiple PDFs and drag pages between them visually.
+
+Q: Where can I see what changed recently?
+A: The changelog at https://localpdf.online/changelog lists user-visible changes by date,
+newest first, with an RSS feed at https://localpdf.online/changelog.xml.
 
 Q: Does LocalPDF work in Japanese?
 A: Yes. The interface works in any language, and OCR supports Japanese text recognition locally.

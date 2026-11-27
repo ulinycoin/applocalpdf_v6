@@ -33,6 +33,7 @@ No uploads, no server storage — all processing happens locally via WebAssembly
 - [Pricing](https://localpdf.online/pricing) — Free plan runs every tool (3 downloads/day) + optional Pro ($19 once, or $39.99/year) for unlimited downloads and larger files
 - [FAQ](https://localpdf.online/faq) — Frequently asked questions
 - [Blog](https://localpdf.online/blog) — PDF guides and how-tos
+- [Changelog](https://localpdf.online/changelog) — dated list of user-visible changes, with RSS at https://localpdf.online/changelog.xml
 - [PDF MCP Server](https://localpdf.online/pdf-mcp-server) — localpdf-mcp: seven PDF tools for AI agents, MIT, no uploads, metadata-only results
 
 ## Compare

@@ -2,6 +2,30 @@
 
 Last updated: 2026-11-27
 
+## Сессия 2026-11-27 (21) — /changelog и RSS
+
+Триггер — владелец: «может еще добавить страницу releases? типо https://getpdfcraft.org/releases».
+
+### Сделано
+
+- `website/src/data/changelog.ts` — 8 записей по реальным коммитам (22–27.11): безлимитные workspace, localpdf-mcp 0.1.4, проверяемая редакция, OCR-фикс, возврат share, RTL, поисковый слой CJK, CFF-шрифты. У каждой — дата, заголовок, краткое «что это меняет», список деталей и ссылки на страницы инструментов.
+- `website/src/pages/changelog.astro`: H1 «What shipped in LocalPDF», таймлайн с уникальными якорями `<дата>-<slug>`, Schema.org CollectionPage + ItemList + BreadcrumbList, ссылка на RSS в `<head>`. Формулировка «у нас нет версий для скачивания — сайт всегда последний» вместо фейковых версий.
+- `website/src/pages/changelog.xml.ts` — RSS через `@astrojs/rss` (деп уже был в зависимостях), ссылки на абсолютные якоря.
+- Связано: `sitemapAllowList` + `sitemapPriority` (0.6, weekly) в `website/astro.config.mjs`, `route-sources.json`, ссылка «Changelog» в футере, строка в `website/public/llms.txt` и `website/public/.well-known/llm.txt`, Q&A в `website/public/llm.txt`.
+- Заодно исправлены два последних устаревших «3 workspaces» в AI-файлах (`llm.txt`, `.well-known/llm.txt`) — теперь «workspaces unlimited, 3 downloads per day».
+
+### Проверено
+
+- `npm run build:web` → 86 страниц; `npm run audit:seo` → «SEO audit passed», в sitemap 39 URL, `/changelog` на месте.
+- `website/dist/changelog.html`: 8 записей, 8 уникальных якорей, RSS-тег в head; `website/dist/changelog.xml` — 8 item, ссылки корректные (без хвостового слэша после фрагмента).
+- Playwright на локальной сборке: 390 и 1440 px — `scrollWidth` равен окну, H1 «What shipped in LocalPDF», 8 записей.
+- `npm test` — **594/594**; `npm run build` — exit 0; `npm run audit:workerization:strict` — exit 0.
+
+### Осталось / риски
+
+- Журнал и страница расходятся по мере роста: записи в `changelog.ts` надо добавлять вручную при каждом пользовательском изменении, иначе changelog врёт молчанием.
+- Push не делал: ждёт OK (вместе с `cd3bd4e` — страница сравнения с InkLeaf/KillerPDF).
+
 ## Сессия 2026-11-27 (20) — сравнение с InkLeaf / KillerPDF и честные лимиты на сайте
 
 Триггер — радар за 2026-11-27: InkLeaf PDF 3.3.4 и KillerPDF 1.9.6 вышли 24.11, оба продают правку настоящего текста, ни у одного нет браузерной версии. Идея радара — страница под запрос «edit pdf text without installing».

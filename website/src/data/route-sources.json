@@ -117,5 +117,9 @@
   ],
   "/compare/localpdf-vs-inkleaf-vs-killerpdf": [
     "src/pages/compare/localpdf-vs-inkleaf-vs-killerpdf.astro"
+  ],
+  "/changelog": [
+    "src/pages/changelog.astro",
+    "src/data/changelog.ts"
   ]
 }
