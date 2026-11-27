@@ -42,6 +42,7 @@ No uploads, no server storage — all processing happens locally via WebAssembly
 - [LocalPDF vs Sejda](https://localpdf.online/compare/localpdf-vs-sejda)
 - [LocalPDF vs PDFescape](https://localpdf.online/compare/localpdf-vs-pdfescape)
 - [LocalPDF vs iLovePDF](https://localpdf.online/compare/localpdf-vs-ilovepdf)
+- [LocalPDF vs InkLeaf vs KillerPDF](https://localpdf.online/compare/localpdf-vs-inkleaf-vs-killerpdf) — three editors that change real PDF text; only LocalPDF runs without an install
 
 ## See it working
 

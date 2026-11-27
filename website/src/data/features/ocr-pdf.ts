@@ -77,7 +77,7 @@ export const ocr_pdf: FeaturePageData = {
     monetizationBlock: {
       eyebrow: 'Free vs Pro',
       title: 'Free for quick tasks. Pro for recurring PDF work.',
-      body: 'Use OCR PDF when you need a searchable scan fast. OCR is free on every plan; the free tier includes 3 downloads per day and 3 Studio workspaces. Pro removes those limits for recurring document handling.',
+      body: 'Use OCR PDF when you need a searchable scan fast. OCR is free on every plan; the free tier includes 3 downloads per day. Studio workspaces are unlimited on every plan; Pro removes the download limit for recurring document handling.',
       primaryCtaLabel: 'See Pro plans',
       secondaryCtaLabel: 'Open OCR PDF',
     },

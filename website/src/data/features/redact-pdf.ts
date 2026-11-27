@@ -86,7 +86,7 @@ export const redact_pdf: FeaturePageData = {
     monetizationBlock: {
       eyebrow: 'Free vs Pro',
       title: 'Redaction is free on every plan',
-      body: 'The checks and the certificate are part of the free workflow. The free tier allows 3 downloads per day and 3 Studio workspaces; Pro removes those limits for recurring document work.',
+      body: 'The checks and the certificate are part of the free workflow. The free tier allows 3 downloads per day; Studio workspaces are unlimited on every plan, and Pro removes the download limit for recurring document work.',
       primaryCtaLabel: 'See Pro plans',
       secondaryCtaLabel: 'Open Redact PDF',
     },

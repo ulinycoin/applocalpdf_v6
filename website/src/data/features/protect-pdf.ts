@@ -95,7 +95,7 @@ export const protect_pdf: FeaturePageData = {
     monetizationBlock: {
       eyebrow: 'Free vs Pro',
       title: 'Every tool is free — protection included',
-      body: 'Protect PDF, merge, split, compress, OCR, editing and conversion all run free on every plan. Pro removes the free-tier limits: unlimited downloads and unlimited Studio workspaces, one-time $19, no subscription.',
+      body: 'Protect PDF, merge, split, compress, OCR, editing and conversion all run free on every plan. Pro removes the free-tier limit: unlimited downloads and larger file sizes, one-time $19, no subscription.',
       primaryCtaLabel: 'See Pro plans',
       secondaryCtaLabel: 'Open Protect PDF',
     },

@@ -1,0 +1,240 @@
+---
+import MarketingLayout from '../../layouts/MarketingLayout.astro';
+import { getAppUrl } from '../../utils/app-url';
+
+const title = 'LocalPDF vs InkLeaf vs KillerPDF — Edit PDF Text Without Installing';
+const description =
+  'Three PDF editors that change the real text instead of drawing on top: LocalPDF in the browser, InkLeaf PDF on the desktop, KillerPDF on Windows. Platforms, font fidelity, redaction, export, price.';
+const canonical = 'https://localpdf.online/compare/localpdf-vs-inkleaf-vs-killerpdf';
+const image = 'https://localpdf.online/logos/localpdf-social-1200x630.png';
+const appUrl = getAppUrl();
+
+const comparisonRows = [
+  ['Install required', 'No — runs in the browser tab', 'Yes — desktop app', 'Yes — Windows desktop app'],
+  ['Platforms', 'Windows, macOS, Linux, ChromeOS, iPad — any modern browser', 'Windows, Linux, Android (macOS listed as coming soon)', 'Windows only'],
+  ['Where the file is processed', 'In your tab; the file is never uploaded', 'On your device, offline after install', 'On your device, offline after install'],
+  ['Editing existing text', 'Yes — rewrites the text in the PDF', 'Yes — retypes the line and removes the original words', 'Yes — edits the text in place'],
+  ['Original font fidelity', 'Reuses the embedded font; when it cannot, the line is re-rendered from the page image so the look stays', 'Embeds Noto fonts for shaped scripts (Devanagari, Arabic, Hebrew, Thai)', 'Keeps the real typeface and weight even when the PDF hides them behind generic names'],
+  ['Searchable result after editing', 'Yes for most scripts — a text layer is added; Arabic and Hebrew stay visual-only', 'Yes — the new words are real text in the file', 'Yes — the new words are real text in the file'],
+  ['Redaction', 'Deletes the text under the box, re-checks the saved file, issues a verification certificate', 'Deletes everything under the box, including images, comments, links, form fields and alt text; stops if it cannot remove something', 'Redaction tool included'],
+  ['OCR', 'Yes — searchable PDF, language packs bundled', 'Yes — 56 languages, extra packs downloaded once', 'Yes'],
+  ['Export to Word / Excel / PowerPoint', 'No — PDF pages export as images; Office files convert into PDF, not back', 'Not listed as an export path', 'Yes'],
+  ['Multi-document workspace', 'Yes — drag pages between documents on a canvas', 'Page tools work inside one file (merge, split, extract, reorder)', 'Merge, split and compare inside the app'],
+  ['Account', 'None required', 'None', 'None'],
+  ['Price', 'Every tool free; 3 downloads per day, Pro $19 once or $39.99/year', 'Free, GPL-3.0', 'Free, GPL-3.0'],
+];
+
+const schema = [
+  {
+    '@context': 'https://schema.org',
+    '@type': 'Article',
+    headline: title,
+    description,
+    url: canonical,
+    author: { '@type': 'Organization', name: 'LocalPDF' },
+    publisher: { '@type': 'Organization', name: 'LocalPDF' },
+    mainEntityOfPage: { '@type': 'WebPage', '@id': canonical },
+  },
+  {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'Home', item: 'https://localpdf.online/' },
+      { '@type': 'ListItem', position: 2, name: 'Compare', item: 'https://localpdf.online/compare' },
+      { '@type': 'ListItem', position: 3, name: 'LocalPDF vs InkLeaf vs KillerPDF', item: canonical },
+    ],
+  },
+];
+---
+
+<MarketingLayout title={title} description={description} canonical={canonical} image={image} schema={schema}>
+  <div class="page-shell compare-shell">
+    <section class="section hero">
+      <span class="eyebrow">Comparison</span>
+      <h1>Edit PDF text without installing anything</h1>
+      <p class="section-intro">
+        InkLeaf PDF and KillerPDF both fix the thing most online PDF tools only pretend to fix: they change the
+        words inside the file instead of covering them with a box. LocalPDF does the same edit, but the editor is
+        the browser tab you already have — the file is opened, edited and saved on your device without an install
+        and without an upload.
+      </p>
+      <div class="cta-row">
+        <a class="btn-primary" href={appUrl}>Open LocalPDF — free</a>
+        <a class="btn-secondary" href="/features/edit-pdf">See the text editor</a>
+        <a class="btn-secondary" href="/how-local-pdf-processing-works">How local processing works</a>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2 class="section-title">Quick comparison</h2>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Area</th><th>LocalPDF</th><th>InkLeaf PDF</th><th>KillerPDF</th></tr>
+          </thead>
+          <tbody>
+            {comparisonRows.map((row) => (
+              <tr>
+                <td>{row[0]}</td>
+                <td>{row[1]}</td>
+                <td>{row[2]}</td>
+                <td>{row[3]}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="section card-grid">
+      <article class="card">
+        <h3>Choose LocalPDF when</h3>
+        <ul class="bullet-list">
+          <li>The device is locked down or shared and you cannot install software.</li>
+          <li>You move between Windows, macOS, Linux and a tablet and want one editor that works everywhere.</li>
+          <li>You want the edit, the redaction check and the download to happen without the file leaving the tab.</li>
+          <li>You work across several documents at once and want to drag pages between them.</li>
+        </ul>
+      </article>
+      <article class="card">
+        <h3>Choose InkLeaf PDF when</h3>
+        <ul class="bullet-list">
+          <li>You want a free, offline desktop editor with an install and no accounts.</li>
+          <li>You need Devanagari, Arabic, Hebrew or Thai text shaped correctly with embedded Noto fonts.</li>
+          <li>You need OCR in dozens of languages and don't mind downloading language packs.</li>
+        </ul>
+      </article>
+      <article class="card">
+        <h3>Choose KillerPDF when</h3>
+        <ul class="bullet-list">
+          <li>You are on Windows and want an installed editor with its own PDF engine.</li>
+          <li>You need to export a PDF back to Word, Excel or PowerPoint.</li>
+          <li>You need to fix text in Word-exported PDFs whose fonts are hidden behind generic names.</li>
+        </ul>
+      </article>
+    </section>
+
+    <section class="section">
+      <h2 class="section-title">The difference that matters for “without installing”</h2>
+      <div class="card-grid">
+        <article class="card">
+          <h3>A tab, not an installer</h3>
+          <p>
+            InkLeaf ships a Windows/Linux desktop build (macOS is still listed as coming soon) and KillerPDF is a
+            Windows application. LocalPDF has no build to install: you open the site, drop the PDF in, edit and
+            save. Nothing is added to the system and nothing needs admin rights.
+          </p>
+        </article>
+        <article class="card">
+          <h3>Same privacy goal, different delivery</h3>
+          <p>
+            All three keep the file local — the two desktop apps by running offline, LocalPDF by processing in the
+            browser with WebAssembly. The practical difference is setup: a browser tab works on a borrowed laptop,
+            a Chromebook or a tablet, where installing an app is not an option.
+          </p>
+        </article>
+        <article class="card">
+          <h3>What LocalPDF does not do</h3>
+          <p>
+            There is no PDF → Word, Excel or PowerPoint export in LocalPDF, while KillerPDF offers it. Arabic and
+            Hebrew edits are re-rendered visually and get no searchable layer, and very large CJK documents take
+            longer in a tab than in a desktop app. If those matter more than zero install, a desktop editor is the
+            better tool.
+          </p>
+        </article>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2 class="section-title">Pricing snapshot</h2>
+      <p class="section-intro">
+        All three are free to use. Only LocalPDF has a paid tier, and it covers exports rather than the tools.
+      </p>
+      <div class="card-grid pricing-compare">
+        <article class="card">
+          <h3>LocalPDF</h3>
+          <ul class="bullet-list">
+            <li><strong>Free:</strong> $0 — every tool, unlimited Studio workspaces, 3 downloads per day.</li>
+            <li><strong>Pro:</strong> $19 one-time or $39.99/year — unlimited downloads and larger files, full Studio.</li>
+          </ul>
+          <a class="text-link" href="/pricing">Full pricing details →</a>
+        </article>
+        <article class="card">
+          <h3>InkLeaf PDF</h3>
+          <ul class="bullet-list">
+            <li>Free and open source under GPL-3.0.</li>
+            <li>No account, no subscription — the whole editor is free.</li>
+          </ul>
+          <a class="text-link" href="https://github.com/priyanshdas/inkleaf">InkLeaf on GitHub →</a>
+        </article>
+        <article class="card">
+          <h3>KillerPDF</h3>
+          <ul class="bullet-list">
+            <li>Free and open source under GPL-3.0.</li>
+            <li>No account, no subscription — the whole editor is free.</li>
+          </ul>
+          <a class="text-link" href="https://github.com/SteveTheKiller/KillerPDF">KillerPDF on GitHub →</a>
+        </article>
+      </div>
+      <div class="cta-row section-cta">
+        <a class="btn-primary" href={appUrl}>Try the browser editor free</a>
+        <a class="btn-secondary" href="/pdf-tools-without-upload">PDF tools without upload</a>
+      </div>
+    </section>
+
+    <section class="section faq-grid">
+      <article class="card">
+        <h3>Can I edit PDF text without installing anything?</h3>
+        <p>
+          Yes — LocalPDF edits the text inside the PDF in a browser tab, on any desktop OS and on tablets. Nothing
+          is installed and the file is not uploaded; the editor runs on your device.
+        </p>
+      </article>
+      <article class="card">
+        <h3>Do these editors change real text or draw on top?</h3>
+        <p>
+          All three change the text. LocalPDF rewrites the text operators and reuses the embedded font where it can;
+          when a font cannot be reused it re-renders that line from the page image and adds a searchable text
+          layer, so the result still looks and searches like the original.
+        </p>
+      </article>
+      <article class="card">
+        <h3>Is a browser editor as good as a desktop one?</h3>
+        <p>
+          For text edits, redaction and everyday fixes, yes. A desktop editor such as KillerPDF still wins on PDF →
+          Office export, and InkLeaf wins on script shaping for Indic and Thai text. Choose by the job, not by the
+          delivery method.
+        </p>
+      </article>
+    </section>
+  </div>
+
+  <section class="section more-comparisons">
+    <h2 class="section-title">More comparisons</h2>
+    <p class="section-intro">See how LocalPDF compares to other PDF tools:</p>
+    <div class="compare-links">
+      <a href="/compare/localpdf-vs-smallpdf" class="compare-link">Smallpdf</a>
+      <a href="/compare/localpdf-vs-ilovepdf" class="compare-link">iLovePDF</a>
+      <a href="/compare/localpdf-vs-pdf24" class="compare-link">PDF24</a>
+      <a href="/compare/localpdf-vs-pdfescape" class="compare-link">PDFescape</a>
+      <a href="/compare/localpdf-vs-sejda" class="compare-link">Sejda</a>
+    </div>
+  </section>
+</MarketingLayout>
+
+<style>
+  .compare-shell h1 {
+    font-size: clamp(2.6rem, 4.6vw, 4.4rem);
+    margin-top: 18px;
+    margin-bottom: 18px;
+  }
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; background: var(--surface); border-radius: 18px; overflow: hidden; }
+  th, td { border: 1px solid var(--line); padding: 14px; text-align: left; vertical-align: top; }
+  th { background: rgba(217, 235, 225, 0.45); }
+  .faq-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; }
+  .pricing-compare { margin-top: 18px; }
+  .text-link { display: inline-block; margin-top: 12px; font-weight: 600; }
+  .section-cta { margin-top: 24px; }
+  @media (max-width: 900px) { .faq-grid { grid-template-columns: 1fr; } }
+</style>

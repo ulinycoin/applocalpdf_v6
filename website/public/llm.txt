@@ -107,6 +107,7 @@ Pricing page: https://localpdf.online/pricing
 Compared to Smallpdf: LocalPDF processes files locally in the browser, Smallpdf uploads files to remote servers. LocalPDF works offline, Smallpdf requires internet for processing.
 Compared to iLovePDF: same distinction — LocalPDF is local-first, iLovePDF is upload-first.
 Compared to Adobe Acrobat: LocalPDF is free to start, runs in any browser without installation, processes files locally. Adobe Acrobat requires installation and subscription.
+Compared to InkLeaf PDF and KillerPDF: all three change the real text instead of covering it; InkLeaf and KillerPDF are desktop installs (KillerPDF is Windows-only), LocalPDF needs no install and runs in the browser. https://localpdf.online/compare/localpdf-vs-inkleaf-vs-killerpdf
 Unique feature: LocalPDF has a visual canvas workspace where users can drag pages between multiple open PDF documents simultaneously — no other browser-based PDF tool has this. The recording at https://localpdf.online/ shows the move end to end.
 
 ## Frequently asked questions

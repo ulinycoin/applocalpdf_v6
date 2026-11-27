@@ -2,6 +2,29 @@
 
 Last updated: 2026-11-27
 
+## Сессия 2026-11-27 (20) — сравнение с InkLeaf / KillerPDF и честные лимиты на сайте
+
+Триггер — радар за 2026-11-27: InkLeaf PDF 3.3.4 и KillerPDF 1.9.6 вышли 24.11, оба продают правку настоящего текста, ни у одного нет браузерной версии. Идея радара — страница под запрос «edit pdf text without installing».
+
+### Сделано
+
+- Новая страница `website/src/pages/compare/localpdf-vs-inkleaf-vs-killerpdf.astro`: H1 «Edit PDF text without installing anything», четырёхколоночная таблица (LocalPDF / InkLeaf / KillerPDF) по установке, платформам, месту обработки файла, правке текста, сохранению гарнитуры, поисковому слою, редакции, OCR, экспорту в Office, мультидокументному канвасу, аккаунту и цене; карточки «Choose LocalPDF / InkLeaf / KillerPDF», блок «The difference that matters for without installing», прайс-снимок, 3 FAQ-карточки, Schema.org Article + BreadcrumbList.
+- Открыто сказано, чего у нас нет: PDF → Word/Excel/PowerPoint (есть у KillerPDF), поискового слоя после правки RTL, скорости на очень больших CJK-файлах. У InkLeaf отмечены сильные стороны: shaped-текст для деванагари/арабского/иврита/тайского с Noto, OCR на 56 языков, безопасная редакция 3.3.4; у KillerPDF — сохранение реальной гарнитуры за generic-именами и экспорт в Office.
+- Страница связана: `website/src/data/route-sources.json`, ссылка в блоке More comparisons всех шести существующих сравнений, строка в `website/public/llms.txt`, абзац в `website/public/llm.txt`.
+- Заодно вычищены оставшиеся после снятия лимита workspace обещания «3 Studio workspaces»: `website/src/data/features/{ocr-pdf,redact-pdf,protect-pdf,merge-pdf}.ts`, `website/src/pages/compare/localpdf-vs-smallpdf.astro`, `website/src/pages/compare/localpdf-vs-smallpdf-vs-ilovepdf.astro`, `website/src/pages/pdf-tools-without-upload.astro`. Теперь везде «unlimited Studio workspaces, 3 downloads per day», Pro — «unlimited downloads and larger files».
+
+### Проверено
+
+- `npm run build:web` → 85 страниц; `npm run seo:lastmod` → 38 дат; `npm run audit:seo` → «SEO audit passed» (новый URL в sitemap, 4 колонки, canonical и `<title>` на месте).
+- В браузере (Playwright, локальная сборка): 390 px и 1440 px — `scrollWidth` равен ширине окна, таблица 4 колонки, 5 ссылок в More comparisons, H1 отдаётся.
+- `npm test` — **594/594**; `npm run build` — exit 0; `npm run audit:workerization:strict` — exit 0.
+
+### Осталось / риски
+
+- Идея радара №2 не начата: проверяемое обещание «split/extract не оставляют удалённых страниц» + страница-тест. У нас это, вероятно, выполняется (pdf-lib копирует только достижимые объекты), но это надо доказать тестом, а не обещать.
+- Конкуренты быстрее: InkLeaf закрыл утечку удалённых страниц как security-фикс 24.11 — приватность начинают мерить содержимым готового файла.
+- Push не делал: ждёт OK владельца.
+
 ## Сессия 2026-11-27 (19) — /pdf-mcp-server: читаемая разметка и markdown-эталон для моделей
 
 Триггер — владелец: скриншот страницы «разметка кривая на странице» + «отправлена на индексацию страница? добавил упоминание в sitemap, llm.txt? нужно что бы модели понимали на счет mcp в проекте».
